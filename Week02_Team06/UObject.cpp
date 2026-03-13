@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "Object.h"
+#include "UObject.h"
 #include "UMesh.h"
 
-#include "Input.h"
+#include "UInput.h"
 
 void UObject::Release()
 {
