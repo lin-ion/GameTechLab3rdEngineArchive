@@ -16,7 +16,7 @@ public:
 	void Release();
 
 	bool IsKeyDown(int vKey);
-	bool IsKeyHeld(int vKey);
+	bool IsKeyPressing(int vKey);
 	bool IsKeyUp(int vKey);
 
 public:

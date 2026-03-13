@@ -28,7 +28,7 @@ bool UInput::IsKeyDown(int vKey)
 	return (!PreKeys[vKey] && CurKeys[vKey]);
 }
 
-bool UInput::IsKeyHeld(int vKey)
+bool UInput::IsKeyPressing(int vKey)
 {
 	return  (PreKeys[vKey] && CurKeys[vKey]);
 }

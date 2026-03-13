@@ -2,62 +2,36 @@
 #include "Scene.h"
 
 #include "Object.h"
+#include "Cube.h"
 #include "Sphere.h"
+#include "Triangle.h"
+#include "PrimitiveComponent.h"
+
+#include "ObjectFactory.h"
 #include "GeometryData.h"
+
+#include "json.hpp"
 
 void UScene::Initialize(ID3D11Device& Device)
 {
-	TestObject = new UObject();
-	UObject* TestCube = new UObject();
+	UPrimitiveComponent* Cube = UObjectFactory::NewObject<UPrimitiveComponent>();
+	Cube->AddMesh(Device, cube_vertices, sizeof(cube_vertices) / sizeof(FVertexSimple));
 
-	TestObject->AddMesh(Device, sphere_vertices, sizeof(sphere_vertices) / sizeof(FVertexSimple));
-	TestCube->AddMesh(Device, CubeVertices, sizeof(CubeVertices) / sizeof(FVertexSimple));
 
-	AddObject(TestCube);
+	UPrimitiveComponent* Sphere = UObjectFactory::NewObject<UPrimitiveComponent>();
+	Sphere->AddMesh(Device, sphere_vertices, sizeof(sphere_vertices) / sizeof(FVertexSimple));
 }
 
 void UScene::Update(float DeltaTime)
 {
-	for (UObject* obj : SceneObjects)
+	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
 	{
-		obj->Update(DeltaTime);
+		GUObjectArray[i]->Update(DeltaTime);
 	}
-
-	if (TestObject) TestObject->Update(DeltaTime);
 }
 
 void UScene::Release()
 {
-	if (TestObject)
-	{
-		for (UObject* obj : SceneObjects)
-		{
-			if (obj)
-			{
-				obj->Release();
-				delete obj;
-			}
-		}
-		SceneObjects.clear();
-
-		if (TestObject)
-		{
-			TestObject->Release();
-			delete TestObject;
-			TestObject = nullptr;
-		}
-	}
+	UObjectFactory::DestroyAllObjects();
 }
 
-void UScene::AddObject(UObject* object)
-{
-	if (object != nullptr)
-	{
-		SceneObjects.push_back(object);
-	}
-}
-
-UObject* UScene::GetSceneObject()
-{
-	return TestObject;
-}

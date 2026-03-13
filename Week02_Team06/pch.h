@@ -1,6 +1,10 @@
 #pragma once
+#include <stdio.h>
+#include <cctype>
+
 #include <windows.h>
 #include <assert.h>
+
 
 #pragma region STL_CONTAINER
 #include <unordered_map>
@@ -18,9 +22,16 @@
 #include <d3dcompiler.h>
 #pragma endregion D3D11_LIB
 
+
 #include "Defines.h"
+
 #include "Math.h"
+#include "Containers.h"
+#include "EngineStatics.h"
+
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
+
+#include "AppConsole.h"
