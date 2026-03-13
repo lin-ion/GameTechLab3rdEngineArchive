@@ -60,3 +60,11 @@ private:
 	ID3D11PixelShader*  SimplePixelShader  = nullptr;
 
 };
+
+struct FConstantData
+{
+	//FMatrix Model;
+	//FMatrix View;
+	//FMatrix Projection;
+	FMatrix MVP;
+};

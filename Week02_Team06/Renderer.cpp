@@ -18,7 +18,7 @@ void URenderer::Initialize()
 	CreateRenderTargetView();
 	CreateDepthStensilView();
 	CreateRasterizerState();
-	
+
 	CreateShader(*Device, TEXT("ShaderW0.hlsl"), FVertexSimple::Elements, FVertexSimple::ElementNum);
 	CreateConstantBuffer();
 }
@@ -52,9 +52,19 @@ void URenderer::Render(UScene* Scene)
 		{
 			D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 			DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
-			FConstants* constant = static_cast<FConstants*>(ConstantBufferMSR.pData);
-			constant->Offset = static_cast<USceneComponent*>(GUObjectArray[i])->GetPosition();
-			constant->Radius = static_cast<USceneComponent*>(GUObjectArray[i])->GetRadius();
+			USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
+			
+			FMatrix Translation = FMatrix::MakeTranslation(testObject->GetPosition());
+			FMatrix Rotation = FMatrix::MakeRotation(testObject->GetRotation());
+			FMatrix Scale = FMatrix::MakeScale(testObject->GetScale());
+			FMatrix Model = Scale * Rotation * Translation;
+
+			FMatrix View = FMatrix::MakeLookAt({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+			FMatrix Projection = FMatrix::MakePerspective(45.0f, ViewportInfo.Width / ViewportInfo.Height, 0.1f, 10.0f);
+
+			FMatrix MVP = Model * View * Projection;
+
+			memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));
 
 			DeviceContext->Unmap(ConstantBuffer, 0);
 
@@ -218,7 +228,7 @@ void URenderer::ReleaseShader()
 void URenderer::CreateConstantBuffer()
 {
 	D3D11_BUFFER_DESC constantbufferdesc = {};
-	constantbufferdesc.ByteWidth = (sizeof(FConstants) + 0xf) & 0xfffffff0; // 16바이트 정렬
+	constantbufferdesc.ByteWidth = (sizeof(FConstantData) + 0xf) & 0xfffffff0; // 16바이트 정렬
 	constantbufferdesc.Usage = D3D11_USAGE_DYNAMIC; // 프레임마다 CPU가 갱신해주어야 하므로
 	constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; // Usage는 사용 패턴만 정의. CPU가 접근할 수 있도록 플래그도 설정해주어야 함
 	constantbufferdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;

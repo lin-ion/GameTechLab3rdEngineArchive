@@ -10,8 +10,12 @@ public:
 	virtual ~USceneComponent() = default;
 
 public:
-	FVector& GetPosition() { return Position; };
-	float	 GetRadius()   { return Radius; }
+	const FVector& GetPosition() { return Position; };
+	void SetPosition(const FVector& InPosition) { Position = InPosition; };
+	const FVector& GetRotation() { return Rotation; };
+	void SetRotation(const FVector& InRotation) { Rotation = InRotation; };
+	const FVector& GetScale() { return Scale; };
+	void SetScale(const FVector& InScale) { Scale = InScale; };
 
 public:
 	// UObject을(를) 통해 상속됨
@@ -23,7 +27,8 @@ public:
 private:
 	//나중에 컴포넌트로 바꿀 예정
 	//추후 Matrix로 스케일 / 회전 / 위치 정보를 저장
-	FVector Position = {};
-	float   Radius = { 0.1f };
+	FVector Position = { 0.0f, 0.0f, 0.0f };
+	FVector Rotation = { 0.0f, 0.0f, 0.0f };
+	FVector Scale = { 1.0f, 1.0f, 1.0f };
 };
 
