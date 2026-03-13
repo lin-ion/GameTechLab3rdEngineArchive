@@ -115,6 +115,9 @@
     <ClCompile Include="ImGui\imgui_widgets.cpp">
       <Filter>App\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="AppConsole.cpp">
+      <Filter>App\ImGuiDrawer</Filter>
+	</ClCompile>
     <ClCompile Include="GeometryData.cpp">
       <Filter>리소스 파일</Filter>
     </ClCompile>
@@ -189,6 +192,9 @@
     <ClInclude Include="ImGui\imstb_truetype.h">
       <Filter>App\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="AppConsole.h">
+      <Filter>App\ImGuiDrawer</Filter>
+	</ClInclude>
     <ClInclude Include="GeometryData.h">
       <Filter>리소스 파일</Filter>
     </ClInclude>

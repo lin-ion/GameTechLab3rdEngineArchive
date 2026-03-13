@@ -1,4 +1,7 @@
 #pragma once
+#include <stdio.h>
+#include <cctype>
+
 #include <windows.h>
 #include <assert.h>
 
@@ -24,3 +27,5 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
+
+#include "AppConsole.h"
