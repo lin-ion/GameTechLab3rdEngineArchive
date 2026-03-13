@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Window.h"
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 bool UWindow::Initialize(HINSTANCE _hInstance, uint32 _width, uint32 _height)
 {
 	hInstance = _hInstance;
@@ -49,8 +51,12 @@ void UWindow::Release()
 	}
 }
 
+
 LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+		return true;
+
 	switch (message)
 	{
 	case WM_DESTROY:

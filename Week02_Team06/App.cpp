@@ -6,6 +6,7 @@
 #include "Input.h"
 #include "Graphics.h"
 #include "SceneManager.h"
+#include "ImGuiDrawer.h"
 
 bool UApp::Initialize(HINSTANCE hInstance)
 {
@@ -24,6 +25,8 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	SceneManager = new USceneManager;
 	SceneManager->Initialize(*Graphics->GetDevice());
 
+	ImGuiDrawer = new UImGuiDrawer;
+	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
 
 	return true;
 }
@@ -68,8 +71,13 @@ void UApp::Run()
 
 			Renderer->BeginScene();
 			Renderer->Render(SceneManager->GetCurrentScene());
-			Renderer->EndScene();
 
+			//ImGui
+			ImGuiDrawer->BeginFrame();
+			ImGuiDrawer->UpdateUI();
+			ImGuiDrawer->EndFrame();
+
+			Renderer->EndScene();
 		}
 		else
 		{
@@ -103,5 +111,9 @@ void UApp::Release()
 		delete Window;
 	}
 
-
+	if (ImGuiDrawer)
+	{
+		ImGuiDrawer->Release();
+		delete ImGuiDrawer;
+	}
 }
