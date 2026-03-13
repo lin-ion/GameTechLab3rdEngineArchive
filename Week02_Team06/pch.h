@@ -18,3 +18,4 @@
 #pragma endregion D3D11_LIB
 
 #include "Defines.h"
+#include "Math.h"

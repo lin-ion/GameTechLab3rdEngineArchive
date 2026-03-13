@@ -82,6 +82,12 @@
     <ClCompile Include="UMesh.cpp">
       <Filter>Object\Mesh</Filter>
     </ClCompile>
+    <ClCompile Include="Types.cpp">
+      <Filter>Defines</Filter>
+    </ClCompile>
+    <ClCompile Include="Math.cpp">
+      <Filter>Defines</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -122,6 +128,9 @@
     </ClInclude>
     <ClInclude Include="Sphere.h">
       <Filter>리소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Math.h">
+      <Filter>Defines</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

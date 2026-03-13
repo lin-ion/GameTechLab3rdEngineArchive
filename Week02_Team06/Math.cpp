@@ -1,7 +1,4 @@
-#pragma once
-
 #include "pch.h"
-#include "Math.h"
 
 FMatrix::FMatrix(float _00, float _01, float _02, float _03,
                  float _10, float _11, float _12, float _13,
@@ -147,4 +144,60 @@ FMatrix FMatrix::MakeTranslation(const FVector& T)
     Result.M[3][1] = T.Y;
     Result.M[3][2] = T.Z;
     return Result;
+}
+
+FMatrix FMatrix::MakeLookAt(const FVector& Eye, const FVector& At, const FVector& Up)
+{
+    FVector ZAxis = (At - Eye); ZAxis.Normalize();
+    FVector XAxis = Up.Cross(ZAxis); XAxis.Normalize();
+    FVector YAxis = ZAxis.Cross(XAxis);
+
+    return FMatrix(
+        XAxis.X, YAxis.X, ZAxis.X, 0.0f,
+        XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f,
+        XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f,
+        -XAxis.Dot(Eye), -YAxis.Dot(Eye), -ZAxis.Dot(Eye), 1.0f
+    );
+}
+
+FMatrix FMatrix::MakePerspective(float FovAngleDeg, float AspectRatio, float NearZ, float FarZ)
+{
+    float SinFov = sinf(Math::ToRadians(FovAngleDeg) * 0.5f);
+    float CosFov = cosf(Math::ToRadians(FovAngleDeg) * 0.5f);
+    float h = CosFov / SinFov;
+    float w = h / AspectRatio;
+    float r = FarZ / (FarZ - NearZ);
+
+    return FMatrix(
+        w, 0.0f, 0.0f, 0.0f,
+        0.0f, h, 0.0f, 0.0f,
+        0.0f, 0.0f, r, 1.0f,
+        0.0f, 0.0f, -r * NearZ, 0.0f
+    );
+}
+
+FVector FMatrix::TransformCoord(const FVector& V, const FMatrix& M)
+{
+    // 점(Point)의 변환: V.w = 1.0f
+    float x = V.X * M.M[0][0] + V.Y * M.M[1][0] + V.Z * M.M[2][0] + M.M[3][0];
+    float y = V.X * M.M[0][1] + V.Y * M.M[1][1] + V.Z * M.M[2][1] + M.M[3][1];
+    float z = V.X * M.M[0][2] + V.Y * M.M[1][2] + V.Z * M.M[2][2] + M.M[3][2];
+    float w = V.X * M.M[0][3] + V.Y * M.M[1][3] + V.Z * M.M[2][3] + M.M[3][3];
+
+    // 투영 변환(Perspective Divide)까지 고려
+    if (w != 1.0f && w != 0.0f)
+    {
+        return FVector(x / w, y / w, z / w);
+    }
+    return FVector(x, y, z);
+}
+
+FVector FMatrix::TransformNormal(const FVector& V, const FMatrix& M)
+{
+    // 방향(Vector)의 변환: V.w = 0.0f (이동 성분인 M.M[3][x]를 무시)
+    return FVector(
+        V.X * M.M[0][0] + V.Y * M.M[1][0] + V.Z * M.M[2][0],
+        V.X * M.M[0][1] + V.Y * M.M[1][1] + V.Z * M.M[2][1],
+        V.X * M.M[0][2] + V.Y * M.M[1][2] + V.Z * M.M[2][2]
+    );
 }

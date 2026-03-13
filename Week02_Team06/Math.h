@@ -2,6 +2,8 @@
 
 namespace Math
 {
+	template<typename T>
+	static T Lerp(const T& A, const T& B, float Alpha) { return A + (B - A) * Alpha; }
 	static constexpr float PI = 3.1415926535f;
 	static inline float ToRadians(float Degree) { return Degree * (PI / 180.0f); }
 	static inline float ToDegrees(float Radian) { return Radian * (180.0f / PI); }
@@ -56,7 +58,7 @@ struct FVector2D
 	FVector2D operator*(float Scalar) const { return { X * Scalar, Y * Scalar }; }
 	FVector2D operator/(float Scalar) const { return { X / Scalar, Y / Scalar }; }
 
-	float Dot(const FVector2D& Other) { return X * Other.X + Y * Other.Y; }
+	float Dot(const FVector2D& Other) const { return X * Other.X + Y * Other.Y; }
 	float Length() const { return sqrtf(X * X + Y * Y); }
 
 	void Normalize() 
@@ -72,6 +74,10 @@ struct FVector4
 
 	FVector4() : X(0.0f), Y(0.0f), Z(0.0f), W(0.0f) {}
 	FVector4(const FVector& InV, float InW = 1.0f) : X(InV.X), Y(InV.Y), Z(InV.Z), W(InW) {}
+
+	float Dot(const FVector4& Other) const { return X * Other.X + Y * Other.Y + Z * Other.Z + W * Other.W; }
+	float Length() const { return sqrtf(X * X + Y * Y + Z * Z + W * W); }
+	float Length3() const { return sqrtf(X * X + Y * Y + Z * Z); }
 };
 
 struct FIntPoint
@@ -132,6 +138,10 @@ struct FMatrix
 	static FMatrix MakeRotationY(float Degree);
 	static FMatrix MakeRotationZ(float Degree);
 	static FMatrix MakeTranslation(const FVector& T);
+	static FMatrix MakeLookAt(const FVector& Eye, const FVector& At, const FVector& Up);
+	static FMatrix MakePerspective(float FovAngleDeg, float AspectRatio, float NearZ, float FarZ);
+	static FVector TransformCoord(const FVector& V, const FMatrix& M);
+	static FVector TransformNormal(const FVector& V, const FMatrix& M);
 };
 
 struct FConstants
