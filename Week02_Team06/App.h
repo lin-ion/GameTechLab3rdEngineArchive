@@ -4,6 +4,7 @@ class UWindow;
 class URenderer;
 class UGraphics;
 class USceneManager;
+class UImGuiDrawer;
 
 
 class UApp
@@ -25,5 +26,5 @@ private:
 	UGraphics* Graphics = { nullptr };
 	URenderer* Renderer = { nullptr };
 	USceneManager* SceneManager = { nullptr };
-
+	UImGuiDrawer* ImGuiDrawer = { nullptr };
 };
