@@ -25,17 +25,6 @@ void USceneComponent::Update(float DeltaTime)
 	{
 		Position.Y += DeltaTime;
 	}
-
-	if (UInput::GetInstance().IsKeyPressing('Z'))
-	{
-		Radius += DeltaTime;
-	}
-
-	if (UInput::GetInstance().IsKeyPressing('X'))
-	{
-		Radius -= DeltaTime;
-		Radius = max(0.02, Radius);
-	}
 }
 
 void USceneComponent::Render(ID3D11DeviceContext& DeviceContext)
