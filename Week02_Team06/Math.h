@@ -56,7 +56,7 @@ struct FVector2D
 	FVector2D operator*(float Scalar) const { return { X * Scalar, Y * Scalar }; }
 	FVector2D operator/(float Scalar) const { return { X / Scalar, Y / Scalar }; }
 
-	float Dot(const FVector2D& Other) { return X * Other.X + Y + Other.Y; }
+	float Dot(const FVector2D& Other) { return X * Other.X + Y * Other.Y; }
 	float Length() const { return sqrtf(X * X + Y * Y); }
 
 	void Normalize() 
@@ -71,7 +71,7 @@ struct FVector4
 	float X, Y, Z, W;
 
 	FVector4() : X(0.0f), Y(0.0f), Z(0.0f), W(0.0f) {}
-	FVector4(const FVector4& InV, float InW = 1.0f) : X(InV.X), Y(InV.Y), Z(InV.Z), W(InW) {}
+	FVector4(const FVector& InV, float InW = 1.0f) : X(InV.X), Y(InV.Y), Z(InV.Z), W(InW) {}
 };
 
 struct FIntPoint
