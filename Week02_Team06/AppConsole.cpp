@@ -1,7 +1,5 @@
+#include "pch.h"
 #include "AppConsole.h"
-#include "ImGui/imgui.h"
-#include <stdio.h>
-#include <cctype>
 
 struct AppConsole
 {

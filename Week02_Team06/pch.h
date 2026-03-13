@@ -1,4 +1,7 @@
 #pragma once
+#include <stdio.h>
+#include <cctype>
+
 #include <windows.h>
 #include <assert.h>
 
