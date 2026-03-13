@@ -1,6 +1,12 @@
 #pragma once
 class UObject;
 
+struct SceneSaveData
+{
+	std::string Version;
+	int NextUUID;
+};
+
 class UScene
 {
 public:
@@ -13,6 +19,10 @@ public:
 	void Release();
 
 	UObject* GetSceneObject();
+
+	void Save(const std::string& path);
+
+	void Load(const std::string& path, ID3D11Device* device);
 
 
 private:

@@ -1,6 +1,5 @@
 #pragma once
 
-
 struct AppConsole;
 
 class UImGuiDrawer

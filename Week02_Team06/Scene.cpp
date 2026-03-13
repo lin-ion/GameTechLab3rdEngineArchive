@@ -4,6 +4,8 @@
 #include "Object.h"
 #include "Sphere.h"
 
+#include "json.hpp"
+
 void UScene::Initialize(ID3D11Device& Device)
 {
 	TestObject = new UObject();
