@@ -27,4 +27,4 @@ public:
 
 private:
 	UObject* TestObject = { nullptr };
-};
+};   

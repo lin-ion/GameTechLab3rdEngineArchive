@@ -85,30 +85,36 @@
     <ClCompile Include="UMesh.cpp">
       <Filter>Object\Mesh</Filter>
     </ClCompile>
+    <ClCompile Include="Types.cpp">
+      <Filter>Defines</Filter>
+    </ClCompile>
+    <ClCompile Include="Math.cpp">
+      <Filter>Defines</Filter>
+	</ClCompile>
     <ClCompile Include="ImGuiDrawer.cpp">
       <Filter>App\ImGuiDrawer</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui.cpp">
-      <Filter>App\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_demo.cpp">
-      <Filter>App\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_draw.cpp">
-      <Filter>App\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_impl_dx11.cpp">
-      <Filter>App\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_impl_win32.cpp">
-      <Filter>App\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_tables.cpp">
-      <Filter>App\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_widgets.cpp">
-      <Filter>App\ImGui</Filter>
-    </ClCompile>
+	<ClCompile Include="ImGui\imgui.cpp">
+	  <Filter>App\ImGui</Filter>
+	</ClCompile>
+	<ClCompile Include="ImGui\imgui_demo.cpp">
+	  <Filter>App\ImGui</Filter>
+	</ClCompile>
+	<ClCompile Include="ImGui\imgui_draw.cpp">
+	  <Filter>App\ImGui</Filter>
+	</ClCompile>
+	<ClCompile Include="ImGui\imgui_impl_dx11.cpp">
+	  <Filter>App\ImGui</Filter>
+	</ClCompile>
+	<ClCompile Include="ImGui\imgui_impl_win32.cpp">
+	  <Filter>App\ImGui</Filter>
+	</ClCompile>
+	<ClCompile Include="ImGui\imgui_tables.cpp">
+	  <Filter>App\ImGui</Filter>
+	</ClCompile>
+	<ClCompile Include="ImGui\imgui_widgets.cpp">
+	  <Filter>App\ImGui</Filter>
+	</ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -150,33 +156,36 @@
     <ClInclude Include="Sphere.h">
       <Filter>리소스 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Math.h">
+      <Filter>Defines</Filter>
+	</ClInclude>
     <ClInclude Include="ImGuiDrawer.h">
       <Filter>App\ImGuiDrawer</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imconfig.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_impl_dx11.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_impl_win32.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imgui_internal.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imstb_rectpack.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imstb_textedit.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Documents\GitHub\Techlap_1week\Week0\ImGui\imstb_truetype.h">
-      <Filter>App\ImGui</Filter>
-    </ClInclude>
+	<ClInclude Include="ImGui\imconfig.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
+	<ClInclude Include="ImGui\imgui.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
+	<ClInclude Include="ImGui\imgui_impl_dx11.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
+	<ClInclude Include="ImGui\imgui_impl_win32.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
+	<ClInclude Include="ImGui\imgui_internal.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
+	<ClInclude Include="ImGui\imstb_rectpack.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
+	<ClInclude Include="ImGui\imstb_textedit.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
+	<ClInclude Include="ImGui\imstb_truetype.h">
+	  <Filter>App\ImGui</Filter>
+	</ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

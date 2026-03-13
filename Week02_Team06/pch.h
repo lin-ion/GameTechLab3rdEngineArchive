@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <array>
 #include <string>
+#include <cmath>
 #pragma endregion STL_CONTAINER
 
 #pragma region DIERCT3D11
@@ -17,6 +18,7 @@
 #pragma endregion D3D11_LIB
 
 #include "Defines.h"
+#include "Math.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
