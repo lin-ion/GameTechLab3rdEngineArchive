@@ -12,22 +12,21 @@ void UObject::Release()
 
 void UObject::Update(float DeltaTime)
 {
-	//
 	if (UInput::GetInstance().IsKeyHeld('A'))
 	{
-		Position.x -= DeltaTime;
+		Position.X -= DeltaTime;
 	}
 	if (UInput::GetInstance().IsKeyHeld('D'))
 	{
-		Position.x += DeltaTime;
+		Position.X += DeltaTime;
 	}
 	if (UInput::GetInstance().IsKeyHeld('S'))
 	{
-		Position.y -= DeltaTime;
+		Position.Y -= DeltaTime;
 	}
 	if (UInput::GetInstance().IsKeyHeld('W'))
 	{
-		Position.y += DeltaTime;
+		Position.Y += DeltaTime;
 	}
 
 	if (UInput::GetInstance().IsKeyHeld('Z'))
