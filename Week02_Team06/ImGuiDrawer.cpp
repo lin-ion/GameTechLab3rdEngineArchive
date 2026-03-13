@@ -4,8 +4,7 @@
 
 UImGuiDrawer::UImGuiDrawer()
 {
-    con = new AppConsole;
-    appCocnsole = con;
+    CreateAppConsole();
 }
 
 void UImGuiDrawer::Initialize(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* context)
@@ -42,13 +41,10 @@ void UImGuiDrawer::UpdateUI()
     if (ImGui::Button("Save Scene")) { /* sceneName으로 저장 로직 */ }
     if (ImGui::Button("Load Scene")) { /* sceneName 불러오기 로직 */ }
 
-    ImGui::End();
+	ImGui::End();
 
-    
-    if (con != nullptr)
-    {
-        con->Draw("Jungle Control Panel", nullptr);
-    }
+	if(bShowConsole)
+		DrawAppConsole("Jungle Tecj Lab", &bShowConsole);
 }
 
 void UImGuiDrawer::Release()
@@ -58,5 +54,5 @@ void UImGuiDrawer::Release()
 
 	ImGui::DestroyContext();
 
-    delete con;
+    DestroyAppConsole();
 }

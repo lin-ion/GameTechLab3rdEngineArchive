@@ -1,10 +1,10 @@
 #pragma once
 
-struct AppConsole;
-
 class UImGuiDrawer
 {
 public:
+	bool bShowConsole = true;
+
 	UImGuiDrawer();
 	~UImGuiDrawer() {};
 
@@ -16,7 +16,4 @@ public:
 	void UpdateUI();
 
 	void Release();
-
-private:
-	AppConsole* con;
 };

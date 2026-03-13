@@ -2,7 +2,12 @@
 
 struct AppConsole;
 
-AppConsole* CreateAppConsole();
-void DestoryAppConsole(AppConsole* console);
+extern AppConsole* appConsole;
 
-#define UE_LOG(format, ...) if(appCocnsole) {appCocnsole->AddLog(format,##__VA_ARGS__);}
+void CreateAppConsole();
+void DestroyAppConsole();
+
+void DrawAppConsole(const char* title, bool* open);
+
+void AddLogToConsole(const char* fmt, ...);
+#define UE_LOG(format, ...) AddLogToConsole(format, ##__VA_ARGS__)

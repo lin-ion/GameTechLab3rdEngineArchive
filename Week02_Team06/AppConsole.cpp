@@ -61,6 +61,14 @@ struct AppConsole
         Items.push_back(Strdup(buf));
     }
 
+    void AddLog(const char* fmt, va_list args)
+    {
+        char buf[1024];
+        vsnprintf(buf, IM_COUNTOF(buf), fmt, args);
+        buf[IM_COUNTOF(buf) - 1] = 0;
+        Items.push_back(Strdup(buf));
+    }
+
     void    Draw(const char* title, bool* p_open)
     {
         ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);
@@ -329,12 +337,30 @@ struct AppConsole
     }
 };
 
-AppConsole* CreateAppConsole()
+AppConsole* appConsole = nullptr;
+
+void CreateAppConsole()
 {
-    return new AppConsole();
+    appConsole = new AppConsole();
 }
 
-void DestoryAppConsole(AppConsole* console)
+void DestroyAppConsole()
 {
-    delete console;
+    delete appConsole;
+}
+
+void DrawAppConsole(const char* title, bool* open)
+{
+    if (appConsole) appConsole->Draw(title, open);
+}
+
+void AddLogToConsole(const char* fmt, ...)
+{
+    if (appConsole)
+    {
+        va_list args;
+        va_start(args, fmt);
+        appConsole->AddLog(fmt, args);
+        va_end(args);
+    }
 }
