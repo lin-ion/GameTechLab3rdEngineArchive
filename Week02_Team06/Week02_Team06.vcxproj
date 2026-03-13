@@ -132,9 +132,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AppConsole.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="GeometryData.cpp" />
     <ClCompile Include="ImGui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -170,11 +168,11 @@
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Types.cpp" />
-    <ClCompile Include="UMesh.cpp" />
+    <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AppConsole.h" />
+    <ClInclude Include="GeometryData.h" />
     <ClInclude Include="ImGui\imconfig.h" />
     <ClInclude Include="ImGui\imgui.h" />
     <ClInclude Include="ImGui\imgui_impl_dx11.h" />
@@ -196,7 +194,7 @@
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="Types.h" />
-    <ClInclude Include="UMesh.h" />
+    <ClInclude Include="Mesh.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
