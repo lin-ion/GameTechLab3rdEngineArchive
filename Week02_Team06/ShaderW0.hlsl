@@ -2,6 +2,7 @@ cbuffer constants : register(b0)
 {
     float3 offset;
     float  radius;
+    row_major float4x4 MVP;
 }
 
 struct VS_INPUT
