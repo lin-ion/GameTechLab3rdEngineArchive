@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <array>
 #include <string>
+#include <cmath>
 #pragma endregion STL_CONTAINER
 
 #pragma region DIERCT3D11
