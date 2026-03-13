@@ -8856,7 +8856,7 @@ struct ExampleAppConsole
         Items.clear();
     }
 
-    void    AddLog(const char* fmt, ...) IM_FMTARGS(2)
+    void    AddLog(const char* fmt,...) IM_FMTARGS(2)
     {
         // FIXME-OPT
         char buf[1024];

@@ -1,4 +1,7 @@
 #pragma once
+#include <stdio.h>
+#include <cctype>
+
 #include <windows.h>
 #include <assert.h>
 
@@ -8,6 +11,7 @@
 #include <array>
 #include <string>
 #include <cmath>
+#include <vector>
 #pragma endregion STL_CONTAINER
 
 #pragma region DIERCT3D11
@@ -29,3 +33,5 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
+
+#include "AppConsole.h"

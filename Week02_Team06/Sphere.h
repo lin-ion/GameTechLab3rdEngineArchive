@@ -2,7 +2,8 @@
 // 2024 KRAFTON, Inc. ALL RIGHTS RESERVED.
 
 #pragma once
-#include "Types.h"
+
+class FVertexSimple;
 
 FVertexSimple sphere_vertices[] = {
 	{ 0.000000f, 1.000000f, 0.000000f, 0.500000f, 1.000000f, 0.500000f, 1.000000f },

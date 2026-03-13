@@ -14,9 +14,6 @@
     <Filter Include="App\Graphics">
       <UniqueIdentifier>{e1fa9ff8-6ac7-447d-8bc1-83c12511a41f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="App\Renderer">
-      <UniqueIdentifier>{752770b9-a3f9-401a-b8c6-afdd1526747f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="App\Window">
       <UniqueIdentifier>{8fc1749e-ece0-405e-9431-8610afff0449}</UniqueIdentifier>
     </Filter>
@@ -29,26 +26,29 @@
     <Filter Include="App\SceneManager">
       <UniqueIdentifier>{1f8a3a33-761b-41d4-b6d7-cfe791427ca3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="App\SceneManager\Scene">
-      <UniqueIdentifier>{029499d5-a453-48d5-835a-ac35d31df26b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="App\Singleton">
       <UniqueIdentifier>{ba506df4-c598-45cd-80fa-50cb84d490ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\ImGui">
+      <UniqueIdentifier>{ae23430c-7baf-46f8-92d5-7453c2ff6426}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Objects">
+      <UniqueIdentifier>{def24e58-6b33-4229-9768-5243cbb658ed}</UniqueIdentifier>
     </Filter>
     <Filter Include="App\Singleton\Input">
       <UniqueIdentifier>{4f87496b-ee4e-4811-9fd9-52b670f958b9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="App\Renderer\Shader">
+    <Filter Include="App\SceneManager\Scenes">
+      <UniqueIdentifier>{029499d5-a453-48d5-835a-ac35d31df26b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Renderer">
+      <UniqueIdentifier>{752770b9-a3f9-401a-b8c6-afdd1526747f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App\Renderer\Shaders">
       <UniqueIdentifier>{e76f784a-9b60-4523-9b86-0cdf29a4fe14}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Object">
-      <UniqueIdentifier>{def24e58-6b33-4229-9768-5243cbb658ed}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Object\Mesh">
+    <Filter Include="Objects\Meshes">
       <UniqueIdentifier>{f21ec1e6-d833-4740-8307-8ac43ba20abc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="App\ImGui">
-      <UniqueIdentifier>{ae23430c-7baf-46f8-92d5-7453c2ff6426}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -77,10 +77,10 @@
       <Filter>App\SceneManager</Filter>
     </ClCompile>
     <ClCompile Include="Scene.cpp">
-      <Filter>App\SceneManager\Scene</Filter>
+      <Filter>App\SceneManager\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="Object.cpp">
-      <Filter>Object</Filter>
+      <Filter>Objects</Filter>
     </ClCompile>
     <ClCompile Include="Mesh.cpp">
       <Filter>Object\Mesh</Filter>
@@ -121,6 +121,12 @@
     <ClCompile Include="ObjectFactory.cpp" />
     <ClCompile Include="PrimitiveComponent.cpp" />
     <ClCompile Include="SceneComponent.cpp" />
+    <ClCompile Include="AppConsole.cpp">
+      <Filter>App\ImGuiDrawer</Filter>
+	</ClCompile>
+    <ClCompile Include="GeometryData.cpp">
+      <Filter>리소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -151,10 +157,10 @@
       <Filter>App\SceneManager</Filter>
     </ClInclude>
     <ClInclude Include="Scene.h">
-      <Filter>App\SceneManager\Scene</Filter>
+      <Filter>App\SceneManager\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="Object.h">
-      <Filter>Object</Filter>
+      <Filter>Objects</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h">
       <Filter>Object\Mesh</Filter>
@@ -201,10 +207,16 @@
     <ClInclude Include="SceneComponent.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="Cube.h" />
+    <ClInclude Include="AppConsole.h">
+      <Filter>App\ImGuiDrawer</Filter>
+	</ClInclude>
+    <ClInclude Include="GeometryData.h">
+      <Filter>리소스 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">
-      <Filter>App\Renderer\Shader</Filter>
+      <Filter>App\Renderer\Shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

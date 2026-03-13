@@ -1,6 +1,12 @@
 #pragma once
 class UObject;
 
+struct SceneSaveData
+{
+	std::string Version;
+	int NextUUID;
+};
+
 class UScene
 {
 public:

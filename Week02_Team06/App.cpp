@@ -28,6 +28,8 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
 
+	UE_LOG("Hello World");
+
 	return true;
 }
 
