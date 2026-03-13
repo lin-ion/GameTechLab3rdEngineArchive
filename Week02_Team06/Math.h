@@ -137,20 +137,10 @@ struct FMatrix
 	static FMatrix MakeRotationX(float Degree);
 	static FMatrix MakeRotationY(float Degree);
 	static FMatrix MakeRotationZ(float Degree);
+	static FMatrix MakeRotation(const FVector& Rotation);
 	static FMatrix MakeTranslation(const FVector& T);
 	static FMatrix MakeLookAt(const FVector& Eye, const FVector& At, const FVector& Up);
 	static FMatrix MakePerspective(float FovAngleDeg, float AspectRatio, float NearZ, float FarZ);
 	static FVector TransformCoord(const FVector& V, const FMatrix& M);
 	static FVector TransformNormal(const FVector& V, const FMatrix& M);
-};
-
-struct FConstants
-{
-	FVector Offset;
-	float   Radius;
-};
-
-struct FTransformData
-{
-	FMatrix MVP;
 };
