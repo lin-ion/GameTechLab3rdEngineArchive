@@ -12,9 +12,12 @@ public:
 	void Update(float DeltaTime);
 	void Release();
 
+	void AddObject(UObject* object);
+
 	UObject* GetSceneObject();
 
 
 private:
 	UObject* TestObject = { nullptr };
+	std::vector<UObject*> SceneObjects;
 };   

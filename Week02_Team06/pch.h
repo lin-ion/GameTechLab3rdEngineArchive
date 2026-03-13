@@ -7,6 +7,7 @@
 #include <array>
 #include <string>
 #include <cmath>
+#include <vector>
 #pragma endregion STL_CONTAINER
 
 #pragma region DIERCT3D11

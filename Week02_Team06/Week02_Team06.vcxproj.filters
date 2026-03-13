@@ -58,31 +58,31 @@
     <ClCompile Include="pch.cpp">
       <Filter>Default</Filter>
     </ClCompile>
-    <ClCompile Include="UApp.cpp">
+    <ClCompile Include="App.cpp">
       <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="UGraphics.cpp">
+    <ClCompile Include="Graphics.cpp">
       <Filter>App\Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="URenderer.cpp">
+    <ClCompile Include="Renderer.cpp">
       <Filter>App\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="UWindow.cpp">
+    <ClCompile Include="Window.cpp">
       <Filter>App\Window</Filter>
     </ClCompile>
-    <ClCompile Include="UInput.cpp">
+    <ClCompile Include="Input.cpp">
       <Filter>App\Singleton\Input</Filter>
     </ClCompile>
     <ClCompile Include="SceneManager.cpp">
       <Filter>App\SceneManager</Filter>
     </ClCompile>
-    <ClCompile Include="UScene.cpp">
+    <ClCompile Include="Scene.cpp">
       <Filter>App\SceneManager\Scenes</Filter>
     </ClCompile>
-    <ClCompile Include="UObject.cpp">
+    <ClCompile Include="Object.cpp">
       <Filter>Objects</Filter>
     </ClCompile>
-    <ClCompile Include="UMesh.cpp">
+    <ClCompile Include="Mesh.cpp">
       <Filter>Objects\Meshes</Filter>
     </ClCompile>
     <ClCompile Include="Types.cpp">
@@ -115,24 +115,27 @@
     <ClCompile Include="ImGui\imgui_widgets.cpp">
       <Filter>App\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="GeometryData.cpp">
+      <Filter>리소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>Default</Filter>
     </ClInclude>
-    <ClInclude Include="UApp.h">
+    <ClInclude Include="App.h">
       <Filter>App</Filter>
     </ClInclude>
-    <ClInclude Include="UGraphics.h">
+    <ClInclude Include="Graphics.h">
       <Filter>App\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="URenderer.h">
+    <ClInclude Include="Renderer.h">
       <Filter>App\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="UWindow.h">
+    <ClInclude Include="Window.h">
       <Filter>App\Window</Filter>
     </ClInclude>
-    <ClInclude Include="UInput.h">
+    <ClInclude Include="Input.h">
       <Filter>App\Singleton\Input</Filter>
     </ClInclude>
     <ClInclude Include="Types.h">
@@ -144,13 +147,13 @@
     <ClInclude Include="SceneManager.h">
       <Filter>App\SceneManager</Filter>
     </ClInclude>
-    <ClInclude Include="UScene.h">
+    <ClInclude Include="Scene.h">
       <Filter>App\SceneManager\Scenes</Filter>
     </ClInclude>
-    <ClInclude Include="UObject.h">
+    <ClInclude Include="Object.h">
       <Filter>Objects</Filter>
     </ClInclude>
-    <ClInclude Include="UMesh.h">
+    <ClInclude Include="Mesh.h">
       <Filter>Objects\Meshes</Filter>
     </ClInclude>
     <ClInclude Include="Sphere.h">
@@ -185,6 +188,9 @@
     </ClInclude>
     <ClInclude Include="ImGui\imstb_truetype.h">
       <Filter>App\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryData.h">
+      <Filter>리소스 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
