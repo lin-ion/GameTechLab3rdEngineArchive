@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "Scene.h"
+#include "UScene.h"
 
-#include "Object.h"
+#include "UObject.h"
 #include "Sphere.h"
 
 void UScene::Initialize(ID3D11Device& Device)

@@ -131,69 +131,69 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
- <ItemGroup>
-  <ClCompile Include="ImGui\imgui.cpp">
-    <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-  </ClCompile>
-  <ClCompile Include="ImGui\imgui_demo.cpp">
-    <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-  </ClCompile>
-  <ClCompile Include="ImGui\imgui_draw.cpp">
-    <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-  </ClCompile>
-  <ClCompile Include="ImGui\imgui_impl_dx11.cpp">
-    <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-  </ClCompile>
-  <ClCompile Include="ImGui\imgui_impl_win32.cpp">
-    <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-  </ClCompile>
-  <ClCompile Include="ImGui\imgui_tables.cpp">
-    <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-  </ClCompile>
-  <ClCompile Include="ImGui\imgui_widgets.cpp">
-    <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-  </ClCompile>
-    <ClCompile Include="Graphics.cpp" />
+  <ItemGroup>
+    <ClCompile Include="ImGui\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_demo.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_impl_dx11.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_impl_win32.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_tables.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="UGraphics.cpp" />
     <ClCompile Include="ImGuiDrawer.cpp" />
-    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="UInput.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Math.cpp" />
-    <ClCompile Include="Object.cpp" />
+    <ClCompile Include="UObject.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="App.cpp" />
-    <ClCompile Include="Renderer.cpp" />
-    <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="UApp.cpp" />
+    <ClCompile Include="URenderer.cpp" />
+    <ClCompile Include="UScene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Types.cpp" />
     <ClCompile Include="UMesh.cpp" />
-    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="UWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
-  <ClInclude Include="ImGui\imconfig.h" />
-  <ClInclude Include="ImGui\imgui.h" />
-  <ClInclude Include="ImGui\imgui_impl_dx11.h" />
-  <ClInclude Include="ImGui\imgui_impl_win32.h" />
-  <ClInclude Include="ImGui\imgui_internal.h" />
-  <ClInclude Include="ImGui\imstb_rectpack.h" />
-  <ClInclude Include="ImGui\imstb_textedit.h" />
-  <ClInclude Include="ImGui\imstb_truetype.h" />
+    <ClInclude Include="ImGui\imconfig.h" />
+    <ClInclude Include="ImGui\imgui.h" />
+    <ClInclude Include="ImGui\imgui_impl_dx11.h" />
+    <ClInclude Include="ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="ImGui\imgui_internal.h" />
+    <ClInclude Include="ImGui\imstb_rectpack.h" />
+    <ClInclude Include="ImGui\imstb_textedit.h" />
+    <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="Defines.h" />
-    <ClInclude Include="Graphics.h" />
+    <ClInclude Include="UGraphics.h" />
     <ClInclude Include="ImGuiDrawer.h" />
-    <ClInclude Include="Input.h" />
+    <ClInclude Include="UInput.h" />
     <ClInclude Include="Math.h" />
-    <ClInclude Include="Object.h" />
+    <ClInclude Include="UObject.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="App.h" />
-    <ClInclude Include="Renderer.h" />
-    <ClInclude Include="Scene.h" />
+    <ClInclude Include="UApp.h" />
+    <ClInclude Include="URenderer.h" />
+    <ClInclude Include="UScene.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="UMesh.h" />
-    <ClInclude Include="Window.h" />
+    <ClInclude Include="UWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

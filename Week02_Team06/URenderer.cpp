@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "Renderer.h"
-#include "Scene.h"
-#include "Object.h"
+#include "URenderer.h"
+#include "UScene.h"
+#include "UObject.h"
 
 URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain)
 	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain)
