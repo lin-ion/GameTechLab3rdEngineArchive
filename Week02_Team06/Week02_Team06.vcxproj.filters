@@ -115,9 +115,6 @@
     <ClCompile Include="ImGui\imgui_widgets.cpp">
       <Filter>App\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="GeometryData.cpp">
-      <Filter>리소스 파일</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">

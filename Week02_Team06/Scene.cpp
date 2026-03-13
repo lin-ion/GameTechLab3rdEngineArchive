@@ -11,7 +11,7 @@ void UScene::Initialize(ID3D11Device& Device)
 	UObject* TestCube = new UObject();
 
 	TestObject->AddMesh(Device, sphere_vertices, sizeof(sphere_vertices) / sizeof(FVertexSimple));
-	TestCube->AddMesh(Device, Geometry::CubeVertices, sizeof(Geometry::CubeVertices) / sizeof(FVertexSimple));
+	TestCube->AddMesh(Device, CubeVertices, sizeof(CubeVertices) / sizeof(FVertexSimple));
 
 	AddObject(TestCube);
 }
