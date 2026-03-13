@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "Scene.h"
 #include "Object.h"
+#include "PrimitiveComponent.h"
 
 URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain)
 	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain)
@@ -45,27 +46,22 @@ void URenderer::Render(UScene* Scene)
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
-	//추후 오브젝트를 모두 렌더
-	// 
-	//상수 버퍼 업데이트
-	UObject* testObject = Scene->GetSceneObject();
-
-	if (ConstantBuffer)
+	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
 	{
-		D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
-		DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
-		FConstants* constant = static_cast<FConstants*>(ConstantBufferMSR.pData);
-		constant->Offset = testObject->GetPosition();
-		constant->Radius = testObject->GetRadius();
+		if (ConstantBuffer)
+		{
+			D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
+			DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+			FConstants* constant = static_cast<FConstants*>(ConstantBufferMSR.pData);
+			constant->Offset = static_cast<USceneComponent*>(GUObjectArray[i])->GetPosition();
+			constant->Radius = static_cast<USceneComponent*>(GUObjectArray[i])->GetRadius();
 
-		DeviceContext->Unmap(ConstantBuffer, 0);
+			DeviceContext->Unmap(ConstantBuffer, 0);
 
-		DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
-
+			DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+			GUObjectArray[i]->Render(*DeviceContext);
+		}
 	}
-
-	testObject->Render(*DeviceContext);
-
 }
 
 void URenderer::EndScene()

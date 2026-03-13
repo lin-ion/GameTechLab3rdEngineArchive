@@ -1,13 +1,10 @@
 #pragma once
 
-using int32 = int;
+using int32  = int;
 using uint32 = unsigned int;
 using FString = std::string;
 
-
-
 #pragma once
-
 struct FVertexSimple
 {
 	float X, Y, Z;

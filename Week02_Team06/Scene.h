@@ -11,10 +11,4 @@ public:
 	void Initialize(ID3D11Device& Device);
 	void Update(float DeltaTime);
 	void Release();
-
-	UObject* GetSceneObject();
-
-
-private:
-	UObject* TestObject = { nullptr };
 };   
