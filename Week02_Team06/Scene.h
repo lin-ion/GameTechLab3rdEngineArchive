@@ -20,5 +20,6 @@ public:
 	void Release();
 
 public:
+	// TODO: Scene이 바뀌어도 MainCamera는 유지되어야 하므로 다른 곳에서 관리하도록 수정 고려
 	UCameraComponent* MainCamera;
 };

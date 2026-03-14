@@ -81,7 +81,7 @@ void UApp::Run()
 
 			//ImGui
 			ImGuiDrawer->BeginFrame();
-			ImGuiDrawer->UpdateUI();
+			ImGuiDrawer->UpdateUI(SceneManager->GetCurrentScene());
 			ImGuiDrawer->EndFrame();
 
 			Renderer->EndScene();
