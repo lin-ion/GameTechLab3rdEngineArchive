@@ -2,13 +2,8 @@
 #include "SceneComponent.h"
 #include "Input.h"
 
-void USceneComponent::Release()
+void USceneComponent::TickComponent(float DeltaTime)
 {
-}
-
-void USceneComponent::Update(float DeltaTime)
-{
-
 	if (UInput::GetInstance().IsKeyPressing('A'))
 	{
 		Position.X -= DeltaTime;
@@ -25,8 +20,4 @@ void USceneComponent::Update(float DeltaTime)
 	{
 		Position.Y += DeltaTime;
 	}
-}
-
-void USceneComponent::Render(ID3D11DeviceContext& DeviceContext)
-{
 }

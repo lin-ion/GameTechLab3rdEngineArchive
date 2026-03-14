@@ -46,20 +46,22 @@ void URenderer::Render(UScene* Scene)
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
-	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
+	for (uint32 i = 0; i < GUObjectArray.Size(); ++i)
 	{
+		UPrimitiveComponent* PrimComp = dynamic_cast<UPrimitiveComponent*>(GUObjectArray[i]);
+		if (!PrimComp) continue;
+
 		if (ConstantBuffer)
 		{
 			D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 			DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
-			USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
-			
-			FMatrix Translation = FMatrix::MakeTranslation(testObject->GetPosition());
-			FMatrix Rotation = FMatrix::MakeRotation(testObject->GetRotation());
-			FMatrix Scale = FMatrix::MakeScale(testObject->GetScale());
-			FMatrix Model = Scale * Rotation * Translation;
 
-			FMatrix View = FMatrix::MakeLookAt({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+			FMatrix Translation = FMatrix::MakeTranslation(PrimComp->GetPosition());
+			FMatrix Rotation    = FMatrix::MakeRotation(PrimComp->GetRotation());
+			FMatrix Scale       = FMatrix::MakeScale(PrimComp->GetScale());
+			FMatrix Model       = Scale * Rotation * Translation;
+
+			FMatrix View       = FMatrix::MakeLookAt({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 			FMatrix Projection = FMatrix::MakePerspective(45.0f, ViewportInfo.Width / ViewportInfo.Height, 0.1f, 10.0f);
 
 			FMatrix MVP = Model * View * Projection;
@@ -69,7 +71,7 @@ void URenderer::Render(UScene* Scene)
 			DeviceContext->Unmap(ConstantBuffer, 0);
 
 			DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
-			GUObjectArray[i]->Render(*DeviceContext);
+			PrimComp->Render(*DeviceContext);
 		}
 	}
 }

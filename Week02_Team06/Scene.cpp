@@ -2,6 +2,8 @@
 #include "Scene.h"
 
 #include "Object.h"
+#include "Actor.h"
+#include "ActorComponent.h"
 #include "Cube.h"
 #include "Sphere.h"
 #include "Triangle.h"
@@ -25,9 +27,16 @@ void UScene::Initialize(ID3D11Device& Device)
 
 void UScene::Update(float DeltaTime)
 {
-	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
+	for (uint32 i = 0; i < GUObjectArray.Size(); ++i)
 	{
-		GUObjectArray[i]->Update(DeltaTime);
+		if (AActor* Actor = dynamic_cast<AActor*>(GUObjectArray[i]))
+		{
+			Actor->Tick(DeltaTime);
+		}
+		else if (UActorComponent* Comp = dynamic_cast<UActorComponent*>(GUObjectArray[i]))
+		{
+			Comp->TickComponent(DeltaTime);
+		}
 	}
 }
 
