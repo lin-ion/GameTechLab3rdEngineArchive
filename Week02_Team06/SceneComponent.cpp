@@ -22,41 +22,13 @@ void USceneComponent::TickComponent(float DeltaTime)
 	}
 }
 
-
-void USceneComponent::Render(ID3D11DeviceContext& DeviceContext)
-{
-}
-
 void USceneComponent::UpdateTransform()
 {
+
 	FMatrix TranslationMatrix = FMatrix::MakeTranslation(Position);
 	FMatrix RotationMatrix = FMatrix::MakeRotation(Rotation);
 	FMatrix ScaleMatrix = FMatrix::MakeScale(Scale);
 	ComponentToWorld = ScaleMatrix * RotationMatrix * TranslationMatrix;
-}
-
-void USceneComponent::SetPosition(const FVector& InPosition)
-{
-	Position = InPosition;
-	UpdateTransform();
-}
-
-
-void USceneComponent::SetRotation(const FVector& InRotation)
-{
-	Rotation = InRotation;
-	UpdateTransform();
-}
-
-const FVector& USceneComponent::GetScale()
-{
-	return Scale;
-}
-
-void USceneComponent::SetScale(const FVector& InScale)
-{
-	Scale = InScale;
-	UpdateTransform();
 }
 
 FVector USceneComponent::GetComponentLocation() const

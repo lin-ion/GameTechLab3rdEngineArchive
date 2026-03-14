@@ -75,11 +75,9 @@ void URenderer::Render(UScene* Scene)
 
 			FMatrix MVP = Model * View * Projection;
 
-
-			USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
-
-			FMatrix ModelMatrix = testObject->GetComponentTransform();
-			FMatrix MVP = ModelMatrix * ViewMatrix * ProjectionMatrix;
+			//USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
+			//FMatrix ModelMatrix = testObject->GetComponentTransform();
+			//FMatrix MVP = ModelMatrix * ViewMatrix * ProjectionMatrix;
 
 
 			memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));

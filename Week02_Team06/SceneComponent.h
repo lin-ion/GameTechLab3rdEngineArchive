@@ -10,13 +10,13 @@ public:
 public:
 
 	const FVector& GetPosition() const { return Position; }
-	void SetPosition(const FVector& InPosition) { Position = InPosition; }
+	void SetPosition(const FVector& InPosition) { Position = InPosition; UpdateTransform(); }
 
 	const FVector& GetRotation() const { return Rotation; }
-	void SetRotation(const FVector& InRotation) { Rotation = InRotation; }
+	void SetRotation(const FVector& InRotation) { Rotation = InRotation;  UpdateTransform();}
 
 	const FVector& GetScale() const { return Scale; }
-	void SetScale(const FVector& InScale) { Scale = InScale; }
+	void SetScale(const FVector& InScale) { Scale = InScale;  UpdateTransform();}
 
 	FVector GetComponentLocation() const;
 	FVector GetForwardVector() const;
