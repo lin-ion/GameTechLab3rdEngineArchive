@@ -19,14 +19,21 @@ void UScene::Initialize(ID3D11Device& Device)
 {
 	UPrimitiveComponent* Cube = UObjectFactory::NewObject<UPrimitiveComponent>();
 	Cube->AddMesh(Device, cube_vertices, sizeof(cube_vertices) / sizeof(FVertexSimple));
-	Cube->SetRotation(FVector(0.0f, 45.0f, 20.0f));
-
+	Cube->SetPosition({ 0.5f, 0.2f, 0.5f });
+	Cube->SetRotation({ 0.0f, 45.0f, 20.0f });
 
 	UPrimitiveComponent* Sphere = UObjectFactory::NewObject<UPrimitiveComponent>();
 	Sphere->AddMesh(Device, sphere_vertices, sizeof(sphere_vertices) / sizeof(FVertexSimple));
 
 	MainCamera = UObjectFactory::NewObject<UCameraComponent>();
-	MainCamera->SetPosition({ 1.0f, 1.0f, -5.0f });
+
+	MainCamera->SetPosition({ 0.0f, 0.0f, 5.0f });
+	MainCamera->SetRotation({ 0.0f, 180.0f, 0.0f });
+
+	MainCamera->FOV = 60.0f;
+	//MainCamera->AspectRatio = ViewportInfo.Width / ViewportInfo.Height; // Renderer에서 Viewport 정보 받아서 설정해야함
+	MainCamera->NearPlane = 0.1f;
+	MainCamera->FarPlane = 10.0f;
 }
 
 void UScene::Update(float DeltaTime)
