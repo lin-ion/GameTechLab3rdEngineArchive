@@ -135,7 +135,6 @@
     <ClCompile Include="AppConsole.cpp" />
     <ClCompile Include="Containers.cpp" />
     <ClCompile Include="EngineStatics.cpp" />
-    <ClCompile Include="GeometryData.cpp" />
     <ClCompile Include="ImGui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>

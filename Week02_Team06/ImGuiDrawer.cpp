@@ -44,7 +44,7 @@ void UImGuiDrawer::UpdateUI()
 	ImGui::End();
 
 	if(bShowConsole)
-		DrawAppConsole("Jungle Tecj Lab", &bShowConsole);
+		DrawAppConsole("Jungle Tech Lab", &bShowConsole);
 }
 
 void UImGuiDrawer::Release()

@@ -82,9 +82,6 @@
     <ClCompile Include="Object.cpp">
       <Filter>Objects</Filter>
     </ClCompile>
-    <ClCompile Include="Mesh.cpp">
-      <Filter>Object\Mesh</Filter>
-    </ClCompile>
     <ClCompile Include="Types.cpp">
       <Filter>Defines</Filter>
     </ClCompile>
@@ -123,10 +120,8 @@
     <ClCompile Include="SceneComponent.cpp" />
     <ClCompile Include="AppConsole.cpp">
       <Filter>App\ImGuiDrawer</Filter>
-	</ClCompile>
-    <ClCompile Include="GeometryData.cpp">
-      <Filter>리소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Mesh.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -161,9 +156,6 @@
     </ClInclude>
     <ClInclude Include="Object.h">
       <Filter>Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Mesh.h">
-      <Filter>Object\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="Sphere.h">
       <Filter>리소스 파일</Filter>
@@ -209,10 +201,11 @@
     <ClInclude Include="Cube.h" />
     <ClInclude Include="AppConsole.h">
       <Filter>App\ImGuiDrawer</Filter>
-	</ClInclude>
+    </ClInclude>
     <ClInclude Include="GeometryData.h">
       <Filter>리소스 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Mesh.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">
