@@ -2,13 +2,8 @@
 #include "SceneComponent.h"
 #include "Input.h"
 
-void USceneComponent::Release()
+void USceneComponent::TickComponent(float DeltaTime)
 {
-}
-
-void USceneComponent::Update(float DeltaTime)
-{
-
 	if (UInput::GetInstance().IsKeyPressing('A'))
 	{
 		Position.X -= DeltaTime;
@@ -27,12 +22,9 @@ void USceneComponent::Update(float DeltaTime)
 	}
 }
 
-void USceneComponent::Render(ID3D11DeviceContext& DeviceContext)
-{
-}
-
 void USceneComponent::UpdateTransform()
 {
+
 	FMatrix TranslationMatrix = FMatrix::MakeTranslation(Position);
 	FMatrix RotationMatrix = FMatrix::MakeRotation(Rotation);
 	FMatrix ScaleMatrix = FMatrix::MakeScale(Scale);

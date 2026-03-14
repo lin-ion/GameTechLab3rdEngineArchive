@@ -121,7 +121,14 @@
     <ClCompile Include="AppConsole.cpp">
       <Filter>App\ImGuiDrawer</Filter>
     </ClCompile>
+    <ClCompile Include="GeometryData.cpp">
+      <Filter>리소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="World.cpp" />
+    <ClCompile Include="Level.cpp" />
+    <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="ActorComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -206,6 +213,10 @@
       <Filter>리소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="World.h" />
+    <ClInclude Include="Level.h" />
+    <ClInclude Include="Actor.h" />
+    <ClInclude Include="ActorComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

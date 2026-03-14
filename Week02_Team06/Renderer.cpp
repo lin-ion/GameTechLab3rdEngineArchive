@@ -3,6 +3,7 @@
 #include "Scene.h"
 #include "Object.h"
 #include "PrimitiveComponent.h"
+#include "CameraComponent.h"
 
 URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain)
 	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain)
@@ -46,30 +47,45 @@ void URenderer::Render(UScene* Scene)
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
+	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
+	Scene->MainCamera->FOV = 60.0f;
+	Scene->MainCamera->AspectRatio = ViewportInfo.Width / ViewportInfo.Height;
+	Scene->MainCamera->NearPlane = 0.1f;
+	Scene->MainCamera->FarPlane = 10.0f;
+	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
+
 	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
 	{
+		//Primitive만 그린다. 나중에 Scene을 추가해서 어떻게 바꿀지 결정해야함
+		UPrimitiveComponent* PrimComp = dynamic_cast<UPrimitiveComponent*>(GUObjectArray[i]);
+		if (!PrimComp) continue;
+
 		if (ConstantBuffer)
 		{
 			D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 			DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
-			USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
-			
-			FMatrix Translation = FMatrix::MakeTranslation(testObject->GetPosition());
-			FMatrix Rotation = FMatrix::MakeRotation(testObject->GetRotation());
-			FMatrix Scale = FMatrix::MakeScale(testObject->GetScale());
-			FMatrix Model = Scale * Rotation * Translation;
 
-			FMatrix View = FMatrix::MakeLookAt({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+			FMatrix Translation = FMatrix::MakeTranslation(PrimComp->GetPosition());
+			FMatrix Rotation    = FMatrix::MakeRotation(PrimComp->GetRotation());
+			FMatrix Scale       = FMatrix::MakeScale(PrimComp->GetScale());
+			FMatrix Model       = Scale * Rotation * Translation;
+
+			FMatrix View       = FMatrix::MakeLookAt({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 			FMatrix Projection = FMatrix::MakePerspective(45.0f, ViewportInfo.Width / ViewportInfo.Height, 0.1f, 10.0f);
 
 			FMatrix MVP = Model * View * Projection;
+
+			//USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
+			//FMatrix ModelMatrix = testObject->GetComponentTransform();
+			//FMatrix MVP = ModelMatrix * ViewMatrix * ProjectionMatrix;
+
 
 			memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));
 
 			DeviceContext->Unmap(ConstantBuffer, 0);
 
 			DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
-			GUObjectArray[i]->Render(*DeviceContext);
+			PrimComp->Render(*DeviceContext);
 		}
 	}
 }
