@@ -2,6 +2,9 @@
 #include "SceneComponent.h"
 #include "Input.h"
 
+#include "CameraComponent.h"
+#include "Actor.h"
+
 void USceneComponent::TickComponent(float DeltaTime)
 {
 	if (UInput::GetInstance().IsKeyPressing('A'))
@@ -20,6 +23,7 @@ void USceneComponent::TickComponent(float DeltaTime)
 	{
 		Position.Y += DeltaTime;
 	}
+	UpdateTransform();
 }
 
 void USceneComponent::UpdateTransform()

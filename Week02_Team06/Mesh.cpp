@@ -3,6 +3,8 @@
 
 void UMesh::Load(ID3D11Device& Device, const FVertexSimple* vertices, UINT vertexCount)
 {
+	OriginData = vertices;
+
 	NumVertices = vertexCount;
 	Stride = sizeof(FVertexSimple);
 	ByteWidth = sizeof(FVertexSimple) * vertexCount;
@@ -15,6 +17,10 @@ void UMesh::Load(ID3D11Device& Device, const FVertexSimple* vertices, UINT verte
 	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { vertices };
 
 	HRESULT hr = Device.CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &VertexBuffer);
+
+	//인덱스 버퍼를 만들어야 함
+
+
 	assert(SUCCEEDED(hr));
 }
 

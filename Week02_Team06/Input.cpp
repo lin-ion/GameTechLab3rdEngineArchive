@@ -49,3 +49,9 @@ bool UInput::IsKeyUp(int vKey)
 {
 	return (PreKeys[vKey] && !CurKeys[vKey]);
 }
+
+void UInput::UpdateMousePosition(POINT MousePos)
+{
+	MousePosition.x = MousePos.x;
+	MousePosition.y = MousePos.y;
+}

@@ -42,17 +42,16 @@ void URenderer::Render(UScene* Scene)
 {
 	if (!Scene) return;
 
-	//쉐이더
+	// 셰이더
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
 	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
-	Scene->MainCamera->FOV = 60.0f;
 	Scene->MainCamera->AspectRatio = ViewportInfo.Width / ViewportInfo.Height;
-	Scene->MainCamera->NearPlane = 0.1f;
-	Scene->MainCamera->FarPlane = 10.0f;
 	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
+	// 이상적으로는 여기서 View, Projection 행렬만 셰이더에 한번 업로드하는게 최적
+	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
 
 	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
 	{
@@ -69,16 +68,7 @@ void URenderer::Render(UScene* Scene)
 			FMatrix Rotation    = FMatrix::MakeRotation(PrimComp->GetRotation());
 			FMatrix Scale       = FMatrix::MakeScale(PrimComp->GetScale());
 			FMatrix Model       = Scale * Rotation * Translation;
-
-			FMatrix View       = FMatrix::MakeLookAt({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-			FMatrix Projection = FMatrix::MakePerspective(45.0f, ViewportInfo.Width / ViewportInfo.Height, 0.1f, 10.0f);
-
-			FMatrix MVP = Model * View * Projection;
-
-			//USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
-			//FMatrix ModelMatrix = testObject->GetComponentTransform();
-			//FMatrix MVP = ModelMatrix * ViewMatrix * ProjectionMatrix;
-
+			FMatrix MVP = Model * ViewProjectionMatrix;
 
 			memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));
 

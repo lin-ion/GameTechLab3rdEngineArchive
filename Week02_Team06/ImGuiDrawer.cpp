@@ -2,11 +2,12 @@
 #include "ImGuiDrawer.h"
 #include "SceneSerializer.h"
 #include "PrimitiveComponent.h"
-
+#include "Scene.h"
+#include "CameraComponent.h"
 
 UImGuiDrawer::UImGuiDrawer()
 {
-    CreateAppConsole();
+	CreateAppConsole();
 }
 
 void UImGuiDrawer::Initialize(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* context)
@@ -30,7 +31,7 @@ void UImGuiDrawer::EndFrame()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void UImGuiDrawer::UpdateUI()
+void UImGuiDrawer::UpdateUI(UScene* Scene)
 {
     ImGui::Begin("Jungle Control Panel");
     ImGui::Text("Hello Jungle World!");
@@ -51,6 +52,29 @@ void UImGuiDrawer::UpdateUI()
 
 	if(bShowConsole)
 		DrawAppConsole("Console Window", &bShowConsole);
+
+	ImGui::Begin("Camera");
+	{
+		// TODO: TStaticArray
+		std::array<float, 3> Position = {
+			Scene->MainCamera->GetPosition().X,
+			Scene->MainCamera->GetPosition().Y,
+			Scene->MainCamera->GetPosition().Z
+		};
+		ImGui::DragFloat3("Camera Location", Position.data(), 0.1f, -10.f, 10.0f);
+		Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
+
+		std::array<float, 3> Rotation = {
+			Scene->MainCamera->GetRotation().X,
+			Scene->MainCamera->GetRotation().Y,
+			Scene->MainCamera->GetRotation().Z
+		};
+		ImGui::DragFloat3("Camera Rotation", Rotation.data(), 0.5f);
+		Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
+		Scene->MainCamera->SetRotation({ Rotation[0], Rotation[1], Rotation[2] });
+
+	}
+	ImGui::End();
 }
 
 void UImGuiDrawer::Release()
@@ -59,7 +83,6 @@ void UImGuiDrawer::Release()
 	ImGui_ImplWin32_Shutdown();
 
 	ImGui::DestroyContext();
-
     DestroyAppConsole();
 }
 
