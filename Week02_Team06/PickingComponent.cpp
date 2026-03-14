@@ -77,6 +77,9 @@ bool UPickingComponent::RayIntersectsTriangle(const FVector& CameraPos, const FV
     }
     constexpr float epsilon = std::numeric_limits <float> ::epsilon();
 
+    //랑그라주 공식
+    
+
     // det 계산 — 0이면 광선이 삼각형 평면과 평행
     FVector RayCrossE2 = CameraRay.Cross(Edge2);
     float   Det = Edge1.Dot(RayCrossE2);
