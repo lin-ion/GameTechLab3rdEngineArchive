@@ -49,41 +49,19 @@ void URenderer::Render(UScene* Scene)
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
-	RenderAxisLine(Scene);
-
-	if (!Scene) return;
-
-
+	// 2. 공통 행렬(View * Projection) 계산
 	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
-	Scene->MainCamera->SetAspectRatio(ViewportInfo.Width / ViewportInfo.Height);
 	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
-	// 이상적으로는 여기서 View, Projection 행렬만 셰이더에 한번 업로드하는게 최적
 	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
 
+	// 3. 루프 최적화: 렌더러는 명령만 내립니다.
 	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
 	{
-		//Primitive만 그린다. 나중에 Scene을 추가해서 어떻게 바꿀지 결정해야함
 		UPrimitiveComponent* PrimComp = dynamic_cast<UPrimitiveComponent*>(GUObjectArray[i]);
 		if (!PrimComp) continue;
 
-		if (ConstantBuffer)
-		{
-			D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
-			DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
-
-			FMatrix Translation = FMatrix::MakeTranslation(PrimComp->GetPosition());
-			FMatrix Rotation    = FMatrix::MakeRotation(PrimComp->GetRotation());
-			FMatrix Scale       = FMatrix::MakeScale(PrimComp->GetScale());
-			FMatrix Model       = Scale * Rotation * Translation;
-			FMatrix MVP = Model * ViewProjectionMatrix;
-
-			memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));
-
-			DeviceContext->Unmap(ConstantBuffer, 0);
-
-			DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
-			PrimComp->Render(*DeviceContext);
-		}
+		// [중요] 이제 컴포넌트에게 공통 행렬과 버퍼를 넘겨주며 직접 그리라고 명령합니다.
+		PrimComp->Render(DeviceContext, ViewProjectionMatrix, ConstantBuffer);
 	}
 }
 

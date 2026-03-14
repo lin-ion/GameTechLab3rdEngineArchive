@@ -1,5 +1,8 @@
 #pragma once
-//추후 Mesh 컴포넌트로 바꿔야함 아직 언리얼 레퍼를 제대로 확인못해서 보류
+
+#include <d3d11.h>
+#include "Types.h"
+
 class UMesh
 {
 public:
@@ -12,10 +15,24 @@ public:
 	const int32 GetVertexNum() const { return NumVertices; };
 
 public:
-	void Load(ID3D11Device& Device, const FVertexSimple* vertices, UINT vertexCount);
+	void Load(ID3D11Device& Device, const FVertexSimple* Vertices, UINT VertexCount, const uint32* Indices, UINT IndexCount);
 	void Release();
+	void BindBuffers(ID3D11DeviceContext& DeviceContext)
+	{
+		UINT offset = 0;
+		DeviceContext.IASetVertexBuffers(0, 1, &VertexBuffer, &Stride, &offset);
+		if (IndexBuffer)
+		{
+			DeviceContext.IASetIndexBuffer(IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+		}
+	}
 
-	void Render(ID3D11DeviceContext& DeviceContext);
+	/** 정점 개수를 반환합니다. */
+	uint32 GetVertexCount() const { return NumVertices; }
+
+	// 추가: 인덱스 개수와 버퍼 유무를 확인하는 기능
+	uint32 GetIndexCount() const { return NumIndices; }
+	bool HasIndexBuffer() const { return IndexBuffer != nullptr; }
 
 private:
 	ID3D11Buffer* VertexBuffer = { nullptr };
@@ -24,6 +41,7 @@ private:
 	const FVertexSimple* OriginData = { nullptr };
 
 	UINT Stride;
-	int32 ByteWidth;
-	int32 NumVertices;
+	UINT ByteWidth;
+	UINT NumVertices;
+	UINT NumIndices = 0; // 추가: 인덱스 개수 저장
 };

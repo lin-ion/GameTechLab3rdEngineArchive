@@ -8,14 +8,14 @@
 #include "Sphere.h"
 #include "Triangle.h"
 #include "PrimitiveComponent.h"
-
 #include "ObjectFactory.h"
 #include "GeometryData.h"
 #include "CameraComponent.h"
+#include "MeshComponent.h"
 
 void UScene::Initialize(ID3D11Device& Device)
 {
-	UPrimitiveComponent* Cube = UObjectFactory::NewObject<UPrimitiveComponent>();
+	UMeshComponent* Cube = UObjectFactory::NewObject<UMeshComponent>();
 	Cube->AddMesh(Device, cube_vertices, sizeof(cube_vertices) / sizeof(FVertexSimple));
 	Cube->SetRotation(FVector(0.0f, 45.0f, 20.0f));
 	Cube->AddPicking();
@@ -24,7 +24,8 @@ void UScene::Initialize(ID3D11Device& Device)
 	Cube->SetRotation({ 0.0f, 45.0f, 20.0f });
 	Cube->SetScale({ 0.2f, 0.2f, 0.2f });
 
-	UPrimitiveComponent* Sphere = UObjectFactory::NewObject<UPrimitiveComponent>();
+	// 스피어도 마찬가지로 UMeshComponent로 생성합니다.
+	UMeshComponent* Sphere = UObjectFactory::NewObject<UMeshComponent>();
 	Sphere->AddMesh(Device, sphere_vertices, sizeof(sphere_vertices) / sizeof(FVertexSimple));
 	Sphere->SetPosition({ -1.0f, 0.2f, 0.5f });
 	Sphere->SetRotation({ 0.0f, 0.0f, 0.0f });

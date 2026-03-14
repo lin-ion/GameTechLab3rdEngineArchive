@@ -1,7 +1,7 @@
-cbuffer constants : register(b0)
+cbuffer TransformData : register(b0)
 {
     row_major float4x4 MVP;
-}
+};
 
 struct VS_INPUT
 {

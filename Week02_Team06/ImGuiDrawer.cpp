@@ -51,7 +51,7 @@ void UImGuiDrawer::UpdateUI(UScene* Scene)
 	//DrawPrimitiveDataPanel();
 
 	if(bShowConsole)
-		DrawAppConsole("Console Window", &bShowConsole);
+		DrawAppConsole("Jungle Tech Lab", &bShowConsole);
 }
 
 void UImGuiDrawer::Release()
