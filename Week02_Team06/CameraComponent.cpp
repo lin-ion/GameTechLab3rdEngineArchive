@@ -13,7 +13,15 @@ FMatrix UCameraComponent::GetViewMatrix() const {
 }
 
 FMatrix UCameraComponent::GetProjectionMatrix() const {
-	return FMatrix::MakePerspective(FOV, AspectRatio, NearPlane, FarPlane);
+	if (bIsOrthogonal)
+	{
+		float OrthoWidth = 10.0f;
+		float OrthoHeight = AspectRatio * OrthoWidth;
+		return FMatrix::MakeOrthographic(OrthoWidth, OrthoHeight, NearPlane, FarPlane);
+	}
+	else {
+		return FMatrix::MakePerspective(FOV, AspectRatio, NearPlane, FarPlane);
+	}
 }
 
 /*월드 디렉션을 반환*/
@@ -50,5 +58,48 @@ FVector UCameraComponent::GetCameraRayDirection()
 
 void UCameraComponent::TickComponent(float Deltatime)
 {
-	GetCameraRayDirection();
+	//GetCameraRayDirection();
+
+	if (UInput::GetInstance().IsKeyPressing('A'))
+	{
+		SetPosition(GetPosition() - GetRightVector() * Deltatime);
+	}
+	if (UInput::GetInstance().IsKeyPressing('D'))
+	{
+		SetPosition(GetPosition() + GetRightVector() * Deltatime);
+	}
+	if (UInput::GetInstance().IsKeyPressing('S'))
+	{
+		SetPosition(GetPosition() - GetForwardVector() * Deltatime);
+	}
+	if (UInput::GetInstance().IsKeyPressing('W'))
+	{
+		SetPosition(GetPosition() + GetForwardVector() * Deltatime);
+	}
+	if (UInput::GetInstance().IsKeyPressing(VK_CONTROL))
+	{
+		SetPosition(GetPosition() - GetUpVector() * Deltatime);
+	}
+	if (UInput::GetInstance().IsKeyPressing(VK_SPACE))
+	{
+		SetPosition(GetPosition() + GetUpVector() * Deltatime);
+	}
+
+	// Mouse Drag
+	if (UInput::GetInstance().IsKeyDown(VK_RBUTTON))
+	{
+		PreviousMousePosition = UInput::GetInstance().GetMousePosition();
+	}
+	//if (UInput::GetInstance().IsKeyUp(VK_RBUTTON))
+	if (UInput::GetInstance().IsKeyPressing(VK_RBUTTON))
+	{
+		POINT CurrentMousePosition = UInput::GetInstance().GetMousePosition();
+		float DeltaMouseY = static_cast<float>(CurrentMousePosition.y - PreviousMousePosition.y);
+		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x);
+		PreviousMousePosition = CurrentMousePosition;
+
+		float RotationX = DeltaMouseY * 0.3f;
+		float RotationY = DeltaMouseX * 0.3f;
+		SetRotation(GetRotation()+FVector(RotationX, RotationY, 0.0f));
+	}
 }

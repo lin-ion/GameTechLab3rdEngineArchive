@@ -181,6 +181,17 @@ FMatrix FMatrix::MakePerspective(float FovAngleDeg, float AspectRatio, float Nea
     );
 }
 
+FMatrix FMatrix::MakeOrthographic(float OrthoWidth, float OrthoHeight, float NearZ, float FarZ)
+{
+    float r = 1.0f / (FarZ - NearZ);
+    return FMatrix(
+        2.0f / OrthoWidth, 0.0f, 0.0f, 0.0f,
+        0.0f, 2.0f / OrthoHeight, 0.0f, 0.0f,
+        0.0f, 0.0f, r, 0.0f,
+        0.0f, 0.0f, -r * NearZ, 1.0f
+    );
+}
+
 FVector FMatrix::TransformCoord(const FVector& V, const FMatrix& M)
 {
     // 점(Point)의 변환: V.w = 1.0f

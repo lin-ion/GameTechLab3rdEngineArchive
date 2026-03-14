@@ -178,6 +178,7 @@
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneComponent.cpp" />
     <ClCompile Include="SceneManager.cpp" />
+    <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="Types.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Window.cpp" />
@@ -217,6 +218,7 @@
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneComponent.h" />
     <ClInclude Include="SceneManager.h" />
+    <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="Types.h" />
