@@ -18,8 +18,7 @@ void UScene::Initialize(ID3D11Device& Device)
 	UMeshComponent* Cube = UObjectFactory::NewObject<UMeshComponent>();
 	Cube->AddMesh(Device, cube_vertices, sizeof(cube_vertices) / sizeof(FVertexSimple));
 	Cube->SetRotation(FVector(0.0f, 45.0f, 20.0f));
-	Cube->AddPicking();
-
+	
 	Cube->SetPosition({ 1.0f, 0.2f, 0.5f });
 	Cube->SetRotation({ 0.0f, 45.0f, 20.0f });
 	Cube->SetScale({ 0.2f, 0.2f, 0.2f });
