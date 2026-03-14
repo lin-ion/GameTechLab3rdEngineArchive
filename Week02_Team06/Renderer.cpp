@@ -44,10 +44,16 @@ void URenderer::BeginScene()
 
 void URenderer::Render(UScene* Scene)
 {
+	if (!Scene) return;
+
 	// 셰이더
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
+
+
+	RenderAxisLine(Scene);
+
 
 	// 2. 공통 행렬(View * Projection) 계산
 	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
@@ -265,6 +271,7 @@ void URenderer::RenderAxisLine(UScene* Scene)
 {
 	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
 	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
+
 	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
 
 	if (ConstantBuffer)
