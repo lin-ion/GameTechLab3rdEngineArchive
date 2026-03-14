@@ -34,6 +34,12 @@ private:
 	void CreateConstantBuffer();
 	void ReleaseConstantBuffer();
 
+	void CreateLineAxisBuffer();
+	void ReleaseLineAxisBuffer();
+
+private:
+	void RenderAxisLine(UScene* Scene);
+
 
 private:
 	ID3D11Device* Device = { nullptr };
@@ -59,6 +65,8 @@ private:
 	ID3D11VertexShader* SimpleVertexShader = nullptr;
 	ID3D11PixelShader*  SimplePixelShader  = nullptr;
 
+	//라인
+	ID3D11Buffer* LineAxisBuffer = { nullptr };
 };
 
 // TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려

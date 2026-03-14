@@ -1,14 +1,18 @@
 #pragma once
 #include "SceneComponent.h"
 
-struct ID3D11DeviceContext;
-struct ID3D11Buffer;
+class UMesh;
+class UPickingComponent;
 
 class UPrimitiveComponent : public USceneComponent
 {
 public:
 	UPrimitiveComponent() = default;
 	virtual ~UPrimitiveComponent() = default;
+
+public:
+	//추후 수정예정
+	const UMesh* GetMesh() const { return Mesh; };
 
 public:
 	void Release() override;

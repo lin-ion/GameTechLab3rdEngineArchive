@@ -11,10 +11,22 @@ bool UInput::Initialize()
 
 void UInput::Update()
 {
+	ImGuiIO& io = ImGui::GetIO();
+
 	for (int i = 0; i < 256; ++i)
 	{
 		PreKeys[i] = CurKeys[i];
-		CurKeys[i] = ((GetAsyncKeyState(i) & 0x8000) != 0);
+
+		bool isUiBusy = (i < 0x07) ? io.WantCaptureMouse : io.WantCaptureKeyboard;
+
+		if (isUiBusy)
+		{
+			CurKeys[i] = false;
+		}
+		else
+		{
+			CurKeys[i] = ((GetAsyncKeyState(i) & 0x8000) != 0);
+		}
 	}
 }
 
@@ -36,4 +48,10 @@ bool UInput::IsKeyPressing(int vKey)
 bool UInput::IsKeyUp(int vKey)
 {
 	return (PreKeys[vKey] && !CurKeys[vKey]);
+}
+
+void UInput::UpdateMousePosition(POINT MousePos)
+{
+	MousePosition.x = MousePos.x;
+	MousePosition.y = MousePos.y;
 }

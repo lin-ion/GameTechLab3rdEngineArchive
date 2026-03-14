@@ -53,6 +53,7 @@ void UApp::Run()
 			DispatchMessage(&msg);
 		}
 
+
 		QueryPerformanceCounter(&EndTime);
 		double CounterInterval = static_cast<double>(EndTime.QuadPart - StartTime.QuadPart);
 		ElaspedMilliSecond = CounterInterval / Frequency.QuadPart * 1000.f;
@@ -70,13 +71,14 @@ void UApp::Run()
 
 			//Render
 			Graphics->ClearRenderTarget();
+			//
 
 			Renderer->BeginScene();
 			Renderer->Render(SceneManager->GetCurrentScene());
 
 			//ImGui
 			ImGuiDrawer->BeginFrame();
-			ImGuiDrawer->UpdateUI();
+			ImGuiDrawer->UpdateUI(SceneManager->GetCurrentScene());
 			ImGuiDrawer->EndFrame();
 
 			Renderer->EndScene();

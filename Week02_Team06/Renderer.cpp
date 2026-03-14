@@ -22,6 +22,9 @@ void URenderer::Initialize()
 
 	CreateShader(*Device, TEXT("ShaderW0.hlsl"), FVertexSimple::Elements, FVertexSimple::ElementNum);
 	CreateConstantBuffer();
+
+	CreateLineAxisBuffer();
+
 }
 
 void URenderer::BeginScene()
@@ -34,16 +37,14 @@ void URenderer::BeginScene()
 	DeviceContext->RSSetState(RasterizerState);
 	DeviceContext->OMSetRenderTargets(1, &BackBufferRTV, DepthStensilView);
 
+
 	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 }
 
 void URenderer::Render(UScene* Scene)
 {
-	if (!Scene || !Scene->MainCamera) return;
-
-
-	// 1. 공통 환경 세팅 (셰이더, 래스터라이저 등)
+	// 셰이더
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
@@ -71,6 +72,7 @@ void URenderer::EndScene()
 
 void URenderer::Release()
 {
+	ReleaseLineAxisBuffer();
 	ReleaseConstantBuffer();
 	ReleaseShader();
 
@@ -232,5 +234,58 @@ void URenderer::ReleaseConstantBuffer()
 	{
 		ConstantBuffer->Release();
 		ConstantBuffer = nullptr;
+	}
+}
+
+void URenderer::CreateLineAxisBuffer()
+{
+	FVertexSimple Axis_Vertices[6] =
+	{
+		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {100.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f}, // X 빨강
+		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  100.f, 0.f,  0.f, 1.f, 0.f, 1.f}, // Y 초록
+		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  100.f, 0.f, 0.f, 1.f, 1.f}, // Z 파랑
+	};
+
+	D3D11_BUFFER_DESC vertexBufferDesc = {};
+	vertexBufferDesc.ByteWidth = sizeof(FVertexSimple) * 6;
+	vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { Axis_Vertices };
+
+	Device->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &LineAxisBuffer);
+}
+
+void URenderer::ReleaseLineAxisBuffer()
+{
+	LineAxisBuffer->Release();
+}
+
+void URenderer::RenderAxisLine(UScene* Scene)
+{
+	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
+	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
+	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
+
+	if (ConstantBuffer)
+	{
+		D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
+		DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+
+		FMatrix Identity = FMatrix::Identity;
+		FMatrix MVP = Identity * ViewProjectionMatrix;
+		memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));
+
+		DeviceContext->Unmap(ConstantBuffer, 0);
+
+		DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+		DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+		UINT Stride = sizeof(FVertexSimple);
+		UINT Offset = {};
+		DeviceContext->IASetVertexBuffers(0 , 1, &LineAxisBuffer, &Stride, &Offset);
+		DeviceContext->Draw(6, 0);
+
+		DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
 }

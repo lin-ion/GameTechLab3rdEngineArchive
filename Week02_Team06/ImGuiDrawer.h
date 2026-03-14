@@ -1,5 +1,8 @@
 #pragma once
 
+class UPrimitiveComponent;
+class UScene;
+
 class UImGuiDrawer
 {
 public:
@@ -13,7 +16,13 @@ public:
 	void BeginFrame();
 	void EndFrame();
 
-	void UpdateUI();
+	void UpdateUI(UScene* Scene);
 
 	void Release();
+
+private:
+	void DrawSpawnPanel();
+	void DrawSceneControlPanel();
+	void DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget);
+	void DrawCameraPanel(UScene* Scene);
 };

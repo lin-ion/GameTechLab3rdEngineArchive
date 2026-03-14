@@ -128,6 +128,8 @@
     <ClCompile Include="ActorComponent.cpp" />
     <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="MeshComponent.cpp" />
+    <ClCompile Include="SceneSerializer.cpp" />
+    <ClCompile Include="PickingComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -218,6 +220,8 @@
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="MeshComponent.h" />
+    <ClInclude Include="SceneSerializer.h" />
+    <ClInclude Include="PickingComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

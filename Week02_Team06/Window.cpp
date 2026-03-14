@@ -1,5 +1,7 @@
 #include "pch.h"
+#include <windowsx.h> 
 #include "Window.h"
+#include "Input.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -59,6 +61,30 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 
 	switch (message)
 	{
+	case WM_LBUTTONDOWN:
+	{
+		//POINT MousePos = {};
+		//MousePos.x = GET_X_LPARAM(lParam);
+		//MousePos.y = GET_Y_LPARAM(lParam);
+		//UInput::GetInstance().UpdateMousePosition(MousePos);
+		break;
+	}
+	case WM_RBUTTONDOWN:
+	{
+		//POINT MousePos = {};
+		//MousePos.x = GET_X_LPARAM(lParam);
+		//MousePos.y = GET_Y_LPARAM(lParam);
+		//UInput::GetInstance().UpdateMousePosition(MousePos);
+		break;
+	}
+	case WM_MOUSEMOVE:
+	{
+		POINT MousePos = {};
+		MousePos.x = GET_X_LPARAM(lParam);
+		MousePos.y = GET_Y_LPARAM(lParam);
+		UInput::GetInstance().UpdateMousePosition(MousePos);
+		break;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
