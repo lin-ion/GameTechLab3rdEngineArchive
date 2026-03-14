@@ -10,8 +10,6 @@
 #include "ObjectFactory.h"
 #include "GeometryData.h"
 
-#include "json.hpp"
-
 void UScene::Initialize(ID3D11Device& Device)
 {
 	UPrimitiveComponent* Cube = UObjectFactory::NewObject<UPrimitiveComponent>();
