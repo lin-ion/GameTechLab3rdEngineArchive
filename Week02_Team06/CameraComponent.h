@@ -17,6 +17,7 @@ public:
 	// 매 프레임마다 한번만 호출
 	FMatrix GetViewMatrix() const; // WorldToView
 	FMatrix GetProjectionMatrix() const; // ViewToClip
+	void SetAspectRatio(float InAspectRatio) { AspectRatio = InAspectRatio; };
 
 	// TODO: Viewport 상호작용 추가
 };
