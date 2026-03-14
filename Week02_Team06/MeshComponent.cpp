@@ -27,21 +27,26 @@ void UMeshComponent::Render(ID3D11DeviceContext* DeviceContext, const FMatrix& V
     // 이제 여기서 MeshAsset이 nullptr이라 튕기는 일이 없습니다!
     if (!MeshAsset || !DeviceContext || !ConstantBuffer) return;
 
+  
+    MeshAsset->BindBuffers(*DeviceContext);
     struct FConstantData
     {
         //FMatrix Model;
         //FMatrix View;
         //FMatrix Projection;
         FMatrix MVP;
-
     };
-    MeshAsset->BindBuffers(*DeviceContext);
-    FMatrix Model = GetComponentTransform();
-    FMatrix MVP = Model * ViewProjection;
+
 
     D3D11_MAPPED_SUBRESOURCE MSR;
     if (SUCCEEDED(DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MSR)))
     {
+        FMatrix Translation = FMatrix::MakeTranslation(GetPosition());
+        FMatrix Rotation = FMatrix::MakeRotation(GetRotation());
+        FMatrix Scale = FMatrix::MakeScale(GetScale());
+        FMatrix Model = Scale * Rotation * Translation;
+        FMatrix MVP = Model * ViewProjection;
+
         memcpy(MSR.pData, &MVP, sizeof(FConstantData));
         DeviceContext->Unmap(ConstantBuffer, 0);
     }

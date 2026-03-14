@@ -14,6 +14,7 @@ public:
 	float FarPlane = 100.0f;
 
 public:
+	void TickComponent(float DeltaTime);
 	// 매 프레임마다 한번만 호출
 	FMatrix GetViewMatrix() const; // WorldToView
 	FMatrix GetProjectionMatrix() const; // ViewToClip

@@ -42,6 +42,7 @@ void URenderer::Render(UScene* Scene)
 {
 	if (!Scene || !Scene->MainCamera) return;
 
+
 	// 1. 공통 환경 세팅 (셰이더, 래스터라이저 등)
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);

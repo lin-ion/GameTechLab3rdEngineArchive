@@ -65,7 +65,7 @@ void UApp::Run()
 			//input
 			UInput::GetInstance().Update();
 
-			//GameLogic
+			//GameLogica
 			SceneManager->Update(DeltaTime);
 
 			//Render

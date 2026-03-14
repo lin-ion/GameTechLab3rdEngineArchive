@@ -29,7 +29,6 @@ public:
 
 
 public:
-	virtual void TickComponent(float DeltaTime) override;
 
 	// 렌더는 PrimitiveComponent만 수행 — 기본 구현은 비어있음
 	virtual void Render(ID3D11DeviceContext* DeviceContext, const FMatrix& ViewProjection, ID3D11Buffer* ConstantBuffer) {}
@@ -38,7 +37,7 @@ protected:
 	// TODO: Dirty Flag 추가 고려
 	virtual void UpdateTransform();
 
-private:
+protected:
 
 	// 나중에 컴포넌트로 바꿀 예정
 	// TODO: FTransform 사용

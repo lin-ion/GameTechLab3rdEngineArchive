@@ -2,22 +2,6 @@
 #include "SceneComponent.h"
 #include "Input.h"
 
-void USceneComponent::TickComponent(float DeltaTime)
-{
-	bool bMoved = false;
-
-	if (UInput::GetInstance().IsKeyPressing('A')) { Position.X -= DeltaTime; bMoved = true; }
-	if (UInput::GetInstance().IsKeyPressing('D')) { Position.X += DeltaTime; bMoved = true; }
-	if (UInput::GetInstance().IsKeyPressing('S')) { Position.Y -= DeltaTime; bMoved = true; }
-	if (UInput::GetInstance().IsKeyPressing('W')) { Position.Y += DeltaTime; bMoved = true; }
-
-	// 값이 변했을 때만 행렬 갱신 공정 가동!
-	if (bMoved)
-	{
-		UpdateTransform();
-	}
-}
-
 void USceneComponent::UpdateTransform()
 {
 
