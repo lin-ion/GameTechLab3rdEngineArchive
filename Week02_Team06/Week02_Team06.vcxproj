@@ -165,6 +165,7 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Math.cpp" />
+    <ClCompile Include="MeshComponent.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
     <ClCompile Include="pch.cpp">
@@ -205,6 +206,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Math.h" />
+    <ClInclude Include="MeshComponent.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="pch.h" />

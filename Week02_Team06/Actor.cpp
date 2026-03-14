@@ -2,6 +2,7 @@
 #include "Actor.h"
 #include "Level.h"
 #include "World.h"
+#include "ObjectFactory.h"
 
 UWorld* AActor::GetWorld()
 {
@@ -14,8 +15,11 @@ UWorld* AActor::GetWorld()
 
 void AActor::Release()
 {
-	// 컴포넌트는 NewObject로 생성되어 GUObjectArray가 수명 관리
-	// Actor는 참조 목록만 비운다
+	for (int32 i = 0; i < Components.Size(); ++i)
+	{
+		UObjectFactory::DestroyObject(Components[i]);
+	}
+
 	Components.Clear();
 	RootComponent = nullptr;
 }

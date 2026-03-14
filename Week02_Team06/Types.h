@@ -4,6 +4,8 @@ using int32  = int;
 using uint32 = unsigned int;
 using FString = std::string;
 
+#include "Math.h"
+
 #pragma once
 struct FVertexSimple
 {
@@ -16,4 +18,12 @@ struct FVertexSimple
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
+};
+
+// GPU에 보낼 상수 버퍼 16비트 정렬 강제
+struct alignas(16) FTransformConstantBuffer
+{
+	FMatrix WorldMatrix;
+	FMatrix ViewMatrix;
+	FMatrix ProjectionMatrix;
 };

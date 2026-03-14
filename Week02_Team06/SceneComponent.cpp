@@ -4,21 +4,17 @@
 
 void USceneComponent::TickComponent(float DeltaTime)
 {
-	if (UInput::GetInstance().IsKeyPressing('A'))
+	bool bMoved = false;
+
+	if (UInput::GetInstance().IsKeyPressing('A')) { Position.X -= DeltaTime; bMoved = true; }
+	if (UInput::GetInstance().IsKeyPressing('D')) { Position.X += DeltaTime; bMoved = true; }
+	if (UInput::GetInstance().IsKeyPressing('S')) { Position.Y -= DeltaTime; bMoved = true; }
+	if (UInput::GetInstance().IsKeyPressing('W')) { Position.Y += DeltaTime; bMoved = true; }
+
+	// 값이 변했을 때만 행렬 갱신 공정 가동!
+	if (bMoved)
 	{
-		Position.X -= DeltaTime;
-	}
-	if (UInput::GetInstance().IsKeyPressing('D'))
-	{
-		Position.X += DeltaTime;
-	}
-	if (UInput::GetInstance().IsKeyPressing('S'))
-	{
-		Position.Y -= DeltaTime;
-	}
-	if (UInput::GetInstance().IsKeyPressing('W'))
-	{
-		Position.Y += DeltaTime;
+		UpdateTransform();
 	}
 }
 
