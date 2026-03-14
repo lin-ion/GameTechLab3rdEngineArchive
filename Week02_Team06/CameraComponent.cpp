@@ -2,8 +2,10 @@
 #include "CameraComponent.h"
 #include "SceneComponent.h"
 #include "Input.h"
+#include <algorithm>
 
-FMatrix UCameraComponent::GetViewMatrix() const {
+FMatrix UCameraComponent::GetViewMatrix() const 
+{
 	FVector Eye = GetComponentLocation();
 	FVector Forward = GetForwardVector();
 	FVector Up = GetUpVector();
@@ -13,7 +15,8 @@ FMatrix UCameraComponent::GetViewMatrix() const {
 	return FMatrix::MakeLookAt(Eye, At, Up);
 }
 
-FMatrix UCameraComponent::GetProjectionMatrix() const {
+FMatrix UCameraComponent::GetProjectionMatrix() const 
+{
 	if (bIsOrthogonal)
 	{
 		float OrthoWidth = 10.0f;
@@ -61,29 +64,31 @@ void UCameraComponent::TickComponent(float Deltatime)
 {
 	//GetCameraRayDirection();
 
+	constexpr float CameraMoveSpeed = 2.0f;
+
 	if (UInput::GetInstance().IsKeyPressing('A'))
 	{
-		SetPosition(GetPosition() - GetRightVector() * Deltatime);
+		SetPosition(GetPosition() - GetRightVector() * CameraMoveSpeed * Deltatime);
 	}
 	if (UInput::GetInstance().IsKeyPressing('D'))
 	{
-		SetPosition(GetPosition() + GetRightVector() * Deltatime);
+		SetPosition(GetPosition() + GetRightVector() * CameraMoveSpeed * Deltatime);
 	}
 	if (UInput::GetInstance().IsKeyPressing('S'))
 	{
-		SetPosition(GetPosition() - GetForwardVector() * Deltatime);
+		SetPosition(GetPosition() - GetForwardVector() * CameraMoveSpeed * Deltatime);
 	}
 	if (UInput::GetInstance().IsKeyPressing('W'))
 	{
-		SetPosition(GetPosition() + GetForwardVector() * Deltatime);
+		SetPosition(GetPosition() + GetForwardVector() * CameraMoveSpeed * Deltatime);
 	}
 	if (UInput::GetInstance().IsKeyPressing(VK_CONTROL))
 	{
-		SetPosition(GetPosition() - GetUpVector() * Deltatime);
+		SetPosition(GetPosition() - GetUpVector() * CameraMoveSpeed * Deltatime);
 	}
 	if (UInput::GetInstance().IsKeyPressing(VK_SPACE))
 	{
-		SetPosition(GetPosition() + GetUpVector() * Deltatime);
+		SetPosition(GetPosition() + GetUpVector() * CameraMoveSpeed * Deltatime);
 	}
 
 	// Mouse Drag
@@ -95,12 +100,14 @@ void UCameraComponent::TickComponent(float Deltatime)
 	if (UInput::GetInstance().IsKeyPressing(VK_RBUTTON))
 	{
 		POINT CurrentMousePosition = UInput::GetInstance().GetMousePosition();
-		float DeltaMouseY = static_cast<float>(CurrentMousePosition.y - PreviousMousePosition.y);
-		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x);
+		float DeltaMouseY = static_cast<float>(CurrentMousePosition.y - PreviousMousePosition.y); // Pitch
+		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x); // Yaw
 		PreviousMousePosition = CurrentMousePosition;
 
-		float RotationX = DeltaMouseY * 0.3f;
-		float RotationY = DeltaMouseX * 0.3f;
-		SetRotation(GetRotation()+FVector(RotationX, RotationY, 0.0f));
+		float Sensitivity = 0.2f;
+		FVector Rotation = GetRotation();
+		Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * Sensitivity), -89.0f, 89.0f);
+		Rotation.Y = Rotation.Y + (DeltaMouseX * Sensitivity);
+		SetRotation(Rotation);
 	}
 }
