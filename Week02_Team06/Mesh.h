@@ -5,6 +5,11 @@ class UMesh
 public:
 	UMesh() = default;
 	~UMesh() = default;
+	//mesh 컴포넌트로 바뀌면서 수정해야함
+
+public:
+	const FVertexSimple * GetVertexData() const { return OriginData; };
+	const int32 GetVertexNum() const { return NumVertices; };
 
 public:
 	void Load(ID3D11Device& Device, const FVertexSimple* vertices, UINT vertexCount);
@@ -15,8 +20,10 @@ public:
 private:
 	ID3D11Buffer* VertexBuffer = { nullptr };
 	ID3D11Buffer* IndexBuffer = { nullptr };
+	
+	const FVertexSimple* OriginData = { nullptr };
 
 	UINT Stride;
-	UINT ByteWidth;
-	UINT NumVertices;
+	int32 ByteWidth;
+	int32 NumVertices;
 };

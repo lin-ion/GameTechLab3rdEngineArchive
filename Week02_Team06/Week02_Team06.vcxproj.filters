@@ -129,6 +129,8 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
+    <ClCompile Include="CameraComponent.cpp" />
+    <ClCompile Include="PickingComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -217,6 +219,8 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
+    <ClInclude Include="CameraComponent.h" />
+    <ClInclude Include="PickingComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

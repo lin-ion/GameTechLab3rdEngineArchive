@@ -20,7 +20,7 @@ void UScene::Initialize(ID3D11Device& Device)
 	UPrimitiveComponent* Cube = UObjectFactory::NewObject<UPrimitiveComponent>();
 	Cube->AddMesh(Device, cube_vertices, sizeof(cube_vertices) / sizeof(FVertexSimple));
 	Cube->SetRotation(FVector(0.0f, 45.0f, 20.0f));
-
+	Cube->AddPicking();
 
 	UPrimitiveComponent* Sphere = UObjectFactory::NewObject<UPrimitiveComponent>();
 	Sphere->AddMesh(Device, sphere_vertices, sizeof(sphere_vertices) / sizeof(FVertexSimple));

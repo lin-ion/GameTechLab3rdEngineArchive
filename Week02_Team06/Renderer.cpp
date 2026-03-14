@@ -70,8 +70,8 @@ void URenderer::Render(UScene* Scene)
 			FMatrix Scale       = FMatrix::MakeScale(PrimComp->GetScale());
 			FMatrix Model       = Scale * Rotation * Translation;
 
-			FMatrix View       = FMatrix::MakeLookAt({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-			FMatrix Projection = FMatrix::MakePerspective(45.0f, ViewportInfo.Width / ViewportInfo.Height, 0.1f, 10.0f);
+			FMatrix View = ViewMatrix;
+			FMatrix Projection = ProjectionMatrix;
 
 			FMatrix MVP = Model * View * Projection;
 

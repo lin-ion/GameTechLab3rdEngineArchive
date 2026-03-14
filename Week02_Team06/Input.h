@@ -18,6 +18,9 @@ public:
 	bool IsKeyDown(int vKey);
 	bool IsKeyPressing(int vKey);
 	bool IsKeyUp(int vKey);
+	
+	void  UpdateMousePosition(POINT MousePos);
+	const POINT GetMousePosition() const { return MousePosition;  };
 
 public:
 	static UInput& GetInstance()
@@ -30,4 +33,6 @@ private:
 	std::array<bool, 256> PreKeys;
 	std::array<bool, 256> CurKeys;
 
+
+	POINT MousePosition;
 };
