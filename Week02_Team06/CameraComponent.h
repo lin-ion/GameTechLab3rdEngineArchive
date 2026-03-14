@@ -6,7 +6,7 @@ class UCameraComponent : public USceneComponent
 {
 public:
 	UCameraComponent() = default;
-	~UCameraComponent() = default;
+	virtual ~UCameraComponent() = default;
 public:
 	float FOV = 60.0f;
 	float AspectRatio = 1.0f;

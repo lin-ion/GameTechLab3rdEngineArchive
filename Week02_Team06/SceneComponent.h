@@ -11,13 +11,13 @@ public:
 
 public:
 	const FVector& GetPosition() { return Position; };
-	void SetPosition(const FVector& InPosition) { Position = InPosition; };
+	void SetPosition(const FVector& InPosition);
 
 	const FVector& GetRotation() { return Rotation; };
-	void SetRotation(const FVector& InRotation) { Rotation = InRotation; };
+	void SetRotation(const FVector& InRotation);
 
-	const FVector& GetScale() { return Scale; };
-	void SetScale(const FVector& InScale) { Scale = InScale; };
+	const FVector& GetScale();
+	void SetScale(const FVector& InScale);
 
 	FVector GetComponentLocation() const;
 	FVector GetForwardVector() const;
@@ -33,17 +33,17 @@ public:
 	void Render(ID3D11DeviceContext& DeviceContext) override;
 
 protected:
+	// TODO: Dirty Flag 추가 고려
 	virtual void UpdateTransform();
 
-// TODO: 접근 제한자 생각해볼 필요 있음
-protected:
-	//나중에 컴포넌트로 바꿀 예정
-	//추후 Matrix로 스케일 / 회전 / 위치 정보를 저장
+private:
+	// 나중에 컴포넌트로 바꿀 예정
 	// TODO: FTransform 사용
 	FVector Position = { 0.0f, 0.0f, 0.0f };
+	// TODO: Euler Angle이 아닌 Quaternion으로 회전 표현 고려
 	FVector Rotation = { 0.0f, 0.0f, 0.0f };
 	FVector Scale = { 1.0f, 1.0f, 1.0f };
 
+	// MVP 행렬의 Model 행렬에 해당
 	FMatrix ComponentToWorld = FMatrix::Identity;
 };
-

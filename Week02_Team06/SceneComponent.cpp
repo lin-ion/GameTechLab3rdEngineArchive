@@ -39,6 +39,30 @@ void USceneComponent::UpdateTransform()
 	ComponentToWorld = ScaleMatrix * RotationMatrix * TranslationMatrix;
 }
 
+void USceneComponent::SetPosition(const FVector& InPosition)
+{
+	Position = InPosition;
+	UpdateTransform();
+}
+
+
+void USceneComponent::SetRotation(const FVector& InRotation)
+{
+	Rotation = InRotation;
+	UpdateTransform();
+}
+
+const FVector& USceneComponent::GetScale()
+{
+	return Scale;
+}
+
+void USceneComponent::SetScale(const FVector& InScale)
+{
+	Scale = InScale;
+	UpdateTransform();
+}
+
 FVector USceneComponent::GetComponentLocation() const
 {
 	return FVector(ComponentToWorld.M[3][0], ComponentToWorld.M[3][1], ComponentToWorld.M[3][2]);

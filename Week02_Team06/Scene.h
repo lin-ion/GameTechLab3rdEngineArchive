@@ -20,5 +20,5 @@ public:
 	void Release();
 
 public:
-	UCameraComponent* ViewportCamera;
+	UCameraComponent* MainCamera;
 };
