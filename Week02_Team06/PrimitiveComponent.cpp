@@ -30,7 +30,7 @@ void UPrimitiveComponent::TickComponent(float DeltaTime)
 		if (Picking->IsPicked(Mesh, GetComponentTransform()))
 		{
 			//색상 변경
-
+			UE_LOG("PICKKING");
 		}
 	}
 }
