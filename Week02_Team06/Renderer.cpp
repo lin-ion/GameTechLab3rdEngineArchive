@@ -3,6 +3,7 @@
 #include "Scene.h"
 #include "Object.h"
 #include "PrimitiveComponent.h"
+#include "CameraComponent.h"
 
 URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain)
 	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain)
@@ -46,8 +47,16 @@ void URenderer::Render(UScene* Scene)
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
-	for (uint32 i = 0; i < GUObjectArray.Size(); ++i)
+	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
+	Scene->MainCamera->FOV = 60.0f;
+	Scene->MainCamera->AspectRatio = ViewportInfo.Width / ViewportInfo.Height;
+	Scene->MainCamera->NearPlane = 0.1f;
+	Scene->MainCamera->FarPlane = 10.0f;
+	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
+
+	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
 	{
+		//Primitive만 그린다. 나중에 Scene을 추가해서 어떻게 바꿀지 결정해야함
 		UPrimitiveComponent* PrimComp = dynamic_cast<UPrimitiveComponent*>(GUObjectArray[i]);
 		if (!PrimComp) continue;
 
@@ -65,6 +74,13 @@ void URenderer::Render(UScene* Scene)
 			FMatrix Projection = FMatrix::MakePerspective(45.0f, ViewportInfo.Width / ViewportInfo.Height, 0.1f, 10.0f);
 
 			FMatrix MVP = Model * View * Projection;
+
+
+			USceneComponent* testObject = static_cast<USceneComponent*>(GUObjectArray[i]);
+
+			FMatrix ModelMatrix = testObject->GetComponentTransform();
+			FMatrix MVP = ModelMatrix * ViewMatrix * ProjectionMatrix;
+
 
 			memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));
 

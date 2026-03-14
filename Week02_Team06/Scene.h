@@ -1,5 +1,6 @@
 #pragma once
 class UObject;
+class UCameraComponent;
 
 struct SceneSaveData
 {
@@ -17,4 +18,7 @@ public:
 	void Initialize(ID3D11Device& Device);
 	void Update(float DeltaTime);
 	void Release();
-};   
+
+public:
+	UCameraComponent* MainCamera;
+};

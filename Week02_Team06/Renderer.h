@@ -61,6 +61,7 @@ private:
 
 };
 
+// TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려
 struct FConstantData
 {
 	//FMatrix Model;
