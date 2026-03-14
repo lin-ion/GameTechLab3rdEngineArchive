@@ -19,11 +19,9 @@ private:
 	POINT PreviousMousePosition = { 0, 0 };
 
 public:
-	void TickComponent(float DeltaTime);
 	// 매 프레임마다 한번만 호출
 	FMatrix GetViewMatrix() const; // WorldToView
-	FMatrix GetProjectionMatrix() const; // ViewToClip
-	void SetAspectRatio(float InAspectRatio) { AspectRatio = InAspectRatio; };
+	FMatrix GetProjectionMatrix() const; // ViewToCli
 
 	float GetFOV() const { return FOV; }
 	void SetFOV(float InFOV) { FOV = InFOV; }
