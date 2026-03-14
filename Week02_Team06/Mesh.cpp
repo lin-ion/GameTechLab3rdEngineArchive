@@ -45,5 +45,5 @@ void UMesh::Render(ID3D11DeviceContext& DeviceContext)
 	uint32 offset = 0;
 	DeviceContext.IASetVertexBuffers(0, 1, &VertexBuffer, &Stride, &offset);
 	DeviceContext.Draw(NumVertices, 0);
-}
 
+}
