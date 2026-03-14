@@ -125,12 +125,12 @@
       <Filter>리소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Mesh.cpp" />
-    <ClCompile Include="SceneSerializer.cpp" />
-    <ClCompile Include="JsonHelper.cpp" />
     <ClCompile Include="World.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
+    <ClCompile Include="CameraComponent.cpp" />
+    <ClCompile Include="SceneSerializer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -215,12 +215,12 @@
       <Filter>리소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h" />
-    <ClInclude Include="SceneSerializer.h" />
-    <ClInclude Include="JsonHelper.h" />
     <ClInclude Include="World.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
+    <ClInclude Include="CameraComponent.h" />
+    <ClInclude Include="SceneSerializer.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">
