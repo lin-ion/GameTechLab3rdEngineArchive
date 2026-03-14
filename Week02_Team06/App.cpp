@@ -67,7 +67,7 @@ void UApp::Run()
 			UInput::GetInstance().Update();
 
 			//사이즈 반영
-			
+
 
 			//GameLogic
 			SceneManager->Update(DeltaTime);

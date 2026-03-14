@@ -48,7 +48,7 @@ void URenderer::Render(UScene* Scene)
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
 	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
-	Scene->MainCamera->AspectRatio = ViewportInfo.Width / ViewportInfo.Height;
+	Scene->MainCamera->SetAspectRatio(ViewportInfo.Width / ViewportInfo.Height);
 	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
 	// 이상적으로는 여기서 View, Projection 행렬만 셰이더에 한번 업로드하는게 최적
 	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;

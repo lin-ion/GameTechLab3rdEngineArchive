@@ -35,10 +35,10 @@ void UScene::Initialize(ID3D11Device& Device)
 	MainCamera->SetPosition({ 0.0f, 0.0f, -5.0f });
 	MainCamera->SetRotation({ 0.0f, 0.0f, 0.0f });
 
-	MainCamera->FOV = 60.0f;
+	MainCamera->SetFOV(60.0f);
 	//MainCamera->AspectRatio = ViewportInfo.Width / ViewportInfo.Height; // Renderer에서 Viewport 정보 받아서 설정해야함
-	MainCamera->NearPlane = 0.1f;
-	MainCamera->FarPlane = 10.0f;
+	MainCamera->SetNearPlane(0.1f);
+	MainCamera->SetFarPlane(10.0f);
 }
 
 void UScene::Update(float DeltaTime)

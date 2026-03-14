@@ -141,6 +141,7 @@ struct FMatrix
 	static FMatrix MakeTranslation(const FVector& T);
 	static FMatrix MakeLookAt(const FVector& Eye, const FVector& At, const FVector& Up);
 	static FMatrix MakePerspective(float FovAngleDeg, float AspectRatio, float NearZ, float FarZ);
+	static FMatrix MakeOrthographic(float OrthoWidth, float OrthoHeight, float NearZ, float FarZ);
 	static FVector TransformCoord(const FVector& V, const FMatrix& M);
 	static FVector TransformNormal(const FVector& V, const FMatrix& M);
 };

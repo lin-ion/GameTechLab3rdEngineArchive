@@ -63,8 +63,24 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	{
 	case WM_LBUTTONDOWN:
 	{
+		//POINT MousePos = {};
+		//MousePos.x = GET_X_LPARAM(lParam);
+		//MousePos.y = GET_Y_LPARAM(lParam);
+		//UInput::GetInstance().UpdateMousePosition(MousePos);
+		break;
+	}
+	case WM_RBUTTONDOWN:
+	{
+		//POINT MousePos = {};
+		//MousePos.x = GET_X_LPARAM(lParam);
+		//MousePos.y = GET_Y_LPARAM(lParam);
+		//UInput::GetInstance().UpdateMousePosition(MousePos);
+		break;
+	}
+	case WM_MOUSEMOVE:
+	{
 		POINT MousePos = {};
-		MousePos.x = GET_X_LPARAM(lParam); 
+		MousePos.x = GET_X_LPARAM(lParam);
 		MousePos.y = GET_Y_LPARAM(lParam);
 		UInput::GetInstance().UpdateMousePosition(MousePos);
 		break;
@@ -72,9 +88,6 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
-	case WM_SIZE:
-		UINT width = LOWORD(lParam);
-		UINT height = HIWORD(lParam);
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);

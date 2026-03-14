@@ -18,7 +18,7 @@ public:
 	bool IsKeyDown(int vKey);
 	bool IsKeyPressing(int vKey);
 	bool IsKeyUp(int vKey);
-	
+
 	void  UpdateMousePosition(POINT MousePos);
 	const POINT GetMousePosition() const { return MousePosition;  };
 

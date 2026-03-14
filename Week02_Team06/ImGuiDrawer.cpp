@@ -90,11 +90,13 @@ void UImGuiDrawer::DrawSceneControlPanel()
 
 void UImGuiDrawer::DrawCameraPanel(UScene* Scene)
 {
-	static bool isOrthogonal = false;
-	ImGui::Checkbox("Orthogonal", &isOrthogonal);
+	bool bIsOrthogonal = Scene->MainCamera->IsOrthogonal();
+	ImGui::Checkbox("Orthogonal", &bIsOrthogonal);
+	Scene->MainCamera->SetOrthogonal(bIsOrthogonal);
 
-	static float fov = 90.0f;
-	ImGui::SliderFloat("FOV", &fov, 10.0f, 120.0f);
+	float FOV = Scene->MainCamera->GetFOV();
+	ImGui::SliderFloat("FOV", &FOV, 10.0f, 120.0f);
+	Scene->MainCamera->SetFOV(FOV);
 
 	std::array<float, 3> Position = {
 			Scene->MainCamera->GetPosition().X,
