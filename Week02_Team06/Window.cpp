@@ -62,6 +62,9 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
+	case WM_SIZE:
+		UINT width = LOWORD(lParam);
+		UINT height = HIWORD(lParam);
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);

@@ -1,5 +1,7 @@
 #pragma once
 
+class UScene;
+
 class UImGuiDrawer
 {
 public:
@@ -13,7 +15,7 @@ public:
 	void BeginFrame();
 	void EndFrame();
 
-	void UpdateUI();
+	void UpdateUI(UScene* Scene);
 
 	void Release();
 };
