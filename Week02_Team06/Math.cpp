@@ -139,7 +139,7 @@ FMatrix FMatrix::MakeRotationZ(float Degree)
 
 FMatrix FMatrix::MakeRotation(const FVector& Rotation)
 {
-    return FMatrix::MakeRotationZ(Rotation.Z) * FMatrix::MakeRotationY(Rotation.Y) * FMatrix::MakeRotationX(Rotation.X);
+    return FMatrix::MakeRotationX(Rotation.X) * FMatrix::MakeRotationY(Rotation.Y) * FMatrix::MakeRotationZ(Rotation.Z);
 }
 
 FMatrix FMatrix::MakeTranslation(const FVector& T)
