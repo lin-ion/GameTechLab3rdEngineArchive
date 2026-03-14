@@ -13,8 +13,6 @@
 #include "GeometryData.h"
 #include "CameraComponent.h"
 
-#include "json.hpp"
-
 void UScene::Initialize(ID3D11Device& Device)
 {
 	UPrimitiveComponent* Cube = UObjectFactory::NewObject<UPrimitiveComponent>();

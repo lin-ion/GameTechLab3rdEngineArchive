@@ -130,6 +130,7 @@
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
     <ClCompile Include="CameraComponent.cpp" />
+    <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="PickingComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -220,6 +221,7 @@
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="CameraComponent.h" />
+    <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="PickingComponent.h" />
   </ItemGroup>
   <ItemGroup>
