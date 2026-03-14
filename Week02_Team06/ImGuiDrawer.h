@@ -24,5 +24,5 @@ private:
 	void DrawSpawnPanel();
 	void DrawSceneControlPanel();
 	void DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget);
-	void DrawCameraPanel();
+	void DrawCameraPanel(UScene* Scene);
 };

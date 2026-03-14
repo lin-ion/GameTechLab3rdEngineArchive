@@ -44,37 +44,14 @@ void UImGuiDrawer::UpdateUI(UScene* Scene)
 	ImGui::Separator();
 	DrawSceneControlPanel();
 	ImGui::Separator();
-	DrawCameraPanel();
+	DrawCameraPanel(Scene);
 
 	ImGui::End();
-
+	
 	//DrawPrimitiveDataPanel();
 
 	if(bShowConsole)
 		DrawAppConsole("Console Window", &bShowConsole);
-
-	ImGui::Begin("Camera");
-	{
-		// TODO: TStaticArray
-		std::array<float, 3> Position = {
-			Scene->MainCamera->GetPosition().X,
-			Scene->MainCamera->GetPosition().Y,
-			Scene->MainCamera->GetPosition().Z
-		};
-		ImGui::DragFloat3("Camera Location", Position.data(), 0.1f, -10.f, 10.0f);
-		Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
-
-		std::array<float, 3> Rotation = {
-			Scene->MainCamera->GetRotation().X,
-			Scene->MainCamera->GetRotation().Y,
-			Scene->MainCamera->GetRotation().Z
-		};
-		ImGui::DragFloat3("Camera Rotation", Rotation.data(), 0.5f);
-		Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
-		Scene->MainCamera->SetRotation({ Rotation[0], Rotation[1], Rotation[2] });
-
-	}
-	ImGui::End();
 }
 
 void UImGuiDrawer::Release()
@@ -111,7 +88,7 @@ void UImGuiDrawer::DrawSceneControlPanel()
 	if (ImGui::Button("Load Scene")) { /* sceneName 불러오기 로직 */ }
 }
 
-void UImGuiDrawer::DrawCameraPanel()
+void UImGuiDrawer::DrawCameraPanel(UScene* Scene)
 {
 	static bool isOrthogonal = false;
 	ImGui::Checkbox("Orthogonal", &isOrthogonal);
@@ -119,11 +96,22 @@ void UImGuiDrawer::DrawCameraPanel()
 	static float fov = 90.0f;
 	ImGui::SliderFloat("FOV", &fov, 10.0f, 120.0f);
 
-	static float pos[3] = { 0, 0, 0 };
-	ImGui::DragFloat3("Camera Location", pos, 0.1f);
+	std::array<float, 3> Position = {
+			Scene->MainCamera->GetPosition().X,
+			Scene->MainCamera->GetPosition().Y,
+			Scene->MainCamera->GetPosition().Z
+	};
+	ImGui::DragFloat3("Camera Location", Position.data(), 0.1f, -10.f, 10.0f);
+	Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
 
-	static float rot[3] = { 0, 0, 0 };
-	ImGui::DragFloat3("Camera Rotaion", rot, 0.1f);
+	std::array<float, 3> Rotation = {
+		Scene->MainCamera->GetRotation().X,
+		Scene->MainCamera->GetRotation().Y,
+		Scene->MainCamera->GetRotation().Z
+	};
+	ImGui::DragFloat3("Camera Rotation", Rotation.data(), 0.5f);
+	Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
+	Scene->MainCamera->SetRotation({ Rotation[0], Rotation[1], Rotation[2] });
 }
 
 void UImGuiDrawer::DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget)
