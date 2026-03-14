@@ -11,11 +11,8 @@ public:
 	virtual ~UPrimitiveComponent() = default;
 
 public:
-	// UObject을(를) 통해 상속됨
 	void Release() override;
-
-	void Update(float DeltaTime) override;
-
+	void TickComponent(float DeltaTime) override;
 	void Render(ID3D11DeviceContext& DeviceContext) override;
 
 public:

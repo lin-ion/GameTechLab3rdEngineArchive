@@ -1,34 +1,50 @@
 #pragma once
-#include "Object.h"
+#include "ActorComponent.h"
 
-class UMesh;
-
-class USceneComponent : public UObject
+class USceneComponent : public UActorComponent
 {
 public:
 	USceneComponent() = default;
 	virtual ~USceneComponent() = default;
 
 public:
-	const FVector& GetPosition() { return Position; };
-	void SetPosition(const FVector& InPosition) { Position = InPosition; };
-	const FVector& GetRotation() { return Rotation; };
-	void SetRotation(const FVector& InRotation) { Rotation = InRotation; };
-	const FVector& GetScale() { return Scale; };
-	void SetScale(const FVector& InScale) { Scale = InScale; };
+
+	const FVector& GetPosition() const { return Position; }
+	void SetPosition(const FVector& InPosition) { Position = InPosition; UpdateTransform(); }
+
+	const FVector& GetRotation() const { return Rotation; }
+	void SetRotation(const FVector& InRotation) { Rotation = InRotation;  UpdateTransform();}
+
+	const FVector& GetScale() const { return Scale; }
+	void SetScale(const FVector& InScale) { Scale = InScale;  UpdateTransform();}
+
+	FVector GetComponentLocation() const;
+	FVector GetForwardVector() const;
+	FVector GetUpVector() const;
+	FVector GetRightVector() const;
+
+	FMatrix GetComponentTransform() const { return ComponentToWorld; }
+
 
 public:
-	// UObject을(를) 통해 상속됨
-	void Release() override;
+	virtual void TickComponent(float DeltaTime) override;
 
-	void Update(float DeltaTime) override;
-	void Render(ID3D11DeviceContext& DeviceContext) override;
+	// 렌더는 PrimitiveComponent만 수행 — 기본 구현은 비어있음
+	virtual void Render(ID3D11DeviceContext& DeviceContext) {}
+
+protected:
+	// TODO: Dirty Flag 추가 고려
+	virtual void UpdateTransform();
 
 private:
-	//나중에 컴포넌트로 바꿀 예정
-	//추후 Matrix로 스케일 / 회전 / 위치 정보를 저장
-	FVector Position = { 0.0f, 0.0f, 0.0f };
-	FVector Rotation = { 0.0f, 0.0f, 0.0f };
-	FVector Scale = { 1.0f, 1.0f, 1.0f };
-};
 
+	// 나중에 컴포넌트로 바꿀 예정
+	// TODO: FTransform 사용
+	FVector Position = { 0.0f, 0.0f, 0.0f };
+	// TODO: Euler Angle이 아닌 Quaternion으로 회전 표현 고려
+	FVector Rotation = { 0.0f, 0.0f, 0.0f };
+	FVector Scale    = { 1.0f, 1.0f, 1.0f };
+
+	// MVP 행렬의 Model 행렬에 해당
+	FMatrix ComponentToWorld = FMatrix::Identity;
+};

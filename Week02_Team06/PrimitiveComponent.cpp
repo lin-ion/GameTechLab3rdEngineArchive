@@ -11,9 +11,9 @@ void UPrimitiveComponent::Release()
 	}
 }
 
-void UPrimitiveComponent::Update(float DeltaTime)
+void UPrimitiveComponent::TickComponent(float DeltaTime)
 {
-	USceneComponent::Update(DeltaTime);
+	USceneComponent::TickComponent(DeltaTime);
 
 }
 

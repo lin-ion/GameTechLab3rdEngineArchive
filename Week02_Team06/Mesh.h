@@ -1,4 +1,5 @@
 #pragma once
+//추후 Mesh 컴포넌트로 바꿔야함 아직 언리얼 레퍼를 제대로 확인못해서 보류
 class UMesh
 {
 public:

@@ -14,9 +14,7 @@ public:
 	uint32 internalIndex = { }; // Index of GUObjectArray
 
 public:
-	virtual void Release() = 0;
-	virtual void Update(float DeltaTime) = 0;
-	virtual void Render(ID3D11DeviceContext& DeviceContext) = 0;
+	virtual void Release() {}
 };
 
 extern TArray<UObject*> GUObjectArray;
