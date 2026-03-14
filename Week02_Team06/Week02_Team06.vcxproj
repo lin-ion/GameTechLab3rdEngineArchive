@@ -133,6 +133,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AppConsole.cpp" />
+    <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="Containers.cpp" />
     <ClCompile Include="EngineStatics.cpp" />
     <ClCompile Include="ImGui\imgui.cpp">
@@ -178,6 +179,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AppConsole.h" />
+    <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="Containers.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="EngineStatics.h" />

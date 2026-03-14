@@ -12,10 +12,18 @@ public:
 public:
 	const FVector& GetPosition() { return Position; };
 	void SetPosition(const FVector& InPosition) { Position = InPosition; };
+
 	const FVector& GetRotation() { return Rotation; };
 	void SetRotation(const FVector& InRotation) { Rotation = InRotation; };
+
 	const FVector& GetScale() { return Scale; };
 	void SetScale(const FVector& InScale) { Scale = InScale; };
+
+	FVector GetComponentLocation() const;
+	FVector GetForwardVector() const;
+	FVector GetUpVector() const;
+	FVector GetRightVector() const;
+	FMatrix GetComponentTransform() const { return ComponentToWorld; }
 
 public:
 	// UObject을(를) 통해 상속됨
@@ -24,11 +32,18 @@ public:
 	void Update(float DeltaTime) override;
 	void Render(ID3D11DeviceContext& DeviceContext) override;
 
-private:
+protected:
+	virtual void UpdateTransform();
+
+// TODO: 접근 제한자 생각해볼 필요 있음
+protected:
 	//나중에 컴포넌트로 바꿀 예정
 	//추후 Matrix로 스케일 / 회전 / 위치 정보를 저장
+	// TODO: FTransform 사용
 	FVector Position = { 0.0f, 0.0f, 0.0f };
 	FVector Rotation = { 0.0f, 0.0f, 0.0f };
 	FVector Scale = { 1.0f, 1.0f, 1.0f };
+
+	FMatrix ComponentToWorld = FMatrix::Identity;
 };
 
