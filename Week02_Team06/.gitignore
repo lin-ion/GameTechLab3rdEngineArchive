@@ -442,5 +442,7 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+Week01/
+
 imgui.ini
 claude.md
