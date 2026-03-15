@@ -15,11 +15,9 @@ public:
 
 public:
 	UWorld* GetWorld();
-	
-	//BeginPlay에서 컴포넌트 연동 및 상태를 관리 이전 플젝의 Intialize함수
-	virtual void BeginPlay() {}
 
-	virtual void Tick(float DeltaTime) {}
+	virtual void BeginPlay() {}
+	virtual void Tick(float DeltaTime);
 	virtual void Release() override;
 
 public:
@@ -28,10 +26,11 @@ public:
 	T* AddComponent()
 	{
 		static_assert(std::is_base_of_v<UActorComponent, T>, "T must derive from UActorComponent");
-		T* Comp    = NewObject<T>();
-		Comp->Owner = this;
-		Components.PushBack(Comp);
-		return Comp;
+		T* ActorComponent    = NewObject<T>();
+		ActorComponent->Owner = this;
+
+		Components.PushBack(ActorComponent);
+		return ActorComponent;
 	}
 
 	/** 타입으로 컴포넌트 검색 */

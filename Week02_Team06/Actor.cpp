@@ -13,6 +13,14 @@ UWorld* AActor::GetWorld()
 	return nullptr;
 }
 
+void AActor::Tick(float DeltaTime)
+{
+	for (int32 i = 0; i < Components.Size(); ++i)
+	{
+		Components[i]->TickComponent(DeltaTime);
+	}
+}
+
 void AActor::Release()
 {
 	for (int32 i = 0; i < Components.Size(); ++i)

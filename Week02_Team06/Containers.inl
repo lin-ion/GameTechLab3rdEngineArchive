@@ -61,3 +61,66 @@ inline void TStaticArray<T, N>::fill(size_t size)
 {
 	Container.fill(size);
 }
+
+
+//unoredered_map
+
+template<typename K, typename V>
+inline V& TMap<K, V>::operator[](K Key)
+{
+	return Container[Key];
+}
+
+template<typename K, typename V>
+inline std::unordered_map<K, V>::iterator TMap<K, V>::begin()
+{
+	return Container.begin();
+}
+
+template<typename K, typename V>
+inline std::unordered_map<K, V>::iterator TMap<K, V>::end()
+{
+	return Container.end();
+}
+
+
+template<typename K, typename V>
+inline bool TMap<K, V>::IsEmpty()
+{
+	return Container.empty();
+}
+
+template<typename K, typename V>
+inline void TMap<K, V>::Insert(const std::pair<K, V> MyPair)
+{
+	Container.insert(MyPair);
+}
+
+template<typename K, typename V>
+inline void TMap<K, V>::Erase(K Key)
+{
+	auto iter = Container.find(Key);
+	if (iter == Container.end())
+	{
+		return;
+	}
+	Container.erase(Key);
+}
+
+template<typename K, typename V>
+inline void TMap<K, V>::Clear()
+{
+	Container.clear();
+}
+
+template<typename K, typename V>
+inline V* TMap<K, V>::Find(const K& Key)
+{
+	auto iter = Container.find(Key);
+	if (iter == Container.end())
+	{
+		return nullptr;
+	}
+	return &iter->second;
+}
+

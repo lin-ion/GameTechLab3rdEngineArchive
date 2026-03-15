@@ -1,8 +1,9 @@
 #pragma once
-#include "Object.h"
+#include "Object.h";
 #include "Level.h"
-#include "Actor.h"
-#include "ObjectFactory.h"
+
+class AActor;
+class UResourceManager;
 
 class UWorld : public UObject
 {
@@ -18,21 +19,29 @@ public:
 		static_assert(std::is_base_of_v<AActor, T>, "T must derive from AActor");
 
 		T* Actor           = NewObject<T>();
-		Actor->OwningLevel = PersistentLevel;
+		Actor->OwningLevel = CurrentLevel;
 
-		if (PersistentLevel)
+		if (CurrentLevel)
 		{
-			PersistentLevel->Actors.PushBack(Actor);
+			(CurrentLevel->Actors).PushBack(Actor);
 		}
 
 		Actor->BeginPlay();
 		return Actor;
 	}
 
+public:
+	virtual void InitWorld(UResourceManager& ResourceManager);
+	void	Tick(float DeltaTime);
+
 	virtual void Release() override;
 
 public:
 	// 월드가 시작할 때 초기 레벨
-	ULevel* PersistentLevel = nullptr;
+	//원래는 월드가 바뀌어도 그려지는 PersisteneLevel과 StreamingLevel로 구별됨
+	ULevel* CurrentLevel = { nullptr };
+
+	//나중엔 씬을 만들것임
+
 };
 
