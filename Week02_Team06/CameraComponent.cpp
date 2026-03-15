@@ -19,8 +19,8 @@ FMatrix UCameraComponent::GetProjectionMatrix() const
 {
 	if (bIsOrthogonal)
 	{
-		float OrthoWidth = 10.0f;
-		float OrthoHeight = AspectRatio * OrthoWidth;
+		float OrthoHeight = 10.0f;
+		float OrthoWidth = AspectRatio * OrthoHeight;
 		return FMatrix::MakeOrthographic(OrthoWidth, OrthoHeight, NearPlane, FarPlane);
 	}
 	else {

@@ -1,12 +1,13 @@
 #pragma once
 class UScene;
-
+extern class URenderer* GRenderer;
 
 class URenderer
 {
 public:
 	URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain);
 	~URenderer() = default;
+
 public:
 	void Initialize();
 
@@ -17,6 +18,8 @@ public:
 	void EndScene();
 
 	void Release();
+
+	void OnResize(UINT width, UINT height);
 
 private:
 	void CreateRasterizerState();
@@ -39,7 +42,6 @@ private:
 
 private:
 	void RenderAxisLine(UScene* Scene);
-
 
 private:
 	ID3D11Device* Device = { nullptr };
@@ -67,6 +69,7 @@ private:
 
 	//라인
 	ID3D11Buffer* LineAxisBuffer = { nullptr };
+	UScene* CurrentScene = nullptr;
 };
 
 // TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려

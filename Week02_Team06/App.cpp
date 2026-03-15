@@ -8,6 +8,10 @@
 #include "SceneManager.h"
 #include "ImGuiDrawer.h"
 
+// Test
+#include "SceneSerializer.h"
+#include "Scene.h"
+
 bool UApp::Initialize(HINSTANCE hInstance)
 {
 	Window = new UWindow;
@@ -28,7 +32,20 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
 
+
+	// console Test Code
 	UE_LOG("Hello World");
+
+
+	// json Test Code
+	UScene* scene = SceneManager->GetCurrentScene();
+	scene->data.Version = 1;
+	scene->data.NextUUID = 8;
+	USceneSerializer::SaveScene("Test", scene->data);
+	USceneSerializer::LoadScene("Test", scene->data);
+
+	UE_LOG("Version: %d", scene->data.Version);
+	UE_LOG("NextUUID: %d", scene->data.NextUUID);
 
 	return true;
 }
@@ -68,10 +85,6 @@ void UApp::Run()
 
 			//GameLogica
 			SceneManager->Update(DeltaTime);
-
-			//Render
-			Graphics->ClearRenderTarget();
-			//
 
 			Renderer->BeginScene();
 			Renderer->Render(SceneManager->GetCurrentScene());

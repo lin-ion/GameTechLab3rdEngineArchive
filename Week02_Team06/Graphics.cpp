@@ -4,22 +4,14 @@
 void UGraphics::Initialize(HWND hWnd)
 {
     CreateDeviceAnsSwapChain(hWnd);
-    CreateBackBuffer();
 
     return;
 }
 
-void UGraphics::ClearRenderTarget()
-{
-    FLOAT ClearColor[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
-    DeviceContext->ClearRenderTargetView(BackBufferRTV, ClearColor);
-
-}
 
 void UGraphics::Release()
 {
     DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
-    ReleaseBackBuffer();
     ReleaseDeviceAndSwapChain();
 }
 
@@ -75,32 +67,5 @@ void UGraphics::ReleaseDeviceAndSwapChain()
     {
         Device->Release();
         Device = nullptr;
-    }
-}
-
-void UGraphics::CreateBackBuffer()
-{
-    SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&BackBuffer);
-
-    // 렌더 타겟 뷰 생성
-    D3D11_RENDER_TARGET_VIEW_DESC framebufferRTVdesc = {};
-    framebufferRTVdesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-    framebufferRTVdesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-
-    Device->CreateRenderTargetView(BackBuffer, &framebufferRTVdesc, &BackBufferRTV);
-}
-
-void UGraphics::ReleaseBackBuffer()
-{
-    if (BackBuffer)
-    {
-        BackBuffer->Release();
-        BackBuffer = nullptr;
-    }
-
-    if (BackBufferRTV)
-    {
-        BackBufferRTV->Release();
-        BackBufferRTV = nullptr;
     }
 }

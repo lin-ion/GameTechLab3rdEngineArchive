@@ -5,9 +5,12 @@
 #include "PrimitiveComponent.h"
 #include "CameraComponent.h"
 
+URenderer* GRenderer = nullptr;
+
 URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain)
 	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain)
 {
+	GRenderer = this;
 }
 
 void URenderer::Initialize()
@@ -29,6 +32,11 @@ void URenderer::Initialize()
 
 void URenderer::BeginScene()
 {
+	if (!DepthStensilView)
+	{
+		return;
+	}
+
 	FLOAT ClearColor[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 	DeviceContext->ClearRenderTargetView(BackBufferRTV, ClearColor);
 	DeviceContext->ClearDepthStencilView(DepthStensilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
@@ -45,6 +53,7 @@ void URenderer::BeginScene()
 void URenderer::Render(UScene* Scene)
 {
 	if (!Scene) return;
+	CurrentScene = Scene;
 
 	// 셰이더
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
@@ -142,6 +151,7 @@ void URenderer::CreateDepthStensilView()
 	D3D11_TEXTURE2D_DESC desc = {};
 	desc.Width = static_cast<UINT>(ViewportInfo.Width);
 	desc.Height = static_cast<UINT>(ViewportInfo.Height);
+
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -295,4 +305,39 @@ void URenderer::RenderAxisLine(UScene* Scene)
 
 		DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
+}
+
+void URenderer::OnResize(UINT width, UINT height)
+{
+	if (width == 0 || height == 0) height = 1;
+
+	ID3D11RenderTargetView* nullRTV = nullptr;
+	DeviceContext->OMSetRenderTargets(1, &nullRTV, nullptr);
+
+	ReleaseRenderTargetView();
+	ReleaseDepthStensilView();
+
+	DeviceContext->Flush();
+
+	HRESULT hr = SwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+	if (FAILED(hr)) {
+		return;
+	}
+
+	ViewportInfo.Width = (float)width;
+	ViewportInfo.Height = (float)height;
+
+	CreateRenderTargetView();
+	CreateDepthStensilView();
+
+	DeviceContext->RSSetViewports(1, &ViewportInfo);
+	DeviceContext->OMSetRenderTargets(1, &BackBufferRTV, DepthStensilView);
+
+	if (CurrentScene && CurrentScene->MainCamera)
+	{
+		CurrentScene->MainCamera->SetAspectRatio((float)width / (float)height);
+	}
+
+	ImGuiIO& io = ImGui::GetIO();
+	io.DisplaySize = ImVec2((float)width, (float)height);
 }
