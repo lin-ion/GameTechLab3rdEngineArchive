@@ -1,9 +1,4 @@
 #pragma once
-
-struct FVertexSimple;
-
-
-
 FVertexSimple CubeVertices[] =
 {
 	{  1.0000f,  1.0000f,  1.0000f,   1.00f,  0.50f,  0.50f, 1.0f },
@@ -42,11 +37,4 @@ FVertexSimple CubeVertices[] =
 	{ -1.0000f, -1.0000f,  1.0000f,   0.17f,  0.00f,  1.00f, 1.0f },
 	{  1.0000f, -1.0000f,  1.0000f,   0.83f,  0.50f,  1.00f, 1.0f },
 	{  1.0000f,  1.0000f,  1.0000f,   1.00f,  0.50f,  0.50f, 1.0f },
-};
-
-FVertexSimple TriangleVertices[] =
-{
-	{  0.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 1.0f }, // Top vertex (red)
-	{  1.0f, -1.0f, 0.0f,  0.0f, 1.0f, 0.0f, 1.0f }, // Bottom-right vertex (green)
-	{ -1.0f, -1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 1.0f }  // Bottom-left vertex (blue)
 };

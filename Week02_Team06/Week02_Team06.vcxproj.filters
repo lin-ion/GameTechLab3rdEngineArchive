@@ -222,6 +222,7 @@
     <ClInclude Include="MeshComponent.h" />
     <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="PickingComponent.h" />
+    <ClInclude Include="Gizmo.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

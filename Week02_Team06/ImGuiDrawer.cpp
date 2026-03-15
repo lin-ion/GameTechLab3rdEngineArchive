@@ -47,7 +47,7 @@ void UImGuiDrawer::UpdateUI(UScene* Scene)
 	DrawCameraPanel(Scene);
 
 	ImGui::End();
-	
+
 	//DrawPrimitiveDataPanel();
 
 	if(bShowConsole)
@@ -75,7 +75,7 @@ void UImGuiDrawer::DrawSpawnPanel()
 	}
 	ImGui::SameLine();
 	static int count = 0;
-	ImGui::InputInt("Count", &count); 
+	ImGui::InputInt("Count", &count);
 }
 
 void UImGuiDrawer::DrawSceneControlPanel()
@@ -122,7 +122,7 @@ void UImGuiDrawer::DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget)
 
 	FVector currentPos = SelectedTarget->GetPosition();
 	static float pos[3] = { currentPos.X, currentPos.Y, currentPos.Z};
-	
+
 	if (ImGui::DragFloat3("Translation", pos, 0.1f))
 	{
 		SelectedTarget->SetPosition(FVector(pos[0], pos[1], pos[2]));

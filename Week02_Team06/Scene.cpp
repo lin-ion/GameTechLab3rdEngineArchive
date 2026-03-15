@@ -7,6 +7,7 @@
 #include "Cube.h"
 #include "Sphere.h"
 #include "Triangle.h"
+#include "Gizmo.h"
 #include "PrimitiveComponent.h"
 #include "ObjectFactory.h"
 #include "GeometryData.h"
@@ -18,7 +19,7 @@ void UScene::Initialize(ID3D11Device& Device)
 	UMeshComponent* Cube = UObjectFactory::NewObject<UMeshComponent>();
 	Cube->AddMesh(Device, cube_vertices, sizeof(cube_vertices) / sizeof(FVertexSimple));
 	Cube->SetRotation(FVector(0.0f, 45.0f, 20.0f));
-	
+
 	Cube->SetPosition({ 1.0f, 0.2f, 0.5f });
 	Cube->SetRotation({ 0.0f, 45.0f, 20.0f });
 	Cube->SetScale({ 0.2f, 0.2f, 0.2f });
@@ -29,6 +30,9 @@ void UScene::Initialize(ID3D11Device& Device)
 	Sphere->SetPosition({ -1.0f, 0.2f, 0.5f });
 	Sphere->SetRotation({ 0.0f, 0.0f, 0.0f });
 	Sphere->SetScale({ 0.2f, 0.2f, 0.2f });
+
+	UMeshComponent* Gizmo = UObjectFactory::NewObject<UMeshComponent>();
+	Gizmo->AddMesh(Device, gizmo_vertices, sizeof(gizmo_vertices) / sizeof(FVertexSimple));
 
 	MainCamera = UObjectFactory::NewObject<UCameraComponent>();
 

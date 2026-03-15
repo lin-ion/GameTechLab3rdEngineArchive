@@ -13,13 +13,16 @@ void UInput::Update()
 {
 	ImGuiIO& io = ImGui::GetIO();
 
+	HWND hWnd = GetActiveWindow();
+	bool isAppFocused = (hWnd == GetForegroundWindow());
+
 	for (int i = 0; i < 256; ++i)
 	{
 		PreKeys[i] = CurKeys[i];
 
 		bool isUiBusy = (i < 0x07) ? io.WantCaptureMouse : io.WantCaptureKeyboard;
 
-		if (isUiBusy)
+		if (isUiBusy || !isAppFocused)
 		{
 			CurKeys[i] = false;
 		}
@@ -50,6 +53,7 @@ bool UInput::IsKeyUp(int vKey)
 	return (PreKeys[vKey] && !CurKeys[vKey]);
 }
 
+// Called from Window::WndProc when handling WM_MOUSEMOVE message
 void UInput::UpdateMousePosition(POINT MousePos)
 {
 	MousePosition.x = MousePos.x;
