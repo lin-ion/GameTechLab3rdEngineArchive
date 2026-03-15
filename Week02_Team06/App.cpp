@@ -71,7 +71,6 @@ void UApp::Run()
 
 			//Render
 			Graphics->ClearRenderTarget();
-			//
 
 			Renderer->BeginScene();
 			Renderer->Render(SceneManager->GetCurrentScene());

@@ -14,7 +14,7 @@ public:
 
 private:
 	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
-	bool RayIntersctsCircle();
+	bool RayIntersectsCircle();
 
 };
 
