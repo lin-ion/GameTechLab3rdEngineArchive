@@ -194,6 +194,7 @@
     <ClInclude Include="EngineStatics.h" />
     <ClInclude Include="Enums.h" />
     <ClInclude Include="GeometryData.h" />
+    <ClInclude Include="Gizmo.h" />
     <ClInclude Include="ImGui\imconfig.h" />
     <ClInclude Include="ImGui\imgui.h" />
     <ClInclude Include="ImGui\imgui_impl_dx11.h" />
