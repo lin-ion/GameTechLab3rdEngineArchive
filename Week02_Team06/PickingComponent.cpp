@@ -88,7 +88,7 @@ bool UPickingComponent::RayIntersectsTriangle(const FVector& CameraPos, const FV
     FVector S = CameraPos - Vertex0;
 
     // u 범위 체크
-    float U = InvDet * S.Dot(RayCrossE2);
+    float U = InvDet * S.Dot(RayCrossE2);   
     if (U < 0.f || U > 1.f) return false;
 
     // v 범위 체크
