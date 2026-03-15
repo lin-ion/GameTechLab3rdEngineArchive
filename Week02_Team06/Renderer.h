@@ -1,18 +1,18 @@
 #pragma once
-class UScene;
-
+class UWorld;
+class FEditorViewportClient;
 
 class URenderer
 {
 public:
-	URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain);
+	URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, const FEditorViewportClient& _ViewportClient);
 	~URenderer() = default;
 public:
 	void Initialize();
 
 	void BeginScene();
 
-	void Render(UScene* Scene);
+	void Render(UWorld* World);
 	
 	void EndScene();
 
@@ -38,7 +38,8 @@ private:
 	void ReleaseLineAxisBuffer();
 
 private:
-	void RenderAxisLine(UScene* Scene);
+	void RenderAxisLine();
+	void RenderPrimitive(UWorld* World);
 
 
 private:
@@ -67,6 +68,8 @@ private:
 
 	//라인
 	ID3D11Buffer* LineAxisBuffer = { nullptr };
+
+	const FEditorViewportClient& ViewportClient;
 };
 
 // TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려

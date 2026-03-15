@@ -5,7 +5,7 @@
 #include <windows.h>
 #include <assert.h>
 
-
+#include <algorithm>
 #pragma region STL_CONTAINER
 #include <unordered_map>
 #include <array>

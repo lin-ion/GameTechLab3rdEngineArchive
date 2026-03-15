@@ -1,12 +1,14 @@
 #include "pch.h"
 #include "Renderer.h"
-#include "Scene.h"
+#include "World.h"
 #include "Object.h"
 #include "PrimitiveComponent.h"
 #include "CameraComponent.h"
+#include "FEditorViewportClient.h"
+#include "Actor.h"
 
-URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain)
-	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain)
+URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, const FEditorViewportClient& _ViewportClient)
+	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain), ViewportClient(_ViewportClient)
 {
 }
 
@@ -42,33 +44,17 @@ void URenderer::BeginScene()
 	DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 }
 
-void URenderer::Render(UScene* Scene)
+void URenderer::Render(UWorld* World)
 {
-	if (!Scene) return;
+	if (!World) return;
 
 	// 셰이더
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
-
-	RenderAxisLine(Scene);
-
-
-	// 2. 공통 행렬(View * Projection) 계산
-	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
-	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
-	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
-
-	// 3. 루프 최적화: 렌더러는 명령만 내립니다.
-	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
-	{
-		UPrimitiveComponent* PrimComp = dynamic_cast<UPrimitiveComponent*>(GUObjectArray[i]);
-		if (!PrimComp) continue;
-
-		// [중요] 이제 컴포넌트에게 공통 행렬과 버퍼를 넘겨주며 직접 그리라고 명령합니다.
-		PrimComp->Render(DeviceContext, ViewProjectionMatrix, ConstantBuffer);
-	}
+	RenderAxisLine();
+	RenderPrimitive(World);
 }
 
 void URenderer::EndScene()
@@ -267,10 +253,10 @@ void URenderer::ReleaseLineAxisBuffer()
 	LineAxisBuffer->Release();
 }
 
-void URenderer::RenderAxisLine(UScene* Scene)
+void URenderer::RenderAxisLine()
 {
-	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
-	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
+	FMatrix ViewMatrix = ViewportClient.GetViewMatrix();
+	FMatrix ProjectionMatrix = ViewportClient.GetProjectionMatrix();
 
 	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
 
@@ -290,9 +276,38 @@ void URenderer::RenderAxisLine(UScene* Scene)
 
 		UINT Stride = sizeof(FVertexSimple);
 		UINT Offset = {};
-		DeviceContext->IASetVertexBuffers(0 , 1, &LineAxisBuffer, &Stride, &Offset);
+		DeviceContext->IASetVertexBuffers(0, 1, &LineAxisBuffer, &Stride, &Offset);
 		DeviceContext->Draw(6, 0);
 
 		DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	}
+}
+
+void URenderer::RenderPrimitive(UWorld* World)
+{
+	// 2. 공통 행렬(View * Projection) 계산
+	FMatrix ViewMatrix = ViewportClient.GetViewMatrix();
+	FMatrix ProjectionMatrix = ViewportClient.GetProjectionMatrix();
+	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
+
+	TArray<AActor*> Actors = World->CurrentLevel->Actors;
+
+	for (size_t i = 0; i < Actors.Size(); ++i)
+	{
+		UPrimitiveComponent* PrimitiveComponent = Actors[i]->GetComponentByClass<UPrimitiveComponent>();
+		if (!PrimitiveComponent) continue;
+
+		FMatrix Model = PrimitiveComponent->GetComponentTransform();
+		FMatrix MVP = Model * ViewProjectionMatrix;
+
+		D3D11_MAPPED_SUBRESOURCE MSR;
+
+		DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MSR);
+		memcpy(MSR.pData, &MVP, sizeof(FConstantData));
+		DeviceContext->Unmap(ConstantBuffer, 0);
+
+		DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+
+		PrimitiveComponent->Render(*DeviceContext);
 	}
 }

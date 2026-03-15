@@ -2,6 +2,7 @@
 
 class UPrimitiveComponent;
 class UScene;
+class FEditorViewportClient;
 
 class UImGuiDrawer
 {
@@ -16,7 +17,7 @@ public:
 	void BeginFrame();
 	void EndFrame();
 
-	void UpdateUI(UScene* Scene);
+	void UpdateUI(FEditorViewportClient* ViewportClient);
 
 	void Release();
 
@@ -24,5 +25,6 @@ private:
 	void DrawSpawnPanel();
 	void DrawSceneControlPanel();
 	void DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget);
-	void DrawCameraPanel(UScene* Scene);
+
+	void DrawCameraPanel(FEditorViewportClient* ViewportClient);
 };

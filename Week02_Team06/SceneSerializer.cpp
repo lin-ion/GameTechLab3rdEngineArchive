@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "SceneSerializer.h"
 #include "SceneComponent.h"
-#include "Scene.h"
 #include "Object.h"
 #include "json.hpp"
 #include "PrimitiveComponent.h"

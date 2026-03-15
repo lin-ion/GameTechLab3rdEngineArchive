@@ -29,4 +29,25 @@ public:
 private:
 	std::array<T, N> Container;
 };
+
+template <typename K, typename V>
+class TMap
+{
+public:
+	V& operator[](K Key);
+	//cosnt operator[]는 stl에서 지원안해서 없앰
+
+	std::unordered_map<K, V>::iterator begin();
+	std::unordered_map<K, V>::iterator end();
+
+	bool IsEmpty();
+	V* Find(const K& Key);
+	void Insert(const std::pair<K, V> MyPair);
+	void Erase(K Key);
+	void Clear();
+
+private:
+	std::unordered_map<K, V> Container;
+	 
+};
 #include "Containers.inl"

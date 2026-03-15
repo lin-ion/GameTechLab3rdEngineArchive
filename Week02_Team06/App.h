@@ -5,7 +5,9 @@ class URenderer;
 class UGraphics;
 class USceneManager;
 class UImGuiDrawer;
-
+class UResourceManager;
+class UWorld;
+class FEditorViewportClient;
 
 class UApp
 {
@@ -24,7 +26,14 @@ private:
 
 	UWindow* Window     = { nullptr };
 	UGraphics* Graphics = { nullptr };
+
 	URenderer* Renderer = { nullptr };
-	USceneManager* SceneManager = { nullptr };
+	UWorld* World = { nullptr };
+
+	FEditorViewportClient* ViewportClient;
+
+
 	UImGuiDrawer* ImGuiDrawer = { nullptr };
+	UResourceManager* ResourceManager = { nullptr };
+
 };

@@ -2,8 +2,8 @@
 #include "ImGuiDrawer.h"
 #include "SceneSerializer.h"
 #include "PrimitiveComponent.h"
-#include "Scene.h"
 #include "CameraComponent.h"
+#include "FEditorViewportClient.h"
 
 UImGuiDrawer::UImGuiDrawer()
 {
@@ -31,7 +31,7 @@ void UImGuiDrawer::EndFrame()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void UImGuiDrawer::UpdateUI(UScene* Scene)
+void UImGuiDrawer::UpdateUI(FEditorViewportClient* ViewportClient)
 {
     ImGui::Begin("Jungle Control Panel");
     ImGui::Text("Hello Jungle World!");
@@ -44,7 +44,7 @@ void UImGuiDrawer::UpdateUI(UScene* Scene)
 	ImGui::Separator();
 	DrawSceneControlPanel();
 	ImGui::Separator();
-	DrawCameraPanel(Scene);
+	DrawCameraPanel(ViewportClient);
 
 	ImGui::End();
 
@@ -88,32 +88,27 @@ void UImGuiDrawer::DrawSceneControlPanel()
 	if (ImGui::Button("Load Scene")) { /* sceneName 불러오기 로직 */ }
 }
 
-void UImGuiDrawer::DrawCameraPanel(UScene* Scene)
+void UImGuiDrawer::DrawCameraPanel(FEditorViewportClient* ViewportClient)
 {
-	bool bIsOrthogonal = Scene->MainCamera->IsOrthogonal();
-	ImGui::Checkbox("Orthogonal", &bIsOrthogonal);
-	Scene->MainCamera->SetOrthogonal(bIsOrthogonal);
-
-	float FOV = Scene->MainCamera->GetFOV();
+	float FOV = ViewportClient->GetFOV();
 	ImGui::SliderFloat("FOV", &FOV, 10.0f, 120.0f);
-	Scene->MainCamera->SetFOV(FOV);
+	ViewportClient->SetFOV(FOV);
 
 	std::array<float, 3> Position = {
-			Scene->MainCamera->GetPosition().X,
-			Scene->MainCamera->GetPosition().Y,
-			Scene->MainCamera->GetPosition().Z
+			ViewportClient->GetViewLocation().X,
+			ViewportClient->GetViewLocation().Y,
+			ViewportClient->GetViewLocation().Z
 	};
 	ImGui::DragFloat3("Camera Location", Position.data(), 0.1f, -10.f, 10.0f);
-	Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
+	ViewportClient->SetViewLocation({ Position[0], Position[1], Position[2] });
 
 	std::array<float, 3> Rotation = {
-		Scene->MainCamera->GetRotation().X,
-		Scene->MainCamera->GetRotation().Y,
-		Scene->MainCamera->GetRotation().Z
+		ViewportClient->GetViewRotation().X,
+		ViewportClient->GetViewRotation().Y,
+		ViewportClient->GetViewRotation().Z
 	};
 	ImGui::DragFloat3("Camera Rotation", Rotation.data(), 0.5f);
-	Scene->MainCamera->SetPosition({ Position[0], Position[1], Position[2] });
-	Scene->MainCamera->SetRotation({ Rotation[0], Rotation[1], Rotation[2] });
+	ViewportClient->SetViewRotation({ Rotation[0], Rotation[1], Rotation[2] });
 }
 
 void UImGuiDrawer::DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget)

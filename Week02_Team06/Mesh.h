@@ -1,8 +1,5 @@
 #pragma once
 
-#include <d3d11.h>
-#include "Types.h"
-
 class UMesh
 {
 public:
@@ -11,37 +8,55 @@ public:
 	//mesh 컴포넌트로 바뀌면서 수정해야함
 
 public:
-	const FVertexSimple * GetVertexData() const { return OriginData; };
-	const int32 GetVertexNum() const { return NumVertices; };
+	const void* GetVertexData() const   { return VertexData; };
+	const uint32 GetVertexCount() const { return NumVertices;};
 
 public:
-	void Load(ID3D11Device& Device, const FVertexSimple* Vertices, UINT VertexCount, const uint32* Indices, UINT IndexCount);
-	void Release();
-	void BindBuffers(ID3D11DeviceContext& DeviceContext)
+	template<typename T>
+	void Load(ID3D11Device& Device, const T* Vertices, UINT VertexCount, const uint32* Indices, UINT IndexCount)
 	{
-		UINT offset = 0;
-		DeviceContext.IASetVertexBuffers(0, 1, &VertexBuffer, &Stride, &offset);
-		if (IndexBuffer)
+		NumVertices = VertexCount;
+		Stride = sizeof(T);
+		ByteWidth = sizeof(T) * VertexCount;
+
+		// 정점 버퍼 생성
+		D3D11_BUFFER_DESC VertexBufferDesc = {};
+		VertexBufferDesc.ByteWidth = ByteWidth;
+		VertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+		VertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+		D3D11_SUBRESOURCE_DATA VertexBufferSRD = { Vertices };
+
+		HRESULT hr = Device.CreateBuffer(&VertexBufferDesc, &VertexBufferSRD, &VertexBuffer);
+		assert(SUCCEEDED(hr));
+
+		if (Indices)
 		{
-			DeviceContext.IASetIndexBuffer(IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+			NumIndices = IndexCount; // 개수 저장
+			D3D11_BUFFER_DESC IndexBufferDesc = {};
+			IndexBufferDesc.ByteWidth = sizeof(uint32) * IndexCount;
+			IndexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+			IndexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+			D3D11_SUBRESOURCE_DATA IndexBufferData = { Indices };
+			HRESULT hr = Device.CreateBuffer(&IndexBufferDesc, &IndexBufferData, &IndexBuffer);
+			assert(SUCCEEDED(hr));
 		}
 	}
 
-	/** 정점 개수를 반환합니다. */
-	uint32 GetVertexCount() const { return NumVertices; }
-
-	// 추가: 인덱스 개수와 버퍼 유무를 확인하는 기능
-	uint32 GetIndexCount() const { return NumIndices; }
-	bool HasIndexBuffer() const { return IndexBuffer != nullptr; }
+	void Release();
+	void Draw(ID3D11DeviceContext& DeviceContext);
 
 private:
 	ID3D11Buffer* VertexBuffer = { nullptr };
 	ID3D11Buffer* IndexBuffer = { nullptr };
-	
-	const FVertexSimple* OriginData = { nullptr };
+
+
+	const void* VertexData = { nullptr };
 
 	UINT Stride;
 	UINT ByteWidth;
 	UINT NumVertices;
-	UINT NumIndices = 0; // 추가: 인덱스 개수 저장
+	UINT NumIndices = 0; 
 };
+

@@ -6,6 +6,11 @@ UWorld* ULevel::GetWorld()
 	return OwningWorld;
 }
 
+void ULevel::LoadLevel(UResourceManager& ResourceManager)
+{
+
+}
+
 void ULevel::Release()
 {
 	// Actor들의 수명은 GUObjectArray(ObjectFactory)가 관리
