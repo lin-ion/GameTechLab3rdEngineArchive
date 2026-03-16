@@ -1,6 +1,8 @@
 #pragma once
 #include "Object.h"
 #include "Level.h"
+#include "ImGuiDrawer.h"
+
 
 class AActor;
 class UResourceManager;
@@ -23,6 +25,7 @@ public:
 		
 		//Con
 		T* Actor           = NewObject<T>();
+
 		Actor->OwningLevel = CurrentLevel;
 
 		if (CurrentLevel)
@@ -35,15 +38,19 @@ public:
 	}
 
 public:
-	virtual void InitWorld(UResourceManager& ResourceManager);
+	virtual void InitWorld(UResourceManager* ResourceManager);
 	void	Tick(float DeltaTime);
 
 	virtual void Release() override;
+
+	void SpawnActorFromEditor(FSpawnParameters params);
 
 public:
 	// 월드가 시작할 때 초기 레벨
 	//원래는 월드가 바뀌어도 그려지는 PersisteneLevel과 StreamingLevel로 구별됨
 	ULevel* CurrentLevel = { nullptr };
+
+	UResourceManager* resourceManager;
 
 	//나중엔 씬을 만들것임
 	//FScene* Scene = { nullptr };

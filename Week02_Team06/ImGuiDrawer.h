@@ -3,16 +3,36 @@
 class UPrimitiveComponent;
 class UScene;
 class FEditorViewportClient;
+class UWorld;
+
+struct FSpawnParameters
+{
+	std::string PrimitiveType;
+	FVector Location;
+	FVector Rotation;
+	FVector Scale;
+	int Count;
+};
 
 class UImGuiDrawer
 {
 public:
 	bool bShowConsole = true;
 
+	FSpawnParameters actorParameters;
+
+	FVector ActorLocation;
+	FVector ActorRotation;
+	FVector ActorScale;
+
+	UWorld* World;
+
+	UPrimitiveComponent* SelectedTarget;
+
 	UImGuiDrawer();
 	~UImGuiDrawer() {};
 
-	void Initialize(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* context);
+	void Initialize(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* context, UWorld* world);
 
 	void BeginFrame();
 	void EndFrame();
@@ -24,7 +44,7 @@ public:
 private:
 	void DrawSpawnPanel();
 	void DrawSceneControlPanel();
-	void DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget);
+	void DrawPrimitiveDataPanel();
 
 	void DrawCameraPanel(FEditorViewportClient* ViewportClient);
 };
