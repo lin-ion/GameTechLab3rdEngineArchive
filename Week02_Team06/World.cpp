@@ -22,7 +22,6 @@ void UWorld::InitWorld(UResourceManager& ResourceManager)
 
 	CubeComponent->SetPosition({ 0.0f, 0.0f, 3.0f }); // 카메라 앞에 배치
 	CubeComponent->SetScale({ 0.5f, 0.5f, 0.5f });
-
 }
 
 void UWorld::Tick(float DeltaTime)

@@ -29,7 +29,9 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	Graphics = new UGraphics;
 	Graphics->Initialize(Window->GetHWnd());
 
-	ViewportClient = new FEditorViewportClient;
+	ViewportClient = new FEditorViewportClient();
+	ViewportClient->SetViewLocation({ 10.f, 10.f ,10.f });
+	ViewportClient->SetViewRotation({ 30.0f, -120.0f, 0.f });
 
 	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain(), *ViewportClient);
 	Renderer->Initialize();

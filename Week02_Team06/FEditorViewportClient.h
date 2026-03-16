@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // Define FViewportCameraTransform first, before it's used in FEditorViewportClient
 struct FViewportCameraTransform
@@ -31,23 +31,24 @@ public:
 class FEditorViewportClient
 {
 public:
-	FEditorViewportClient();
+	FEditorViewportClient() = default;
+
 public:
 	float AspectRatio = 1.0f; // width / height;
-	float FOVAngle = 60.0f; // horizontal filed of view
+	float FOVAngle = 60.0f; // horizontal field of view
 
 protected:
 	// TODO: Implement Orbit
 	float FarPlane = 1000.0f;
 	float NearPlane = 0.1f;
-	float isPerspective = true;
+	float bIsPerspective = true;
 	FViewportCameraTransform ViewTransform = { } ;
 
 	POINT PreviousMousePosition = { 0, 0 };
 
 public:
 	FMatrix GetViewMatrix() const; // WorldToView
-	FMatrix GetProjectionMatrix() const; // ViewToCli
+	FMatrix GetProjectionMatrix() const; // ViewToClip
 
 	const FVector& GetViewLocation() const { return ViewTransform.GetLocation(); }
 	void SetViewLocation(const FVector& NewLocation) { ViewTransform.SetLocation(NewLocation); }
@@ -68,11 +69,9 @@ public:
 	void SetFarPlane(float InFarPlane) { FarPlane = InFarPlane; }
 
 
-	// UE에는 존재하지 않는 함수
-	void SetPerspective(bool bInIsPerspective) { isPerspective = bInIsPerspective; }
-	const bool IsPerspective() const { return isPerspective; };
+	void SetPerspective(bool bInIsPerspective) { bIsPerspective = bInIsPerspective; }
+	const bool IsPerspective() const { return bIsPerspective; };
 	FVector GetCameraRayDirection();
-
 
 	// RayPicking 관련 함수로 추정
 	//	virtual void ProcessClick ( FSceneView& View,
@@ -92,7 +91,8 @@ public:
 	// 	 const FRotator& InViewRotation
 	// )
 
-	// void SetOrthoZoom( float InOrthoZoom ) // UE 문서 참고 필요
+	// UE 문서 참고 필요
+	// void SetOrthoZoom( float InOrthoZoom )
 
 	void Tick(float DeltaTime);
 };

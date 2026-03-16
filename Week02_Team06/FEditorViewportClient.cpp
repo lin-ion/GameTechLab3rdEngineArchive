@@ -1,12 +1,6 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "FEditorViewportClient.h"
 #include "Input.h"
-
-FEditorViewportClient::FEditorViewportClient()
-{
-	ViewTransform.SetLocation({ 10.f, 10.f ,10.f });
-	ViewTransform.SetRotation({ 37.f, -121.f, 0.f });
-}
 
 FMatrix FEditorViewportClient::GetViewMatrix() const
 {
@@ -21,7 +15,7 @@ FMatrix FEditorViewportClient::GetViewMatrix() const
 
 FMatrix FEditorViewportClient::GetProjectionMatrix() const
 {
-	if (isPerspective)
+	if (bIsPerspective)
 	{
 		return FMatrix::MakePerspective(FOVAngle, AspectRatio, NearPlane, FarPlane);
 	}
