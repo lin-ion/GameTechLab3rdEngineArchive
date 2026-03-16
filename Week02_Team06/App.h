@@ -20,6 +20,10 @@ public:
 	void Run();
 	void Release();
 
+	URenderer* GetRenderer() const { return Renderer; }
+	UResourceManager* GetResourceManager() const { return ResourceManager; }
+	FEditorViewportClient* GetViewportClient() const { return ViewportClient; }
+
 private:
 	const int				   TargetFrame = { 60 };
 	float					   DeltaTime = { 1.f / TargetFrame };
@@ -36,4 +40,9 @@ private:
 	UImGuiDrawer* ImGuiDrawer = { nullptr };
 	UResourceManager* ResourceManager = { nullptr };
 
+	// Gizmo Picking Test용
+	class UGizmoComponent* MainGizmo = { nullptr };
+
 };
+
+extern UApp* GApp;

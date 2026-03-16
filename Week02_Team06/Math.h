@@ -13,9 +13,6 @@ struct FVector
 {
 	float X, Y, Z;
 
-	FVector() : X(0.0f), Y(0.0f), Z(0.0f) {}
-	FVector(float InX, float InY, float InZ) : X(InX), Y(InY), Z(InZ) {}
-
 	// 벡터 연산
 	FVector operator+(const FVector& other) const { return { X + other.X, Y + other.Y, Z + other.Z }; }
 	FVector operator-(const FVector& other) const { return { X - other.X, Y - other.Y, Z - other.Z }; }
@@ -74,6 +71,10 @@ struct FVector4
 
 	FVector4() : X(0.0f), Y(0.0f), Z(0.0f), W(0.0f) {}
 	FVector4(const FVector& InV, float InW = 1.0f) : X(InV.X), Y(InV.Y), Z(InV.Z), W(InW) {}
+
+	// 추가: (x,y,z,w) 생성자
+	FVector4(float InX, float InY, float InZ, float InW)
+		: X(InX), Y(InY), Z(InZ), W(InW) {}
 
 	float Dot(const FVector4& Other) const { return X * Other.X + Y * Other.Y + Z * Other.Z + W * Other.W; }
 	float Length() const { return sqrtf(X * X + Y * Y + Z * Z + W * W); }

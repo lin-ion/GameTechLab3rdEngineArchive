@@ -31,8 +31,19 @@ void UInput::Update()
 			CurKeys[i] = ((GetAsyncKeyState(i) & 0x8000) != 0);
 		}
 	}
-}
 
+	// Mouse Wheel
+	if (io.WantCaptureMouse || !isAppFocused)
+	{
+		CurrentMouseWheelDelta = 0.0f;
+		AccumulatedMouseWheelDelta = 0.0f;
+	}
+	else
+	{
+		CurrentMouseWheelDelta = AccumulatedMouseWheelDelta;
+		AccumulatedMouseWheelDelta = 0.0f;
+	}
+}
 void UInput::Release()
 {
 

@@ -126,6 +126,7 @@
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="FEditorViewportClient.cpp" />
     <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="GizmoComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">

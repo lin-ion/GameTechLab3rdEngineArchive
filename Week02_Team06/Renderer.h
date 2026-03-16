@@ -26,6 +26,9 @@ public:
 
 	void Release();
 
+public:
+	void UpdateConstantBuffer(ID3D11DeviceContext& Context, const FMatrix& MVP, const FVector4& Color = FVector4());
+
 private:
 	void CreateRasterizerState();
 	void ReleaseRasterizerState();
@@ -35,6 +38,8 @@ private:
 
 	void CreateDepthStensilView();
 	void ReleaseDepthStensilView();
+	void CreateDepthStencilState();
+	ID3D11DepthStencilState* DepthStencilState = { nullptr };
 
 	void CreateShader(ID3D11Device& Device, const std::wstring& Filename, const D3D11_INPUT_ELEMENT_DESC Layout[], int ElemnetNum);
 	void ReleaseShader();
@@ -86,4 +91,14 @@ private:
 	int GridVertexCount = 0;
 
 	const FEditorViewportClient& ViewportClient;
+};
+
+// TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려
+struct FConstantData
+{
+	//FMatrix Model;
+	//FMatrix View;
+	//FMatrix Projection;
+	FMatrix MVP;
+	FVector4 Color;
 };

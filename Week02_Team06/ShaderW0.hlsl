@@ -36,5 +36,10 @@ PS_INPUT VS_MAIN(VS_INPUT input)
 
 float4 PS_MAIN(PS_INPUT input) : SV_Target
 {
+    if (Color.a > 0.0f)
+    {
+        return Color;
+    }
+    
     return input.color;
 }
