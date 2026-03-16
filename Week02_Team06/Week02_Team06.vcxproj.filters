@@ -127,6 +127,7 @@
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="GizmoComponent.h" />
     <ClCompile Include="PickingComponent.cpp" />
+    <ClCompile Include="GizmoComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">

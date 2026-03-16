@@ -1,7 +1,12 @@
 #pragma once
+
+#include "Defines.h"
+#include "Object.h"
 #include "ActorComponent.h"
+#include "Math.h"
 
 struct ID3D11DeviceContext;
+struct ID3D11Buffer;
 
 class USceneComponent : public UActorComponent
 {
