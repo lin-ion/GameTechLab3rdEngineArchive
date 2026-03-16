@@ -31,12 +31,12 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ResourceManager = new UResourceManager;
 	ResourceManager->Initialize(*Graphics->GetDevice());
 
-	World = UObjectFactory::NewObject<UWorld>();
-	World->InitWorld(*ResourceManager);
-
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
 
+
+	World = UObjectFactory::NewObject<UWorld>();
+	World->InitWorld(*ResourceManager);
 	UE_LOG("Hello World");
 
 	return true;
@@ -102,6 +102,11 @@ void UApp::Run()
 
 void UApp::Release()
 {
+	if (World)
+	{
+		World->Release();
+	}
+
 	if (ImGuiDrawer)
 	{
 		ImGuiDrawer->Release();
@@ -118,12 +123,7 @@ void UApp::Release()
 		Renderer->Release();
 		delete Renderer;
 	}
-
-	if (World)
-	{
-		World->Release();
-	}
-	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
+	for (uint64 i = 0; i < GUObjectArray.Size(); ++i)
 	{
 		GUObjectArray[i]->Release();
 		delete GUObjectArray[i];

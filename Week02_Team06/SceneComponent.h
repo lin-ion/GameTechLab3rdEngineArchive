@@ -5,6 +5,8 @@ struct ID3D11DeviceContext;
 
 class USceneComponent : public UActorComponent
 {
+	DECLARE_CLASS(USceneComponent, UActorComponent)
+
 public:
 	USceneComponent() = default;
 	virtual ~USceneComponent() = default;

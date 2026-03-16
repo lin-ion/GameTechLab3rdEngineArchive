@@ -20,6 +20,12 @@ void UWorld::InitWorld(UResourceManager& ResourceManager)
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 
+	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
+	{
+		//FScene에 등록한다.
+		int iDebug = 0;
+	}
+
 	CubeComponent->SetPosition({ 0.0f, 0.0f, 3.0f }); // 카메라 앞에 배치
 	CubeComponent->SetScale({ 0.5f, 0.5f, 0.5f });
 

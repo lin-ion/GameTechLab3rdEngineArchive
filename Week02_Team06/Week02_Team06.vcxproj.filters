@@ -120,7 +120,6 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
-    <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="CubeComponent.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="PickingComponent.cpp" />
@@ -206,7 +205,6 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
-    <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="CubeComponent.h" />
     <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="PickingComponent.h" />
@@ -214,6 +212,7 @@
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="FEditorViewportClient.h" />
     <ClInclude Include="Memory.h" />
+    <ClInclude Include="Macro.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

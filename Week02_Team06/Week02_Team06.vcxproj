@@ -135,7 +135,6 @@
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
     <ClCompile Include="AppConsole.cpp" />
-    <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="Containers.cpp" />
     <ClCompile Include="EngineStatics.cpp" />
     <ClCompile Include="FEditorViewportClient.cpp" />
@@ -189,7 +188,6 @@
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="AppConsole.h" />
-    <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="Containers.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="EngineStatics.h" />
@@ -209,6 +207,7 @@
     <ClInclude Include="ImGuiDrawer.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Level.h" />
+    <ClInclude Include="Macro.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="CubeComponent.h" />
     <ClInclude Include="Memory.h" />

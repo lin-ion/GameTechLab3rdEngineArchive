@@ -3,7 +3,6 @@
 
 
 #include "PrimitiveComponent.h"
-#include "CameraComponent.h"
 #include "Actor.h"
 #include "Mesh.h"
 
@@ -16,22 +15,22 @@ bool UPickingComponent::IsPicked(const UMesh* MeshData, FMatrix World)
 
     //카메라의 현재 레이를 가져옴
     //현재 카메라를 어떻게 가져올지
-    for (size_t i = 0; i < GUObjectArray.Size(); ++i)
-    {
-        if (dynamic_cast<UCameraComponent*>(GUObjectArray[i]))
-        {
-            CameraRay = static_cast<UCameraComponent*>(GUObjectArray[i])->GetCameraRayDirection();
-            CameraPos = static_cast<UCameraComponent*>(GUObjectArray[i])->GetComponentLocation();
-            break;
-        }
-    }
+  //  for (size_t i = 0; i < GUObjectArray.Size(); ++i)
+  //  {
+  //      if (dynamic_cast<UCameraComponent*>(GUObjectArray[i]))
+  //      {
+  //          CameraRay = static_cast<UCameraComponent*>(GUObjectArray[i])->GetCameraRayDirection();
+  //          CameraPos = static_cast<UCameraComponent*>(GUObjectArray[i])->GetComponentLocation();
+  //          break;
+  //      }
+  //  }
 
     CameraRay = FMatrix::TransformNormal(CameraRay, World.Inverse());
     CameraPos = FMatrix::TransformCoord(CameraPos, World.Inverse());
 
     const FVertexSimple* VertexBuffer = static_cast<const FVertexSimple*>(MeshData->GetVertexData());
 
-    for (int32 i = 0; i < MeshData->GetVertexCount(); i += 3)
+    for (uint64 i = 0; i < MeshData->GetVertexCount(); i += 3)
     { 
         if (RayIntersectsTriangle(CameraPos, CameraRay, VertexBuffer[i], VertexBuffer[i + 1], VertexBuffer[i + 2]))
         {

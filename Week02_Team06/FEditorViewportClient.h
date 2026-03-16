@@ -34,11 +34,11 @@ public:
 	FEditorViewportClient();
 public:
 	float AspectRatio = 1.0f; // width / height;
-	float FOVAngle = 60.0f; // horizontal filed of view
+	float FOVAngle = 60.0f;  // horizontal filed of view
 
 protected:
 	// TODO: Implement Orbit
-	float FarPlane = 1000.0f;
+	float FarPlane = 100.0f;
 	float NearPlane = 0.1f;
 	float isPerspective = true;
 	FViewportCameraTransform ViewTransform = { } ;

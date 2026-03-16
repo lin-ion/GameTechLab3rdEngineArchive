@@ -2,6 +2,8 @@
 #include "SceneComponent.h"
 #include "Input.h"
 
+IMPLEMENT_CLASS(USceneComponent, UActorComponent)
+
 void USceneComponent::UpdateTransform()
 {
 

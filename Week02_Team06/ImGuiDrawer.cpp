@@ -2,7 +2,6 @@
 #include "ImGuiDrawer.h"
 #include "SceneSerializer.h"
 #include "PrimitiveComponent.h"
-#include "CameraComponent.h"
 #include "FEditorViewportClient.h"
 
 UImGuiDrawer::UImGuiDrawer()

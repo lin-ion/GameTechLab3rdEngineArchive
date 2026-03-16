@@ -7,6 +7,8 @@ class UActorComponent : public UObject
 {
 	friend class AActor;
 
+	DECLARE_CLASS(UActorComponent, UObject)
+
 public:
 	UActorComponent() = default;
 	virtual ~UActorComponent() = default;
@@ -14,7 +16,6 @@ public:
 public:
 	AActor* GetOwner() const { return Owner; }
 
-	/** Templated version of GetOwner(), will return nullptr if cast fails */
 	template<class T>
 	T* GetOwner() const
 	{

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "PrimitiveComponent.h"
 
+IMPLEMENT_CLASS(UPrimitiveComponent, USceneComponent)
 
 void UPrimitiveComponent::Release()
 {
