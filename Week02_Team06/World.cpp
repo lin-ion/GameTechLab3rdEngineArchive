@@ -11,6 +11,8 @@
 #include "GizmoComponent.h"
 #include "PrimitiveComponent.h"
 
+#include "Input.h"
+
 
 void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort)
 {
@@ -26,10 +28,11 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 	CubeComponent->SetHovering(true);
+	CubeActor->RootComponent = CubeComponent;
 
 	UGizmoComponent* GizmoComponent = GizmoActor->AddComponent<UGizmoComponent>();
 	GizmoComponent->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-
+	GizmoActor->RootComponent = GizmoComponent;
 
 	//RTTI 테스트
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
@@ -48,6 +51,11 @@ void UWorld::Tick(float DeltaTime)
 	for (uint32 i = 0; i < CurrentLevel->Actors.Size(); ++i)
 	{
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
+	}
+
+	if (UInput::GetInstance().IsKeyDown(VK_LBUTTON))
+	{
+		GetPickedActor();
 	}
 }
 
@@ -71,9 +79,9 @@ AActor* UWorld::GetPickedActor()
 		const UMesh* MeshData = Primitive->GetMesh();
 		const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Primitive->GetMesh()->GetVertexData());
 
-		for (int32 i = 0; i < MeshData->GetVertexCount(); i += 3)
+		for (int32 vertexIndex = 0; vertexIndex < MeshData->GetVertexCount(); vertexIndex += 3)
 		{
-			if (RayIntersectsTriangle(_CameraPos, _CameraRay, BufferData[i], BufferData[i + 1], BufferData[i + 2]))
+			if (RayIntersectsTriangle(_CameraPos, _CameraRay, BufferData[vertexIndex], BufferData[vertexIndex + 1], BufferData[vertexIndex + 2]))
 			{
 				PickedActor = ActorArray[i];
 
