@@ -107,6 +107,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -135,10 +136,10 @@
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
     <ClCompile Include="AppConsole.cpp" />
-    <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="Containers.cpp" />
     <ClCompile Include="EngineStatics.cpp" />
     <ClCompile Include="FEditorViewportClient.cpp" />
+    <ClCompile Include="GizmoComponent.h" />
     <ClCompile Include="ImGui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -174,7 +175,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="PickingComponent.cpp" />
     <ClCompile Include="PrimitiveComponent.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
@@ -189,8 +189,6 @@
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="AppConsole.h" />
-    <ClInclude Include="StaticMeshActor.h" />
-    <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="Containers.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="EngineStatics.h" />
@@ -217,7 +215,6 @@
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.h" />
-    <ClInclude Include="PickingComponent.h" />
     <ClInclude Include="PrimitiveComponent.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResourceManager.h" />

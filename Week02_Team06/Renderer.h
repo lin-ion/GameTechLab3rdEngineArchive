@@ -23,6 +23,8 @@ public:
 	void Release();
 
 	//void OnResize(UINT width, UINT height);
+public:
+	void UpdateConstantBuffer(ID3D11DeviceContext& Context, const FMatrix& MVP, const FVector4& Color = FVector4());
 
 private:
 	void CreateRasterizerState();
@@ -33,6 +35,8 @@ private:
 
 	void CreateDepthStensilView();
 	void ReleaseDepthStensilView();
+	void CreateDepthStencilState();
+	ID3D11DepthStencilState* DepthStencilState = { nullptr };
 
 	void CreateShader(ID3D11Device& Device, const std::wstring& Filename, const D3D11_INPUT_ELEMENT_DESC Layout[], int ElemnetNum);
 	void ReleaseShader();
@@ -90,4 +94,5 @@ struct FConstantData
 	//FMatrix View;
 	//FMatrix Projection;
 	FMatrix MVP;
+	FVector4 Color;
 };

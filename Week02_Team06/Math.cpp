@@ -98,7 +98,7 @@ FMatrix FMatrix::Transpose() const
 }
 
 FMatrix FMatrix::MakeScale(const FVector& S)
-{
+{  
     FMatrix Result;
     Result.M[0][0] = S.X;
     Result.M[1][1] = S.Y;
