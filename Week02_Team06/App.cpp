@@ -19,7 +19,7 @@ UApp* GApp = nullptr;
 bool UApp::Initialize(HINSTANCE hInstance)
 {
 	GApp = this;
-	
+
 	Window = new UWindow;
 	if (!Window->Initialize(hInstance, WindowSizeWidth, WindowSizeHeight))
 	{
@@ -30,7 +30,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	Graphics->Initialize(Window->GetHWnd());
 
 	float AspectRatio = static_cast<float>(WindowSizeWidth) / WindowSizeHeight;
-	ViewportClient = new FEditorViewportClient({ 10.0f, 10.0f, 10.0f }, { 30.0f, -120.0f, 0.0f }, AspectRatio, 60.f);
+	ViewportClient = new FEditorViewportClient({ 10.0f, 10.0f, -10.0f }, { 45.0f, -45.0f, 0.0f }, AspectRatio, 60.f);
 
 	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain(), *ViewportClient);
 	Renderer->Initialize();
@@ -40,7 +40,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 
 	World = UObjectFactory::NewObject<UWorld>();
 	World->InitWorld(*ResourceManager);
-	
+
 	AActor* GizmoActor = World->SpawnActor<AActor>();
 
 	// Gizmo Picking Test용
@@ -114,6 +114,7 @@ void UApp::Run()
 			// 여기까지 Test용
 
 			ViewportClient->Tick(DeltaTime);
+
 			//GameLogic
 			World->Tick(DeltaTime);
 

@@ -14,7 +14,6 @@ protected:
 	FVector ViewRotation;
 	float Distance;
 	float OrthoSize;
-	// TODO: Implement Orbit
 
 public:
 	const FVector& GetLocation() const { return ViewLocation; }
@@ -27,8 +26,6 @@ public:
 	const FVector& GetPivotLocation() const { return ViewLocation + GetForwardVector() * Distance; }
 	const float& GetOrthoSize() const { return OrthoSize; }
 	void SetOrthoSize(const float& InOrthoSize) { OrthoSize = InOrthoSize; }
-
-	// TODO: OrthoZoom getters/setters
 
 	FVector GetRightVector() const;
 	FVector GetUpVector() const;
@@ -50,13 +47,10 @@ public:
 
 public:
 	float AspectRatio = 1.0f; // AspectRatio = width / height
-	// height = OrthographicSize
-	// width = height(OrthographicSize) * AspectRatio
 	float FOVAngle = 60.0f; // horizontal field of view
 
 protected:
-	// TODO: Implement Orbit
-	float FarPlane = 1000.0f;
+	float FarPlane = 100.0f;
 	float NearPlane = 0.1f;
 	float bIsPerspective = true;
 	FViewportCameraTransform ViewTransform;
@@ -74,8 +68,6 @@ public:
 
 	// UE에서는 Orthographic과 Perspective를 구분
 	FViewportCameraTransform& GetViewTransform() { return ViewTransform; }
-	const FViewportCameraTransform& GetViewTransform() const { return ViewTransform; }
-
 	float GetFOVAngle() const { return FOVAngle; }
 	void SetFOVAngle(float InFOVAngle) { FOVAngle = InFOVAngle; }
 	float GetAspectRatio() const { return AspectRatio; }
@@ -84,31 +76,8 @@ public:
 	void SetNearPlane(float InNearPlane) { NearPlane = InNearPlane; }
 	float GetFarPlane() const { return FarPlane; }
 	void SetFarPlane(float InFarPlane) { FarPlane = InFarPlane; }
-
 	void SetPerspective(bool bInIsPerspective);
 	const bool IsPerspective() const { return bIsPerspective; };
 	FVector GetCameraRayDirection();
-
-	// RayPicking 관련 함수로 추정
-	//	virtual void ProcessClick ( FSceneView& View,
-	//		HHitProxy* HitProxy,
-	//			FKey Key,
-	//			EInputEvent Event,
-	//			uint32 HitX,
-	//			uint32 HitY
-	//			)
-	//
-
-	// void SetCameraSetup ( const FVector& LocationForOrbiting,
-	// const FRotator& InOrbitRotation,
-	// 	 const FVector& InOrbitZoom,
-	// 	 const FVector& InOrbitLookAt,
-	// 	 const FVector& InViewLocation,
-	// 	 const FRotator& InViewRotation
-	// )
-
-	// UE 문서 참고 필요
-	// void SetOrthoZoom( float InOrthoZoom )
-
 	void Tick(float DeltaTime);
 };
