@@ -4,5 +4,3 @@
 #include "Actor.h"
 
 IMPLEMENT_CLASS(UActorComponent, UObject)
-
-
