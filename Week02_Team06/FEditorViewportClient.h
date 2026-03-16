@@ -62,16 +62,17 @@ public:
 	void SetViewLocation(const FVector& NewLocation) { ViewTransform.SetLocation(NewLocation); }
 	const FVector& GetViewRotation() const { return ViewTransform.GetRotation(); }
 	void SetViewRotation(const FVector& NewRotation) { ViewTransform.SetRotation(NewRotation); }
-
 	FViewportCameraTransform& GetViewTransform() { return ViewTransform; }
-	float GetFOVAngle() const { return FOVAngle; }
-	void SetFOVAngle(float InFOVAngle) { FOVAngle = InFOVAngle; }
+
 	float GetAspectRatio() const { return AspectRatio; }
 	void SetAspectRatio(float InAspectRatio) { AspectRatio = InAspectRatio; }
-	float GetNearPlane() const { return NearPlane; }
-	void SetNearPlane(float InNearPlane) { NearPlane = InNearPlane; }
+	float GetFOVAngle() const { return FOVAngle; }
+	void SetFOVAngle(float InFOVAngle) { FOVAngle = InFOVAngle; }
+
 	float GetFarPlane() const { return FarPlane; }
 	void SetFarPlane(float InFarPlane) { FarPlane = InFarPlane; }
+	float GetNearPlane() const { return NearPlane; }
+	void SetNearPlane(float InNearPlane) { NearPlane = InNearPlane; }
 	void SetPerspective(bool bInIsPerspective);
 	const bool IsPerspective() const { return bIsPerspective; };
 	FVector GetCameraRayDirection();
@@ -81,4 +82,5 @@ protected:
 	void HandleKeyboardMovement(float DeltaTime);
 	void HandleMouseRightDrag();
 	void HandleMouseWheel();
+	void HandleMiddleMouseDrag();
 };
