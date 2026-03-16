@@ -20,5 +20,5 @@ void UCubeComponent::operator delete(void* ptr) noexcept
 
 void UCubeComponent::Render(ID3D11DeviceContext& DevcieContext)
 {
-    MeshAsset->Draw(DevcieContext);
+    MeshData->Draw(DevcieContext);
 }
