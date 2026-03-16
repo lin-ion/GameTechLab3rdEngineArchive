@@ -4,6 +4,8 @@
 
 class AActor;
 class UResourceManager;
+class FEditorViewportClient;
+class UPrimitiveComponent;
 
 class UWorld : public UObject
 {
@@ -20,8 +22,6 @@ public:
 
 		//언리얼 5로 가면서 NewObject로 바뀌었다고는 하는데.. 교차검증 필요 
 		//ConstructObject와 뭐가 다른건지
-		
-		//Con
 		T* Actor           = NewObject<T>();
 		Actor->OwningLevel = CurrentLevel;
 
@@ -33,17 +33,28 @@ public:
 		Actor->BeginPlay();
 		return Actor;
 	}
+	virtual void Release() override;
 
 public:
-	virtual void InitWorld(UResourceManager& ResourceManager);
+	virtual void InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort);
 	void	Tick(float DeltaTime);
+	
+	AActor* GetPickedActor();
+	 
+private:
+	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
 
-	virtual void Release() override;
+private:
 
 public:
 	// 월드가 시작할 때 초기 레벨
 	//원래는 월드가 바뀌어도 그려지는 PersisteneLevel과 StreamingLevel로 구별됨
 	ULevel* CurrentLevel = { nullptr };
+	FEditorViewportClient* ViewPort = { nullptr };
+
+	//Picked된 Actor
+	AActor* PickedActor = { nullptr };
+
 
 	//나중엔 씬을 만들것임
 	//FScene* Scene = { nullptr };

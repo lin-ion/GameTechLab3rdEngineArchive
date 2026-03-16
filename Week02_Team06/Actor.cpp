@@ -15,6 +15,11 @@ UWorld* AActor::GetWorld()
 	return nullptr;
 }
 
+void AActor::BeginPlay()
+{
+
+}
+
 void AActor::Tick(float DeltaTime)
 {
 	for (int32 i = 0; i < Components.Size(); ++i)
