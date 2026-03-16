@@ -95,7 +95,7 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		
 		if (GRenderer)
 		{
-			GRenderer->OnResize(width, height);
+			//GRenderer->OnResize(width, height);
 		}
 
 		break;

@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "SceneSerializer.h"
-#include "Scene.h"
 #include "json.hpp"
 #include <fstream>
 

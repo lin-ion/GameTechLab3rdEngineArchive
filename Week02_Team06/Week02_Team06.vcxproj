@@ -189,6 +189,7 @@
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="AppConsole.h" />
+    <ClInclude Include="StaticMeshActor.h" />
     <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="Containers.h" />
     <ClInclude Include="Cube.h" />

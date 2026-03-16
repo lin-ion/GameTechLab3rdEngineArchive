@@ -1,6 +1,5 @@
 #pragma once
 
-class UScene;
 extern class URenderer* GRenderer;
 
 class UWorld;
@@ -23,7 +22,7 @@ public:
 
 	void Release();
 
-	void OnResize(UINT width, UINT height);
+	//void OnResize(UINT width, UINT height);
 
 private:
 	void CreateRasterizerState();
@@ -76,8 +75,6 @@ private:
 
 	//라인
 	ID3D11Buffer* LineAxisBuffer = { nullptr };
-
-	UScene* CurrentScene = nullptr;
 
 	//그리드
 	ID3D11Buffer* GridBuffer = { nullptr };

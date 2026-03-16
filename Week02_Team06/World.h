@@ -1,6 +1,9 @@
 #pragma once
 #include "Object.h"
 #include "Level.h"
+#include "ImGuiDrawer.h"
+
+#include <typeinfo>
 
 class AActor;
 class UResourceManager;
@@ -19,6 +22,11 @@ public:
 		static_assert(std::is_base_of_v<AActor, T>, "T must derive from AActor");
 
 		T* Actor           = NewObject<T>();
+
+		//Test
+		T* obj = new T;
+		UE_LOG("%s\n", typeid(T).name());
+
 		Actor->OwningLevel = CurrentLevel;
 
 		if (CurrentLevel)
@@ -31,15 +39,19 @@ public:
 	}
 
 public:
-	virtual void InitWorld(UResourceManager& ResourceManager);
+	virtual void InitWorld(UResourceManager* ResourceManager);
 	void	Tick(float DeltaTime);
 
 	virtual void Release() override;
+
+	void SpawnActorFromEditor(FSpawnParameters params);
 
 public:
 	// 월드가 시작할 때 초기 레벨
 	//원래는 월드가 바뀌어도 그려지는 PersisteneLevel과 StreamingLevel로 구별됨
 	ULevel* CurrentLevel = { nullptr };
+
+	UResourceManager* resourceManager;
 
 	//나중엔 씬을 만들것임
 

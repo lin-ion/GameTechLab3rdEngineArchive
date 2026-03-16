@@ -14,7 +14,6 @@
 
 // Test
 #include "SceneSerializer.h"
-#include "Scene.h"
 
 bool UApp::Initialize(HINSTANCE hInstance)
 {
@@ -36,10 +35,10 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ResourceManager->Initialize(*Graphics->GetDevice());
 
 	World = UObjectFactory::NewObject<UWorld>();
-	World->InitWorld(*ResourceManager);
+	World->InitWorld(ResourceManager);
 
 	ImGuiDrawer = new UImGuiDrawer;
-	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
+	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext(), World);
 
 
 	// console Test Code
@@ -47,6 +46,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 
 
 	// json Test Code
+	/*
 	UScene* scene = SceneManager->GetCurrentScene();
 	scene->data.Version = 1;
 	scene->data.NextUUID = 8;
@@ -55,6 +55,8 @@ bool UApp::Initialize(HINSTANCE hInstance)
 
 	UE_LOG("Version: %d", scene->data.Version);
 	UE_LOG("NextUUID: %d", scene->data.NextUUID);
+	* 
+	*/
 
 	return true;
 }

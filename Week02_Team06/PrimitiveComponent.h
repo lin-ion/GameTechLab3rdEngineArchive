@@ -3,6 +3,13 @@
 
 class UMesh;
 
+enum class EPrimitiveType
+{
+	Cube,
+	Sphere,
+	Traiangle
+};
+
 class UPrimitiveComponent : public USceneComponent
 {
 public:

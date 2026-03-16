@@ -4,18 +4,21 @@
 #include "PrimitiveComponent.h"
 #include "CameraComponent.h"
 #include "FEditorViewportClient.h"
+#include "World.h"
+#include "StaticMeshActor.h"
 
 UImGuiDrawer::UImGuiDrawer()
 {
 	CreateAppConsole();
 }
 
-void UImGuiDrawer::Initialize(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* context)
+void UImGuiDrawer::Initialize(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* context, UWorld* world)
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplWin32_Init((void*)hwnd);
 	ImGui_ImplDX11_Init(device, context);
+	World = world;
 }
 
 void UImGuiDrawer::BeginFrame()
@@ -48,7 +51,7 @@ void UImGuiDrawer::UpdateUI(FEditorViewportClient* ViewportClient)
 
 	ImGui::End();
 
-	//DrawPrimitiveDataPanel();
+	DrawPrimitiveDataPanel();
 
 	if(bShowConsole)
 		DrawAppConsole("Jungle Tech Lab", &bShowConsole);
@@ -69,13 +72,19 @@ void UImGuiDrawer::DrawSpawnPanel()
 	const char* items[] = { "Cube", "Sphere", "Triangle" };
 	ImGui::Combo("Primitive", &primitiveType, items, IM_ARRAYSIZE(items));
 
+	actorParameters.PrimitiveType = items[primitiveType];
+	actorParameters.Location = ActorLocation;
+	actorParameters.Rotation = ActorRotation;
+	actorParameters.Scale = ActorScale;
+
 	if (ImGui::Button("Spawn"))
 	{
-		// 오브젝트 스폰하는 함수
+		World->SpawnActorFromEditor(actorParameters);
 	}
 	ImGui::SameLine();
 	static int count = 0;
 	ImGui::InputInt("Count", &count);
+	actorParameters.Count = count;
 }
 
 void UImGuiDrawer::DrawSceneControlPanel()
@@ -111,32 +120,33 @@ void UImGuiDrawer::DrawCameraPanel(FEditorViewportClient* ViewportClient)
 	ViewportClient->SetViewRotation({ Rotation[0], Rotation[1], Rotation[2] });
 }
 
-void UImGuiDrawer::DrawPrimitiveDataPanel(UPrimitiveComponent* SelectedTarget)
+void UImGuiDrawer::DrawPrimitiveDataPanel()
 {
 	ImGui::Begin("Jungle Property Window");
 
-	FVector currentPos = SelectedTarget->GetPosition();
-	static float pos[3] = { currentPos.X, currentPos.Y, currentPos.Z};
-
-	if (ImGui::DragFloat3("Translation", pos, 0.1f))
+	if (SelectedTarget)
 	{
-		SelectedTarget->SetPosition(FVector(pos[0], pos[1], pos[2]));
+		ActorLocation = SelectedTarget->GetPosition();
+		ActorRotation = SelectedTarget->GetRotation();
+		ActorScale = SelectedTarget->GetScale();
 	}
 
-	FVector currentRot = SelectedTarget->GetRotation();
-	static float rot[3] = { currentRot.X, currentRot.Y, currentRot.Z };
-
-	if (ImGui::DragFloat3("Rotation", rot, 0.1f))
+	
+	if (ImGui::DragFloat3("Translation", &ActorLocation.X, 0.1f))
 	{
-		SelectedTarget->SetRotation(FVector(rot[0], rot[1], rot[2]));
+		if (SelectedTarget) SelectedTarget->SetPosition(ActorLocation);
 	}
 
-	FVector currentScl = SelectedTarget->GetScale();
-	static float scl[3] = { currentScl.X, currentScl.Y, currentScl.Z };
-
-	if (ImGui::DragFloat3("Scale", scl, 0.1f))
+	
+	if (ImGui::DragFloat3("Rotation", &ActorRotation.X, 0.1f))
 	{
-		SelectedTarget->SetRotation(FVector(scl[0], scl[1], scl[2]));
+		if (SelectedTarget) SelectedTarget->SetRotation(ActorRotation);
+	}
+
+	
+	if (ImGui::DragFloat3("Scale", &ActorScale.X, 0.1f))
+	{
+		if (SelectedTarget) SelectedTarget->SetScale(ActorScale);
 	}
 
 	ImGui::End();

@@ -4,6 +4,7 @@
 #include "World.h"
 #include "ObjectFactory.h"
 
+
 UWorld* AActor::GetWorld()
 {
 	if (OwningLevel)

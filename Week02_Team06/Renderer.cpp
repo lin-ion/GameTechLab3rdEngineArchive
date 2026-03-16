@@ -56,9 +56,6 @@ void URenderer::BeginScene()
 
 void URenderer::Render(UWorld* World)
 {
-	if (!Scene) return;
-	CurrentScene = Scene;
-
 	if (!World) return;
 
 	// 셰이더
@@ -353,6 +350,7 @@ void URenderer::RenderAxisLine()
 	}
 }
 
+/*
 
 void URenderer::OnResize(UINT width, UINT height)
 {
@@ -389,6 +387,7 @@ void URenderer::OnResize(UINT width, UINT height)
 	io.DisplaySize = ImVec2((float)width, (float)height);
 
 }
+*/
 
 void URenderer::RenderPrimitive(UWorld* World)
 {
