@@ -43,13 +43,11 @@ public:
 	void	Tick(float DeltaTime);
 	
 	AActor* GetPickedActor();
-	 
+	void SpawnActorFromEditor(FSpawnParameters params);
+
 private:
 	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
 
-private:
-
-	void SpawnActorFromEditor(FSpawnParameters params);
 
 public:
 	// 월드가 시작할 때 초기 레벨

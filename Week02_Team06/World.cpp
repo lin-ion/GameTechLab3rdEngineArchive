@@ -23,7 +23,7 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	ViewPort = _ViewPort;
 
 
-	resourceManager = ResourceManager;
+	resourceManager = &ResourceManager;
 
 	AActor* CubeActor = SpawnActor<AActor>();
 	AActor* GizmoActor = SpawnActor<AActor>();
