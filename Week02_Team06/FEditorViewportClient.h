@@ -3,24 +3,31 @@
 // Define FViewportCameraTransform first, before it's used in FEditorViewportClient
 struct FViewportCameraTransform
 {
+public:
+	FViewportCameraTransform(FVector inViewLocation, FVector inViewRotation, float inDistance)
+		: ViewLocation(inViewLocation), ViewRotation(inViewRotation), Distance(inDistance), OrthoSize(1000.0f) {
+	}
+
 protected:
 	FVector ViewLocation;
-
 	// TODO: Use FRotator instead of FVector
 	FVector ViewRotation;
-
+	float Distance;
+	float OrthoSize;
 	// TODO: Implement Orbit
-	//FVector LookAt;
-
-	// TODO: Implement Orthogonal Zoom
-	//float OrthoZoom;
 
 public:
 	const FVector& GetLocation() const { return ViewLocation; }
 	void SetLocation(const FVector& InLocation) { ViewLocation = InLocation; }
 	const FVector& GetRotation() const { return ViewRotation; }
 	void SetRotation(const FVector& InRotation) { ViewRotation = InRotation; }
-	// TODO: Implement LookAt getters/setters
+
+	const float& GetDistance() const { return Distance; }
+	void SetDistance(const float& InDistance) { Distance = InDistance; }
+	const FVector& GetPivotLocation() const { return ViewLocation + GetForwardVector() * Distance; }
+	const float& GetOrthoSize() const { return OrthoSize; }
+	void SetOrthoSize(const float& InOrthoSize) { OrthoSize = InOrthoSize; }
+
 	// TODO: OrthoZoom getters/setters
 
 	FVector GetRightVector() const;
@@ -31,10 +38,20 @@ public:
 class FEditorViewportClient
 {
 public:
-	FEditorViewportClient() = default;
+	FEditorViewportClient(FVector inViewLocation, FVector inViewRotation, float inAspectRatio, float FOVAngle)
+		: ViewTransform(inViewLocation, inViewRotation, inViewLocation.Length()), AspectRatio(inAspectRatio), FOVAngle(FOVAngle)
+	{
+		float InitialDistance = ViewTransform.GetLocation().Length(); // same as InViewLocation.Length()
+		float HalfFOVRadian = Math::ToRadians(FOVAngle) / 2.0f;
+		float InitialOrthoSize = 2.0f * InitialDistance * tanf(HalfFOVRadian);
+
+		ViewTransform.SetOrthoSize(InitialOrthoSize);
+	}
 
 public:
-	float AspectRatio = 1.0f; // width / height;
+	float AspectRatio = 1.0f; // AspectRatio = width / height
+	// height = OrthographicSize
+	// width = height(OrthographicSize) * AspectRatio
 	float FOVAngle = 60.0f; // horizontal field of view
 
 protected:
@@ -42,7 +59,7 @@ protected:
 	float FarPlane = 1000.0f;
 	float NearPlane = 0.1f;
 	float bIsPerspective = true;
-	FViewportCameraTransform ViewTransform = { } ;
+	FViewportCameraTransform ViewTransform;
 
 	POINT PreviousMousePosition = { 0, 0 };
 
@@ -59,8 +76,8 @@ public:
 	FViewportCameraTransform& GetViewTransform() { return ViewTransform; }
 	const FViewportCameraTransform& GetViewTransform() const { return ViewTransform; }
 
-	float GetFOV() const { return FOVAngle; }
-	void SetFOV(float InFOV) { FOVAngle = InFOV; }
+	float GetFOVAngle() const { return FOVAngle; }
+	void SetFOVAngle(float InFOVAngle) { FOVAngle = InFOVAngle; }
 	float GetAspectRatio() const { return AspectRatio; }
 	void SetAspectRatio(float InAspectRatio) { AspectRatio = InAspectRatio; }
 	float GetNearPlane() const { return NearPlane; }
@@ -68,8 +85,7 @@ public:
 	float GetFarPlane() const { return FarPlane; }
 	void SetFarPlane(float InFarPlane) { FarPlane = InFarPlane; }
 
-
-	void SetPerspective(bool bInIsPerspective) { bIsPerspective = bInIsPerspective; }
+	void SetPerspective(bool bInIsPerspective);
 	const bool IsPerspective() const { return bIsPerspective; };
 	FVector GetCameraRayDirection();
 

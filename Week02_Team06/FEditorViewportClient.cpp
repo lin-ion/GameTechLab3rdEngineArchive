@@ -21,10 +21,39 @@ FMatrix FEditorViewportClient::GetProjectionMatrix() const
 	}
 	else
 	{
-		float OrthoWidth = 10.0f;
-		float OrthoHeight = AspectRatio * OrthoWidth;
+		float OrthoHeight = ViewTransform.GetOrthoSize();
+		float OrthoWidth = OrthoHeight * AspectRatio;
 		return FMatrix::MakeOrthographic(OrthoWidth, OrthoHeight, NearPlane, FarPlane);
 	}
+}
+
+void FEditorViewportClient::SetPerspective(bool bInIsPerspective)
+{
+	if (bIsPerspective == bInIsPerspective)
+	{
+		return;
+	}
+
+	// Orthographic to Perspective
+	if (bInIsPerspective)
+	{
+		// D = S / (2 * tan(FOV / 2))
+		float HalfFOVRadian = Math::ToRadians(FOVAngle) / 2.0f;
+		float NewDistance = ViewTransform.GetOrthoSize() / (2.0f * tanf(HalfFOVRadian));
+		FVector NewViewLocation = ViewTransform.GetPivotLocation() - ViewTransform.GetForwardVector() * NewDistance;
+		ViewTransform.SetLocation(NewViewLocation);
+		ViewTransform.SetDistance(NewDistance);
+	}
+	// Perspective to Orthographic
+	else
+	{
+		// S = 2 * D * tan(FOV / 2)
+		float HalfFOVRadian = Math::ToRadians(FOVAngle) / 2.0f;
+		float NewOrthoSize = 2.0f * ViewTransform.GetDistance() * tanf(HalfFOVRadian);
+		ViewTransform.SetOrthoSize(NewOrthoSize);
+	}
+
+	bIsPerspective = bInIsPerspective;
 }
 
 FVector FEditorViewportClient::GetCameraRayDirection()
@@ -59,33 +88,34 @@ FVector FEditorViewportClient::GetCameraRayDirection()
 }
 
 void FEditorViewportClient::Tick(float DeltaTime) {
-	FViewportCameraTransform& Transform = GetViewTransform();
-	FVector CurrentLocation = Transform.GetLocation();
-
+	FVector MovementDirection = { 0.f, 0.f, 0.f };
 	if (UInput::GetInstance().IsKeyPressing('A'))
 	{
-		CurrentLocation = CurrentLocation - Transform.GetRightVector() * DeltaTime * 10.f;
+		MovementDirection = MovementDirection - ViewTransform.GetRightVector();
 	}
 	if (UInput::GetInstance().IsKeyPressing('D'))
 	{
-		CurrentLocation = CurrentLocation + Transform.GetRightVector() * DeltaTime * 10.f;
+		MovementDirection = MovementDirection + ViewTransform.GetRightVector();
 	}
 	if (UInput::GetInstance().IsKeyPressing('S'))
 	{
-		CurrentLocation = CurrentLocation - Transform.GetForwardVector() * DeltaTime * 10.f;
+		MovementDirection = MovementDirection - ViewTransform.GetForwardVector();
 	}
 	if (UInput::GetInstance().IsKeyPressing('W'))
 	{
-		CurrentLocation = CurrentLocation + Transform.GetForwardVector() * DeltaTime * 10.f;
+		MovementDirection = MovementDirection + ViewTransform.GetForwardVector();
 	}
-	ViewTransform.SetLocation(CurrentLocation);
+	MovementDirection.Normalize();
+
+	constexpr float MovementSpeed = 5.f;
+	FVector MovementLocation = ViewTransform.GetLocation() + MovementDirection * DeltaTime * MovementSpeed;
+	ViewTransform.SetLocation(MovementLocation);
 
 	// Mouse Drag
 	if (UInput::GetInstance().IsKeyDown(VK_RBUTTON))
 	{
 		PreviousMousePosition = UInput::GetInstance().GetMousePosition();
 	}
-	//if (UInput::GetInstance().IsKeyUp(VK_RBUTTON))
 	if (UInput::GetInstance().IsKeyPressing(VK_RBUTTON))
 	{
 		POINT CurrentMousePosition = UInput::GetInstance().GetMousePosition();
@@ -93,13 +123,36 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x); // Yaw
 		PreviousMousePosition = CurrentMousePosition;
 
-		float Sensitivity = 0.2f;
-		FVector Rotation = GetViewRotation();
-		Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * Sensitivity), -89.0f, 89.0f);
-		Rotation.Y = Rotation.Y + (DeltaMouseX * Sensitivity);
-		SetViewRotation(Rotation);
+		// TODO: DeltaMouse는 해상도에 비례하므로 다양한 해상도에서 감도 실험 필요
+		float RotationSpeed = 0.2f;
+		FVector Rotation = ViewTransform.GetRotation();
+		Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.0f, 89.0f);
+		Rotation.Y = Rotation.Y + (DeltaMouseX * RotationSpeed);
+		ViewTransform.SetRotation(Rotation);
 	}
 
+	// Mouse Wheel Zoom
+	float MouseWheelDelta = UInput::GetInstance().GetMouseWheelDelta();
+	if (UInput::GetInstance().GetMouseWheelDelta() != 0.0f)
+	{
+		if (bIsPerspective)
+		{
+			constexpr float PerspectiveZoomSpeed = 1.0f;
+			float NewDistance = ViewTransform.GetDistance() - MouseWheelDelta * PerspectiveZoomSpeed;
+			NewDistance = (std::max)(NewDistance, 1.0f);
+			FVector NewViewLocation = ViewTransform.GetPivotLocation() - ViewTransform.GetForwardVector() * NewDistance;
+			ViewTransform.SetLocation(NewViewLocation);
+			ViewTransform.SetDistance(NewDistance);
+			UE_LOG(("Distance: " + std::to_string(ViewTransform.GetDistance())).c_str());
+		}
+		else {
+			constexpr float OrthoZoomSpeed = 1.0f;
+			float NewOrthoSize = ViewTransform.GetOrthoSize() - MouseWheelDelta * OrthoZoomSpeed;
+			NewOrthoSize = (std::max)(NewOrthoSize, 1.0f);
+			ViewTransform.SetOrthoSize(NewOrthoSize);
+			UE_LOG(("OrthoSize: " + std::to_string(ViewTransform.GetOrthoSize())).c_str());
+		}
+	}
 }
 
 FVector FViewportCameraTransform::GetRightVector() const
