@@ -20,7 +20,9 @@ public:
 public:
 	UWorld* GetWorld();
 
-	virtual void BeginPlay() {}
+	//사실상 Actor 준비는 안함
+	virtual void BeginPlay();
+
 	virtual void Tick(float DeltaTime);
 	virtual void Release() override;
 
@@ -32,6 +34,7 @@ public:
 		static_assert(std::is_base_of_v<UActorComponent, T>, "T must derive from UActorComponent");
 		T* ActorComponent    = NewObject<T>();
 		ActorComponent->Owner = this;
+		ActorComponent->InitializeComponent();
 
 		Components.PushBack(ActorComponent);
 		return ActorComponent;

@@ -89,20 +89,22 @@ FVector FEditorViewportClient::GetCameraRayDirection()
 }
 
 void FEditorViewportClient::Tick(float DeltaTime) {
+	UInput& Input = UInput::GetInstance();
+
 	FVector MovementDirection = { 0.f, 0.f, 0.f };
-	if (UInput::GetInstance().IsKeyPressing('A'))
+	if (Input.IsKeyPressing('A'))
 	{
 		MovementDirection = MovementDirection - ViewTransform.GetRightVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('D'))
+	if (Input.IsKeyPressing('D'))
 	{
 		MovementDirection = MovementDirection + ViewTransform.GetRightVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('S'))
+	if (Input.IsKeyPressing('S'))
 	{
 		MovementDirection = MovementDirection - ViewTransform.GetForwardVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('W'))
+	if (Input.IsKeyPressing('W'))
 	{
 		MovementDirection = MovementDirection + ViewTransform.GetForwardVector();
 	}
@@ -112,50 +114,35 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 	FVector MovementLocation = ViewTransform.GetLocation() + MovementDirection * DeltaTime * MovementSpeed;
 	ViewTransform.SetLocation(MovementLocation);
 
-	// Gizmo Picking Test용
-	if (UInput::GetInstance().IsKeyDown(VK_LBUTTON))
+	// Mouse Drag (Right Click)
+	if (Input.IsKeyPressing(VK_RBUTTON))
 	{
-		// 임시 피킹 부품을 생성하여 검수를 의뢰합니다.
-		static UPickingComponent TestPicker;
+		POINT MouseDelta = Input.GetMousePositionDelta();
+		bool bIsOrbiting = Input.IsKeyPressing(VK_LMENU);
 
-		if (MainGizmo)
-		{
-			EGizmoAxis Picked = MainGizmo->CheckGizmoPicking(&TestPicker);
+		float DeltaMouseY = static_cast<float>(MouseDelta.y); // Pitch
+		float DeltaMouseX = static_cast<float>(MouseDelta.x); // Yaw
 
-			// 결과에 따른 로그 출력 (Visual Studio 출력창에서 확인 가능)
-			if (Picked != EGizmoAxis::None)
-			{
-				std::string AxisName[] = { "None", "Center", "X", "Y", "Z" };
-				std::string Msg = "Gizmo Picked: " + AxisName[(int)Picked] + "\n";
-				OutputDebugStringA(Msg.c_str());
-			}
-		}
-	}
-	// 여기까지 Test용
-
-	// Mouse Drag
-	if (UInput::GetInstance().IsKeyDown(VK_RBUTTON))
-	{
-		PreviousMousePosition = UInput::GetInstance().GetMousePosition();
-	}
-	if (UInput::GetInstance().IsKeyPressing(VK_RBUTTON))
-	{
-		POINT CurrentMousePosition = UInput::GetInstance().GetMousePosition();
-		float DeltaMouseY = static_cast<float>(CurrentMousePosition.y - PreviousMousePosition.y); // Pitch
-		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x); // Yaw
-		PreviousMousePosition = CurrentMousePosition;
-
-		// TODO: DeltaMouse는 해상도에 비례하므로 다양한 해상도에서 감도 실험 필요
 		float RotationSpeed = 0.2f;
 		FVector Rotation = ViewTransform.GetRotation();
 		Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.0f, 89.0f);
 		Rotation.Y = Rotation.Y + (DeltaMouseX * RotationSpeed);
-		ViewTransform.SetRotation(Rotation);
+
+		if (bIsOrbiting)
+		{
+			FVector OldPivotLocation = ViewTransform.GetPivotLocation();
+			ViewTransform.SetRotation(Rotation);
+			FVector NewPivotLocation = ViewTransform.GetPivotLocation();
+			ViewTransform.SetLocation(ViewTransform.GetLocation() + (OldPivotLocation - NewPivotLocation));
+		}
+		else {
+			ViewTransform.SetRotation(Rotation);
+		}
 	}
 
 	// Mouse Wheel Zoom
-	float MouseWheelDelta = UInput::GetInstance().GetMouseWheelDelta();
-	if (UInput::GetInstance().GetMouseWheelDelta() != 0.0f)
+	float MouseWheelDelta = Input.GetMouseWheelDelta();
+	if (MouseWheelDelta != 0.0f)
 	{
 		if (bIsPerspective)
 		{

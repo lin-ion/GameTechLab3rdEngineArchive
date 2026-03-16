@@ -13,16 +13,12 @@ public:
     virtual ~UCubeComponent() = default;
 
 public:
+    //new, delete 오버로딩
     void* operator new(size_t size);
     void operator delete(void* ptr) noexcept;
 
 public:
-    UMesh* GetMesh() { return MeshAsset;  }
-    void SetMesh(UMesh* InMesh) { MeshAsset = InMesh; }
+    void TickComponent(float DeltaTime) override {};
+    virtual void Render(ID3D11DeviceContext* DeviceContext, const FMatrix& ViewProjection, ID3D11Buffer* ConstantBuffer) override;
 
-    virtual void Render(ID3D11DeviceContext& DevcieContext) override;
-      
-private:
-    UMesh* MeshAsset = nullptr;
-    bool bIsMeshOwner = false; // AddMesh로 직접 만들었을 때 메모리 해제를 위한 플래그
 };

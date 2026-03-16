@@ -2,6 +2,7 @@
 #include <windowsx.h> 
 #include "Window.h"
 #include "Input.h"
+#include "Renderer.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -72,12 +73,22 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	case WM_MOUSEWHEEL:
 	{
 		float MouseWheelDelta = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
-		UInput::GetInstance().AccumulateMouseWheelDelta(MouseWheelDelta);
+		UInput::GetInstance().AddMouseWheelDelta(MouseWheelDelta);
 		break;
 	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
+	case WM_SIZE:
+		UINT width = LOWORD(lParam);
+		UINT height = HIWORD(lParam);
+		
+		if (GRenderer)
+		{
+			GRenderer->OnResize(width, height);
+		}
+
+		break;
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);

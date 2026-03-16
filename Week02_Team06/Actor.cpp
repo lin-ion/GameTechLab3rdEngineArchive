@@ -4,6 +4,7 @@
 #include "World.h"
 #include "ObjectFactory.h"
 
+
 IMPLEMENT_CLASS(AActor , UObject)
 
 UWorld* AActor::GetWorld()
@@ -13,6 +14,11 @@ UWorld* AActor::GetWorld()
 		return OwningLevel->OwningWorld;
 	}
 	return nullptr;
+}
+
+void AActor::BeginPlay()
+{
+
 }
 
 void AActor::Tick(float DeltaTime)

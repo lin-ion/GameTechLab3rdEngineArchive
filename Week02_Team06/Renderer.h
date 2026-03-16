@@ -1,4 +1,7 @@
 #pragma once
+
+extern class URenderer* GRenderer;
+
 class UWorld;
 class FEditorViewportClient;
 
@@ -13,8 +16,9 @@ struct FConstantData
 class URenderer
 {
 public:
-	URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, const FEditorViewportClient& _ViewportClient);
+	URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, FEditorViewportClient& _ViewportClient);
 	~URenderer() = default;
+
 public:
 	void Initialize();
 
@@ -25,6 +29,8 @@ public:
 	void EndScene();
 
 	void Release();
+
+	void OnResize(UINT width, UINT height);
 
 public:
 	void UpdateConstantBuffer(ID3D11DeviceContext& Context, const FMatrix& MVP, const FVector4& Color = FVector4());
@@ -58,7 +64,6 @@ private:
 	void RenderAxisLine();
 	void RenderPrimitive(UWorld* World);
 
-
 private:
 	ID3D11Device* Device = { nullptr };
 	ID3D11DeviceContext* DeviceContext = { nullptr };
@@ -90,6 +95,6 @@ private:
 	ID3D11Buffer* GridBuffer = { nullptr };
 	int GridVertexCount = 0;
 
-	const FEditorViewportClient& ViewportClient;
+	FEditorViewportClient& ViewportClient;
 };
 

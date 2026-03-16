@@ -23,7 +23,8 @@ public:
 		return dynamic_cast<T*>(GetOwner());
 	}
 
-	virtual void BeginPlay() {}
+	virtual void InitializeComponent() {};
+
 	virtual void TickComponent(float DeltaTime) {}
 
 private:
