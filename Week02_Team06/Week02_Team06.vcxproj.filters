@@ -128,6 +128,7 @@
     <ClCompile Include="GizmoComponent.h" />
     <ClCompile Include="PickingComponent.cpp" />
     <ClCompile Include="GizmoComponent.cpp" />
+    <ClCompile Include="Scene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -215,6 +216,7 @@
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Macro.h" />
     <ClInclude Include="PickingComponent.h" />
+    <ClInclude Include="Scene.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

@@ -124,11 +124,7 @@ void UApp::Release()
 		delete Renderer;
 	}
 
-	for (uint64 i = 0; i < GUObjectArray.Size(); ++i)
-	{
-		GUObjectArray[i]->Release();
-		delete GUObjectArray[i];
-	}
+	UObjectFactory::DestroyAllObjects();
 
 	if (ViewportClient)
 	{
