@@ -62,6 +62,8 @@ public:
 
     EGizmoAxis CheckGizmoPicking(UPickingComponent* Picker)
     {
+        if (!Picker) return EGizmoAxis::None;
+
         UResourceManager* ResMgr = GApp->GetResourceManager();
         UMesh* ArrowMesh = ResMgr->FindMeshData("Gizmo");
         UMesh* SphereMesh = ResMgr->FindMeshData("Sphere");
@@ -71,26 +73,19 @@ public:
         float ScaleFactor = Distance * 0.15f;
         FMatrix BaseModel = FMatrix::MakeScale({ ScaleFactor, ScaleFactor, ScaleFactor }) * GetComponentTransform();
 
-        // 1. 가운데 구(Center) 검수
-        if (SphereMesh)
-        {
-            FMatrix SphereModel = FMatrix::MakeScale({ 0.1f, 0.1f, 0.1f }) * BaseModel;
-            if (Picker->IsPicked(SphereMesh, SphereModel)) return EGizmoAxis::Center;
-        }
-
         // 2. 각 축 화살표 검수 (렌더링 때와 동일한 회전 적용)
         if (ArrowMesh)
         {
             // Y축 (Green - 기본)
-            if (Picker->IsPicked(ArrowMesh, BaseModel)) return EGizmoAxis::Y;
+            if (Picker->IsPicked(ArrowMesh, Viewport->GetViewLocation(), Viewport->GetCameraRayDirection(), BaseModel)) return EGizmoAxis::Y;
 
             // X축 (Red - Z축 -90도 회전)
             FMatrix XRotation = FMatrix::MakeRotationZ(-90.0f);
-            if (Picker->IsPicked(ArrowMesh, XRotation * BaseModel)) return EGizmoAxis::X;
+            if (Picker->IsPicked(ArrowMesh, Viewport->GetViewLocation(), Viewport->GetCameraRayDirection(), XRotation * BaseModel)) return EGizmoAxis::X;
 
             // Z축 (Blue - X축 90도 회전)
             FMatrix ZRotation = FMatrix::MakeRotationX(90.0f);
-            if (Picker->IsPicked(ArrowMesh, ZRotation * BaseModel)) return EGizmoAxis::Z;
+            if (Picker->IsPicked(ArrowMesh, Viewport->GetViewLocation(), Viewport->GetCameraRayDirection(), ZRotation * BaseModel)) return EGizmoAxis::Z;
         }
 
         return EGizmoAxis::None;

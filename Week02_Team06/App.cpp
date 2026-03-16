@@ -54,9 +54,6 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
 
-
-	World = UObjectFactory::NewObject<UWorld>();
-	World->InitWorld(*ResourceManager);
 	UE_LOG("Hello World");
 
 	return true;
@@ -102,7 +99,7 @@ void UApp::Run()
 				static UPickingComponent TestPicker;
 
 				if (MainGizmo)
-				{
+				{ 
 					EGizmoAxis Picked = MainGizmo->CheckGizmoPicking(&TestPicker);
 
 					// 결과에 따른 로그 출력 (Visual Studio 출력창에서 확인 가능)
@@ -115,7 +112,6 @@ void UApp::Run()
 				}
 			}
 			// 여기까지 Test용
-
 			ViewportClient->Tick(DeltaTime);
 			//GameLogic
 			World->Tick(DeltaTime);
@@ -155,20 +151,12 @@ void UApp::Release()
 		ImGuiDrawer = nullptr;
 	}
 
-	if (ResourceManager) ResourceManager->Release();
-	if (Renderer)        Renderer->Release();
-	if (World)           World->Release();
-
-	while (GUObjectArray.Size() > 0)
-	{
-		ResourceManager->Release();
-		delete ResourceManager;
-	}
 	if (Renderer)
 	{
 		Renderer->Release();
 		delete Renderer;
 	}
+
 	for (uint64 i = 0; i < GUObjectArray.Size(); ++i)
 	{
 		GUObjectArray[i]->Release();

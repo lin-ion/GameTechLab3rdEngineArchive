@@ -80,4 +80,3 @@ extern TArray<UObject*> GUObjectArray;
 	//		return IsA(T::StaticClass());
 	//	}
 	//
-*/
