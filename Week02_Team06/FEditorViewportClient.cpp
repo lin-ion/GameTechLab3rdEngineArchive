@@ -70,19 +70,19 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 
 	if (UInput::GetInstance().IsKeyPressing('A'))
 	{
-		CurrentLocation = CurrentLocation - Transform.GetRightVector() * DeltaTime;
+		CurrentLocation = CurrentLocation - Transform.GetRightVector() * DeltaTime * 10.f;
 	}
 	if (UInput::GetInstance().IsKeyPressing('D'))
 	{
-		CurrentLocation = CurrentLocation + Transform.GetRightVector() * DeltaTime;
+		CurrentLocation = CurrentLocation + Transform.GetRightVector() * DeltaTime * 10.f;
 	}
 	if (UInput::GetInstance().IsKeyPressing('S'))
 	{
-		CurrentLocation = CurrentLocation - Transform.GetForwardVector() * DeltaTime;
+		CurrentLocation = CurrentLocation - Transform.GetForwardVector() * DeltaTime * 10.f;
 	}
 	if (UInput::GetInstance().IsKeyPressing('W'))
 	{
-		CurrentLocation = CurrentLocation + Transform.GetForwardVector() * DeltaTime;
+		CurrentLocation = CurrentLocation + Transform.GetForwardVector() * DeltaTime * 10.f;
 	}
 	ViewTransform.SetLocation(CurrentLocation);
 
