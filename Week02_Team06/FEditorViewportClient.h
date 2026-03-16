@@ -37,6 +37,9 @@ public:
 
 class FEditorViewportClient
 {
+private:
+	class UGizmoComponent* MainGizmo = { nullptr };
+
 public:
 	FEditorViewportClient(FVector inViewLocation, FVector inViewRotation, float inAspectRatio, float FOVAngle)
 		: ViewTransform(inViewLocation, inViewRotation, inViewLocation.Length()), AspectRatio(inAspectRatio), FOVAngle(FOVAngle)

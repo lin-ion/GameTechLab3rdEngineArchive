@@ -1,4 +1,5 @@
 #pragma once
+#include "Defines.h"
 #include "SceneComponent.h"
 
 class UMesh;
@@ -9,8 +10,7 @@ class UPrimitiveComponent : public USceneComponent
 
 public:
 	UPrimitiveComponent() = default;
-	virtual ~UPrimitiveComponent() = default;
-  
+
 public:
 	void Release() override;
 	void TickComponent(float DeltaTime) override;

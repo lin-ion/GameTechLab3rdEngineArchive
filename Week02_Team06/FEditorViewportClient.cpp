@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "FEditorViewportClient.h"
+#include "PickingComponent.h"
+#include "GizmoComponent.h"
 #include "Input.h"
 
 FMatrix FEditorViewportClient::GetViewMatrix() const
@@ -109,6 +111,27 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 	constexpr float MovementSpeed = 5.f;
 	FVector MovementLocation = ViewTransform.GetLocation() + MovementDirection * DeltaTime * MovementSpeed;
 	ViewTransform.SetLocation(MovementLocation);
+
+	// Gizmo Picking Test용
+	if (UInput::GetInstance().IsKeyDown(VK_LBUTTON))
+	{
+		// 임시 피킹 부품을 생성하여 검수를 의뢰합니다.
+		static UPickingComponent TestPicker;
+
+		if (MainGizmo)
+		{
+			EGizmoAxis Picked = MainGizmo->CheckGizmoPicking(&TestPicker);
+
+			// 결과에 따른 로그 출력 (Visual Studio 출력창에서 확인 가능)
+			if (Picked != EGizmoAxis::None)
+			{
+				std::string AxisName[] = { "None", "Center", "X", "Y", "Z" };
+				std::string Msg = "Gizmo Picked: " + AxisName[(int)Picked] + "\n";
+				OutputDebugStringA(Msg.c_str());
+			}
+		}
+	}
+	// 여기까지 Test용
 
 	// Mouse Drag
 	if (UInput::GetInstance().IsKeyDown(VK_RBUTTON))

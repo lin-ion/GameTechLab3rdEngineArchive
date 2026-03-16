@@ -1,8 +1,10 @@
 #pragma once
 #include "Object.h"
 #include "Level.h"
+#include "Math.h"
 
 class AActor;
+class UGizmoComponent;
 class UResourceManager;
 
 class UWorld : public UObject
@@ -36,8 +38,9 @@ public:
 
 public:
 	virtual void InitWorld(UResourceManager& ResourceManager);
-	void	Tick(float DeltaTime);
-
+	void Tick(float DeltaTime);
+	void PickActor(const FVector& RayOrigin, const FVector& RayDir);
+	AActor* GetSelectedActor() const { return SelectedActor; }
 	virtual void Release() override;
 
 public:
@@ -47,6 +50,10 @@ public:
 
 	//나중엔 씬을 만들것임
 	//FScene* Scene = { nullptr };
+private:
+	AActor* SelectedActor = { nullptr };
+	UGizmoComponent* MainGizmo = { nullptr };
 
+	void TransferGizmo(AActor* NewTarget);
 };
 

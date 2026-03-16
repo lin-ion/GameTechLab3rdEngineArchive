@@ -358,7 +358,8 @@ void ImGui::TextAlignedV(float align_x, float size_x, const char* fmt, va_list a
     const char* text, *text_end;
     ImFormatStringToTempBufferV(&text, &text_end, fmt, args);
     const ImVec2 text_size = CalcTextSize(text, text_end);
-    size_x = CalcItemSize(ImVec2(size_x, 0.0f), 0.0f, text_size.y).x;
+    size_x = Cal
+        mSize(ImVec2(size_x, 0.0f), 0.0f, text_size.y).x;
 
     ImVec2 pos(window->DC.CursorPos.x, window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
     ImVec2 pos_max(pos.x + size_x, window->ClipRect.Max.y);
