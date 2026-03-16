@@ -111,7 +111,7 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 	FVector MovementLocation = ViewTransform.GetLocation() + MovementDirection * DeltaTime * MovementSpeed;
 	ViewTransform.SetLocation(MovementLocation);
 
-	// Mouse Drag
+	// Mouse Drag (Right Click)
 	if (UInput::GetInstance().IsKeyDown(VK_RBUTTON))
 	{
 		PreviousMousePosition = UInput::GetInstance().GetMousePosition();
@@ -119,16 +119,27 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 	if (UInput::GetInstance().IsKeyPressing(VK_RBUTTON))
 	{
 		POINT CurrentMousePosition = UInput::GetInstance().GetMousePosition();
+		bool bIsOrbiting = UInput::GetInstance().IsKeyPressing(VK_LMENU);
+
 		float DeltaMouseY = static_cast<float>(CurrentMousePosition.y - PreviousMousePosition.y); // Pitch
 		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x); // Yaw
 		PreviousMousePosition = CurrentMousePosition;
 
-		// TODO: DeltaMouse는 해상도에 비례하므로 다양한 해상도에서 감도 실험 필요
 		float RotationSpeed = 0.2f;
 		FVector Rotation = ViewTransform.GetRotation();
 		Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.0f, 89.0f);
 		Rotation.Y = Rotation.Y + (DeltaMouseX * RotationSpeed);
-		ViewTransform.SetRotation(Rotation);
+
+		if (bIsOrbiting)
+		{
+			FVector OldPivotLocation = ViewTransform.GetPivotLocation();
+			ViewTransform.SetRotation(Rotation);
+			FVector NewPivotLocation = ViewTransform.GetPivotLocation();
+			ViewTransform.SetLocation(ViewTransform.GetLocation() + (OldPivotLocation - NewPivotLocation));
+		}
+		else {
+			ViewTransform.SetRotation(Rotation);
+		}
 	}
 
 	// Mouse Wheel Zoom
