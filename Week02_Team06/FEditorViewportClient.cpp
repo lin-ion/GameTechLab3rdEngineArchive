@@ -88,20 +88,22 @@ FVector FEditorViewportClient::GetCameraRayDirection()
 }
 
 void FEditorViewportClient::Tick(float DeltaTime) {
+	UInput& Input = UInput::GetInstance();
+
 	FVector MovementDirection = { 0.f, 0.f, 0.f };
-	if (UInput::GetInstance().IsKeyPressing('A'))
+	if (Input.IsKeyPressing('A'))
 	{
 		MovementDirection = MovementDirection - ViewTransform.GetRightVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('D'))
+	if (Input.IsKeyPressing('D'))
 	{
 		MovementDirection = MovementDirection + ViewTransform.GetRightVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('S'))
+	if (Input.IsKeyPressing('S'))
 	{
 		MovementDirection = MovementDirection - ViewTransform.GetForwardVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('W'))
+	if (Input.IsKeyPressing('W'))
 	{
 		MovementDirection = MovementDirection + ViewTransform.GetForwardVector();
 	}
@@ -112,18 +114,13 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 	ViewTransform.SetLocation(MovementLocation);
 
 	// Mouse Drag (Right Click)
-	if (UInput::GetInstance().IsKeyDown(VK_RBUTTON))
+	if (Input.IsKeyPressing(VK_RBUTTON))
 	{
-		PreviousMousePosition = UInput::GetInstance().GetMousePosition();
-	}
-	if (UInput::GetInstance().IsKeyPressing(VK_RBUTTON))
-	{
-		POINT CurrentMousePosition = UInput::GetInstance().GetMousePosition();
-		bool bIsOrbiting = UInput::GetInstance().IsKeyPressing(VK_LMENU);
+		POINT MouseDelta = Input.GetMousePositionDelta();
+		bool bIsOrbiting = Input.IsKeyPressing(VK_LMENU);
 
-		float DeltaMouseY = static_cast<float>(CurrentMousePosition.y - PreviousMousePosition.y); // Pitch
-		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x); // Yaw
-		PreviousMousePosition = CurrentMousePosition;
+		float DeltaMouseY = static_cast<float>(MouseDelta.y); // Pitch
+		float DeltaMouseX = static_cast<float>(MouseDelta.x); // Yaw
 
 		float RotationSpeed = 0.2f;
 		FVector Rotation = ViewTransform.GetRotation();
@@ -143,8 +140,8 @@ void FEditorViewportClient::Tick(float DeltaTime) {
 	}
 
 	// Mouse Wheel Zoom
-	float MouseWheelDelta = UInput::GetInstance().GetMouseWheelDelta();
-	if (UInput::GetInstance().GetMouseWheelDelta() != 0.0f)
+	float MouseWheelDelta = Input.GetMouseWheelDelta();
+	if (MouseWheelDelta != 0.0f)
 	{
 		if (bIsPerspective)
 		{

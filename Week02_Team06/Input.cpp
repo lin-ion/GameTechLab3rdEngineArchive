@@ -5,6 +5,11 @@ bool UInput::Initialize()
 {
 	PreKeys.fill(false);
 	CurKeys.fill(false);
+	MousePosition = { 0, 0 };
+	MousePositionDelta = { 0, 0 };
+	PendingMousePositionDelta = { 0, 0 };
+	PendingMouseWheelDelta = 0.0f;
+	CurrentMouseWheelDelta = 0.0f;
 
 	return true;
 }
@@ -32,16 +37,19 @@ void UInput::Update()
 		}
 	}
 
-	// Mouse Wheel
 	if (io.WantCaptureMouse || !isAppFocused)
 	{
+		MousePositionDelta = { 0, 0 };
+		PendingMousePositionDelta = { 0, 0 };
 		CurrentMouseWheelDelta = 0.0f;
-		AccumulatedMouseWheelDelta = 0.0f;
+		PendingMouseWheelDelta = 0.0f;
 	}
 	else
 	{
-		CurrentMouseWheelDelta = AccumulatedMouseWheelDelta;
-		AccumulatedMouseWheelDelta = 0.0f;
+		MousePositionDelta = PendingMousePositionDelta;
+		PendingMousePositionDelta = { 0, 0 };
+		CurrentMouseWheelDelta = PendingMouseWheelDelta;
+		PendingMouseWheelDelta = 0.0f;
 	}
 }
 void UInput::Release()
@@ -67,6 +75,7 @@ bool UInput::IsKeyUp(int vKey)
 // Called from Window::WndProc when handling WM_MOUSEMOVE message
 void UInput::UpdateMousePosition(POINT MousePos)
 {
-	MousePosition.x = MousePos.x;
-	MousePosition.y = MousePos.y;
+	PendingMousePositionDelta.x += MousePos.x - MousePosition.x;
+	PendingMousePositionDelta.y += MousePos.y - MousePosition.y;
+	MousePosition = MousePos;
 }

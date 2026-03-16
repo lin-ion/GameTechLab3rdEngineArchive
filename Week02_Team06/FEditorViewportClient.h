@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-// Define FViewportCameraTransform first, before it's used in FEditorViewportClient
 struct FViewportCameraTransform
 {
 public:
@@ -50,13 +49,10 @@ public:
 	float FOVAngle = 60.0f; // horizontal field of view
 
 protected:
-	// TODO: Implement Orbit
 	float FarPlane = 100.0f;
 	float NearPlane = 0.1f;
 	float bIsPerspective = true;
 	FViewportCameraTransform ViewTransform;
-
-	POINT PreviousMousePosition = { 0, 0 };
 
 public:
 	FMatrix GetViewMatrix() const; // WorldToView
@@ -67,7 +63,6 @@ public:
 	const FVector& GetViewRotation() const { return ViewTransform.GetRotation(); }
 	void SetViewRotation(const FVector& NewRotation) { ViewTransform.SetRotation(NewRotation); }
 
-	// UE에서는 Orthographic과 Perspective를 구분
 	FViewportCameraTransform& GetViewTransform() { return ViewTransform; }
 	float GetFOVAngle() const { return FOVAngle; }
 	void SetFOVAngle(float InFOVAngle) { FOVAngle = InFOVAngle; }

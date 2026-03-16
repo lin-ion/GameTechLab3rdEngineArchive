@@ -72,7 +72,7 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	case WM_MOUSEWHEEL:
 	{
 		float MouseWheelDelta = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
-		UInput::GetInstance().AccumulateMouseWheelDelta(MouseWheelDelta);
+		UInput::GetInstance().AddMouseWheelDelta(MouseWheelDelta);
 		break;
 	}
 	case WM_DESTROY:
