@@ -120,14 +120,13 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
-    <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="CubeComponent.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
-    <ClCompile Include="PickingComponent.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="FEditorViewportClient.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="GizmoComponent.h" />
+    <ClCompile Include="PickingComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -207,14 +206,14 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
-    <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="CubeComponent.h" />
     <ClInclude Include="SceneSerializer.h" />
-    <ClInclude Include="PickingComponent.h" />
     <ClInclude Include="Gizmo.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="FEditorViewportClient.h" />
     <ClInclude Include="Memory.h" />
+    <ClInclude Include="Macro.h" />
+    <ClInclude Include="PickingComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

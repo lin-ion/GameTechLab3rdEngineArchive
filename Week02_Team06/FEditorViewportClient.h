@@ -56,7 +56,7 @@ public:
 
 protected:
 	// TODO: Implement Orbit
-	float FarPlane = 1000.0f;
+	float FarPlane = 100.0f;
 	float NearPlane = 0.1f;
 	float bIsPerspective = true;
 	FViewportCameraTransform ViewTransform;

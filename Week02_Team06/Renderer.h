@@ -5,6 +5,14 @@ extern class URenderer* GRenderer;
 class UWorld;
 class FEditorViewportClient;
 
+// TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려
+struct FConstantData
+{
+	FMatrix MVP;
+	FVector4 Color;
+};
+
+
 class URenderer
 {
 public:
@@ -51,6 +59,7 @@ private:
 	void ReleaseGridBuffer();
 
 private:
+	void UpdateConstantBuffer(const FConstantData& Data);
 	void RenderAxisLine();
 	void RenderPrimitive(UWorld* World);
 
@@ -66,6 +75,7 @@ private:
 	ID3D11DepthStencilView* DepthStensilView = { nullptr };
 
 	ID3D11RasterizerState* RasterizerState     = { nullptr };
+	ID3D11RasterizerState* RasterizerStateOutline     = { nullptr };
 
 	ID3D11Buffer* ConstantBuffer = { nullptr };
 
@@ -87,12 +97,3 @@ private:
 	const FEditorViewportClient& ViewportClient;
 };
 
-// TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려
-struct FConstantData
-{
-	//FMatrix Model;
-	//FMatrix View;
-	//FMatrix Projection;
-	FMatrix MVP;
-	FVector4 Color;
-};

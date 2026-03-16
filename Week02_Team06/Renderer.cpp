@@ -114,6 +114,20 @@ void URenderer::CreateRasterizerState()
 	RasterizerDesc.CullMode = D3D11_CULL_NONE;
 
 	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerState);
+
+
+	RasterizerDesc = {};
+	RasterizerDesc.FillMode = D3D11_FILL_SOLID;
+	RasterizerDesc.CullMode = D3D11_CULL_FRONT;  
+	RasterizerDesc.FrontCounterClockwise = FALSE;
+	RasterizerDesc.DepthClipEnable = TRUE;
+
+
+	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateOutline);
+
+
+	DeviceContext->RSSetState(RasterizerState);
+
 }
 
 void URenderer::ReleaseRasterizerState()
@@ -123,6 +137,12 @@ void URenderer::ReleaseRasterizerState()
 	{
 		RasterizerState->Release();
 		RasterizerState = nullptr;
+	}
+
+	if (RasterizerStateOutline)
+	{
+		RasterizerStateOutline->Release();
+		RasterizerStateOutline = nullptr;
 	}
 }
 
@@ -347,42 +367,39 @@ void URenderer::ReleaseGridBuffer()
 	}
 }
 
+void URenderer::UpdateConstantBuffer(const FConstantData& Data)
+{
+	D3D11_MAPPED_SUBRESOURCE MSR;
+	DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MSR);
+	memcpy(MSR.pData, &Data, sizeof(FConstantData));
+	DeviceContext->Unmap(ConstantBuffer, 0);
+	DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+}
+
 void URenderer::RenderAxisLine()
 {
-	FMatrix ViewMatrix = ViewportClient.GetViewMatrix();
-	FMatrix ProjectionMatrix = ViewportClient.GetProjectionMatrix();
+	if (!ConstantBuffer) return;
 
-	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
+	FMatrix VP = ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
+	UpdateConstantBuffer({ VP, FVector4() });
 
-	if (ConstantBuffer)
+	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+	UINT Stride = sizeof(FVertexSimple);
+	UINT Offset = 0;
+
+	// 그리드 렌더링
+	if (GridBuffer)
 	{
-		D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
-		DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
-
-		FMatrix Identity = FMatrix::Identity;
-		FMatrix MVP = Identity * ViewProjectionMatrix;
-		memcpy(ConstantBufferMSR.pData, &MVP, sizeof(FConstantData));
-
-		DeviceContext->Unmap(ConstantBuffer, 0);
-
-		DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
-		DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-
-		UINT Stride = sizeof(FVertexSimple);
-		UINT Offset = {};
-		// 그리드 렌더링 (DepthBias로 Z-파이팅 방지)
-		if (GridBuffer )
-		{
-			DeviceContext->IASetVertexBuffers(0, 1, &GridBuffer, &Stride, &Offset);
-			DeviceContext->Draw(GridVertexCount, 0);
-		}
-
-		// 축 라인 렌더링
-		DeviceContext->IASetVertexBuffers(0, 1, &LineAxisBuffer, &Stride, &Offset);
-		DeviceContext->Draw(6, 0);
-
-		DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		DeviceContext->IASetVertexBuffers(0, 1, &GridBuffer, &Stride, &Offset);
+		DeviceContext->Draw(GridVertexCount, 0);
 	}
+
+	// 축 라인 렌더링
+	DeviceContext->IASetVertexBuffers(0, 1, &LineAxisBuffer, &Stride, &Offset);
+	DeviceContext->Draw(6, 0);
+
+	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 /*
@@ -426,24 +443,25 @@ void URenderer::OnResize(UINT width, UINT height)
 
 void URenderer::RenderPrimitive(UWorld* World)
 {
-	// 2. 공통 행렬(View * Projection) 계산
-	FMatrix ViewMatrix = ViewportClient.GetViewMatrix();
-	FMatrix ProjectionMatrix = ViewportClient.GetProjectionMatrix();
-	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
-
+	FMatrix VP = ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
 	TArray<AActor*> Actors = World->CurrentLevel->Actors;
 
 	for (size_t i = 0; i < Actors.Size(); ++i)
 	{
-		UPrimitiveComponent* PrimitiveComponent = Actors[i]->GetComponentByClass<UPrimitiveComponent>();
-		if (!PrimitiveComponent) continue;
+		UPrimitiveComponent* Primitive = Actors[i]->GetComponentByClass<UPrimitiveComponent>();
+		if (!Primitive) continue;
 
-		FMatrix Model = PrimitiveComponent->GetComponentTransform();
-		FMatrix MVP = Model * ViewProjectionMatrix;
+		FMatrix Model = Primitive->GetComponentTransform();
 
-		// [수정] 수동 Map 대신 공인된 함수를 사용하여 색상 정보(0,0,0,0)를 안전하게 전달합니다.
-		UpdateConstantBuffer(*DeviceContext, MVP, { 0.f, 0.f, 0.f, 0.f });
+		// 아웃라인 패스
+		FMatrix OutlineModel = FMatrix::MakeScale(FVector(1.05f, 1.05f, 1.05f)) * Model;
+		UpdateConstantBuffer({ OutlineModel * VP, FVector4(FVector(1.f, 0.22f, 0.f), 1.f) });
+		DeviceContext->RSSetState(RasterizerStateOutline);
+		Primitive->Render(*DeviceContext);
 
-		PrimitiveComponent->Render(*DeviceContext);
+		// 원본 패스
+		UpdateConstantBuffer({ Model * VP, FVector4() });
+		DeviceContext->RSSetState(RasterizerState);
+		Primitive->Render(*DeviceContext);
 	}
 }

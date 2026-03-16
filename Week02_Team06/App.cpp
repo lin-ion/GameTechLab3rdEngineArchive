@@ -4,7 +4,7 @@
 #include "Window.h"
 #include "Renderer.h"
 #include "Input.h"
-#include "Graphics.h"a
+#include "Graphics.h"
 
 #include "ImGuiDrawer.h"
 #include "ResourceManager.h"
@@ -119,7 +119,7 @@ void UApp::Run()
 				static UPickingComponent TestPicker;
 
 				if (MainGizmo)
-				{
+				{ 
 					EGizmoAxis Picked = MainGizmo->CheckGizmoPicking(&TestPicker);
 
 					// 결과에 따른 로그 출력 (Visual Studio 출력창에서 확인 가능)
@@ -132,7 +132,6 @@ void UApp::Run()
 				}
 			}
 			// 여기까지 Test용
-
 			ViewportClient->Tick(DeltaTime);
 			//GameLogic
 			World->Tick(DeltaTime);
@@ -158,33 +157,44 @@ void UApp::Run()
 
 void UApp::Release()
 {
-	if (ImGuiDrawer) 
+	if (World)
+	{
+		World->Release();
+	}
+
+	if (ImGuiDrawer)
 	{
 		ImGuiDrawer->Release();
 		delete ImGuiDrawer;
 		ImGuiDrawer = nullptr;
 	}
 
-	if (ResourceManager) ResourceManager->Release();
-	if (Renderer)        Renderer->Release();
-	if (World)           World->Release();
-
-	while (GUObjectArray.Size() > 0)
+	if (Renderer)
 	{
-		int LastIdx = (int)GUObjectArray.Size() - 1;
-		UObject* Target = GUObjectArray[LastIdx];
-
-		if (Target)
-		{
-			UObjectFactory::DestroyObject(Target); // 내부에서 PopBack/교체 후 Release, delete 수행
-		}
-		else
-		{
-			GUObjectArray.PopBack();
-		}
+		Renderer->Release();
+		delete Renderer;
 	}
 
-	if (ViewportClient) { delete ViewportClient; ViewportClient = nullptr; }
-	if (Graphics) { Graphics->Release(); delete Graphics; Graphics = nullptr; }
-	if (Window) { Window->Release(); delete Window; Window = nullptr; }
+	for (uint64 i = 0; i < GUObjectArray.Size(); ++i)
+	{
+		GUObjectArray[i]->Release();
+		delete GUObjectArray[i];
+	}
+
+	if (ViewportClient)
+	{
+		delete ViewportClient;
+	}
+
+	if (Graphics)
+	{
+		Graphics->Release();
+		delete Graphics;
+	}
+
+	if (Window)
+	{
+		Window->Release();
+		delete Window;
+	}
 }

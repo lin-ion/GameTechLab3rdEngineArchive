@@ -22,9 +22,15 @@ PS_INPUT VS_MAIN(VS_INPUT input)
     PS_INPUT output;
     
     output.position = mul(input.position, MVP);
-
-    output.color = input.color;
     
+    if (Color.a == 1.f)
+    {
+        output.color = Color;
+    }
+    else
+    {
+        output.color = input.color;
+    }
     return output;
 }
 

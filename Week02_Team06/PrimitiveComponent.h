@@ -12,6 +12,8 @@ enum class EPrimitiveType
 
 class UPrimitiveComponent : public USceneComponent
 {
+	DECLARE_CLASS(UPrimitiveComponent, USceneComponent)
+
 public:
 	UPrimitiveComponent() = default;
 	virtual ~UPrimitiveComponent() = default;

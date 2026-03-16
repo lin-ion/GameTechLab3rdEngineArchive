@@ -21,6 +21,10 @@ public:
 	{
 		static_assert(std::is_base_of_v<AActor, T>, "T must derive from AActor");
 
+		//언리얼 5로 가면서 NewObject로 바뀌었다고는 하는데.. 교차검증 필요 
+		//ConstructObject와 뭐가 다른건지
+		
+		//Con
 		T* Actor           = NewObject<T>();
 
 		//Test
@@ -54,6 +58,7 @@ public:
 	UResourceManager* resourceManager;
 
 	//나중엔 씬을 만들것임
+	//FScene* Scene = { nullptr };
 
 };
 

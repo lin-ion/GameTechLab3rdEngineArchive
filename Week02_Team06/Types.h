@@ -2,6 +2,8 @@
 
 using int32  = int;
 using uint32 = unsigned int;
+using uint64 = unsigned long long;
+
 using FString = std::string;
 
 #include "Math.h"

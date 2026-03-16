@@ -6,9 +6,15 @@ class UMesh;
 
 class UCubeComponent : public UPrimitiveComponent
 {
+    DECLARE_CLASS(UCubeComponent, UPrimitiveComponent)
+
 public:
     UCubeComponent() = default;
     virtual ~UCubeComponent() = default;
+
+public:
+    void* operator new(size_t size);
+    void operator delete(void* ptr) noexcept;
 
 public:
     UMesh* GetMesh() { return MeshAsset;  }
