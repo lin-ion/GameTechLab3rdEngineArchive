@@ -29,7 +29,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	Graphics->Initialize(Window->GetHWnd());
 
 	float AspectRatio = static_cast<float>(WindowSizeWidth) / WindowSizeHeight;
-	ViewportClient = new FEditorViewportClient({ 10.0f, 10.0f, 10.0f }, { 30.0f, -120.0f, 0.0f }, AspectRatio, 60.f);
+	ViewportClient = new FEditorViewportClient({ 10.0f, 10.0f, -10.0f }, { 45.0f, -45.0f, 0.0f }, AspectRatio, 60.f);
 
 	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain(), *ViewportClient);
 	Renderer->Initialize();
@@ -118,6 +118,7 @@ void UApp::Run()
 			}
 			// 여기까지 Test용
 			ViewportClient->Tick(DeltaTime);
+
 			//GameLogic
 			World->Tick(DeltaTime);
 
