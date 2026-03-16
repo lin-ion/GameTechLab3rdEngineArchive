@@ -167,6 +167,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Math.cpp" />
     <ClCompile Include="CubeComponent.cpp" />
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
     <ClCompile Include="pch.cpp">
@@ -210,6 +211,7 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="CubeComponent.h" />
+    <ClInclude Include="Memory.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="pch.h" />

@@ -26,6 +26,7 @@ void URenderer::Initialize()
 	CreateConstantBuffer();
 
 	CreateLineAxisBuffer();
+	CreateGridBuffer();
 
 }
 
@@ -64,6 +65,7 @@ void URenderer::EndScene()
 
 void URenderer::Release()
 {
+	ReleaseGridBuffer();
 	ReleaseLineAxisBuffer();
 	ReleaseConstantBuffer();
 	ReleaseShader();
@@ -81,11 +83,11 @@ void URenderer::CreateRasterizerState()
 	RasterizerDesc.CullMode = D3D11_CULL_BACK;
 
 	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerState);
-
 }
 
 void URenderer::ReleaseRasterizerState()
 {
+
 	if (RasterizerState)
 	{
 		RasterizerState->Release();
@@ -233,9 +235,9 @@ void URenderer::CreateLineAxisBuffer()
 {
 	FVertexSimple Axis_Vertices[6] =
 	{
-		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {100.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f}, // X 빨강
-		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  100.f, 0.f,  0.f, 1.f, 0.f, 1.f}, // Y 초록
-		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  100.f, 0.f, 0.f, 1.f, 1.f}, // Z 파랑
+		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {50.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f}, 
+		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  50.f, 0.f,  0.f, 1.f, 0.f, 1.f}, 
+		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  50.f, 0.f, 0.f, 1.f, 1.f}, 
 	};
 
 	D3D11_BUFFER_DESC vertexBufferDesc = {};
@@ -251,6 +253,53 @@ void URenderer::CreateLineAxisBuffer()
 void URenderer::ReleaseLineAxisBuffer()
 {
 	LineAxisBuffer->Release();
+}
+
+void URenderer::CreateGridBuffer()
+{
+	const float GridSize = 200.f;
+	const float GridStep = 5.f;
+	const int   HalfCount = (int)(GridSize / GridStep); 
+	const int   LineCount = HalfCount * 2 + 1;          
+
+	GridVertexCount = LineCount * 2 * 2;
+
+	FVertexSimple GridVertices[324];
+	int idx = 0;
+
+	const float r = 0.2f, g = 0.2f, b = 0.2f, a = 1.f;
+
+	//그리드를 살짝 눈속임용으로 아래로 
+	for (int i = -HalfCount; i <= HalfCount; i++)
+	{
+		float z = i * GridStep;
+		GridVertices[idx++] = { -GridSize, -0.005f,  z, r, g, b, a };
+		GridVertices[idx++] = {  GridSize, -0.005f,  z, r, g, b, a };
+	}
+
+	for (int i = -HalfCount; i <= HalfCount; i++)
+	{
+		float x = i * GridStep;
+		GridVertices[idx++] = { x, -0.005f, -GridSize, r, g, b, a };
+		GridVertices[idx++] = { x, -0.005f,  GridSize, r, g, b, a };
+	}
+
+	D3D11_BUFFER_DESC vertexBufferDesc = {};
+	vertexBufferDesc.ByteWidth  = sizeof(FVertexSimple) * GridVertexCount;
+	vertexBufferDesc.Usage      = D3D11_USAGE_IMMUTABLE;
+	vertexBufferDesc.BindFlags  = D3D11_BIND_VERTEX_BUFFER;
+
+	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { GridVertices };
+	Device->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &GridBuffer);
+}
+
+void URenderer::ReleaseGridBuffer()
+{
+	if (GridBuffer)
+	{
+		GridBuffer->Release();
+		GridBuffer = nullptr;
+	}
 }
 
 void URenderer::RenderAxisLine()
@@ -276,6 +325,14 @@ void URenderer::RenderAxisLine()
 
 		UINT Stride = sizeof(FVertexSimple);
 		UINT Offset = {};
+		// 그리드 렌더링 (DepthBias로 Z-파이팅 방지)
+		if (GridBuffer )
+		{
+			DeviceContext->IASetVertexBuffers(0, 1, &GridBuffer, &Stride, &Offset);
+			DeviceContext->Draw(GridVertexCount, 0);
+		}
+
+		// 축 라인 렌더링
 		DeviceContext->IASetVertexBuffers(0, 1, &LineAxisBuffer, &Stride, &Offset);
 		DeviceContext->Draw(6, 0);
 
