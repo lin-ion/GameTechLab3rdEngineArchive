@@ -2,11 +2,14 @@
 
 #include "pch.h"
 #include "PrimitiveComponent.h"
+#include "PickingComponent.h"
 #include "App.h"
 #include "ResourceManager.h"
 #include "FEditorViewportClient.h"
 #include "Renderer.h"
 #include "Math.h"
+
+enum class EGizmoAxis { None, Center, X, Y, Z };
 
 class UGizmoComponent : public UPrimitiveComponent
 {
@@ -55,5 +58,41 @@ public:
             GApp->GetRenderer()->UpdateConstantBuffer(Context, (ZRotation * Model) * ViewProj, { 0.f, 0.f, 1.f, 1.f });
             ArrowMesh->Draw(Context);
         }
+    }
+
+    EGizmoAxis CheckGizmoPicking(UPickingComponent* Picker)
+    {
+        UResourceManager* ResMgr = GApp->GetResourceManager();
+        UMesh* ArrowMesh = ResMgr->FindMeshData("Gizmo");
+        UMesh* SphereMesh = ResMgr->FindMeshData("Sphere");
+
+        FEditorViewportClient* Viewport = GApp->GetViewportClient();
+        float Distance = (Viewport->GetViewLocation() - GetComponentLocation()).Length();
+        float ScaleFactor = Distance * 0.15f;
+        FMatrix BaseModel = FMatrix::MakeScale({ ScaleFactor, ScaleFactor, ScaleFactor }) * GetComponentTransform();
+
+        // 1. 가운데 구(Center) 검수
+        if (SphereMesh)
+        {
+            FMatrix SphereModel = FMatrix::MakeScale({ 0.1f, 0.1f, 0.1f }) * BaseModel;
+            if (Picker->IsPicked(SphereMesh, SphereModel)) return EGizmoAxis::Center;
+        }
+
+        // 2. 각 축 화살표 검수 (렌더링 때와 동일한 회전 적용)
+        if (ArrowMesh)
+        {
+            // Y축 (Green - 기본)
+            if (Picker->IsPicked(ArrowMesh, BaseModel)) return EGizmoAxis::Y;
+
+            // X축 (Red - Z축 -90도 회전)
+            FMatrix XRotation = FMatrix::MakeRotationZ(-90.0f);
+            if (Picker->IsPicked(ArrowMesh, XRotation * BaseModel)) return EGizmoAxis::X;
+
+            // Z축 (Blue - X축 90도 회전)
+            FMatrix ZRotation = FMatrix::MakeRotationX(90.0f);
+            if (Picker->IsPicked(ArrowMesh, ZRotation * BaseModel)) return EGizmoAxis::Z;
+        }
+
+        return EGizmoAxis::None;
     }
 };
