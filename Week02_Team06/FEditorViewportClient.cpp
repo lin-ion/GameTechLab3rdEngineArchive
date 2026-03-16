@@ -35,30 +35,29 @@ FMatrix FEditorViewportClient::GetProjectionMatrix() const
 
 FVector FEditorViewportClient::GetCameraRayDirection()
 {
-	POINT MousePostion = UInput::GetInstance().GetMousePosition();
+	POINT MousePos = UInput::GetInstance().GetMousePosition();
 
-	//far를 바라봐야함
-	FVector NDC = { 0.f ,0.f, 1.f };
+	// 1. Client 좌표로 변환 (이미 검증됨)
+	HWND hWnd = GetActiveWindow();
+	ScreenToClient(hWnd, &MousePos);
 
-	NDC.X = MousePostion.x * 2.f / WindowSizeWidth - 1;
-	NDC.Y = -MousePostion.y * 2.f / WindowSizeHeight + 1;
+	// 2. NDC 좌표 계산 (정중앙이 0,0이 되도록)
+	float NDCX = (2.0f * MousePos.x) / WindowSizeWidth - 1.0f;
+	float NDCY = 1.0f - (2.0f * MousePos.y) / WindowSizeHeight;
 
-	FVector Eye = ViewTransform.GetLocation();
-	FVector Forward = ViewTransform.GetForwardVector();
-	FVector Up = ViewTransform.GetUpVector();
+	// 3. 역행렬 준비 (View * Proj의 역행렬 하나로 통합 가능)
+	FMatrix InvViewProj = (GetViewMatrix() * GetProjectionMatrix()).Inverse();
 
-	FVector At = Eye + Forward;
+	// 4. [핵심] 근평면과 원평면의 두 점을 월드 공간으로 복원
+	// TransformCoord는 W 성분을 1로 취급하고 결과에서 W로 나누어 투영을 해제합니다.
+	FVector NearNDC = { NDCX, NDCY, 0.0f };
+	FVector FarNDC = { NDCX, NDCY, 1.0f };
 
-	//NDC 역투영 곱하기
-	FMatrix ProjectionInverse = FMatrix::MakePerspective(FOVAngle, AspectRatio, NearPlane, FarPlane).Inverse();
+	FVector WorldNear = FMatrix::TransformCoord(NearNDC, InvViewProj);
+	FVector WorldFar = FMatrix::TransformCoord(FarNDC, InvViewProj);
 
-	FMatrix ViewInverse = FMatrix::MakeLookAt(Eye, At, Up).Inverse();
-
-	FVector ViewDirection = FMatrix::TransformNormal(NDC, ProjectionInverse);
-	ViewDirection.Z = 1.f;
-
-	FVector WorldDirection = FMatrix::TransformNormal(ViewDirection, ViewInverse);
-
+	// 5. 방향 벡터 산출 및 정규화
+	FVector WorldDirection = WorldFar - WorldNear;
 	WorldDirection.Normalize();
 
 	return WorldDirection;

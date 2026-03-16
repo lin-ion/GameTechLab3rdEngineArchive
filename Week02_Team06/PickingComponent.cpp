@@ -26,7 +26,6 @@ bool UPickingComponent::IsPicked(const UMesh* MeshData, FMatrix World)
 
     // 정점 데이터 검사
     const FVertexSimple* VertexBuffer = static_cast<const FVertexSimple*>(MeshData->GetVertexData());
-    if (!VertexBuffer) return false;
 
     for (int32 i = 0; i < MeshData->GetVertexCount(); i += 3)
     { 

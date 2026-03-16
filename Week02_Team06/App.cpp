@@ -31,6 +31,8 @@ bool UApp::Initialize(HINSTANCE hInstance)
 
 	ViewportClient = new FEditorViewportClient;
 
+	ViewportClient->SetAspectRatio(static_cast<float>(WindowSizeWidth) / WindowSizeHeight);
+
 	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain(), *ViewportClient);
 	Renderer->Initialize();
 
@@ -47,8 +49,8 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	MainGizmo->SetPosition({ 0.f, 0.f, 0.f });
 
 	// 기즈모 부품 생성 및 장착
-	UGizmoComponent* GizmoComp = GizmoActor->AddComponent<UGizmoComponent>();
-	GizmoComp->SetPosition({ 0.f, 0.f, 0.f });
+	//UGizmoComponent* GizmoComp = GizmoActor->AddComponent<UGizmoComponent>();
+	//GizmoComp->SetPosition({ 0.f, 0.f, 0.f });
 
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
