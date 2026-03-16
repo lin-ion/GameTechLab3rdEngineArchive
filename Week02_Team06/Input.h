@@ -19,8 +19,11 @@ public:
 	bool IsKeyPressing(int vKey);
 	bool IsKeyUp(int vKey);
 
-	void  UpdateMousePosition(POINT MousePos);
-	const POINT GetMousePosition() const { return MousePosition;  };
+	void UpdateMousePosition(POINT MousePos);
+	const POINT GetMousePosition() const { return MousePosition; };
+
+	void AccumulateMouseWheelDelta(float Delta) { AccumulatedMouseWheelDelta += Delta; }
+	float GetMouseWheelDelta() const { return CurrentMouseWheelDelta; }
 
 public:
 	static UInput& GetInstance()
@@ -33,6 +36,7 @@ private:
 	std::array<bool, 256> PreKeys;
 	std::array<bool, 256> CurKeys;
 
-
 	POINT MousePosition;
+	float AccumulatedMouseWheelDelta = 0.0f;
+	float CurrentMouseWheelDelta = 0.0f;
 };

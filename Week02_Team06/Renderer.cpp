@@ -3,7 +3,6 @@
 #include "World.h"
 #include "Object.h"
 #include "PrimitiveComponent.h"
-#include "CameraComponent.h"
 #include "FEditorViewportClient.h"
 #include "Actor.h"
 

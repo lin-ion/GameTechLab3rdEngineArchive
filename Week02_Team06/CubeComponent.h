@@ -1,8 +1,8 @@
 #pragma once
+
 #include "PrimitiveComponent.h"
 
 class UMesh;
-struct FVertexSimple;
 
 class UCubeComponent : public UPrimitiveComponent
 {

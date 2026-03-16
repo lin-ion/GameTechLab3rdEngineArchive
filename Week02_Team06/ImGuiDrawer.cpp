@@ -2,7 +2,6 @@
 #include "ImGuiDrawer.h"
 #include "SceneSerializer.h"
 #include "PrimitiveComponent.h"
-#include "CameraComponent.h"
 #include "FEditorViewportClient.h"
 
 UImGuiDrawer::UImGuiDrawer()
@@ -90,9 +89,13 @@ void UImGuiDrawer::DrawSceneControlPanel()
 
 void UImGuiDrawer::DrawCameraPanel(FEditorViewportClient* ViewportClient)
 {
-	float FOV = ViewportClient->GetFOV();
+	bool bIsOrthogonal = !ViewportClient->IsPerspective();
+	ImGui::Checkbox("Orthogonal", &bIsOrthogonal);
+	ViewportClient->SetPerspective(!bIsOrthogonal);
+
+	float FOV = ViewportClient->GetFOVAngle();
 	ImGui::SliderFloat("FOV", &FOV, 10.0f, 120.0f);
-	ViewportClient->SetFOV(FOV);
+	ViewportClient->SetFOVAngle(FOV);
 
 	std::array<float, 3> Position = {
 			ViewportClient->GetViewLocation().X,
