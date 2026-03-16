@@ -10,9 +10,7 @@ public:
     UCubeComponent() = default;
     virtual ~UCubeComponent() = default;
 
-
 public:
-    /*Mesh는 단순 데이터*/
     UMesh* GetMesh() { return MeshAsset;  }
     void SetMesh(UMesh* InMesh) { MeshAsset = InMesh; }
 

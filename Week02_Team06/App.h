@@ -20,6 +20,10 @@ public:
 	void Run();
 	void Release();
 
+	URenderer* GetRenderer() const { return Renderer; }
+	UResourceManager* GetResourceManager() const { return ResourceManager; }
+	FEditorViewportClient* GetViewportClient() const { return ViewportClient; }
+
 private:
 	const int				   TargetFrame = { 60 };
 	float					   DeltaTime = { 1.f / TargetFrame };
@@ -37,3 +41,5 @@ private:
 	UResourceManager* ResourceManager = { nullptr };
 
 };
+
+extern UApp* GApp;

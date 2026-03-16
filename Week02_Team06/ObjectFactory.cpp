@@ -5,10 +5,10 @@
 void UObjectFactory::DestroyObject(UObject* Obj)
 {
 	if (!Obj) return;
-
-	uint32 Idx     = Obj->internalIndex;
-	uint32 LastIdx = GUObjectArray.Size() - 1;
-
+	uint32 Idx = Obj->internalIndex;
+	size_t sz = GUObjectArray.Size();
+	if (Idx >= sz) { return; }
+	uint32 LastIdx = (uint32)sz - 1;
 	if (Idx != LastIdx)
 	{
 		GUObjectArray[Idx] = GUObjectArray[LastIdx];

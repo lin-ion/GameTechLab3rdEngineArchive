@@ -1,5 +1,7 @@
 #include "pch.h"
+#include "App.h"
 #include "PickingComponent.h"
+#include "FEditorViewportClient.h"
 
 #include "PrimitiveComponent.h"
 #include "CameraComponent.h"
@@ -10,25 +12,21 @@
 
 bool UPickingComponent::IsPicked(const UMesh* MeshData, FMatrix World)
 {
-    FVector CameraRay = {};
-    FVector CameraPos = {};
+    FEditorViewportClient* Viewport = GApp->GetViewportClient();
+    if (!Viewport) return false;
 
-    //카메라의 현재 레이를 가져옴
-    //현재 카메라를 어떻게 가져올지
-    for (size_t i = 0; i < GUObjectArray.Size(); ++i)
-    {
-        if (dynamic_cast<UCameraComponent*>(GUObjectArray[i]))
-        {
-            CameraRay = static_cast<UCameraComponent*>(GUObjectArray[i])->GetCameraRayDirection();
-            CameraPos = static_cast<UCameraComponent*>(GUObjectArray[i])->GetComponentLocation();
-            break;
-        }
-    }
+    // 2. 가져온 포인터를 사용하여 레이와 위치 정보를 획득합니다.
+    FVector CameraRay = Viewport->GetCameraRayDirection();
+    FVector CameraPos = Viewport->GetViewLocation();
 
-    CameraRay = FMatrix::TransformNormal(CameraRay, World.Inverse());
-    CameraPos = FMatrix::TransformCoord(CameraPos, World.Inverse());
+    // 로컬 공간 변환 (역행렬 곱)
+    FMatrix InverseWorld = World.Inverse();
+    CameraRay = FMatrix::TransformNormal(CameraRay, InverseWorld);
+    CameraPos = FMatrix::TransformCoord(CameraPos, InverseWorld);
 
+    // 정점 데이터 검사
     const FVertexSimple* VertexBuffer = static_cast<const FVertexSimple*>(MeshData->GetVertexData());
+    if (!VertexBuffer) return false;
 
     for (int32 i = 0; i < MeshData->GetVertexCount(); i += 3)
     { 
@@ -37,7 +35,6 @@ bool UPickingComponent::IsPicked(const UMesh* MeshData, FMatrix World)
             return true;
         }
     }
-
 
     return false;
 }
