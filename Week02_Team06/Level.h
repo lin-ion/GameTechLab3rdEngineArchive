@@ -3,6 +3,7 @@
 
 class AActor;
 class UWorld;
+class UResourceManager;
 
 class ULevel : public UObject
 {
@@ -13,6 +14,7 @@ public:
 public:
 	UWorld* GetWorld();
 
+	void LoadLevel(UResourceManager& ResourceManager);
 	// Actor는 GUObjectArray가 수명 관리 — Release에서는 목록만 비움
 	virtual void Release() override;
 

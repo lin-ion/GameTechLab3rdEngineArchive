@@ -6,6 +6,7 @@
 #include <assert.h>
 
 
+#include <algorithm>
 #pragma region STL_CONTAINER
 #include <unordered_map>
 #include <array>
@@ -35,3 +36,4 @@
 #include "ImGui/imgui_impl_win32.h"
 
 #include "AppConsole.h"
+#include "Memory.h"

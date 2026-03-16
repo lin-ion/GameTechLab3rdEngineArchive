@@ -5,8 +5,12 @@
 #include "Renderer.h"
 #include "Input.h"
 #include "Graphics.h"
-#include "SceneManager.h"
+
 #include "ImGuiDrawer.h"
+#include "ResourceManager.h"
+#include "FEditorViewportClient.h"
+#include "World.h"
+#include "ObjectFactory.h"
 
 // Test
 #include "SceneSerializer.h"
@@ -23,11 +27,16 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	Graphics = new UGraphics;
 	Graphics->Initialize(Window->GetHWnd());
 
-	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain());
+	ViewportClient = new FEditorViewportClient;
+
+	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain(), *ViewportClient);
 	Renderer->Initialize();
 
-	SceneManager = new USceneManager;
-	SceneManager->Initialize(*Graphics->GetDevice());
+	ResourceManager = new UResourceManager;
+	ResourceManager->Initialize(*Graphics->GetDevice());
+
+	World = UObjectFactory::NewObject<UWorld>();
+	World->InitWorld(*ResourceManager);
 
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
@@ -83,15 +92,17 @@ void UApp::Run()
 			//input
 			UInput::GetInstance().Update();
 
-			//GameLogica
-			SceneManager->Update(DeltaTime);
+			ViewportClient->Tick(DeltaTime);
+			//GameLogic
+			World->Tick(DeltaTime);
 
+			//Render
 			Renderer->BeginScene();
-			Renderer->Render(SceneManager->GetCurrentScene());
+			Renderer->Render(World);
 
 			//ImGui
 			ImGuiDrawer->BeginFrame();
-			ImGuiDrawer->UpdateUI(SceneManager->GetCurrentScene());
+			ImGuiDrawer->UpdateUI(ViewportClient);
 			ImGuiDrawer->EndFrame();
 
 			Renderer->EndScene();
@@ -106,16 +117,38 @@ void UApp::Run()
 
 void UApp::Release()
 {
-	if (SceneManager)
+	if (ImGuiDrawer)
 	{
-		SceneManager->Release();
-		delete SceneManager;
+		ImGuiDrawer->Release();
+		delete ImGuiDrawer;
+	}
+
+	if (ResourceManager)
+	{
+		ResourceManager->Release();
+		delete ResourceManager;
 	}
 	if (Renderer)
 	{
 		Renderer->Release();
 		delete Renderer;
 	}
+
+	if (World)
+	{
+		World->Release();
+	}
+	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
+	{
+		GUObjectArray[i]->Release();
+		delete GUObjectArray[i];
+	}
+
+	if (ViewportClient)
+	{
+		delete ViewportClient;
+	}
+
 	if (Graphics)
 	{
 		Graphics->Release();
@@ -126,11 +159,5 @@ void UApp::Release()
 	{
 		Window->Release();
 		delete Window;
-	}
-
-	if (ImGuiDrawer)
-	{
-		ImGuiDrawer->Release();
-		delete ImGuiDrawer;
 	}
 }

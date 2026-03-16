@@ -73,12 +73,6 @@
     <ClCompile Include="Input.cpp">
       <Filter>App\Singleton\Input</Filter>
     </ClCompile>
-    <ClCompile Include="SceneManager.cpp">
-      <Filter>App\SceneManager</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene.cpp">
-      <Filter>App\SceneManager\Scenes</Filter>
-    </ClCompile>
     <ClCompile Include="Object.cpp">
       <Filter>Objects</Filter>
     </ClCompile>
@@ -127,9 +121,12 @@
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="ActorComponent.cpp" />
     <ClCompile Include="CameraComponent.cpp" />
-    <ClCompile Include="MeshComponent.cpp" />
+    <ClCompile Include="CubeComponent.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="PickingComponent.cpp" />
+    <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="FEditorViewportClient.cpp" />
+    <ClCompile Include="Memory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -155,12 +152,6 @@
     </ClInclude>
     <ClInclude Include="Defines.h">
       <Filter>Defines</Filter>
-    </ClInclude>
-    <ClInclude Include="SceneManager.h">
-      <Filter>App\SceneManager</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene.h">
-      <Filter>App\SceneManager\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="Object.h">
       <Filter>Objects</Filter>
@@ -210,19 +201,19 @@
     <ClInclude Include="AppConsole.h">
       <Filter>App\ImGuiDrawer</Filter>
     </ClInclude>
-    <ClInclude Include="GeometryData.h">
-      <Filter>리소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="World.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="CameraComponent.h" />
-    <ClInclude Include="MeshComponent.h" />
+    <ClInclude Include="CubeComponent.h" />
     <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="PickingComponent.h" />
     <ClInclude Include="Gizmo.h" />
+    <ClInclude Include="ResourceManager.h" />
+    <ClInclude Include="FEditorViewportClient.h" />
+    <ClInclude Include="Memory.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

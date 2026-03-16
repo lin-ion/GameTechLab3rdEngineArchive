@@ -1,14 +1,17 @@
 #include "pch.h"
 #include "Renderer.h"
-#include "Scene.h"
+#include "World.h"
 #include "Object.h"
 #include "PrimitiveComponent.h"
 #include "CameraComponent.h"
+#include "FEditorViewportClient.h"
+#include "Actor.h"
+
 
 URenderer* GRenderer = nullptr;
 
-URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain)
-	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain)
+URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, const FEditorViewportClient& _ViewportClient)
+	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain), ViewportClient(_ViewportClient)
 {
 	GRenderer = this;
 }
@@ -27,6 +30,7 @@ void URenderer::Initialize()
 	CreateConstantBuffer();
 
 	CreateLineAxisBuffer();
+	CreateGridBuffer();
 
 }
 
@@ -50,34 +54,20 @@ void URenderer::BeginScene()
 	DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 }
 
-void URenderer::Render(UScene* Scene)
+void URenderer::Render(UWorld* World)
 {
 	if (!Scene) return;
 	CurrentScene = Scene;
+
+	if (!World) return;
 
 	// 셰이더
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
 	DeviceContext->IASetInputLayout(SimpleInputLayout);
 
-
-	RenderAxisLine(Scene);
-
-
-	// 2. 공통 행렬(View * Projection) 계산
-	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
-	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
-	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
-
-	// 3. 루프 최적화: 렌더러는 명령만 내립니다.
-	for (size_t i = 0; i < GUObjectArray.Size(); ++i)
-	{
-		UPrimitiveComponent* PrimComp = dynamic_cast<UPrimitiveComponent*>(GUObjectArray[i]);
-		if (!PrimComp) continue;
-
-		// [중요] 이제 컴포넌트에게 공통 행렬과 버퍼를 넘겨주며 직접 그리라고 명령합니다.
-		PrimComp->Render(DeviceContext, ViewProjectionMatrix, ConstantBuffer);
-	}
+	RenderAxisLine();
+	RenderPrimitive(World);
 }
 
 void URenderer::EndScene()
@@ -87,6 +77,7 @@ void URenderer::EndScene()
 
 void URenderer::Release()
 {
+	ReleaseGridBuffer();
 	ReleaseLineAxisBuffer();
 	ReleaseConstantBuffer();
 	ReleaseShader();
@@ -104,11 +95,11 @@ void URenderer::CreateRasterizerState()
 	RasterizerDesc.CullMode = D3D11_CULL_BACK;
 
 	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerState);
-
 }
 
 void URenderer::ReleaseRasterizerState()
 {
+
 	if (RasterizerState)
 	{
 		RasterizerState->Release();
@@ -257,9 +248,9 @@ void URenderer::CreateLineAxisBuffer()
 {
 	FVertexSimple Axis_Vertices[6] =
 	{
-		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {100.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f}, // X 빨강
-		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  100.f, 0.f,  0.f, 1.f, 0.f, 1.f}, // Y 초록
-		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  100.f, 0.f, 0.f, 1.f, 1.f}, // Z 파랑
+		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {50.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f}, 
+		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  50.f, 0.f,  0.f, 1.f, 0.f, 1.f}, 
+		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  50.f, 0.f, 0.f, 1.f, 1.f}, 
 	};
 
 	D3D11_BUFFER_DESC vertexBufferDesc = {};
@@ -277,10 +268,57 @@ void URenderer::ReleaseLineAxisBuffer()
 	LineAxisBuffer->Release();
 }
 
-void URenderer::RenderAxisLine(UScene* Scene)
+void URenderer::CreateGridBuffer()
 {
-	FMatrix ViewMatrix = Scene->MainCamera->GetViewMatrix();
-	FMatrix ProjectionMatrix = Scene->MainCamera->GetProjectionMatrix();
+	const float GridSize = 200.f;
+	const float GridStep = 5.f;
+	const int   HalfCount = (int)(GridSize / GridStep); 
+	const int   LineCount = HalfCount * 2 + 1;          
+
+	GridVertexCount = LineCount * 2 * 2;
+
+	FVertexSimple GridVertices[324];
+	int idx = 0;
+
+	const float r = 0.2f, g = 0.2f, b = 0.2f, a = 1.f;
+
+	//그리드를 살짝 눈속임용으로 아래로 
+	for (int i = -HalfCount; i <= HalfCount; i++)
+	{
+		float z = i * GridStep;
+		GridVertices[idx++] = { -GridSize, -0.005f,  z, r, g, b, a };
+		GridVertices[idx++] = {  GridSize, -0.005f,  z, r, g, b, a };
+	}
+
+	for (int i = -HalfCount; i <= HalfCount; i++)
+	{
+		float x = i * GridStep;
+		GridVertices[idx++] = { x, -0.005f, -GridSize, r, g, b, a };
+		GridVertices[idx++] = { x, -0.005f,  GridSize, r, g, b, a };
+	}
+
+	D3D11_BUFFER_DESC vertexBufferDesc = {};
+	vertexBufferDesc.ByteWidth  = sizeof(FVertexSimple) * GridVertexCount;
+	vertexBufferDesc.Usage      = D3D11_USAGE_IMMUTABLE;
+	vertexBufferDesc.BindFlags  = D3D11_BIND_VERTEX_BUFFER;
+
+	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { GridVertices };
+	Device->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &GridBuffer);
+}
+
+void URenderer::ReleaseGridBuffer()
+{
+	if (GridBuffer)
+	{
+		GridBuffer->Release();
+		GridBuffer = nullptr;
+	}
+}
+
+void URenderer::RenderAxisLine()
+{
+	FMatrix ViewMatrix = ViewportClient.GetViewMatrix();
+	FMatrix ProjectionMatrix = ViewportClient.GetProjectionMatrix();
 
 	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
 
@@ -300,12 +338,21 @@ void URenderer::RenderAxisLine(UScene* Scene)
 
 		UINT Stride = sizeof(FVertexSimple);
 		UINT Offset = {};
-		DeviceContext->IASetVertexBuffers(0 , 1, &LineAxisBuffer, &Stride, &Offset);
+		// 그리드 렌더링 (DepthBias로 Z-파이팅 방지)
+		if (GridBuffer )
+		{
+			DeviceContext->IASetVertexBuffers(0, 1, &GridBuffer, &Stride, &Offset);
+			DeviceContext->Draw(GridVertexCount, 0);
+		}
+
+		// 축 라인 렌더링
+		DeviceContext->IASetVertexBuffers(0, 1, &LineAxisBuffer, &Stride, &Offset);
 		DeviceContext->Draw(6, 0);
 
 		DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
 }
+
 
 void URenderer::OnResize(UINT width, UINT height)
 {
@@ -340,4 +387,34 @@ void URenderer::OnResize(UINT width, UINT height)
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.DisplaySize = ImVec2((float)width, (float)height);
+
+}
+
+void URenderer::RenderPrimitive(UWorld* World)
+{
+	// 2. 공통 행렬(View * Projection) 계산
+	FMatrix ViewMatrix = ViewportClient.GetViewMatrix();
+	FMatrix ProjectionMatrix = ViewportClient.GetProjectionMatrix();
+	FMatrix ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
+
+	TArray<AActor*> Actors = World->CurrentLevel->Actors;
+
+	for (size_t i = 0; i < Actors.Size(); ++i)
+	{
+		UPrimitiveComponent* PrimitiveComponent = Actors[i]->GetComponentByClass<UPrimitiveComponent>();
+		if (!PrimitiveComponent) continue;
+
+		FMatrix Model = PrimitiveComponent->GetComponentTransform();
+		FMatrix MVP = Model * ViewProjectionMatrix;
+
+		D3D11_MAPPED_SUBRESOURCE MSR;
+
+		DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MSR);
+		memcpy(MSR.pData, &MVP, sizeof(FConstantData));
+		DeviceContext->Unmap(ConstantBuffer, 0);
+
+		DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+
+		PrimitiveComponent->Render(*DeviceContext);
+	}
 }

@@ -1,6 +1,11 @@
 #pragma once
 
-struct SceneSaveData;
+struct SceneSaveData
+{
+	std::string Name;
+	int Version;
+	int NextUUID;
+};
 
 class USceneSerializer
 {

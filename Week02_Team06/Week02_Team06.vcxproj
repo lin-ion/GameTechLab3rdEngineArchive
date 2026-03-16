@@ -138,6 +138,7 @@
     <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="Containers.cpp" />
     <ClCompile Include="EngineStatics.cpp" />
+    <ClCompile Include="FEditorViewportClient.cpp" />
     <ClCompile Include="ImGui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -165,7 +166,8 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Math.cpp" />
-    <ClCompile Include="MeshComponent.cpp" />
+    <ClCompile Include="CubeComponent.cpp" />
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
     <ClCompile Include="pch.cpp">
@@ -175,9 +177,8 @@
     <ClCompile Include="PickingComponent.cpp" />
     <ClCompile Include="PrimitiveComponent.cpp" />
     <ClCompile Include="Renderer.cpp" />
-    <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="SceneComponent.cpp" />
-    <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="Types.cpp" />
     <ClCompile Include="Mesh.cpp" />
@@ -193,7 +194,7 @@
     <ClInclude Include="Cube.h" />
     <ClInclude Include="EngineStatics.h" />
     <ClInclude Include="Enums.h" />
-    <ClInclude Include="GeometryData.h" />
+    <ClInclude Include="FEditorViewportClient.h" />
     <ClInclude Include="Gizmo.h" />
     <ClInclude Include="ImGui\imconfig.h" />
     <ClInclude Include="ImGui\imgui.h" />
@@ -209,7 +210,8 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Math.h" />
-    <ClInclude Include="MeshComponent.h" />
+    <ClInclude Include="CubeComponent.h" />
+    <ClInclude Include="Memory.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="pch.h" />
@@ -217,9 +219,8 @@
     <ClInclude Include="PickingComponent.h" />
     <ClInclude Include="PrimitiveComponent.h" />
     <ClInclude Include="Renderer.h" />
-    <ClInclude Include="Scene.h" />
+    <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="SceneComponent.h" />
-    <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="Triangle.h" />
