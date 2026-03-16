@@ -3,7 +3,6 @@
 #include "Level.h"
 #include "ImGuiDrawer.h"
 
-#include <typeinfo>
 
 class AActor;
 class UResourceManager;
@@ -26,10 +25,6 @@ public:
 		
 		//Con
 		T* Actor           = NewObject<T>();
-
-		//Test
-		T* obj = new T;
-		UE_LOG("%s\n", typeid(T).name());
 
 		Actor->OwningLevel = CurrentLevel;
 

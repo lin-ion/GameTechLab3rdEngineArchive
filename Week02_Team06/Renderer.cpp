@@ -9,7 +9,7 @@
 
 URenderer* GRenderer = nullptr;
 
-URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, const FEditorViewportClient& _ViewportClient)
+URenderer::URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, FEditorViewportClient& _ViewportClient)
 	: Device(_Device), DeviceContext(_DeviceContext), SwapChain(_SwapChain), ViewportClient(_ViewportClient)
 {
 	GRenderer = this;
@@ -402,7 +402,6 @@ void URenderer::RenderAxisLine()
 	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-/*
 
 void URenderer::OnResize(UINT width, UINT height)
 {
@@ -430,16 +429,12 @@ void URenderer::OnResize(UINT width, UINT height)
 	DeviceContext->RSSetViewports(1, &ViewportInfo);
 	DeviceContext->OMSetRenderTargets(1, &BackBufferRTV, DepthStensilView);
 
-	if (CurrentScene && CurrentScene->MainCamera)
-	{
-		CurrentScene->MainCamera->SetAspectRatio((float)width / (float)height);
-	}
+	ViewportClient.SetAspectRatio((float)width / (float)height);
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.DisplaySize = ImVec2((float)width, (float)height);
 
 }
-*/
 
 void URenderer::RenderPrimitive(UWorld* World)
 {

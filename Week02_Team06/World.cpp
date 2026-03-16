@@ -67,12 +67,9 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 		{
 			return;
 		}
-		// 추후 다른 preimitive들도 추가 예정
 
 		actor->RootComponent->SetPosition(params.Location);
 		actor->RootComponent->SetRotation(params.Rotation);
 		actor->RootComponent->SetScale(params.Scale);
-
-		UE_LOG("GUObject.Size : %d", GUObjectArray.Size());
 	}
 }

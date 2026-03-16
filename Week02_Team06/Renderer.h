@@ -16,7 +16,7 @@ struct FConstantData
 class URenderer
 {
 public:
-	URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, const FEditorViewportClient& _ViewportClient);
+	URenderer(ID3D11Device* _Device, ID3D11DeviceContext* _DeviceContext, IDXGISwapChain* _SwapChain, FEditorViewportClient& _ViewportClient);
 	~URenderer() = default;
 
 public:
@@ -30,7 +30,8 @@ public:
 
 	void Release();
 
-	//void OnResize(UINT width, UINT height);
+	void OnResize(UINT width, UINT height);
+
 public:
 	void UpdateConstantBuffer(ID3D11DeviceContext& Context, const FMatrix& MVP, const FVector4& Color = FVector4());
 
@@ -94,6 +95,6 @@ private:
 	ID3D11Buffer* GridBuffer = { nullptr };
 	int GridVertexCount = 0;
 
-	const FEditorViewportClient& ViewportClient;
+	FEditorViewportClient& ViewportClient;
 };
 
