@@ -21,6 +21,7 @@ void URenderer::Initialize()
 	CreateRenderTargetView();
 	CreateDepthStensilView();
 	CreateRasterizerState();
+	CreateDepthStencilState();
 
 	CreateShader(*Device, TEXT("ShaderW0.hlsl"), FVertexSimple::Elements, FVertexSimple::ElementNum);
 	CreateConstantBuffer();
@@ -39,7 +40,7 @@ void URenderer::BeginScene()
 	DeviceContext->RSSetViewports(1, &ViewportInfo);
 	DeviceContext->RSSetState(RasterizerState);
 	DeviceContext->OMSetRenderTargets(1, &BackBufferRTV, DepthStensilView);
-
+	DeviceContext->OMSetDepthStencilState(DepthStencilState, 1);
 
 	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
@@ -71,16 +72,38 @@ void URenderer::Release()
 	ReleaseShader();
 
 	DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	if (DepthStencilState)
+	{
+		DepthStencilState->Release();
+		DepthStencilState = nullptr;
+	}
 	ReleaseRasterizerState();
 	ReleaseDepthStensilView();
 	ReleaseRenderTargetView();
+}
+
+void URenderer::UpdateConstantBuffer(ID3D11DeviceContext& Context, const FMatrix& MVP, const FVector4& Color)
+{
+	if (!ConstantBuffer) return;
+
+	FConstantData Data;
+	Data.MVP = MVP;
+	Data.Color = Color;
+
+	D3D11_MAPPED_SUBRESOURCE MSR;
+	Context.Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MSR);
+	memcpy(MSR.pData, &Data, sizeof(FConstantData));
+	Context.Unmap(ConstantBuffer, 0);
+
+	Context.VSSetConstantBuffers(0, 1, &ConstantBuffer);
+	Context.PSSetConstantBuffers(0, 1, &ConstantBuffer);
 }
 
 void URenderer::CreateRasterizerState()
 {
 	D3D11_RASTERIZER_DESC RasterizerDesc = {};
 	RasterizerDesc.FillMode = D3D11_FILL_SOLID;
-	RasterizerDesc.CullMode = D3D11_CULL_BACK;
+	RasterizerDesc.CullMode = D3D11_CULL_NONE;
 
 	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerState);
 }
@@ -161,6 +184,19 @@ void URenderer::ReleaseDepthStensilView()
 		DepthBuffer->Release();
 		DepthBuffer = nullptr;
 	}
+}
+
+void URenderer::CreateDepthStencilState()
+{
+	D3D11_DEPTH_STENCIL_DESC dsDesc = {};
+
+	dsDesc.DepthEnable = TRUE;
+	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	dsDesc.StencilEnable = FALSE;
+
+	// 헤더에서 바꾼 변수명(DepthStencilState)에 저장합니다.
+	Device->CreateDepthStencilState(&dsDesc, &DepthStencilState);
 }
 
 void URenderer::CreateShader(ID3D11Device& Device, const std::wstring& Filename, const D3D11_INPUT_ELEMENT_DESC Layout[], int ElementNum)
@@ -357,13 +393,8 @@ void URenderer::RenderPrimitive(UWorld* World)
 		FMatrix Model = PrimitiveComponent->GetComponentTransform();
 		FMatrix MVP = Model * ViewProjectionMatrix;
 
-		D3D11_MAPPED_SUBRESOURCE MSR;
-
-		DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MSR);
-		memcpy(MSR.pData, &MVP, sizeof(FConstantData));
-		DeviceContext->Unmap(ConstantBuffer, 0);
-
-		DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+		// [수정] 수동 Map 대신 공인된 함수를 사용하여 색상 정보(0,0,0,0)를 안전하게 전달합니다.
+		UpdateConstantBuffer(*DeviceContext, MVP, { 0.f, 0.f, 0.f, 0.f });
 
 		PrimitiveComponent->Render(*DeviceContext);
 	}
