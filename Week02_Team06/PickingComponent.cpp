@@ -23,7 +23,6 @@ bool UPickingComponent::IsPicked(const UMesh* MeshData, FVector _CameraPos, FVec
         }
     }
 
-
     return false;
 }
 

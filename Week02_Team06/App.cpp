@@ -14,15 +14,11 @@
 #include "Actor.h"
 #include "GizmoComponent.h"
 
-UApp* GApp = nullptr;
-
 // Test
 #include "SceneSerializer.h"
 
 bool UApp::Initialize(HINSTANCE hInstance)
 {
-	GApp = this;
-	
 	Window = new UWindow;
 	if (!Window->Initialize(hInstance, WindowSizeWidth, WindowSizeHeight))
 	{
@@ -42,18 +38,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ResourceManager->Initialize(*Graphics->GetDevice());
 
 	World = UObjectFactory::NewObject<UWorld>();
-
-	World->InitWorld(ResourceManager);
-
-	AActor* GizmoActor = World->SpawnActor<AActor>();
-
-	// Gizmo Picking Test용
-	MainGizmo = GizmoActor->AddComponent<UGizmoComponent>();
-	MainGizmo->SetPosition({ 0.f, 0.f, 0.f });
-
-	// 기즈모 부품 생성 및 장착
-	UGizmoComponent* GizmoComp = GizmoActor->AddComponent<UGizmoComponent>();
-	GizmoComp->SetPosition({ 0.f, 0.f, 0.f });
+	World->InitWorld(*ResourceManager, ViewportClient);
 
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext(), World);
