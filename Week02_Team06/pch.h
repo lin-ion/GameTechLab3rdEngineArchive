@@ -23,6 +23,10 @@
 #include <d3dcompiler.h>
 #pragma endregion D3D11_LIB
 
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
+#include "AppConsole.h"
 
 #include "Defines.h"
 
@@ -30,10 +34,3 @@
 #include "Containers.h"
 #include "EngineStatics.h"
 
-
-#include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_dx11.h"
-#include "ImGui/imgui_impl_win32.h"
-
-#include "AppConsole.h"
-#include "Memory.h"

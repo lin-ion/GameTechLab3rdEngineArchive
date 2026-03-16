@@ -61,28 +61,18 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 
 	switch (message)
 	{
-	case WM_LBUTTONDOWN:
-	{
-		//POINT MousePos = {};
-		//MousePos.x = GET_X_LPARAM(lParam);
-		//MousePos.y = GET_Y_LPARAM(lParam);
-		//UInput::GetInstance().UpdateMousePosition(MousePos);
-		break;
-	}
-	case WM_RBUTTONDOWN:
-	{
-		//POINT MousePos = {};
-		//MousePos.x = GET_X_LPARAM(lParam);
-		//MousePos.y = GET_Y_LPARAM(lParam);
-		//UInput::GetInstance().UpdateMousePosition(MousePos);
-		break;
-	}
 	case WM_MOUSEMOVE:
 	{
 		POINT MousePos = {};
 		MousePos.x = GET_X_LPARAM(lParam);
 		MousePos.y = GET_Y_LPARAM(lParam);
 		UInput::GetInstance().UpdateMousePosition(MousePos);
+		break;
+	}
+	case WM_MOUSEWHEEL:
+	{
+		float MouseWheelDelta = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
+		UInput::GetInstance().AccumulateMouseWheelDelta(MouseWheelDelta);
 		break;
 	}
 	case WM_DESTROY:

@@ -18,6 +18,7 @@ public:
 		NumVertices = VertexCount;
 		Stride = sizeof(T);
 		ByteWidth = sizeof(T) * VertexCount;
+		VertexData = Vertices;
 
 		// 정점 버퍼 생성
 		D3D11_BUFFER_DESC VertexBufferDesc = {};

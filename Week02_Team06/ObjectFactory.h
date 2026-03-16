@@ -13,7 +13,7 @@ public:
 		static_assert(std::is_base_of_v<UObject, T>, "T must derive from UObject");
 
 		T* Obj             = new T;
-		Obj->UUID          = UEngineStatics::GetUUID();
+		Obj->UUID = UEngineStatics::GetUUID();
 		Obj->internalIndex = GUObjectArray.Size();
 		GUObjectArray.PushBack(Obj);
 

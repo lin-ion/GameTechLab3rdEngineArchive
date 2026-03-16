@@ -1,39 +1,28 @@
 #include "pch.h"
-#include "App.h"
 #include "PickingComponent.h"
-#include "FEditorViewportClient.h"
+
 
 #include "PrimitiveComponent.h"
-#include "CameraComponent.h"
 #include "Actor.h"
 #include "Mesh.h"
 
 #include "Input.h"
 
-bool UPickingComponent::IsPicked(const UMesh* MeshData, FMatrix World)
+bool UPickingComponent::IsPicked(const UMesh* MeshData, FVector _CameraPos, FVector _CameraRay, FMatrix World)
 {
-    FEditorViewportClient* Viewport = GApp->GetViewportClient();
-    if (!Viewport) return false;
-
-    // 2. 가져온 포인터를 사용하여 레이와 위치 정보를 획득합니다.
-    FVector CameraRay = Viewport->GetCameraRayDirection();
-    FVector CameraPos = Viewport->GetViewLocation();
-
-    // 로컬 공간 변환 (역행렬 곱)
-    FMatrix InverseWorld = World.Inverse();
-    CameraRay = FMatrix::TransformNormal(CameraRay, InverseWorld);
-    CameraPos = FMatrix::TransformCoord(CameraPos, InverseWorld);
-
-    // 정점 데이터 검사
-    const FVertexSimple* VertexBuffer = static_cast<const FVertexSimple*>(MeshData->GetVertexData());
+    _CameraPos = FMatrix::TransformCoord(_CameraPos, World.Inverse());
+    _CameraRay = FMatrix::TransformNormal(_CameraRay, World.Inverse());
+  
+    const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(MeshData->GetVertexData());
 
     for (int32 i = 0; i < MeshData->GetVertexCount(); i += 3)
     { 
-        if (RayIntersectsTriangle(CameraPos, CameraRay, VertexBuffer[i], VertexBuffer[i + 1], VertexBuffer[i + 2]))
+        if (RayIntersectsTriangle(_CameraPos, _CameraRay, BufferData[i], BufferData[i + 1], BufferData[i + 2]))
         {
             return true;
         }
     }
+
 
     return false;
 }
@@ -66,7 +55,7 @@ bool UPickingComponent::RayIntersectsTriangle(const FVector& CameraPos, const FV
     FVector S = CameraPos - Vertex0;
 
     // u 범위 체크
-    float U = InvDet * S.Dot(RayCrossE2);   
+    float U = InvDet * S.Dot(RayCrossE2);
     if (U < 0.f || U > 1.f) return false;
 
     // v 범위 체크

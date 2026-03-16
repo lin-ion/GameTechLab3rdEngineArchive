@@ -2,13 +2,13 @@
 
 //vector
 template<typename T>
-inline T& TArray<T>::operator[](uint32 index)
+inline T& TArray<T>::operator[](uint64 index)
 {
 	return Container[index];
 }
 
 template<typename T>
-inline const T& TArray<T>::operator[](uint32 index) const
+inline const T& TArray<T>::operator[](uint64 index) const
 {
 	return Container[index];
 }
@@ -32,7 +32,7 @@ inline void TArray<T>::PopBack()
 }
 
 template<typename T>
-inline size_t TArray<T>::Size()
+inline uint64 TArray<T>::Size()
 {
 	return Container.size();;
 }
@@ -44,20 +44,20 @@ inline void TArray<T>::Clear()
 }
 
 //array
-template<typename T, size_t N>
-inline T& TStaticArray<T, N>::operator[](size_t index)
+template<typename T, uint64 N>
+inline T& TStaticArray<T, N>::operator[](uint64 index)
 {
 	return Container[index];
 }
 
-template<typename T, size_t N>
-inline const T& TStaticArray<T, N>::operator[](size_t index) const
+template<typename T, uint64 N>
+inline const T& TStaticArray<T, N>::operator[](uint64 index) const
 {
 	return Container[index];
 }
 
-template<typename T, size_t N>
-inline void TStaticArray<T, N>::fill(size_t size)
+template<typename T, uint64 N>
+inline void TStaticArray<T, N>::fill(uint64 size)
 {
 	Container.fill(size);
 }
