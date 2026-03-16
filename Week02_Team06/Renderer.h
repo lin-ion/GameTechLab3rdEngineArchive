@@ -37,6 +37,9 @@ private:
 	void CreateLineAxisBuffer();
 	void ReleaseLineAxisBuffer();
 
+	void CreateGridBuffer();
+	void ReleaseGridBuffer();
+
 private:
 	void RenderAxisLine();
 	void RenderPrimitive(UWorld* World);
@@ -53,8 +56,7 @@ private:
 	ID3D11Texture2D* DepthBuffer = { nullptr };
 	ID3D11DepthStencilView* DepthStensilView = { nullptr };
 
-	ID3D11RasterizerState* RasterizerState = { nullptr };
-
+	ID3D11RasterizerState* RasterizerState     = { nullptr };
 
 	ID3D11Buffer* ConstantBuffer = { nullptr };
 
@@ -68,6 +70,10 @@ private:
 
 	//라인
 	ID3D11Buffer* LineAxisBuffer = { nullptr };
+
+	//그리드
+	ID3D11Buffer* GridBuffer = { nullptr };
+	int GridVertexCount = 0;
 
 	const FEditorViewportClient& ViewportClient;
 };
