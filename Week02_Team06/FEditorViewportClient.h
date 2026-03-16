@@ -76,4 +76,9 @@ public:
 	const bool IsPerspective() const { return bIsPerspective; };
 	FVector GetCameraRayDirection();
 	void Tick(float DeltaTime);
+
+protected:
+	void HandleKeyboardMovement(float DeltaTime);
+	void HandleMouseRightDrag();
+	void HandleMouseWheel();
 };
