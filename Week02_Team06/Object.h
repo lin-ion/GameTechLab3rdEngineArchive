@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Containers.h"
+#include "EngineStatics.h"
+
 class UObject
 {
 	friend class UObjectFactory;

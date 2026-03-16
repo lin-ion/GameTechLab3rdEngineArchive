@@ -2,9 +2,11 @@
 #include "Object.h"
 #include "Level.h"
 #include "ImGuiDrawer.h"
+#include "Math.h"
 
 
 class AActor;
+class UGizmoComponent;
 class UResourceManager;
 class FEditorViewportClient;
 class UPrimitiveComponent;
@@ -40,13 +42,15 @@ public:
 
 public:
 	virtual void InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort);
-	void	Tick(float DeltaTime);
+	void Tick(float DeltaTime);
 	
 	AActor* GetPickedActor();
 	void SpawnActorFromEditor(FSpawnParameters params);
 
 private:
 	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
+	void PickActor(const FVector& RayOrigin, const FVector& RayDir);
+	AActor* GetSelectedActor() const { return SelectedActor; }
 
 
 public:
@@ -63,6 +67,10 @@ public:
 
 	//나중엔 씬을 만들것임
 	//FScene* Scene = { nullptr };
+private:
+	AActor* SelectedActor = { nullptr };
+	UGizmoComponent* MainGizmo = { nullptr };
 
+	void TransferGizmo(AActor* NewTarget);
 };
 

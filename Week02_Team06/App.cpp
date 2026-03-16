@@ -31,6 +31,8 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	float AspectRatio = static_cast<float>(WindowSizeWidth) / WindowSizeHeight;
 	ViewportClient = new FEditorViewportClient({ 10.0f, 10.0f, -10.0f }, { 45.0f, -45.0f, 0.0f }, AspectRatio, 60.f);
 
+	ViewportClient->SetAspectRatio(static_cast<float>(WindowSizeWidth) / WindowSizeHeight);
+
 	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain(), *ViewportClient);
 	Renderer->Initialize();
 
@@ -97,26 +99,6 @@ void UApp::Run()
 			//input
 			UInput::GetInstance().Update();
 
-			// Gizmo Picking Test용
-			if (UInput::GetInstance().IsKeyDown(VK_LBUTTON))
-			{
-				// 임시 피킹 부품을 생성하여 검수를 의뢰합니다.
-				static UPickingComponent TestPicker;
-
-				if (MainGizmo)
-				{ 
-					EGizmoAxis Picked = MainGizmo->CheckGizmoPicking(&TestPicker);
-
-					// 결과에 따른 로그 출력 (Visual Studio 출력창에서 확인 가능)
-					if (Picked != EGizmoAxis::None)
-					{
-						std::string AxisName[] = { "None", "Center", "X", "Y", "Z" };
-						std::string Msg = "Gizmo Picked: " + AxisName[(int)Picked] + "\n";
-						OutputDebugStringA(Msg.c_str());
-					}
-				}
-			}
-			// 여기까지 Test용
 			ViewportClient->Tick(DeltaTime);
 
 			//GameLogic

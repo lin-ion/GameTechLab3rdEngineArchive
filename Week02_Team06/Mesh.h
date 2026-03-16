@@ -25,6 +25,7 @@ public:
 		VertexBufferDesc.ByteWidth = ByteWidth;
 		VertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 		VertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		VertexData = Vertices;
 
 		D3D11_SUBRESOURCE_DATA VertexBufferSRD = { Vertices };
 

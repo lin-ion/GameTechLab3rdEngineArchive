@@ -1,4 +1,5 @@
 #pragma once
+#include "Defines.h"
 #include "SceneComponent.h"
 
 class UMesh;
@@ -7,7 +8,7 @@ enum class EPrimitiveType
 {
 	Cube,
 	Sphere,
-	Traiangle
+	Triangle
 };
 
 class UPrimitiveComponent : public USceneComponent
@@ -16,23 +17,20 @@ class UPrimitiveComponent : public USceneComponent
 
 public:
 	UPrimitiveComponent() = default;
-	virtual ~UPrimitiveComponent() = default;
-  
+
 public:
-	const UMesh* GetMesh() { return MeshData; } const
-	void   SetMesh(UMesh* _MeshData) { MeshData = _MeshData; }
+	const UMesh* GetMesh() const { return MeshData; }
+	void  SetMesh(UMesh* _MeshData) { MeshData = _MeshData; }
 
 	bool  IsSelected() { return IsHovering; }
-	void  SetHovering(bool bFlag) { IsHovering = bFlag;};
+	void  SetHovering(bool bFlag) { IsHovering = bFlag; };
 
 public:
 	void TickComponent(float DeltaTime) override;
-
-	virtual void Render(ID3D11DeviceContext& DevcieContext) = 0;
+	virtual void Render(ID3D11DeviceContext* DeviceContext, const FMatrix& ViewProjection, ID3D11Buffer* ConstantBuffer) override = 0;
 	void Release() override;
 
-protected :
+protected:
 	bool IsHovering = { false };
 	UMesh* MeshData = nullptr;
-
 };

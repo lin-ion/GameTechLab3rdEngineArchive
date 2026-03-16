@@ -4,7 +4,6 @@
 
 IMPLEMENT_CLASS(UCubeComponent, UPrimitiveComponent)
 
-
 void* UCubeComponent::operator new(size_t size)
 {
     UE_LOG("Create : CubeComponent");
@@ -18,7 +17,8 @@ void UCubeComponent::operator delete(void* ptr) noexcept
     return ::operator delete(ptr);
 }
 
-void UCubeComponent::Render(ID3D11DeviceContext& DevcieContext)
+void UCubeComponent::Render(ID3D11DeviceContext* DeviceContext, const FMatrix& ViewProjection, ID3D11Buffer* ConstantBuffer)
 {
-    MeshData->Draw(DevcieContext);
+    if (!DeviceContext || !MeshData) return;
+    MeshData->Draw(*DeviceContext);
 }
