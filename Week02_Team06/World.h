@@ -65,8 +65,6 @@ public:
 	FEditorViewportClient* ViewPort = { nullptr };
 
 	//Picked된 Actor
-	AActor* PickedActor = { nullptr };
-
 
 	UResourceManager* resourceManager;
 

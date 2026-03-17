@@ -4,14 +4,7 @@ extern class URenderer* GRenderer;
 
 class UWorld;
 class FEditorViewportClient;
-
-// TODO: 두 개의 상수버퍼를 만들어서 Model과 View,Projection을 따로 보내는 방법 고려
-struct FConstantData
-{
-	FMatrix MVP;
-	FVector4 Color;
-};
-
+class UPrimitiveComponent;
 
 class URenderer
 {
@@ -44,9 +37,9 @@ private:
 
 	void CreateDepthStensilView();
 	void ReleaseDepthStensilView();
+
 	void CreateDepthStencilState();
-	ID3D11DepthStencilState* DepthStencilState = { nullptr };
-	ID3D11DepthStencilState* DepthStencilStateNoDepth = { nullptr };
+	void ReleaseDepthStencilState();
 
 	void CreateShader(ID3D11Device& Device, const std::wstring& Filename, const D3D11_INPUT_ELEMENT_DESC Layout[], int ElemnetNum);
 	void ReleaseShader();
@@ -65,6 +58,9 @@ private:
 	void RenderAxisLine();
 	void RenderPrimitive(UWorld* World);
 
+#ifdef _DEBUG
+	void RenderDebug();
+#endif
 private:
 	ID3D11Device* Device = { nullptr };
 	ID3D11DeviceContext* DeviceContext = { nullptr };
@@ -76,8 +72,12 @@ private:
 	ID3D11Texture2D* DepthBuffer = { nullptr };
 	ID3D11DepthStencilView* DepthStensilView = { nullptr };
 
-	ID3D11RasterizerState* RasterizerState     = { nullptr };
+	ID3D11RasterizerState* RasterizerStateDefault     = { nullptr };
 	ID3D11RasterizerState* RasterizerStateOutline     = { nullptr };
+	ID3D11RasterizerState* RasterizerStateDebug		  = { nullptr };
+
+	ID3D11DepthStencilState* DepthStencilStateNoDepth = { nullptr };
+	ID3D11DepthStencilState* DepthStencilState = { nullptr };
 
 	ID3D11Buffer* ConstantBuffer = { nullptr };
 
@@ -97,5 +97,7 @@ private:
 	int GridVertexCount = 0;
 
 	FEditorViewportClient& ViewportClient;
+
+	TArray<UPrimitiveComponent*> DebugRenderList = {};
 };
 

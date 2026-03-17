@@ -24,6 +24,14 @@ struct FVertexSimple
 	};
 };
 
+
+//VertexSimplePass
+struct FConstantData
+{
+	FMatrix MVP;
+	FVector4 Color;
+};
+
 // GPU에 보낼 상수 버퍼 16비트 정렬 강제
 struct alignas(16) FTransformConstantBuffer
 {

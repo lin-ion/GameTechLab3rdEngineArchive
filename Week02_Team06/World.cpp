@@ -9,6 +9,7 @@
 
 #include "CubeComponent.h"
 #include "ArrowComponent.h"
+#include "RingComponent.h"
 #include "LocationGizmoActor.h"
 #include "RotationGizmoActor.h"
 
@@ -25,10 +26,9 @@
 void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort)
 {
 	CurrentLevel = UObjectFactory::NewObject<ULevel>();
-    AActor* GizmoStorageActor = SpawnActor<AActor>();
-
 	CurrentLevel->OwningWorld = this;
 	ViewPort = _ViewPort;
+
 
 
 	resourceManager = &ResourceManager;
@@ -37,17 +37,21 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	LocationGizmoActor = SpawnActor<ULocationGizmoActor>();
 	RotationGizmoActor = SpawnActor<URotationGizmoActor>();
 
-
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
+
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 	CubeComponent->SetHovering(true);
 	CubeActor->RootComponent = CubeComponent;
+	CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
 
+	RotationGizmoActor->RingY->SetMesh(ResourceManager.FindMeshData("GizmoRotation"));
+	RotationGizmoActor->RingX->SetMesh(ResourceManager.FindMeshData("GizmoRotation"));
+	RotationGizmoActor->RingZ->SetMesh(ResourceManager.FindMeshData("GizmoRotation"));
 
-	LocationGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
-	LocationGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
-	LocationGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
+	LocationGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
+	LocationGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
+	LocationGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
 	LocationGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
 	{
@@ -67,7 +71,7 @@ void UWorld::Tick(float DeltaTime)
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-	// 드래그 중이라면
+
 	UInput& Input = UInput::GetInstance();
 	FVector RayOrigin = ViewPort->GetViewLocation();
 	FVector RayDir = ViewPort->GetCameraRayDirection();
@@ -200,7 +204,6 @@ AActor* UWorld::GetPickedActor()
 
 				if (Math::RayIntersectsTriangle(_CameraPos, _CameraRay, V0, V1, V2))
 				{
-					PickedActor = TargetActor;
 					return TargetActor;
 				}
 			}

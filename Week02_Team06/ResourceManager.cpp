@@ -10,7 +10,7 @@ void UResourceManager::Initialize(ID3D11Device& Device)
 	LoadResourceData(Device, "Sphere", "Content/Meshes/Sphere.json", nullptr, 0);
 	LoadResourceData(Device, "Cube", "Content/Meshes/Cube.json", nullptr, 0);
 	LoadResourceData(Device, "Triangle", "Content/Meshes/Triangle.json", nullptr, 0);
-	LoadResourceData(Device, "GizmoPosition", "Content/Meshes/GizmoPosition.json", nullptr, 0);
+	LoadResourceData(Device, "GizmoLocation", "Content/Meshes/GizmoLocation.json", nullptr, 0);
 	LoadResourceData(Device, "GizmoRotation", "Content/Meshes/GizmoRotation.json", nullptr, 0);
 }
 

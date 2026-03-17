@@ -1,13 +1,14 @@
 #pragma once
-#include "Defines.h"
 #include "Object.h"
 #include "ActorComponent.h"
 #include "ObjectFactory.h"
-#include "Containers.h"
 
 class UWorld;
 class ULevel;
 class USceneComponent;
+class UActorComponent;
+class USphereComponent;
+class UArrowComponent;
 
 class AActor : public UObject
 {
@@ -20,7 +21,6 @@ public:
 public:
 	UWorld* GetWorld();
 
-	//사실상 Actor 준비는 안함
 	virtual void BeginPlay();
 
 	virtual void Tick(float DeltaTime);
@@ -55,11 +55,10 @@ public:
 		uint64 currentSize = Components.Size();
 		for (uint64 i = 0; i < currentSize; ++i)
 		{
-			// 다형성을 이용해 해당 타입의 부품을 찾습니다.
-			T* Target = dynamic_cast<T*>(Components[i]);
-			if (Target)
+			if(Components[i]->IsA(T::StaticClass()))
 			{
 				uint64 lastIndex = currentSize - 1;
+				UActorComponent* Removed = Components[i];
 
 				// [RemoveSwap] 삭제할 위치에 마지막 요소를 덮어씌웁니다.
 				if (i != lastIndex)
@@ -71,7 +70,7 @@ public:
 				Components.PopBack();
 
 				// 소유권 해제 (퇴거 처리)
-				Target->Owner = nullptr;
+				Removed->Owner = nullptr;
 				return true; // 성공적으로 분리됨
 			}
 		}
@@ -82,7 +81,7 @@ public:
 	{
 		if (!InComponent) return;
 
-			uint64 currentSize = Components.Size();
+		uint64 currentSize = Components.Size();
 		for (uint64 i = 0; i < currentSize; ++i)
 		{
 			// 정확한 메모리 주소를 대조하여 식별합니다.
@@ -108,8 +107,10 @@ public:
 	{
 		for (uint32 i = 0; i < Components.Size(); ++i)
 		{
-			if (T* Found = dynamic_cast<T*>(Components[i]))
-				return Found;
+			if (Components[i]->IsA(T::StaticClass()))
+			{
+				return static_cast<T*>(Components[i]);
+			}
 		}
 		return nullptr;
 	}
@@ -121,17 +122,18 @@ public:
 		TArray<T*> Result;
 		for (uint32 i = 0; i < Components.Size(); ++i)
 		{
-			if (T* Found = dynamic_cast<T*>(Components[i]))
-				Result.PushBack(Found);
+			if (Components[i]->IsA(T::StaticClass()))
+				Result.PushBack(static_cast<T*>(Components[i]));
 		}
 		return Result;
 	}
 
 public:
 	USceneComponent* RootComponent = nullptr;
+	USphereComponent* BoundingSphere = nullptr;
+
 	ULevel*          OwningLevel   = nullptr;
 
 private:
 	TArray<UActorComponent*> Components;
 };
-
