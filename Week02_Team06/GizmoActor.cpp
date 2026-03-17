@@ -51,7 +51,7 @@ void UGizmoActor::Tick(float DeltaTime)
 	ArrowZ->SetScale(ResultScale);
 	BoundingSphere->SetScale(ResultScale);
 
-	RootComponent->SetPosition(ArrowX->GetPosition() + ArrowX->GetForwardVector() * DeltaTime);
+
 	// 일단 모두 기본 색상으로 초기화
 	ArrowX->SetColor(ColorX);
 	ArrowY->SetColor(ColorY);
@@ -96,10 +96,6 @@ EGizmoAxis UGizmoActor::CheckGizmoPicking()
 	if (World->RayIntersectsMesh(RayOrigin, RayDir, ArrowZ->GetMesh(), ArrowZ->GetComponentTransform())) return EGizmoAxis::Z;
 
 	return EGizmoAxis::None;
-	ArrowZ->SetScale(ResultScale);
-	BoundingSphere->SetScale(ResultScale);
-
-	RootComponent->SetPosition(ArrowX->GetPosition() + ArrowX->GetForwardVector() * DeltaTime);
 }
 
 void UGizmoActor::Release()

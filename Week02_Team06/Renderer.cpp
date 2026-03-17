@@ -240,9 +240,6 @@ void URenderer::CreateDepthStencilState()
 	dsDesc.StencilEnable = FALSE;
 	Device->CreateDepthStencilState(&dsDesc, &DepthStencilState);
 
-	// 헤더에서 바꾼 변수명(DepthStencilState)에 저장합니다.
-	Device->CreateDepthStencilState(&dsDesc, &DepthStencilState);
-
 
 	D3D11_DEPTH_STENCIL_DESC dsDescNoDepth = {};
 	dsDesc.DepthEnable = FALSE;
@@ -262,6 +259,7 @@ void URenderer::ReleaseDepthStencilState()
 		DepthStencilState->Release();
 		DepthStencilState = nullptr;
 	}
+
 	if (DepthStencilStateNoDepth)
 	{
 		DepthStencilStateNoDepth->Release();
@@ -493,7 +491,13 @@ void URenderer::RenderPrimitive(UWorld* World)
 			UPrimitiveComponent* Primitive = Primitives[j];
 			if (!Primitive || !Primitive->GetMesh()) continue;
 
-			if (Primitive->IsDebugMode() || Primitive->IsAlwaysOnTop())
+			if (Primitive->IsAlwaysOnTop())
+			{
+				ForegroundPrimitives.PushBack(Primitive);
+				continue;
+			}
+
+			if (Primitive->IsDebugMode())
 			{
 				DebugRenderList.PushBack(Primitive);
 				continue;
@@ -511,7 +515,7 @@ void URenderer::RenderPrimitive(UWorld* World)
 			}
 			// 원본 패스
 			UpdateConstantBuffer({ Model * VP, Primitive->GetColor() });
-			DeviceContext->RSSetState(RasterizerState);
+			DeviceContext->RSSetState(RasterizerStateDefault);
 			Primitive->Render(*DeviceContext);
 		}
 	}
@@ -521,7 +525,7 @@ void URenderer::RenderPrimitive(UWorld* World)
 		DeviceContext->ClearDepthStencilView(DepthStensilView, D3D11_CLEAR_DEPTH, 1.f, 0);
 		
 		// 깊이 검사(Z-Buffer)를 완전히 꺼버립니다
-		DeviceContext->OMSetDepthStencilState(DepthStencilState, 1);
+		DeviceContext->OMSetDepthStencilState(DepthStencilStateNoDepth, 0);
 
 		for (uint32 i = 0; i < ForegroundPrimitives.Size(); ++i)
 		{
@@ -530,11 +534,14 @@ void URenderer::RenderPrimitive(UWorld* World)
 
 			// 기즈모는 외곽선 없이 본체만 강제로 위에 덧그립니다.
 			UpdateConstantBuffer({ Model * VP, Primitive->GetColor() });
-			DeviceContext->RSSetState(RasterizerState);
+			DeviceContext->RSSetState(RasterizerStateDefault);
 			Primitive->Render(*DeviceContext);
 
 		}
+		DeviceContext->OMSetDepthStencilState(DepthStencilState, 1);
+		DeviceContext->RSSetState(RasterizerStateDefault);
 	}
+
 }
 
 #ifdef  _DEBUG

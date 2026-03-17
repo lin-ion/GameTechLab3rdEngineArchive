@@ -14,6 +14,9 @@ public:
 	virtual void Release() override;
 
 public:
+	EGizmoAxis CheckGizmoPicking();
+
+public:
 	UArrowComponent* ArrowY = nullptr; // Y축 초
 	UArrowComponent* ArrowX = nullptr; // X축 빨
 	UArrowComponent* ArrowZ = nullptr; // Z축 파

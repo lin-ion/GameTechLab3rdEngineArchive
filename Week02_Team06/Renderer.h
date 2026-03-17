@@ -57,6 +57,7 @@ private:
 	void UpdateConstantBuffer(const FConstantData& Data);
 	void RenderAxisLine();
 	void RenderPrimitive(UWorld* World);
+
 #ifdef _DEBUG
 	void RenderDebug();
 #endif

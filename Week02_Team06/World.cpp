@@ -32,8 +32,8 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	resourceManager = &ResourceManager;
 
 	AActor* CubeActor = SpawnActor<AActor>();
-	MainGizmoActor = SpawnActor<UGizmoActor>();
 
+	MainGizmoActor = SpawnActor<UGizmoActor>();
 
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
@@ -43,13 +43,13 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeActor->RootComponent = CubeComponent;
 	CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
 
-	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	MainGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	MainGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	MainGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
 
-	GizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
-	GizmoActor->RootComponent = GizmoActor->BasePoint;
-	GizmoActor->BoundingSphere->SetScale(GizmoActor->RootComponent->GetScale() * 3.f);
+	MainGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
+	MainGizmoActor->RootComponent = MainGizmoActor->BasePoint;
+	MainGizmoActor->BoundingSphere->SetScale(MainGizmoActor->RootComponent->GetScale() * 3.f);
 
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
 	{
@@ -70,7 +70,7 @@ void UWorld::Tick(float DeltaTime)
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-	// 드래그 중이라면
+
 	UInput& Input = UInput::GetInstance();
 	FVector RayOrigin = ViewPort->GetViewLocation();
 	FVector RayDir = ViewPort->GetCameraRayDirection();
@@ -203,7 +203,6 @@ AActor* UWorld::GetPickedActor()
 
 				if (Math::RayIntersectsTriangle(_CameraPos, _CameraRay, V0, V1, V2))
 				{
-					PickedActor = TargetActor;
 					return TargetActor;
 				}
 			}

@@ -6,7 +6,7 @@
 
 #include "SceneComponent.h"
 #include "SphereComponent.h"
-#include "UArrowComponent.h"
+#include "ArrowComponent.h"
 #include "ResourceManager.h"
 
 
@@ -59,11 +59,7 @@ void AActor::Tick(float DeltaTime)
 
 void AActor::Release()
 {
-	for (uint64 i = 0; i < Components.Size(); ++i)
-	{
-		UObjectFactory::DestroyObject(Components[i]);
-	}
-
+	// Actor 컴포넌트 또한 GUIObject가 관리한다
 	Components.Clear();
 	RootComponent = nullptr;
 }
