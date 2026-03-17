@@ -158,9 +158,6 @@
     <ClInclude Include="Object.h">
       <Filter>Objects</Filter>
     </ClInclude>
-    <ClInclude Include="Sphere.h">
-      <Filter>리소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Math.h">
       <Filter>Defines</Filter>
     </ClInclude>
@@ -198,8 +195,6 @@
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="PrimitiveComponent.h" />
     <ClInclude Include="SceneComponent.h" />
-    <ClInclude Include="Triangle.h" />
-    <ClInclude Include="Cube.h" />
     <ClInclude Include="AppConsole.h">
       <Filter>App\ImGuiDrawer</Filter>
     </ClInclude>
@@ -210,7 +205,6 @@
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="CubeComponent.h" />
     <ClInclude Include="SceneSerializer.h" />
-    <ClInclude Include="Gizmo.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="FEditorViewportClient.h" />
     <ClInclude Include="Memory.h" />

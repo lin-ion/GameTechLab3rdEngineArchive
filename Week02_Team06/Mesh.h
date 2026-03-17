@@ -8,24 +8,27 @@ public:
 	//mesh 컴포넌트로 바뀌면서 수정해야함
 
 public:
-	const void* GetVertexData() const   { return VertexData; };
+	const FVertexSimple* GetVertexData() const { return &CpuVertices[0]; };
 	const uint32 GetVertexCount() const { return NumVertices;};
 
 public:
-	template<typename T>
-	void Load(ID3D11Device& Device, const T* Vertices, UINT VertexCount, const uint32* Indices, UINT IndexCount)
+	void Load(ID3D11Device& Device, const FVertexSimple* InVertices, UINT VertexCount, const uint32* Indices, UINT IndexCount)
 	{
-		NumVertices = VertexCount;
-		Stride = sizeof(T);
-		ByteWidth = sizeof(T) * VertexCount;
-		VertexData = Vertices;
+		CpuVertices.SetNum(VertexCount);
+		for (UINT i = 0; i < VertexCount; ++i)
+		{
+			CpuVertices[i] = InVertices[i];
+		}
 
+		NumVertices = VertexCount;
+		Stride = sizeof(FVertexSimple);
+		ByteWidth = sizeof(FVertexSimple) * VertexCount;
 		// 정점 버퍼 생성
 		D3D11_BUFFER_DESC VertexBufferDesc = {};
 		VertexBufferDesc.ByteWidth = ByteWidth;
 		VertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 		VertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		VertexData = Vertices;
+		const FVertexSimple* Vertices = &CpuVertices[0];
 
 		D3D11_SUBRESOURCE_DATA VertexBufferSRD = { Vertices };
 
@@ -53,12 +56,11 @@ private:
 	ID3D11Buffer* VertexBuffer = { nullptr };
 	ID3D11Buffer* IndexBuffer = { nullptr };
 
-
-	const void* VertexData = { nullptr };
+	TArray<FVertexSimple> CpuVertices;
 
 	UINT Stride;
 	UINT ByteWidth;
 	UINT NumVertices;
-	UINT NumIndices = 0; 
+	UINT NumIndices = 0;
 };
 

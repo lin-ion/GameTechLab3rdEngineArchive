@@ -43,9 +43,9 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeActor->RootComponent = CubeComponent;
 	CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
 
-	MainGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	MainGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	MainGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	MainGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
+	MainGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
+	MainGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
 
 	MainGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
 	MainGizmoActor->RootComponent = MainGizmoActor->BasePoint;
@@ -193,7 +193,7 @@ AActor* UWorld::GetPickedActor()
 			FVector _CameraRay = FMatrix::TransformNormal(ViewPort->GetCameraRayDirection(), ModelWorld.Inverse());
 
 			const UMesh* MeshData = Primitive->GetMesh();
-			const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Primitive->GetMesh()->GetVertexData());
+			const FVertexSimple* BufferData = Primitive->GetMesh()->GetVertexData();
 
 			for (uint64 vertexIndex = 0; vertexIndex < MeshData->GetVertexCount(); vertexIndex += 3)
 			{
