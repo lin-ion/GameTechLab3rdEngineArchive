@@ -65,68 +65,72 @@ void UWorld::Tick(float DeltaTime)
 {
 	if (!CurrentLevel) return;
 
+	UInput& Input = UInput::GetInstance();
+
+	// 모드 전환 스위치 (Z: 이동, X: 회전)
+	if (Input.IsKeyDown('Z')) CurrentMode = EGizmoMode::Location;
+	if (Input.IsKeyDown('X')) CurrentMode = EGizmoMode::Rotation;
+
+	PreparePicking();
+
 	for (uint32 i = 0; i < CurrentLevel->Actors.Size(); ++i)
 	{
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-	UInput& Input = UInput::GetInstance();
 	FVector RayOrigin = ViewPort->GetViewLocation();
 	FVector RayDir = ViewPort->GetCameraRayDirection();
 
-	// 마우스 좌클릭 시 피킹
-	if (Input.IsKeyDown(VK_LBUTTON))
+	// 드래그 시작 (초기 상태 저장)
+	if (Input.IsKeyDown(VK_LBUTTON) && HoveredAxis != EGizmoAxis::None)
 	{
-		if (LocationGizmoActor)
+		bIsDragging = true;
+		CurrentDraggingAxis = HoveredAxis;
+
+		if (CurrentMode == EGizmoMode::Location && LocationGizmoActor)
 		{
-			// 현재 마우스가 기즈모의 어느 축 위에 있는지 확인
-			CurrentDraggingAxis = LocationGizmoActor->CheckGizmoPicking();
+			GizmoStartLocation = LocationGizmoActor->RootComponent->GetPosition();
+			DragStartPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+		}
+		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
+		{
+			// 타겟과 기즈모의 초기 회전값 각각 저장
+			if (SelectedActor) TargetStartRotation = SelectedActor->RootComponent->GetRotation();
+			GizmoStartRotation = RotationGizmoActor->RootComponent->GetRotation();
 
-			if (CurrentDraggingAxis != EGizmoAxis::None)
+			// 드래그 시작 순간, 링의 방향을 찰칵! 고정시킵니다.
+			RotationGizmoActor->LockDragPlane(CurrentDraggingAxis);
+
+			// 이후 교차점 계산
+			DragStartPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+		}
+	}
+
+	// 드래그 진행 중
+	if (bIsDragging && Input.IsKeyPressing(VK_LBUTTON))
+	{
+		if (CurrentMode == EGizmoMode::Location && LocationGizmoActor)
+		{
+			FVector CurrentPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			FVector Delta = CurrentPoint - DragStartPoint;
+			LocationGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
+		}
+		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
+		{
+			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			FVector RotationDelta = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
+
+			RotationGizmoActor->RootComponent->SetRotation(GizmoStartRotation + RotationDelta);
+
+			if (SelectedActor)
 			{
-				bIsDragging = true;
-				GizmoStartLocation = LocationGizmoActor->RootComponent->GetPosition();
-
-				// Center를 잡았을 때는 평면 투영, 그 외에는 선 투영
-				if (CurrentDraggingAxis == EGizmoAxis::Center)  
-				{
-					FVector PlaneNormal = RayOrigin - GizmoStartLocation;
-					PlaneNormal.Normalize();
-					DragStartPoint = Math::RayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
-				}
-				else
-				{
-					DragStartPoint = CalculateClosestPointOnAxis(RayOrigin, RayDir, CurrentDraggingAxis);
-				}
+				SelectedActor->RootComponent->SetRotation(TargetStartRotation + RotationDelta);
 			}
 		}
 	}
+	
 
-	// 버튼을 누르고 있는 상태 (IsKeyPressing)
-	if (bIsDragging && Input.IsKeyPressing(VK_LBUTTON))
-	{
-		FVector CurrentPoint;
-
-		// 이동 중에도 동일한 방식으로 투영점 계산
-		if (CurrentDraggingAxis == EGizmoAxis::Center)
-		{
-			FVector PlaneNormal = RayOrigin - GizmoStartLocation;
-			PlaneNormal.Normalize();
-			CurrentPoint = Math::RayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
-		}
-		else
-		{
-			CurrentPoint = CalculateClosestPointOnAxis(RayOrigin, RayDir, CurrentDraggingAxis);
-		}
-
-		// 이동 변위(Delta) = 현재 지점 - 시작 지점
-		FVector Delta = CurrentPoint - DragStartPoint;
-
-		// 기즈모를 시작 위치에서 변위만큼 이동
-		LocationGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
-	}
-
-	// 3. 버튼을 뗀 경우 (IsKeyUp)
+	// 드래그 종료
 	if (Input.IsKeyUp(VK_LBUTTON))
 	{
 		bIsDragging = false;
@@ -161,7 +165,22 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 	}
 }
 
+void UWorld::PreparePicking()
+{
+	HoveredAxis = EGizmoAxis::None;
+	if (bIsDragging) return;
 
+	if (CurrentMode == EGizmoMode::Location && LocationGizmoActor)
+	{
+		HoveredAxis = LocationGizmoActor->CheckGizmoPicking();
+	}
+	else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
+	{
+		HoveredAxis = RotationGizmoActor->CheckGizmoPicking();
+	}
+}
+
+// 가장 가까운 것만 골라가도록 추후 수정
 AActor* UWorld::GetPickedActor()
 {
 	auto ActorArray = CurrentLevel->Actors;
@@ -169,8 +188,8 @@ AActor* UWorld::GetPickedActor()
 	for (size_t ActorIndex = 0; ActorIndex < ActorArray.Size(); ++ActorIndex)
 	{
 		AActor* TargetActor = ActorArray[ActorIndex];
-		// [핵심 방어] 기즈모를 담고 있는 액터 자체는 피킹 검수에서 제외합니다.
-		if (LocationGizmoActor == TargetActor) continue;
+		// 기즈모를 담고 있는 액터 자체는 피킹 검수에서 제외합니다.
+		if (LocationGizmoActor == TargetActor || RotationGizmoActor == TargetActor) continue;
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 
@@ -225,25 +244,6 @@ bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, 
 		}
 	}
 	return false;
-}
-
-FVector UWorld::CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)
-{
-	if (!LocationGizmoActor) return FVector::Zero;
-
-	FVector AxisDir;
-	switch (Axis)
-	{
-	case EGizmoAxis::X: AxisDir = LocationGizmoActor->ArrowX->GetUpVector(); break;
-	case EGizmoAxis::Y: AxisDir = LocationGizmoActor->ArrowY->GetUpVector(); break;  
-	case EGizmoAxis::Z: AxisDir = LocationGizmoActor->ArrowZ->GetUpVector(); break;
-	default: return LocationGizmoActor->RootComponent->GetPosition();
-	}
-
-	FVector GizmoPos = LocationGizmoActor->RootComponent->GetPosition();
-
-	// [수정] 복잡한 공식은 지우고 Math 모듈 호출
-	return Math::ClosestPointOnLine(RayOrg, RayDir, GizmoPos, AxisDir);
 }
 
 void UWorld::Release()
