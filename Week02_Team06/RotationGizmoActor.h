@@ -13,10 +13,11 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void Release() override;
 	void LockDragPlane(EGizmoAxis Axis);
+	void ApplyRingRotation(EGizmoAxis Axis, float DeltaAngle);
 
 	EGizmoAxis CheckGizmoPicking();
 	FVector GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
-	FVector GetRotationDelta(const FVector& CurrentIntersect, const FVector& StartIntersect, EGizmoAxis Axis);
+	float GetRotationDelta(const FVector& CurrentIntersect, const FVector& StartIntersect, EGizmoAxis Axis);
 
 
 public:

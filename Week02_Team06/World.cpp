@@ -118,23 +118,37 @@ void UWorld::Tick(float DeltaTime)
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
 		{
 			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
-			FVector RotationDelta = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
 
-			RotationGizmoActor->RootComponent->SetRotation(GizmoStartRotation + RotationDelta);
+			// 🚨 로드리게스 원리로 추출한 단일 회전 각도(float)를 받아옵니다.
+			float DeltaAngle = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
 
+			// 1. 타겟 액터 회전 (선택된 축에만 각도 더하기)
 			if (SelectedActor)
 			{
-				SelectedActor->RootComponent->SetRotation(TargetStartRotation + RotationDelta);
+				FVector TargetDelta = FVector::Zero;
+				if (CurrentDraggingAxis == EGizmoAxis::X) TargetDelta.X = DeltaAngle;
+				if (CurrentDraggingAxis == EGizmoAxis::Y) TargetDelta.Y = DeltaAngle;
+				if (CurrentDraggingAxis == EGizmoAxis::Z) TargetDelta.Z = DeltaAngle;
+
+				SelectedActor->RootComponent->SetRotation(TargetStartRotation + TargetDelta);
 			}
+
+			// 2. 기즈모 전체가 아닌, '잡고 있는 링' 하나만 제자리에서 돌립니다!
+			RotationGizmoActor->ApplyRingRotation(CurrentDraggingAxis, DeltaAngle);
 		}
 	}
 	
 
-	// 드래그 종료
 	if (Input.IsKeyUp(VK_LBUTTON))
 	{
 		bIsDragging = false;
 		CurrentDraggingAxis = EGizmoAxis::None;
+
+		// 마우스를 놓으면 링의 시각적 회전을 원래 예쁜 구(Sphere) 형태로 복구
+		if (RotationGizmoActor)
+		{
+			RotationGizmoActor->ApplyRingRotation(EGizmoAxis::None, 0.0f);
+		}
 	}
 }
 
