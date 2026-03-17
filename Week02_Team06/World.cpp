@@ -24,29 +24,33 @@
 void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort)
 {
 	CurrentLevel = UObjectFactory::NewObject<ULevel>();
-    AActor* GizmoStorageActor = SpawnActor<AActor>();
-
 	CurrentLevel->OwningWorld = this;
 	ViewPort = _ViewPort;
+
 
 
 	resourceManager = &ResourceManager;
 
 	AActor* CubeActor = SpawnActor<AActor>();
-	MainGizmoActor = SpawnActor<UGizmoActor>();
 
+	MainGizmoActor = SpawnActor<UGizmoActor>();
 
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
+
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 	CubeComponent->SetHovering(true);
 	CubeActor->RootComponent = CubeComponent;
+	CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
 
+	MainGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
+	MainGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
+	MainGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
 
-	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
-	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
-	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
 	MainGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
+	MainGizmoActor->RootComponent = MainGizmoActor->BasePoint;
+	MainGizmoActor->BoundingSphere->SetScale(MainGizmoActor->RootComponent->GetScale() * 3.f);
+
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
 	{
 		int iDebug = 0;
@@ -65,7 +69,7 @@ void UWorld::Tick(float DeltaTime)
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-	// 드래그 중이라면
+
 	UInput& Input = UInput::GetInstance();
 	FVector RayOrigin = ViewPort->GetViewLocation();
 	FVector RayDir = ViewPort->GetCameraRayDirection();
@@ -198,7 +202,6 @@ AActor* UWorld::GetPickedActor()
 
 				if (Math::RayIntersectsTriangle(_CameraPos, _CameraRay, V0, V1, V2))
 				{
-					PickedActor = TargetActor;
 					return TargetActor;
 				}
 			}

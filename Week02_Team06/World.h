@@ -50,9 +50,6 @@ public:
 	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
 private:
-	class UGizmoActor* MainGizmoActor = { nullptr };
-
-private:
 	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
 	AActor* GetSelectedActor() const { return SelectedActor; }
 	FVector CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
@@ -64,14 +61,14 @@ public:
 	FEditorViewportClient* ViewPort = { nullptr };
 
 	//Picked된 Actor
-	AActor* PickedActor = { nullptr };
-
 
 	UResourceManager* resourceManager;
 
 	//나중엔 씬을 만들것임
 	//FScene* Scene = { nullptr };
 private:
+	class UGizmoActor* MainGizmoActor = { nullptr };
+
 	AActor* SelectedActor = { nullptr };
 
 	// 드래그 관련 상태 변수

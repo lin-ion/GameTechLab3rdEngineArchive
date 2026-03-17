@@ -1,8 +1,9 @@
 #include "pch.h"
 #include "Memory.h"
 
-uint32 FMemory::TotalAllocationBytes = 0;
-uint32 FMemory::TotalAllocationCount = 0;
+uint64 FMemory::TotalAllocationBytes = 0;
+uint64 FMemory::TotalAllocationCount = 0;
+
 
 void* operator new(size_t size)
 {

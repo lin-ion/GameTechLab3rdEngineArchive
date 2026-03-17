@@ -2,6 +2,6 @@
 class FMemory
 {
 public:
-	static uint32 TotalAllocationBytes;
-	static uint32 TotalAllocationCount;
+	static uint64 TotalAllocationBytes;
+	static uint64 TotalAllocationCount;
 };
