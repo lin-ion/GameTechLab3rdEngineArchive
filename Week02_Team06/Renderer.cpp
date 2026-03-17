@@ -399,22 +399,27 @@ void URenderer::RenderPrimitive(UWorld* World)
 
 	for (size_t i = 0; i < Actors.Size(); ++i)
 	{
-		UPrimitiveComponent* Primitive = Actors[i]->GetComponentByClass<UPrimitiveComponent>();
-		if (!Primitive) continue;
+		TArray<UPrimitiveComponent*> Primitives = Actors[i]->GetComponentArrayByClass<UPrimitiveComponent>();
 
-		FMatrix Model = Primitive->GetComponentTransform();
-
-		// 아웃라인 패
-		if (Primitive->IsSelected())
+		for (uint32 j = 0; j < Primitives.Size(); ++j)
 		{
-			FMatrix OutlineModel = FMatrix::MakeScale(FVector(1.05f, 1.05f, 1.05f)) * Model;
-			UpdateConstantBuffer({ OutlineModel * VP, FVector4(FVector(1.f, 0.22f, 0.f), 1.f) });
-			DeviceContext->RSSetState(RasterizerStateOutline);
+			UPrimitiveComponent* Primitive = Primitives[j];
+			if (!Primitive || !Primitive->GetMesh()) continue;
+
+			FMatrix Model = Primitive->GetComponentTransform();
+
+			// 아웃라인 패스
+			if (Primitive->IsSelected())
+			{
+				FMatrix OutlineModel = FMatrix::MakeScale(FVector(1.05f, 1.05f, 1.05f)) * Model;
+				UpdateConstantBuffer({ OutlineModel * VP, FVector4(FVector(1.f, 0.22f, 0.f), 1.f) });
+				DeviceContext->RSSetState(RasterizerStateOutline);
+				Primitive->Render(*DeviceContext);
+			}
+			// 원본 패스
+			UpdateConstantBuffer({ Model * VP, FVector4() });
+			DeviceContext->RSSetState(RasterizerState);
 			Primitive->Render(*DeviceContext);
 		}
-		// 원본 패스
-		UpdateConstantBuffer({ Model * VP, FVector4() });
-		DeviceContext->RSSetState(RasterizerState);
-		Primitive->Render(*DeviceContext);
 	}
 }

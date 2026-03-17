@@ -139,8 +139,7 @@
     <ClCompile Include="Containers.cpp" />
     <ClCompile Include="EngineStatics.cpp" />
     <ClCompile Include="FEditorViewportClient.cpp" />
-    <ClCompile Include="GizmoComponent.cpp" />
-    <ClCompile Include="GizmoComponent.h" />
+    <ClCompile Include="GizmoActor.cpp" />
     <ClCompile Include="ImGui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -176,7 +175,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="PickingComponent.cpp" />
     <ClCompile Include="PrimitiveComponent.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
@@ -185,6 +183,7 @@
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="Types.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="UArrowComponent.cpp" />
     <ClCompile Include="Window.cpp" />
     <ClCompile Include="World.cpp" />
   </ItemGroup>
@@ -219,7 +218,6 @@
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.h" />
-    <ClInclude Include="PickingComponent.h" />
     <ClInclude Include="PrimitiveComponent.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResourceManager.h" />
@@ -230,6 +228,7 @@
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="UArrowComponent.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="World.h" />
   </ItemGroup>

@@ -8,9 +8,10 @@
 #include "Object.h"
 
 #include "CubeComponent.h"
-#include "GizmoComponent.h"
+#include "GizmoActor.h"
+#include "UArrowComponent.h"
 #include "PrimitiveComponent.h"
-
+#include "FEditorViewportClient.h"
 #include "Input.h"
 
 
@@ -22,7 +23,7 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 
 
 	AActor* CubeActor = SpawnActor<AActor>();
-	AActor* GizmoActor = SpawnActor<AActor>();
+	UGizmoActor* GizmoActor = SpawnActor<UGizmoActor>();
 
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
@@ -30,9 +31,10 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeComponent->SetHovering(true);
 	CubeActor->RootComponent = CubeComponent;
 
-	UGizmoComponent* GizmoComponent = GizmoActor->AddComponent<UGizmoComponent>();
-	GizmoComponent->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	GizmoActor->RootComponent = GizmoComponent;
+	// 기즈모 화살표 메시 세팅 (BeginPlay에서 컴포넌트 생성 완료)
+	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
 
 	//RTTI 테스트
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
@@ -76,10 +78,10 @@ AActor* UWorld::GetPickedActor()
 		FVector _CameraPos = FMatrix::TransformCoord(ViewPort->GetViewLocation(), ModelWorld.Inverse());
 		FVector _CameraRay = FMatrix::TransformNormal(ViewPort->GetCameraRayDirection(), ModelWorld.Inverse());
 
-		const UMesh* MeshData = Primitive->GetMesh();
+		const UMesh* MeshData = Primitive->GetMesh();                                                                                                                                                                    
 		const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Primitive->GetMesh()->GetVertexData());
 
-		for (int32 vertexIndex = 0; vertexIndex < MeshData->GetVertexCount(); vertexIndex += 3)
+		for (uint64 vertexIndex = 0; vertexIndex < MeshData->GetVertexCount(); vertexIndex += 3)
 		{
 			if (RayIntersectsTriangle(_CameraPos, _CameraRay, BufferData[vertexIndex], BufferData[vertexIndex + 1], BufferData[vertexIndex + 2]))
 			{

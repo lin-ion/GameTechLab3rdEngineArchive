@@ -125,10 +125,9 @@
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="FEditorViewportClient.cpp" />
     <ClCompile Include="Memory.cpp" />
-    <ClCompile Include="GizmoComponent.h" />
-    <ClCompile Include="PickingComponent.cpp" />
-    <ClCompile Include="GizmoComponent.cpp" />
+    <ClCompile Include="GizmoActor.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="UArrowComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -215,8 +214,8 @@
     <ClInclude Include="FEditorViewportClient.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Macro.h" />
-    <ClInclude Include="PickingComponent.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="UArrowComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">
