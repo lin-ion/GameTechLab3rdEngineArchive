@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "FEditorViewportClient.h"
+#include "PickingComponent.h"
+#include "GizmoComponent.h"
 #include "Input.h"
 
 FMatrix FEditorViewportClient::GetViewMatrix() const
@@ -58,101 +60,157 @@ void FEditorViewportClient::SetPerspective(bool bInIsPerspective)
 
 FVector FEditorViewportClient::GetCameraRayDirection()
 {
-	POINT MousePostion = UInput::GetInstance().GetMousePosition();
+	POINT MousePos = UInput::GetInstance().GetMousePosition();
 
-	//far를 바라봐야함
-	FVector NDC = { 0.f ,0.f, 1.f };
+	// 1. Client 좌표로 변환 (이미 검증됨)
+	HWND hWnd = GetActiveWindow();
+	ScreenToClient(hWnd, &MousePos);
 
-	NDC.X = MousePostion.x * 2.f / WindowSizeWidth - 1;
-	NDC.Y = -MousePostion.y * 2.f / WindowSizeHeight + 1;
+	// 2. NDC 좌표 계산 (정중앙이 0,0이 되도록)
+	float NDCX = (2.0f * MousePos.x) / WindowSizeWidth - 1.0f;
+	float NDCY = 1.0f - (2.0f * MousePos.y) / WindowSizeHeight;
 
-	FVector Eye = ViewTransform.GetLocation();
-	FVector Forward = ViewTransform.GetForwardVector();
-	FVector Up = ViewTransform.GetUpVector();
+	// 3. 역행렬 준비 (View * Proj의 역행렬 하나로 통합 가능)
+	FMatrix InvViewProj = (GetViewMatrix() * GetProjectionMatrix()).Inverse();
 
-	FVector At = Eye + Forward;
+	// 4. [핵심] 근평면과 원평면의 두 점을 월드 공간으로 복원
+	// TransformCoord는 W 성분을 1로 취급하고 결과에서 W로 나누어 투영을 해제합니다.
+	FVector NearNDC = { NDCX, NDCY, 0.0f };
+	FVector FarNDC = { NDCX, NDCY, 1.0f };
 
-	//NDC 역투영 곱하기
-	FMatrix ProjectionInverse = FMatrix::MakePerspective(FOVAngle, AspectRatio, NearPlane, FarPlane).Inverse();
+	FVector WorldNear = FMatrix::TransformCoord(NearNDC, InvViewProj);
+	FVector WorldFar = FMatrix::TransformCoord(FarNDC, InvViewProj);
 
-	FMatrix ViewInverse = FMatrix::MakeLookAt(Eye, At, Up).Inverse();
-
-	FVector ViewDirection = FMatrix::TransformNormal(NDC, ProjectionInverse);
-	ViewDirection.Z = 1.f;
-
-	FVector WorldDirection = FMatrix::TransformNormal(ViewDirection, ViewInverse);
-
+	// 5. 방향 벡터 산출 및 정규화
+	FVector WorldDirection = WorldFar - WorldNear;
 	WorldDirection.Normalize();
 
 	return WorldDirection;
 }
 
 void FEditorViewportClient::Tick(float DeltaTime) {
-	FVector MovementDirection = { 0.f, 0.f, 0.f };
-	if (UInput::GetInstance().IsKeyPressing('A'))
+	HandleKeyboardMovement(DeltaTime);
+	HandleMouseRightDrag();
+	HandleMouseWheel();
+	HandleMiddleMouseDrag();
+}
+
+void FEditorViewportClient::HandleKeyboardMovement(float DeltaTime)
+{
+	UInput& Input = UInput::GetInstance();
+
+	FVector MovementDirection = { 0.0f, 0.0f, 0.0f };
+	if (Input.IsKeyPressing('A'))
 	{
 		MovementDirection = MovementDirection - ViewTransform.GetRightVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('D'))
+	if (Input.IsKeyPressing('D'))
 	{
 		MovementDirection = MovementDirection + ViewTransform.GetRightVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('S'))
+	if (Input.IsKeyPressing('S'))
 	{
 		MovementDirection = MovementDirection - ViewTransform.GetForwardVector();
 	}
-	if (UInput::GetInstance().IsKeyPressing('W'))
+	if (Input.IsKeyPressing('W'))
 	{
 		MovementDirection = MovementDirection + ViewTransform.GetForwardVector();
 	}
 	MovementDirection.Normalize();
 
-	constexpr float MovementSpeed = 5.f;
-	FVector MovementLocation = ViewTransform.GetLocation() + MovementDirection * DeltaTime * MovementSpeed;
-	ViewTransform.SetLocation(MovementLocation);
+	constexpr float MovementSpeed = 5.0f;
+	FVector Movement = ViewTransform.GetLocation() + MovementDirection * DeltaTime * MovementSpeed;
+	ViewTransform.SetLocation(Movement);
+}
 
-	// Mouse Drag
-	if (UInput::GetInstance().IsKeyDown(VK_RBUTTON))
+void FEditorViewportClient::HandleMouseRightDrag()
+{
+	UInput& Input = UInput::GetInstance();
+
+	if (!Input.IsKeyPressing(VK_RBUTTON))
 	{
-		PreviousMousePosition = UInput::GetInstance().GetMousePosition();
+		return;
 	}
-	if (UInput::GetInstance().IsKeyPressing(VK_RBUTTON))
-	{
-		POINT CurrentMousePosition = UInput::GetInstance().GetMousePosition();
-		float DeltaMouseY = static_cast<float>(CurrentMousePosition.y - PreviousMousePosition.y); // Pitch
-		float DeltaMouseX = static_cast<float>(CurrentMousePosition.x - PreviousMousePosition.x); // Yaw
-		PreviousMousePosition = CurrentMousePosition;
 
-		// TODO: DeltaMouse는 해상도에 비례하므로 다양한 해상도에서 감도 실험 필요
-		float RotationSpeed = 0.2f;
-		FVector Rotation = ViewTransform.GetRotation();
-		Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.0f, 89.0f);
-		Rotation.Y = Rotation.Y + (DeltaMouseX * RotationSpeed);
+	POINT MouseDelta = Input.GetMousePositionDelta();
+	float DeltaMouseY = static_cast<float>(MouseDelta.y); // Pitch
+	float DeltaMouseX = static_cast<float>(MouseDelta.x); // Yaw
+
+	constexpr float RotationSpeed = 0.2f;
+	FVector Rotation = ViewTransform.GetRotation();
+	Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.0f, 89.0f);
+	Rotation.Y = Rotation.Y + (DeltaMouseX * RotationSpeed);
+
+	bool bIsOrbiting = Input.IsKeyPressing(VK_LMENU);
+	if (bIsOrbiting)
+	{
+		FVector OldPivotLocation = ViewTransform.GetPivotLocation();
+		ViewTransform.SetRotation(Rotation);
+		FVector NewPivotLocation = ViewTransform.GetPivotLocation();
+		ViewTransform.SetLocation(ViewTransform.GetLocation() + (OldPivotLocation - NewPivotLocation));
+	}
+	else
+	{
 		ViewTransform.SetRotation(Rotation);
 	}
+}
 
-	// Mouse Wheel Zoom
-	float MouseWheelDelta = UInput::GetInstance().GetMouseWheelDelta();
-	if (UInput::GetInstance().GetMouseWheelDelta() != 0.0f)
+void FEditorViewportClient::HandleMouseWheel()
+{
+	UInput& Input = UInput::GetInstance();
+	float MouseWheelDelta = Input.GetMouseWheelDelta();
+
+	if (MouseWheelDelta == 0.0f)
 	{
-		if (bIsPerspective)
-		{
-			constexpr float PerspectiveZoomSpeed = 1.0f;
-			float NewDistance = ViewTransform.GetDistance() - MouseWheelDelta * PerspectiveZoomSpeed;
-			NewDistance = (std::max)(NewDistance, 1.0f);
-			FVector NewViewLocation = ViewTransform.GetPivotLocation() - ViewTransform.GetForwardVector() * NewDistance;
-			ViewTransform.SetLocation(NewViewLocation);
-			ViewTransform.SetDistance(NewDistance);
-			UE_LOG(("Distance: " + std::to_string(ViewTransform.GetDistance())).c_str());
-		}
-		else {
-			constexpr float OrthoZoomSpeed = 1.0f;
-			float NewOrthoSize = ViewTransform.GetOrthoSize() - MouseWheelDelta * OrthoZoomSpeed;
-			NewOrthoSize = (std::max)(NewOrthoSize, 1.0f);
-			ViewTransform.SetOrthoSize(NewOrthoSize);
-			UE_LOG(("OrthoSize: " + std::to_string(ViewTransform.GetOrthoSize())).c_str());
-		}
+		return;
 	}
+
+	if (bIsPerspective)
+	{
+		constexpr float PerspectiveZoomSpeed = 1.0f;
+		float NewDistance = ViewTransform.GetDistance() - MouseWheelDelta * PerspectiveZoomSpeed;
+		NewDistance = (std::max)(NewDistance, 1.0f);
+		FVector NewViewLocation = ViewTransform.GetPivotLocation() - ViewTransform.GetForwardVector() * NewDistance;
+		ViewTransform.SetLocation(NewViewLocation);
+		ViewTransform.SetDistance(NewDistance);
+	}
+	else
+	{
+		constexpr float OrthoZoomSpeed = 1.0f;
+		float NewOrthoSize = ViewTransform.GetOrthoSize() - MouseWheelDelta * OrthoZoomSpeed;
+		NewOrthoSize = (std::max)(NewOrthoSize, 1.0f);
+		ViewTransform.SetOrthoSize(NewOrthoSize);
+	}
+}
+
+void FEditorViewportClient::HandleMiddleMouseDrag()
+{
+	UInput& Input = UInput::GetInstance();
+
+	if (!Input.IsKeyPressing(VK_MBUTTON))
+	{
+		return;
+	}
+
+	POINT MouseDelta = Input.GetMousePositionDelta();
+	float DeltaMouseY = static_cast<float>(MouseDelta.y);
+	float DeltaMouseX = static_cast<float>(MouseDelta.x);
+
+	int WindowSizeHeight = ImGui::GetIO().DisplaySize.y;
+
+	float PanSpeed = 1.0f;
+	if (bIsPerspective)
+	{
+		float HalfFOVRadian = Math::ToRadians(FOVAngle) / 2.0f;
+		float WorldHeight = 2.0f * ViewTransform.GetDistance() * tanf(HalfFOVRadian);
+		PanSpeed = WorldHeight / WindowSizeHeight;
+	}
+	else
+	{
+		PanSpeed = ViewTransform.GetOrthoSize() / WindowSizeHeight;
+	}
+	FVector Movement = (ViewTransform.GetRightVector() * -DeltaMouseX + ViewTransform.GetUpVector() * DeltaMouseY) * PanSpeed;
+	ViewTransform.SetLocation(ViewTransform.GetLocation() + Movement);
 }
 
 FVector FViewportCameraTransform::GetRightVector() const

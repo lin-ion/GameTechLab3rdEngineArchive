@@ -14,6 +14,9 @@
 #include "Actor.h"
 #include "GizmoActor.h"
 
+// Test
+#include "SceneSerializer.h"
+
 bool UApp::Initialize(HINSTANCE hInstance)
 {
 	Window = new UWindow;
@@ -26,7 +29,9 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	Graphics->Initialize(Window->GetHWnd());
 
 	float AspectRatio = static_cast<float>(WindowSizeWidth) / WindowSizeHeight;
-	ViewportClient = new FEditorViewportClient({ 10.0f, 10.0f, 10.0f }, { 30.0f, -120.0f, 0.0f }, AspectRatio, 60.f);
+	ViewportClient = new FEditorViewportClient({ 10.0f, 10.0f, -10.0f }, { 45.0f, -45.0f, 0.0f }, AspectRatio, 60.f);
+
+	ViewportClient->SetAspectRatio(static_cast<float>(WindowSizeWidth) / WindowSizeHeight);
 
 	Renderer = new URenderer(Graphics->GetDevice(), Graphics->GetDeviceContext(), Graphics->GetSwapChain(), *ViewportClient);
 	Renderer->Initialize();
@@ -38,9 +43,25 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	World->InitWorld(*ResourceManager, ViewportClient);
 
 	ImGuiDrawer = new UImGuiDrawer;
-	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext());
+	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext(), World);
 
+
+	// console Test Code
 	UE_LOG("Hello World");
+
+
+	// json Test Code
+	/*
+	UScene* scene = SceneManager->GetCurrentScene();
+	scene->data.Version = 1;
+	scene->data.NextUUID = 8;
+	USceneSerializer::SaveScene("Test", scene->data);
+	USceneSerializer::LoadScene("Test", scene->data);
+
+	UE_LOG("Version: %d", scene->data.Version);
+	UE_LOG("NextUUID: %d", scene->data.NextUUID);
+	* 
+	*/
 
 	return true;
 }
@@ -78,14 +99,12 @@ void UApp::Run()
 			//input
 			UInput::GetInstance().Update();
 
-			// 여기까지 Test용
 			ViewportClient->Tick(DeltaTime);
+
 			//GameLogic
 			World->Tick(DeltaTime);
 
 			//Render
-			Graphics->ClearRenderTarget();
-
 			Renderer->BeginScene();
 			Renderer->Render(World);
 

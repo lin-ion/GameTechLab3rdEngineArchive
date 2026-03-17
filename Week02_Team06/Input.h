@@ -21,8 +21,9 @@ public:
 
 	void UpdateMousePosition(POINT MousePos);
 	const POINT GetMousePosition() const { return MousePosition; };
+	const POINT GetMousePositionDelta() const { return MousePositionDelta; };
 
-	void AccumulateMouseWheelDelta(float Delta) { AccumulatedMouseWheelDelta += Delta; }
+	void AddMouseWheelDelta(float Delta) { PendingMouseWheelDelta += Delta; }
 	float GetMouseWheelDelta() const { return CurrentMouseWheelDelta; }
 
 public:
@@ -36,7 +37,10 @@ private:
 	std::array<bool, 256> PreKeys;
 	std::array<bool, 256> CurKeys;
 
-	POINT MousePosition;
-	float AccumulatedMouseWheelDelta = 0.0f;
+	POINT MousePosition = { 0, 0 };
+	POINT MousePositionDelta = { 0, 0 };
+	POINT PendingMousePositionDelta = { 0, 0 };
+
+	float PendingMouseWheelDelta = 0.0f;
 	float CurrentMouseWheelDelta = 0.0f;
 };

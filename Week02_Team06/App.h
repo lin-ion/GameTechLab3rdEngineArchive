@@ -15,10 +15,18 @@ public:
 	UApp() = default;
 	~UApp() = default;
 
+	UApp(const UApp&) = delete;
+	UApp& operator=(const UApp&) = delete;
+
 public:
 	bool Initialize(HINSTANCE hInstance);
 	void Run();
 	void Release();
+	static UApp& GetInstance()
+	{
+		static UApp Instance;
+		return Instance;
+	}
 
 	URenderer* GetRenderer() const { return Renderer; }
 	UResourceManager* GetResourceManager() const { return ResourceManager; }
@@ -39,5 +47,3 @@ private:
 	UImGuiDrawer* ImGuiDrawer = { nullptr };
 	UResourceManager* ResourceManager = { nullptr };
 };
-
-extern UApp* GApp;

@@ -1,8 +1,12 @@
 #pragma once
 #include "Object.h"
 #include "Level.h"
+#include "ImGuiDrawer.h"
+#include "Math.h"
+
 
 class AActor;
+class UGizmoComponent;
 class UResourceManager;
 class FEditorViewportClient;
 class UPrimitiveComponent;
@@ -23,6 +27,7 @@ public:
 		//언리얼 5로 가면서 NewObject로 바뀌었다고는 하는데.. 교차검증 필요 
 		//ConstructObject와 뭐가 다른건지
 		T* Actor           = NewObject<T>();
+
 		Actor->OwningLevel = CurrentLevel;
 
 		if (CurrentLevel)
@@ -37,14 +42,16 @@ public:
 
 public:
 	virtual void InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort);
-	void	Tick(float DeltaTime);
+	void Tick(float DeltaTime);
 	
 	AActor* GetPickedActor();
-	 
-private:
-	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
+	void SpawnActorFromEditor(FSpawnParameters params);
 
 private:
+	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
+	void PickActor(const FVector& RayOrigin, const FVector& RayDir);
+	AActor* GetSelectedActor() const { return SelectedActor; }
+
 
 public:
 	// 월드가 시작할 때 초기 레벨
@@ -56,8 +63,14 @@ public:
 	AActor* PickedActor = { nullptr };
 
 
+	UResourceManager* resourceManager;
+
 	//나중엔 씬을 만들것임
 	//FScene* Scene = { nullptr };
+private:
+	AActor* SelectedActor = { nullptr };
+	UGizmoComponent* MainGizmo = { nullptr };
 
+	void TransferGizmo(AActor* NewTarget);
 };
 
