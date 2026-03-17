@@ -43,9 +43,9 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeActor->RootComponent = CubeComponent;
 
 
-	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
+	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
+	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
 
 	GizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
 
