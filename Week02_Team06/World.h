@@ -50,9 +50,15 @@ public:
 	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
 private:
+	class UGizmoActor* MainGizmoActor = { nullptr };
+
+private:
 	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
 	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
 	AActor* GetSelectedActor() const { return SelectedActor; }
+	FVector CalculateClosestPointOnAxis(const FVector& RayOrigin, const FVector& RayDir, EGizmoAxis Axis);
+	// [추가] 마우스 광선과 가상 평면이 만나는 3D 교차점을 반환하는 수학 도우미
+	FVector CalculateRayPlaneIntersection(const FVector& RayOrg, const FVector& RayDir, const FVector& PlaneNormal, const FVector& PlaneOrigin);
 
 
 public:
@@ -71,6 +77,12 @@ public:
 	//FScene* Scene = { nullptr };
 private:
 	AActor* SelectedActor = { nullptr };
+
+	// 드래그 관련 상태 변수
+	EGizmoAxis CurrentDraggingAxis = EGizmoAxis::None; // 현재 잡고 있는 축
+	FVector DragStartPoint = { 0.f, 0.f, 0.f };      // 클릭한 시점의 3D 축 위 좌표
+	FVector GizmoStartLocation = { 0.f, 0.f, 0.f };  // 클릭한 시점의 기즈모 위치
+	bool bIsDragging = false;    // 드래그 중인지 여부
 
 	//void TransferGizmo(AActor* NewTarget);
 };

@@ -1,8 +1,6 @@
 #pragma once
 #include "Actor.h"
 
-enum class EGizmoAxis { Center, X, Y, Z, None };
-
 class UArrowComponent;
 class USphereComponent;
 

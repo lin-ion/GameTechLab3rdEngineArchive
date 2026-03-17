@@ -3,7 +3,6 @@
 #include "World.h"
 #include "ArrowComponent.h"
 #include "SphereComponent.h"
-
 #include "FEditorViewportClient.h"
 
 IMPLEMENT_CLASS(UGizmoActor, AActor)
@@ -36,6 +35,11 @@ void UGizmoActor::BeginPlay()
 void UGizmoActor::Tick(float DeltaTime)
 {
 	if (!RootComponent) return;
+
+	FVector CurrentPos = RootComponent->GetPosition();
+	ArrowX->SetPosition(CurrentPos);
+	ArrowY->SetPosition(CurrentPos);
+	ArrowZ->SetPosition(CurrentPos);
 
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
 

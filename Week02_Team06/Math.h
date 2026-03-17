@@ -13,6 +13,8 @@ struct FVector
 {
 	float X, Y, Z;
 
+	static const FVector Zero;
+
 	// 벡터 연산
 	FVector operator+(const FVector& other) const { return { X + other.X, Y + other.Y, Z + other.Z }; }
 	FVector operator-(const FVector& other) const { return { X - other.X, Y - other.Y, Z - other.Z }; }

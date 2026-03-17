@@ -33,7 +33,7 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	resourceManager = &ResourceManager;
 
 	AActor* CubeActor = SpawnActor<AActor>();
-	UGizmoActor* GizmoActor = SpawnActor<UGizmoActor>();
+	MainGizmoActor = SpawnActor<UGizmoActor>();
 
 
 	//레벨에 엑터 추가
@@ -43,11 +43,10 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeActor->RootComponent = CubeComponent;
 
 
-	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
-
-	GizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
+	MainGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	MainGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	MainGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
+	MainGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
 
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
 	{
@@ -68,18 +67,103 @@ void UWorld::Tick(float DeltaTime)
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-	// [공정 연동] 마우스 좌클릭 시 피킹 파이프라인 가동
-	if (UInput::GetInstance().IsKeyDown(VK_LBUTTON))
+	// 드래그 중이라면
+	UInput& Input = UInput::GetInstance();
+	FVector RayOrigin = ViewPort->GetViewLocation();
+	FVector RayDir = ViewPort->GetCameraRayDirection();
+
+	// 마우스 좌클릭 시 피킹
+	if (Input.IsKeyDown(VK_LBUTTON))
 	{
-
-		// 2순위: 기즈모가 아니라면 월드 공간의 액터를 피킹합니다.
-		AActor* HitActor = GetPickedActor();
-
-		// 3순위: 액터가 선택되었다면 기즈모를 해당 액터로 이사시킵니다.
-		if (HitActor)
+		if (MainGizmoActor)
 		{
-			//TransferGizmo(HitActor);
+			// 현재 마우스가 기즈모의 어느 축 위에 있는지 확인
+			CurrentDraggingAxis = MainGizmoActor->CheckGizmoPicking();
+
+			if (CurrentDraggingAxis != EGizmoAxis::None)
+			{
+				bIsDragging = true;
+				GizmoStartLocation = MainGizmoActor->RootComponent->GetPosition();
+
+				// Center를 잡았을 때는 평면 투영, 그 외에는 선 투영
+				if (CurrentDraggingAxis == EGizmoAxis::Center)
+				{
+					FVector PlaneNormal = RayOrigin - GizmoStartLocation;
+					PlaneNormal.Normalize(); // 카메라를 바라보는 수직 벡터
+					DragStartPoint = CalculateRayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
+				}
+				else
+				{
+					DragStartPoint = CalculateClosestPointOnAxis(RayOrigin, RayDir, CurrentDraggingAxis);
+				}
+			}
 		}
+		
+		else
+		{
+			// 기즈모가 아니라면 월드 공간의 액터를 피킹합니다.
+			AActor* HitActor = GetPickedActor();
+
+			// 액터가 선택되었다면 기즈모를 해당 액터로 이사시킵니다.
+			if (HitActor)
+			{
+				//TransferGizmo(HitActor);   
+			}
+		}
+	}
+
+	// 버튼을 누르고 있는 상태 (IsKeyPressing)
+	if (bIsDragging && Input.IsKeyPressing(VK_LBUTTON))
+	{
+		FVector CurrentPoint;
+
+		// 이동 중에도 동일한 방식으로 투영점 계산
+		if (CurrentDraggingAxis == EGizmoAxis::Center)
+		{
+			FVector PlaneNormal = RayOrigin - GizmoStartLocation;
+			PlaneNormal.Normalize();
+			CurrentPoint = CalculateRayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
+		}
+		else
+		{
+			CurrentPoint = CalculateClosestPointOnAxis(RayOrigin, RayDir, CurrentDraggingAxis);
+		}
+
+		// 이동 변위(Delta) = 현재 지점 - 시작 지점
+		FVector Delta = CurrentPoint - DragStartPoint;
+
+		// 기즈모를 시작 위치에서 변위만큼 이동
+		MainGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
+	}
+
+	// 3. 버튼을 뗀 경우 (IsKeyUp)
+	if (Input.IsKeyUp(VK_LBUTTON))
+	{
+		bIsDragging = false;
+		CurrentDraggingAxis = EGizmoAxis::None;
+	}
+}
+
+void UWorld::SpawnActorFromEditor(FSpawnParameters params)
+{
+	for (int i = 0; i < params.Count; i++)
+	{
+		AActor* actor = SpawnActor<AActor>();
+
+		if (params.PrimitiveType == "Cube")
+		{
+			UCubeComponent* Cube = actor->AddComponent<UCubeComponent>();
+			Cube->SetMesh(resourceManager->FindMeshData("Cube"));
+			actor->RootComponent = Cube;
+		}
+		else
+		{
+			return;
+		}
+
+		actor->RootComponent->SetPosition(params.Location);
+		actor->RootComponent->SetRotation(params.Rotation);
+		actor->RootComponent->SetScale(params.Scale);
 	}
 }
 
@@ -92,7 +176,7 @@ AActor* UWorld::GetPickedActor()
 	{
 		AActor* TargetActor = ActorArray[ActorIndex];
 		// [핵심 방어] 기즈모를 담고 있는 액터 자체는 피킹 검수에서 제외합니다.
-		//if (MainGizmo == TargetActor) continue;
+		if (MainGizmoActor == TargetActor) continue;
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 
@@ -120,6 +204,53 @@ AActor* UWorld::GetPickedActor()
 	}
 
 	return nullptr;
+}
+
+FVector UWorld::CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)
+{
+	if (!MainGizmoActor) return FVector::Zero;
+
+	FVector AxisDir;
+	switch (Axis)
+	{
+	case EGizmoAxis::X: AxisDir = MainGizmoActor->ArrowX->GetUpVector(); break;
+	case EGizmoAxis::Y: AxisDir = MainGizmoActor->ArrowY->GetUpVector(); break;
+	case EGizmoAxis::Z: AxisDir = MainGizmoActor->ArrowZ->GetUpVector(); break;
+	default: return MainGizmoActor->RootComponent->GetPosition();
+	}
+
+	FVector GizmoPos = MainGizmoActor->RootComponent->GetPosition();
+
+	// 두 직선(마우스 광선, 기즈모 축) 간의 최단 거리 계수 t를 구하는 공식
+	FVector w0 = RayOrg - GizmoPos;
+	float a = RayDir.Dot(RayDir);
+	float b = RayDir.Dot(AxisDir);
+	float c = AxisDir.Dot(AxisDir);
+	float d = RayDir.Dot(w0);
+	float e = AxisDir.Dot(w0);
+
+	float Denom = a * c - b * b;
+	if (abs(Denom) < 1e-6f) return GizmoPos; // 평행할 경우
+
+	// t2는 기즈모 축 직선상의 매개변수
+	float t2 = (a * e - b * d) / Denom;
+
+	// 최종 월드 좌표 반환
+	return GizmoPos + (AxisDir * t2);
+}
+
+FVector UWorld::CalculateRayPlaneIntersection(const FVector& RayOrg, const FVector& RayDir, const FVector& PlaneNormal, const FVector& PlaneOrigin)
+{
+	// 광선과 평면 법선의 내적 계산 (0이면 광선과 평면이 서로 평행함)
+	float Denom = RayDir.Dot(PlaneNormal);
+	if (abs(Denom) < 1e-6f) return PlaneOrigin;
+
+	// 교차점 계수 t = ((평면원점 - 광선원점) 내적 법선) / Denom
+	FVector Diff = PlaneOrigin - RayOrg;
+	float t = Diff.Dot(PlaneNormal) / Denom;
+
+	// 광선의 원점에서 방향(RayDir)으로 t만큼 이동한 최종 교차점 반환
+	return RayOrg + (RayDir * t);
 }
 
 bool UWorld::RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2)
@@ -164,35 +295,6 @@ bool UWorld::RayIntersectsTriangle(const FVector& CameraPos, const FVector& Came
 	return T > epsilon;
 }
 
-void UWorld::Release()
-{
-	// World는 참조만 정리
-	CurrentLevel = nullptr;
-}
-
-void UWorld::SpawnActorFromEditor(FSpawnParameters params)
-{
-	for (int i = 0; i < params.Count; i++)
-	{
-		AActor* actor = SpawnActor<AActor>();
-
-		if (params.PrimitiveType == "Cube")
-		{
-			UCubeComponent* Cube = actor->AddComponent<UCubeComponent>();
-			Cube->SetMesh(resourceManager->FindMeshData("Cube"));
-			actor->RootComponent = Cube;
-		}
-		else
-		{
-			return;
-		}
-
-		actor->RootComponent->SetPosition(params.Location);
-		actor->RootComponent->SetRotation(params.Rotation);
-		actor->RootComponent->SetScale(params.Scale);
-	}
-}
-
 // 공용 매시 충돌검사 함수
 bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix)
 {
@@ -212,4 +314,10 @@ bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, 
 		}
 	}
 	return false;
+}
+
+void UWorld::Release()
+{
+	// World는 참조만 정리
+	CurrentLevel = nullptr;
 }
