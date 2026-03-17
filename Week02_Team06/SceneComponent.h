@@ -34,6 +34,8 @@ public:
 
 	FMatrix GetComponentTransform() const { return ComponentToWorld; }
 
+	FVector GetRelativeScale() const { return RelativeScale; };
+	void SetRelativeScale(const FVector& Scale) { RelativeScale = Scale; };
 
 public:
 	// 렌더는 PrimitiveComponent만 수행 — 기본 구현은 비어있음
@@ -51,6 +53,9 @@ protected:
 	// TODO: Euler Angle이 아닌 Quaternion으로 회전 표현 고려
 	FVector Rotation = { 0.0f, 0.0f, 0.0f };
 	FVector Scale    = { 1.0f, 1.0f, 1.0f };
+
+	//루트 기준 상대 스케일
+	FVector RelativeScale = { 1.f, 1.f, 1.f };
 
 	// MVP 행렬의 Model 행렬에 해당
 	FMatrix ComponentToWorld = FMatrix::Identity;

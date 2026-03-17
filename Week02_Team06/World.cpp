@@ -23,10 +23,9 @@
 void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort)
 {
 	CurrentLevel = UObjectFactory::NewObject<ULevel>();
-    AActor* GizmoStorageActor = SpawnActor<AActor>();
-
 	CurrentLevel->OwningWorld = this;
 	ViewPort = _ViewPort;
+
 
 
 	resourceManager = &ResourceManager;
@@ -37,16 +36,19 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
+
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 	CubeComponent->SetHovering(true);
 	CubeActor->RootComponent = CubeComponent;
-
+	CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
 
 	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("Gizmo"));
 	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("Gizmo"));
 	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("Gizmo"));
 
 	GizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
+	GizmoActor->RootComponent = GizmoActor->BasePoint;
+	GizmoActor->BoundingSphere->SetScale(GizmoActor->RootComponent->GetScale() * 3.f);
 
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
 	{
@@ -67,14 +69,10 @@ void UWorld::Tick(float DeltaTime)
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-	// [공정 연동] 마우스 좌클릭 시 피킹 파이프라인 가동
 	if (UInput::GetInstance().IsKeyDown(VK_LBUTTON))
 	{
-
-		// 2순위: 기즈모가 아니라면 월드 공간의 액터를 피킹합니다.
 		AActor* HitActor = GetPickedActor();
 
-		// 3순위: 액터가 선택되었다면 기즈모를 해당 액터로 이사시킵니다.
 		if (HitActor)
 		{
 			//TransferGizmo(HitActor);
@@ -90,8 +88,6 @@ AActor* UWorld::GetPickedActor()
 	for (size_t ActorIndex = 0; ActorIndex < ActorArray.Size(); ++ActorIndex)
 	{
 		AActor* TargetActor = ActorArray[ActorIndex];
-		// [핵심 방어] 기즈모를 담고 있는 액터 자체는 피킹 검수에서 제외합니다.
-		//if (MainGizmo == TargetActor) continue;
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 

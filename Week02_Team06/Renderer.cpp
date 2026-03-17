@@ -46,7 +46,7 @@ void URenderer::BeginScene()
 	DeviceContext->ClearDepthStencilView(DepthStensilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
 
 	DeviceContext->RSSetViewports(1, &ViewportInfo);
-	DeviceContext->RSSetState(RasterizerState);
+	DeviceContext->RSSetState(RasterizerStateDefault);
 	DeviceContext->OMSetRenderTargets(1, &BackBufferRTV, DepthStensilView);
 	DeviceContext->OMSetDepthStencilState(DepthStencilState, 1);
 
@@ -58,6 +58,8 @@ void URenderer::Render(UWorld* World)
 {
 	if (!World) return;
 
+	DebugRenderList.Clear();
+
 	// 셰이더
 	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
@@ -65,6 +67,10 @@ void URenderer::Render(UWorld* World)
 
 	RenderAxisLine();
 	RenderPrimitive(World);
+#ifdef _DEBUG
+	RenderDebug();
+#endif // _DEBUG
+
 }
 
 void URenderer::EndScene()
@@ -80,11 +86,7 @@ void URenderer::Release()
 	ReleaseShader();
 
 	DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
-	if (DepthStencilState)
-	{
-		DepthStencilState->Release();
-		DepthStencilState = nullptr;
-	}
+	ReleaseDepthStencilState();
 	ReleaseRasterizerState();
 	ReleaseDepthStensilView();
 	ReleaseRenderTargetView();
@@ -112,31 +114,44 @@ void URenderer::CreateRasterizerState()
 	D3D11_RASTERIZER_DESC RasterizerDesc = {};
 	RasterizerDesc.FillMode = D3D11_FILL_SOLID;
 	RasterizerDesc.CullMode = D3D11_CULL_NONE;
+	RasterizerDesc.DepthClipEnable = TRUE;
 
-	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerState);
+	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateDefault);
 
 
 	RasterizerDesc = {};
 	RasterizerDesc.FillMode = D3D11_FILL_SOLID;
-	RasterizerDesc.CullMode = D3D11_CULL_FRONT;  
+	RasterizerDesc.CullMode = D3D11_CULL_FRONT;
 	RasterizerDesc.FrontCounterClockwise = FALSE;
 	RasterizerDesc.DepthClipEnable = TRUE;
-
 
 	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateOutline);
 
 
-	DeviceContext->RSSetState(RasterizerState);
+	RasterizerDesc = {};
+	RasterizerDesc.FillMode = D3D11_FILL_WIREFRAME;
+	RasterizerDesc.CullMode = D3D11_CULL_BACK;
+	RasterizerDesc.FrontCounterClockwise = FALSE;
+	RasterizerDesc.DepthClipEnable = TRUE;
+
+	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateDebug);
+
+	DeviceContext->RSSetState(RasterizerStateDefault);
 
 }
 
 void URenderer::ReleaseRasterizerState()
 {
-
-	if (RasterizerState)
+	if (RasterizerStateDebug)
 	{
-		RasterizerState->Release();
-		RasterizerState = nullptr;
+		RasterizerStateDebug->Release();
+		RasterizerStateDebug = nullptr;
+	}
+
+	if (RasterizerStateDefault)
+	{
+		RasterizerStateDefault->Release();
+		RasterizerStateDefault = nullptr;
 	}
 
 	if (RasterizerStateOutline)
@@ -226,6 +241,31 @@ void URenderer::CreateDepthStencilState()
 
 	// 헤더에서 바꾼 변수명(DepthStencilState)에 저장합니다.
 	Device->CreateDepthStencilState(&dsDesc, &DepthStencilState);
+
+
+	D3D11_DEPTH_STENCIL_DESC dsDescNoDepth = {};
+	dsDesc.DepthEnable = FALSE;
+	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	dsDesc.StencilEnable = FALSE;
+
+	Device->CreateDepthStencilState(&dsDesc, &DepthStencilStateNoDepth);
+
+
+}
+
+void URenderer::ReleaseDepthStencilState()
+{
+	if (DepthStencilState)
+	{
+		DepthStencilState->Release();
+		DepthStencilState = nullptr;
+	}
+	if (DepthStencilStateNoDepth)
+	{
+		DepthStencilStateNoDepth->Release();
+		DepthStencilStateNoDepth = nullptr;
+	}
 }
 
 void URenderer::CreateShader(ID3D11Device& Device, const std::wstring& Filename, const D3D11_INPUT_ELEMENT_DESC Layout[], int ElementNum)
@@ -300,9 +340,9 @@ void URenderer::CreateLineAxisBuffer()
 {
 	FVertexSimple Axis_Vertices[6] =
 	{
-		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {50.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f}, 
-		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  50.f, 0.f,  0.f, 1.f, 0.f, 1.f}, 
-		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  50.f, 0.f, 0.f, 1.f, 1.f}, 
+		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {50.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f},
+		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  50.f, 0.f,  0.f, 1.f, 0.f, 1.f},
+		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  50.f, 0.f, 0.f, 1.f, 1.f},
 	};
 
 	D3D11_BUFFER_DESC vertexBufferDesc = {};
@@ -324,8 +364,8 @@ void URenderer::CreateGridBuffer()
 {
 	const float GridSize = 200.f;
 	const float GridStep = 5.f;
-	const int   HalfCount = (int)(GridSize / GridStep); 
-	const int   LineCount = HalfCount * 2 + 1;          
+	const int   HalfCount = (int)(GridSize / GridStep);
+	const int   LineCount = HalfCount * 2 + 1;
 
 	GridVertexCount = LineCount * 2 * 2;
 
@@ -339,7 +379,7 @@ void URenderer::CreateGridBuffer()
 	{
 		float z = i * GridStep;
 		GridVertices[idx++] = { -GridSize, -0.005f,  z, r, g, b, a };
-		GridVertices[idx++] = {  GridSize, -0.005f,  z, r, g, b, a };
+		GridVertices[idx++] = { GridSize, -0.005f,  z, r, g, b, a };
 	}
 
 	for (int i = -HalfCount; i <= HalfCount; i++)
@@ -350,9 +390,9 @@ void URenderer::CreateGridBuffer()
 	}
 
 	D3D11_BUFFER_DESC vertexBufferDesc = {};
-	vertexBufferDesc.ByteWidth  = sizeof(FVertexSimple) * GridVertexCount;
-	vertexBufferDesc.Usage      = D3D11_USAGE_IMMUTABLE;
-	vertexBufferDesc.BindFlags  = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.ByteWidth = sizeof(FVertexSimple) * GridVertexCount;
+	vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
 	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { GridVertices };
 	Device->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &GridBuffer);
@@ -405,7 +445,7 @@ void URenderer::RenderAxisLine()
 
 void URenderer::OnResize(UINT width, UINT height)
 {
-	if (width == 0 || height == 0) height = 1;
+	if (width == 0 || height == 0) return;
 
 	ID3D11RenderTargetView* nullRTV = nullptr;
 	DeviceContext->OMSetRenderTargets(1, &nullRTV, nullptr);
@@ -450,6 +490,12 @@ void URenderer::RenderPrimitive(UWorld* World)
 			UPrimitiveComponent* Primitive = Primitives[j];
 			if (!Primitive || !Primitive->GetMesh()) continue;
 
+			if (Primitive->IsDebugMode())
+			{
+				DebugRenderList.PushBack(Primitive);
+				continue;
+			}
+
 			FMatrix Model = Primitive->GetComponentTransform();
 
 			// 아웃라인 패스
@@ -461,9 +507,32 @@ void URenderer::RenderPrimitive(UWorld* World)
 				Primitive->Render(*DeviceContext);
 			}
 			// 원본 패스
-			UpdateConstantBuffer({ Model * VP, FVector4() });
-			DeviceContext->RSSetState(RasterizerState);
+			UpdateConstantBuffer({ Model * VP,  Primitive->GetColor() });
+
+			DeviceContext->RSSetState(RasterizerStateDefault);
 			Primitive->Render(*DeviceContext);
+
 		}
 	}
 }
+
+#ifdef  _DEBUG
+void URenderer::RenderDebug()
+{
+	FMatrix VP = ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
+
+	DeviceContext->OMSetDepthStencilState(DepthStencilStateNoDepth, 0);
+	DeviceContext->RSSetState(RasterizerStateDebug);
+
+	for (size_t i = 0; i < DebugRenderList.Size(); ++i)
+	{
+		FMatrix Model = DebugRenderList[i]->GetComponentTransform();
+		UpdateConstantBuffer({ Model * VP,  FVector4(FVector(0.f, 1.f, 0.f), 1.f) });
+
+		DebugRenderList[i]->Render(*DeviceContext);
+	}
+
+	DeviceContext->OMSetDepthStencilState(DepthStencilState, 1);
+	DeviceContext->RSSetState(RasterizerStateDefault);
+}
+#endif //  _DEBUG

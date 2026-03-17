@@ -15,12 +15,10 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void Release() override;
 
-	EGizmoAxis CheckGizmoPicking();
-
 public:
-	UArrowComponent* ArrowY = nullptr; // Y축 (기본, Green)
-	UArrowComponent* ArrowX = nullptr; // X축 (Red, Z축 -90도 회전)
-	UArrowComponent* ArrowZ = nullptr; // Z축 (Blue, X축 +90도 회전)
+	UArrowComponent* ArrowY = nullptr; // Y축 초
+	UArrowComponent* ArrowX = nullptr; // X축 빨
+	UArrowComponent* ArrowZ = nullptr; // Z축 파
 	USphereComponent* BasePoint = nullptr;
 
 	//추척된 참조

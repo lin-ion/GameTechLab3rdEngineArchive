@@ -49,7 +49,6 @@ public:
 
 private:
 	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
-	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
 	AActor* GetSelectedActor() const { return SelectedActor; }
 
 
@@ -69,7 +68,5 @@ public:
 	//FScene* Scene = { nullptr };
 private:
 	AActor* SelectedActor = { nullptr };
-
-	//void TransferGizmo(AActor* NewTarget);
 };
 
