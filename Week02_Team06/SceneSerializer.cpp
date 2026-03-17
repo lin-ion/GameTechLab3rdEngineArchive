@@ -2,83 +2,75 @@
 #include "SceneSerializer.h"
 #include "json.hpp"
 #include <fstream>
-
+#include "World.h"
 #include "PrimitiveComponent.h"
+#include "Actor.h"
 
 using ordered_json = nlohmann::ordered_json;
 using json = nlohmann::json;
 
-//test용
-TArray<UPrimitiveComponent*> objectTestArray;
 
 static json VectorToJson(const FVector& v)
 {
 	return json::array({ v.X, v.Y, v.Z });
 }
 
-std::string USceneSerializer::Serialize(const SceneSaveData& sceneInfo)
+static FVector JsonToVector(const json& j)
+{
+	return FVector(j[0], j[1], j[2]);
+}
+
+FString USceneSerializer::Serialize(SceneSaveData& sceneInfo)
 {
 	ordered_json root;
 
 	root["Version"] = sceneInfo.Version;
 	root["NextUUID"] = sceneInfo.NextUUID;
 
-	/*
 	json primitive = json::object();
 
-	for (int i = 0; i < objectTestArray.Size(); i++)
+	for (size_t i = 0; i < sceneInfo.Primitives.Size(); ++i)
 	{
-	    // 오브젝트 구조체 읽기
+		UPrimitiveComponent* RootComponent = sceneInfo.Primitives[i]->GetComponentByClass<UPrimitiveComponent>();
+
+		if (!RootComponent || RootComponent->GetType().empty())
+			continue;
+
 		json objData = json::object();
 
-		objData["Location"] = VectorToJson(objectTestArray[i]->GetPosition());
-		objData["Rotation"] = VectorToJson(objectTestArray[i]->GetRotation());
-		objData["Scale"] = VectorToJson(objectTestArray[i]->GetScale());
-		objData["Type"] = "Cube";
+		objData["Location"] = VectorToJson(RootComponent->GetPosition());
+		objData["Rotation"] = VectorToJson(RootComponent->GetRotation());
+		objData["Scale"] = VectorToJson(RootComponent->GetScale());
+		objData["Type"] = RootComponent->GetType();
 		
-		primitive[std::to_string(i)] = objData;
+		primitive[std::to_string(sceneInfo.Primitives[i]->SceneUUID)] = objData;
 	}
 
 	root["Primitives"] = primitive;
-	*/
 
 	return root.dump(4);
 }
 
-bool USceneSerializer::Desrialize(const std::string& jsonString, SceneSaveData& outSceneInfo)
+bool USceneSerializer::SaveScene(const FString& sceneName, UWorld* World)
 {
-	json root = json::parse(jsonString);
+	SceneSaveData sceneData;
 
-	outSceneInfo.NextUUID = root["NextUUID"];
-	outSceneInfo.Version = root["Version"];
+	sceneData.Name = sceneName;
+	sceneData.NextUUID = UEngineStatics::SceneUUID;
 
-	/*
-	* if (root.contains("Primitives"))
+	TArray<AActor*> Actors = World->CurrentLevel->Actors;
+	for (size_t i = 0; i < Actors.Size(); ++i)
 	{
-		for (auto& item : root["Primitives"].items())
-		{
-			json objData = item.value();
+		if (!Actors[i]->GetComponentByClass<UPrimitiveComponent>())
+			continue;
 
-			auto locArr = objData["Location"];
-			auto rotArr = objData["Rotation"];
-			auto sclArr = objData["Scale"];
-
-			std::string type = objData["Type"];
-
-			// 오브젝트 구조체에 다 담아서 스폰하는 함수에 다 보내기
-		}
+		sceneData.Primitives.PushBack(Actors[i]);
 	}
-	*/
 
-	return true;
-}
-
-bool USceneSerializer::SaveScene(const std::string& sceneName, const SceneSaveData& sceneData)
-{
-	std::string fullPath = GetSaveDirectory() + sceneName + ".Scene";
+	FString fullPath = GetSaveDirectory() + sceneName + ".Scene";
 	std::filesystem::create_directories(GetSaveDirectory());
 
-	std::string root = Serialize(sceneData);
+	FString root = Serialize(sceneData);
 
 	std::ofstream file(fullPath);
 	if (!file.is_open()) return false;
@@ -88,16 +80,34 @@ bool USceneSerializer::SaveScene(const std::string& sceneName, const SceneSaveDa
 	return true;
 }
 
-bool USceneSerializer::LoadScene(const std::string& sceneName, SceneSaveData& outSceneData)
+bool USceneSerializer::LoadScene(const FString& sceneName, UWorld* World)
 {
-	std::string fullPath = GetSaveDirectory() + sceneName + ".Scene";
+	FString fullPath = GetSaveDirectory() + sceneName + ".Scene";
 
 	std::ifstream file(fullPath);
 	if (!file.is_open()) return false;
 
 	std::stringstream buffer;
 	buffer << file.rdbuf();
-	std::string jsonContent = buffer.str();
 
-	return Desrialize(jsonContent, outSceneData);
+	json root = json::parse(buffer.str());
+	World->ClearScene();
+	UEngineStatics::SetSceneUUID(root["NextUUID"]);
+
+	for (auto& item : root["Primitives"].items())
+	{
+		json objData = item.value();
+
+		FSpawnParameters params;
+		params.bOverrideUUID = true;
+		params.Count = 1;
+		params.UUID = std::stoul(item.key());
+		params.Location = JsonToVector(objData["Location"]);
+		params.Rotation = JsonToVector(objData["Rotation"]);
+		params.Scale = JsonToVector(objData["Scale"]);
+		params.PrimitiveType = objData["Type"];
+
+		World->SpawnActorFromEditor(params);
+	}
+	return true;
 }

@@ -443,6 +443,7 @@ void URenderer::RenderAxisLine()
 
 void URenderer::OnResize(UINT width, UINT height)
 {
+
 	if (width == 0 || height == 0) return;
 
 	ID3D11RenderTargetView* nullRTV = nullptr;
