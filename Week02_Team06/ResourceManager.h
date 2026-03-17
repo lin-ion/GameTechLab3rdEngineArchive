@@ -8,23 +8,9 @@ public:
 	~UResourceManager() = default;
 
 public:
-	template<typename TVertex>
-	void   LoadResourceData(ID3D11Device& Device, const FString& DataTypaName, const TVertex* Vertices, UINT VertexCount, const uint32* Indices, UINT IndexCount)
-	{
-		//이미 존재하는 리소스라면 추가X
-		if (nullptr != MeshDatas.Find(DataTypaName))
-		{
-			return;
-		}
-
-		UMesh* Mesh = new UMesh;
-		Mesh->Load<TVertex>(Device, Vertices, VertexCount, Indices, IndexCount);
-		MeshDatas.Insert({ DataTypaName, Mesh });
-	}
-
-public:
 	void Initialize(ID3D11Device& Device);
 	void Release();
+	void LoadResourceData(ID3D11Device& Device, const FString& MeshName, const FString& FilePath, const uint32* Indices, UINT IndexCount);
 
 public:
 	UMesh* FindMeshData(const FString& DataTypaName);

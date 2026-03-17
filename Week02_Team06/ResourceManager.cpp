@@ -1,21 +1,45 @@
 #include "pch.h"
 #include "ResourceManager.h"
-#include "Mesh.h"
+#include "json.hpp"
+#include <fstream>
 
-//외부 데이터
-#include "Cube.h"
-#include "Sphere.h"
-#include "Triangle.h"
-#include "Gizmo.h"
+using json = nlohmann::json;
 
 void UResourceManager::Initialize(ID3D11Device& Device)
 {
-	//인덱스 버퍼는 배제
-	LoadResourceData<FVertexSimple>(Device, "Sphere", sphere_vertices, sizeof(sphere_vertices) / sizeof(FVertexSimple), nullptr, 0);
-	LoadResourceData<FVertexSimple>(Device, "Cube", cube_vertices, sizeof(cube_vertices) / sizeof(FVertexSimple), nullptr, 0);
-	LoadResourceData<FVertexSimple>(Device, "Triangle", triangle_vertices, sizeof(triangle_vertices) / sizeof(FVertexSimple), nullptr, 0);
-	LoadResourceData<FVertexSimple>(Device, "Gizmo", gizmo_vertices, sizeof(gizmo_vertices) / sizeof(FVertexSimple), nullptr, 0);
+	LoadResourceData(Device, "Sphere", "Content/Meshes/Sphere.json", nullptr, 0);
+	LoadResourceData(Device, "Cube", "Content/Meshes/Cube.json", nullptr, 0);
+	LoadResourceData(Device, "Triangle", "Content/Meshes/Triangle.json", nullptr, 0);
+	LoadResourceData(Device, "GizmoLocation", "Content/Meshes/GizmoLocation.json", nullptr, 0);
+	LoadResourceData(Device, "GizmoRotation", "Content/Meshes/GizmoRotation.json", nullptr, 0);
+}
 
+void UResourceManager::LoadResourceData(ID3D11Device& Device, const FString& MeshName, const FString& FilePath, const uint32* Indices, UINT IndexCount)
+{
+	if (MeshDatas.Find(MeshName) != nullptr)
+		return;
+
+	std::ifstream File(FilePath);
+	if (!File.is_open())
+		return;
+
+	json Root = json::parse(File);
+	const auto& VerticesJson = Root["vertices"];
+	const UINT VertexCount = static_cast<UINT>(VerticesJson.size());
+	TArray<FVertexSimple> Vertices;
+	Vertices.SetNum(VertexCount);
+
+	for (UINT i = 0; i < VertexCount; ++i)
+	{
+		const auto& V = VerticesJson[i];
+		Vertices[i] = { V[0].get<float>(), V[1].get<float>(), V[2].get<float>(),
+		                V[3].get<float>(), V[4].get<float>(), V[5].get<float>(), V[6].get<float>() };
+	}
+
+	UMesh* Mesh = new UMesh;
+	Mesh->Load(Device, &Vertices[0], VertexCount, Indices, IndexCount);
+
+	MeshDatas.Insert({ MeshName, Mesh });
 }
 
 void UResourceManager::Release()
