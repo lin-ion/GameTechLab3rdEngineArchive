@@ -1,32 +1,35 @@
 #include "pch.h"
-#include "GizmoActor.h"
+#include "LocationGizmoActor.h"
 #include "World.h"
 #include "ArrowComponent.h"
 #include "SphereComponent.h"
 #include "FEditorViewportClient.h"
 
-IMPLEMENT_CLASS(UGizmoActor, AActor)
+IMPLEMENT_CLASS(ULocationGizmoActor, AActor)
 
-void UGizmoActor::BeginPlay()
+void ULocationGizmoActor::BeginPlay()
 {
 	AActor::BeginPlay();
 
+	FVector RelativeScaleFactor = { 10.f, 10.f, 10.f };
+
 	ArrowY = AddComponent<UArrowComponent>();
 	ArrowY->SetColor({0.f, 1.f, 0.f, 1.f});
-	ArrowY->SetRelativeScale({ 3.f, 3.f, 3.f });
+	ArrowY->SetRelativeScale(RelativeScaleFactor);
 
 	ArrowX = AddComponent<UArrowComponent>();
 	ArrowX->SetRotation({ 0.0f, 0.0f, -90.0f });
 	ArrowX->SetColor({1.f, 0.f, 0.f, 1.f});
-	ArrowX->SetRelativeScale({ 3.f, 3.f, 3.f });
+	ArrowX->SetRelativeScale(RelativeScaleFactor);
 
 	ArrowZ = AddComponent<UArrowComponent>();
 	ArrowZ->SetColor({ 0.f, 0.f, 1.f, 1.f });
 	ArrowZ->SetRotation({ 90.0f, 0.0f, 0.0f });
-	ArrowZ->SetRelativeScale({ 3.f, 3.f, 3.f });
+	ArrowZ->SetRelativeScale(RelativeScaleFactor); 
 
 	BasePoint = AddComponent<USphereComponent>();
-	BasePoint->SetScale({ 0.5f, 0.5f, 0.5f });
+	BasePoint->SetColor({ 1.f, 1.f, 1.f, 1.f });
+	BasePoint->SetRelativeScale({ 0.1f, 0.1f, 0.1f }); // Root 및 BasePoint의 절대크기(Arrow의 Relative Scale이 이에 대한 상대크기임.)
 
 	ArrowY->SetAlwaysOnTop(true);
 	ArrowX->SetAlwaysOnTop(true);
@@ -37,20 +40,19 @@ void UGizmoActor::BeginPlay()
 	RootComponent = BasePoint;
 }
 
-void UGizmoActor::Tick(float DeltaTime)
+void ULocationGizmoActor::Tick(float DeltaTime)
 {
 	AActor::Tick(DeltaTime);
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
-
 	float Distance = (Viewport->GetViewLocation() - RootComponent->GetComponentLocation()).Length();
 	float ScaleFactor = Distance * 0.15f;
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
-	ArrowY->SetScale(ResultScale);
-	ArrowX->SetScale(ResultScale);
-	ArrowZ->SetScale(ResultScale);
+	//ArrowY->SetScale(ResultScale);
+	//ArrowX->SetScale(ResultScale);
+	//ArrowZ->SetScale(ResultScale);
+	BasePoint->SetScale((BasePoint->GetRelativeScale()) * ScaleFactor);
 	BoundingSphere->SetScale(ResultScale);
-
 
 	// 일단 모두 기본 색상으로 초기화
 	ArrowX->SetColor(ColorX);
@@ -78,7 +80,7 @@ void UGizmoActor::Tick(float DeltaTime)
 	}
 }
 
-EGizmoAxis UGizmoActor::CheckGizmoPicking()
+EGizmoAxis ULocationGizmoActor::CheckGizmoPicking()
 {
 	UWorld* World = GetWorld();
 	if (!World || !World->ViewPort) return EGizmoAxis::None;
@@ -98,7 +100,7 @@ EGizmoAxis UGizmoActor::CheckGizmoPicking()
 	return EGizmoAxis::None;
 }
 
-void UGizmoActor::Release()
+void ULocationGizmoActor::Release()
 {
 	AActor::Release();
 }

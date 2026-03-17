@@ -60,8 +60,16 @@ FVector FEditorViewportClient::GetCameraRayDirection()
 {
 	POINT MousePos = UInput::GetInstance().GetMousePosition();
 
-	float NDCX = (2.0f * MousePos.x) / WindowSizeWidth - 1.0f;
-	float NDCY = 1.0f - (2.0f * MousePos.y) / WindowSizeHeight;
+	// 고정된 WindowSizeWidth/Height 상수 대신, 실시간으로 변하는 창 크기를 가져옵니다.
+	float CurrentWidth = ImGui::GetIO().DisplaySize.x;
+	float CurrentHeight = ImGui::GetIO().DisplaySize.y;
+
+	// 최소화 등으로 창 크기가 0이 되었을 때의 0 나누기 방어코드
+	if (CurrentWidth <= 0.0f || CurrentHeight <= 0.0f) return FVector(0.f, 0.f, 1.f);
+
+	// 가져온 동적 크기를 사용하여 정밀한 NDC(정규화 장치 좌표)를 계산합니다.
+	float NDCX = (2.0f * MousePos.x) / CurrentWidth - 1.0f;
+	float NDCY = 1.0f - (2.0f * MousePos.y) / CurrentHeight;
 
 	FMatrix InvViewProj = (GetViewMatrix() * GetProjectionMatrix()).Inverse();
 

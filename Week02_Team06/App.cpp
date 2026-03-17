@@ -12,7 +12,7 @@
 #include "World.h"
 #include "ObjectFactory.h"
 #include "Actor.h"
-#include "GizmoActor.h"
+#include "LocationGizmoActor.h"
 
 bool UApp::Initialize(HINSTANCE hInstance)
 {
