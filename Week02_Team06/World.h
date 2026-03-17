@@ -4,7 +4,7 @@
 #include "ImGuiDrawer.h"
 #include "Math.h"
 
-
+class UMesh;
 class AActor;
 class UGizmoComponent;
 class UResourceManager;
@@ -46,6 +46,8 @@ public:
 	
 	AActor* GetPickedActor();
 	void SpawnActorFromEditor(FSpawnParameters params);
+	
+	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
 private:
 	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);

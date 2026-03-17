@@ -398,7 +398,6 @@ void URenderer::RenderAxisLine()
 	// 축 라인 렌더링
 	DeviceContext->IASetVertexBuffers(0, 1, &LineAxisBuffer, &Stride, &Offset);
 	DeviceContext->Draw(6, 0);
-
 	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
@@ -422,7 +421,7 @@ void URenderer::OnResize(UINT width, UINT height)
 
 	ViewportInfo.Width = (float)width;
 	ViewportInfo.Height = (float)height;
-
+	   
 	CreateRenderTargetView();
 	CreateDepthStensilView();
 
@@ -461,7 +460,7 @@ void URenderer::RenderPrimitive(UWorld* World)
 				Primitive->Render(*DeviceContext);
 			}
 			// 원본 패스
-			UpdateConstantBuffer({ Model * VP, FVector4() });
+			UpdateConstantBuffer({ Model * VP, Primitive->GetColor() });
 			DeviceContext->RSSetState(RasterizerState);
 			Primitive->Render(*DeviceContext);
 		}

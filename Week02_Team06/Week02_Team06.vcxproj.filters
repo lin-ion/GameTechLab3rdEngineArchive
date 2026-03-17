@@ -127,7 +127,7 @@
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="GizmoActor.cpp" />
     <ClCompile Include="Scene.cpp" />
-    <ClCompile Include="UArrowComponent.cpp" />
+    <ClCompile Include="ArrowComponent.cpp" />
     <ClCompile Include="SphereComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -216,7 +216,7 @@
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Macro.h" />
     <ClInclude Include="Scene.h" />
-    <ClInclude Include="UArrowComponent.h" />
+    <ClInclude Include="ArrowComponent.h" />
     <ClInclude Include="GizmoActor.h" />
     <ClInclude Include="SphereComponent.h" />
   </ItemGroup>
