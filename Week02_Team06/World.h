@@ -90,6 +90,5 @@ private:
 	FVector TargetStartRotation = { 0.f, 0.f, 0.f };   // 클릭한 시점의 타겟 액터 회전 (회전 모드용)
 	bool bIsDragging = false;    // 드래그 중인지 여부
 
-	//void TransferGizmo(AActor* NewTarget);
 };
 

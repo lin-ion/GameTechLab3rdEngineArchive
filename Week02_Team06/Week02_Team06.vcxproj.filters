@@ -222,6 +222,7 @@
     <FxCompile Include="ShaderW0.hlsl">
       <Filter>App\Renderer\Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="ShaderGrid.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Containers.inl" />

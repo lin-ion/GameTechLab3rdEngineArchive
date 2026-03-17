@@ -53,14 +53,22 @@ private:
 	void CreateGridBuffer();
 	void ReleaseGridBuffer();
 
+	void CreateGridShader();
+	void ReleaseGridShader();
+
+	void CreateAlphaBlendState();
+	void ReleaseAlphaBlendState();
+
 private:
 	void UpdateConstantBuffer(const FConstantData& Data);
 	void RenderAxisLine();
+	void RenderGrid();
 	void RenderPrimitive(UWorld* World);
 
 #ifdef _DEBUG
 	void RenderDebug();
 #endif
+
 private:
 	ID3D11Device* Device = { nullptr };
 	ID3D11DeviceContext* DeviceContext = { nullptr };
@@ -93,8 +101,11 @@ private:
 	ID3D11Buffer* LineAxisBuffer = { nullptr };
 
 	//그리드
-	ID3D11Buffer* GridBuffer = { nullptr };
-	int GridVertexCount = 0;
+	ID3D11Buffer*       GridBuffer        = { nullptr };
+	int                 GridVertexCount   = 0;
+	ID3D11VertexShader* GridVertexShader  = { nullptr };
+	ID3D11PixelShader*  GridPixelShader   = { nullptr };
+	ID3D11BlendState*   AlphaBlendState   = { nullptr };
 
 	FEditorViewportClient& ViewportClient;
 
