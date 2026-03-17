@@ -18,6 +18,7 @@
 #include "FEditorViewportClient.h"
 
 #include "Input.h"
+#include "Mesh.h"
 
 
 void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort)
@@ -190,4 +191,25 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 		actor->RootComponent->SetRotation(params.Rotation);
 		actor->RootComponent->SetScale(params.Scale);
 	}
+}
+
+// 공용 매시 충돌검사 함수
+bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix)
+{
+	if (!Mesh) return false;
+
+	// 광선을 월드 공간에서 로컬 공간으로 변환
+	FVector _CameraPos = FMatrix::TransformCoord(RayOrigin, WorldMatrix.Inverse());
+	FVector _CameraRay = FMatrix::TransformNormal(RayDir, WorldMatrix.Inverse());
+
+	const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Mesh->GetVertexData());
+
+	for (uint64 vertexIndex = 0; vertexIndex < Mesh->GetVertexCount(); vertexIndex += 3)
+	{
+		if (RayIntersectsTriangle(_CameraPos, _CameraRay, BufferData[vertexIndex], BufferData[vertexIndex + 1], BufferData[vertexIndex + 2]))
+		{
+			return true;
+		}
+	}
+	return false;
 }
