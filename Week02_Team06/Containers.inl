@@ -34,7 +34,7 @@ inline void TArray<T>::PopBack()
 template<typename T>
 inline uint64 TArray<T>::Size()
 {
-	return Container.size();;
+	return Container.size();
 }
 
 template<typename T>

@@ -103,7 +103,6 @@ public:
 		}
 	}
 
-	/** 타입으로 컴포넌트 검색 */
 	template<typename T>
 	T* GetComponentByClass()
 	{
@@ -113,6 +112,19 @@ public:
 				return Found;
 		}
 		return nullptr;
+	}
+
+	/** 타입으로 컴포넌트 전부 검색 */
+	template<typename T>
+	TArray<T*> GetComponentArrayByClass()
+	{
+		TArray<T*> Result;
+		for (uint32 i = 0; i < Components.Size(); ++i)
+		{
+			if (T* Found = dynamic_cast<T*>(Components[i]))
+				Result.PushBack(Found);
+		}
+		return Result;
 	}
 
 public:

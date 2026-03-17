@@ -4,13 +4,13 @@
 
 class UMesh;
 
-class UCubeComponent : public UPrimitiveComponent
+class USphereComponent : public UPrimitiveComponent
 {
-    DECLARE_CLASS(UCubeComponent, UPrimitiveComponent)
+    DECLARE_CLASS(USphereComponent, UPrimitiveComponent)
 
 public:
-    UCubeComponent() = default;
-    virtual ~UCubeComponent() = default;
+    USphereComponent() = default;
+    virtual ~USphereComponent() = default;
 
 public:
     //new, delete 오버로딩

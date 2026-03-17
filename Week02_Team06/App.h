@@ -44,11 +44,6 @@ private:
 
 	FEditorViewportClient* ViewportClient;
 
-
 	UImGuiDrawer* ImGuiDrawer = { nullptr };
 	UResourceManager* ResourceManager = { nullptr };
-
-	// Gizmo Picking Test용
-	class UGizmoComponent* MainGizmo = { nullptr };
-
 };

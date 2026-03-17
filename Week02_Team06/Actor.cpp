@@ -31,7 +31,7 @@ void AActor::Tick(float DeltaTime)
 
 void AActor::Release()
 {
-	for (int32 i = 0; i < Components.Size(); ++i)
+	for (uint64 i = 0; i < Components.Size(); ++i)
 	{
 		UObjectFactory::DestroyObject(Components[i]);
 	}

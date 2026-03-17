@@ -5,10 +5,11 @@
 void UObjectFactory::DestroyObject(UObject* Obj)
 {
 	if (!Obj) return;
-	uint32 Idx = Obj->internalIndex;
-	size_t sz = GUObjectArray.Size();
-	if (Idx >= sz) { return; }
-	uint32 LastIdx = (uint32)sz - 1;
+	uint64 Idx = Obj->internalIndex;
+
+	if (Idx >= GUObjectArray.Size()) { return; }
+	uint64 LastIdx = (uint64)GUObjectArray.Size() - 1;
+
 	if (Idx != LastIdx)
 	{
 		GUObjectArray[Idx] = GUObjectArray[LastIdx];
@@ -22,7 +23,7 @@ void UObjectFactory::DestroyObject(UObject* Obj)
 
 void UObjectFactory::DestroyAllObjects()
 {
-	for (uint32 i = 0; i < GUObjectArray.Size(); i++)
+	for (uint64 i = 0; i < GUObjectArray.Size(); i++)
 	{
 		GUObjectArray[i]->Release();
 		delete GUObjectArray[i];

@@ -24,6 +24,7 @@ public:
 	}
 
 	virtual void InitializeComponent() {};
+	virtual void Release() {};
 
 	virtual void TickComponent(float DeltaTime) {}
 

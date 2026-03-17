@@ -37,7 +37,7 @@ public:
 
 public:
 	// 렌더는 PrimitiveComponent만 수행 — 기본 구현은 비어있음
-	virtual void Render(ID3D11DeviceContext* DeviceContext, const FMatrix& ViewProjection, ID3D11Buffer* ConstantBuffer) {}
+	virtual void Render(ID3D11DeviceContext& DevcieContext) {}
 
 protected:
 	// TODO: Dirty Flag 추가 고려

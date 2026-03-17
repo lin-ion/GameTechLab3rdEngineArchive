@@ -12,7 +12,7 @@
 #include "World.h"
 #include "ObjectFactory.h"
 #include "Actor.h"
-#include "GizmoComponent.h"
+#include "GizmoActor.h"
 
 // Test
 #include "SceneSerializer.h"
@@ -143,11 +143,7 @@ void UApp::Release()
 		delete Renderer;
 	}
 
-	for (uint64 i = 0; i < GUObjectArray.Size(); ++i)
-	{
-		GUObjectArray[i]->Release();
-		delete GUObjectArray[i];
-	}
+	UObjectFactory::DestroyAllObjects();
 
 	if (ViewportClient)
 	{
@@ -160,6 +156,11 @@ void UApp::Release()
 		delete Graphics;
 	}
 
+	if (ResourceManager)
+	{
+		ResourceManager->Release();
+		delete ResourceManager;
+	}
 	if (Window)
 	{
 		Window->Release();
