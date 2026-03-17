@@ -23,13 +23,13 @@ void URotationGizmoActor::BeginPlay()
 
 	// 2. Y축 회전 링 (Green) - XZ 평면에 배치
 	RingY = AddComponent<URingComponent>();
-	RingY->SetRotation({ 0.0f, 0.0f, 0.0f }); // 필요에 따라 수정
+	RingY->SetRotation({ 0.0f, 90.0f, 0.0f }); // 필요에 따라 수정
 	RingY->SetColor(ColorY);
 	RingY->SetAlwaysOnTop(true);
 
 	// 3. Z축 회전 링 (Blue) - XY 평면에 배치
 	RingZ = AddComponent<URingComponent>();
-	RingZ->SetRotation({ 90.0f, 0.0f, 0.0f });
+	RingZ->SetRotation({ 90.0f, 0.0f, 180.0f });
 	RingZ->SetColor(ColorZ);
 	RingZ->SetAlwaysOnTop(true);
 }
@@ -48,18 +48,10 @@ void URotationGizmoActor::Tick(float DeltaTime)
 	}
 
 	if (!RootComponent) return;
-
 	FVector CurrentPos = RootComponent->GetPosition();
-	FVector CurrentRot = RootComponent->GetRotation();
-
 	if (RingX) RingX->SetPosition(CurrentPos);
 	if (RingY) RingY->SetPosition(CurrentPos);
 	if (RingZ) RingZ->SetPosition(CurrentPos);
-
-	// 각 링의 조립 오프셋을 유지한 채 부모와 함께 회전시킵니다.
-	if (RingX) RingX->SetRotation(CurrentRot + FVector(0.0f, 0.0f, -90.0f));
-	if (RingY) RingY->SetRotation(CurrentRot + FVector(0.0f, 0.0f, 0.0f));
-	if (RingZ) RingZ->SetRotation(CurrentRot + FVector(90.0f, 0.0f, 0.0f));
 
 	// 카메라 거리에 따른 스케일 보정
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
@@ -139,6 +131,23 @@ void URotationGizmoActor::LockDragPlane(EGizmoAxis Axis)
 	}
 }
 
+void URotationGizmoActor::ApplyRingRotation(EGizmoAxis Axis, float DeltaAngle)
+{
+	// 기본 조립 뼈대 (절대 꼬이지 않는 기준점)
+	FVector BaseX = { 0.0f, 0.0f, -90.0f };
+	FVector BaseY = { 0.0f, 90.0f, 0.0f };
+	FVector BaseZ = { 90.0f, 0.0f, 180.0f };
+
+	// 1. 모든 링을 원래 형태로 꽉 잡아둡니다. (자이로스코프 현상 완벽 차단)
+	if (RingX) RingX->SetRotation(BaseX);
+	if (RingY) RingY->SetRotation(BaseY);
+	if (RingZ) RingZ->SetRotation(BaseZ);
+
+	if(Axis == EGizmoAxis::X && RingX) RingX->SetRotation({ 0.f, DeltaAngle, -90.f }); // Y를 돌리고 Z로 세운다
+	if (Axis == EGizmoAxis::Y && RingY) RingY->SetRotation({ 0.f, DeltaAngle, 0.f });   // Y만 돌린다
+	if (Axis == EGizmoAxis::Z && RingZ) RingZ->SetRotation({ 90.f, 0.f, DeltaAngle });  // X로 세우고 Z를 돌린다
+}
+
 FVector URotationGizmoActor::GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)
 {
 	if (!RootComponent) return FVector::Zero;
@@ -147,9 +156,9 @@ FVector URotationGizmoActor::GetDragIntersectionPoint(const FVector& RayOrg, con
 	return Math::RayPlaneIntersection(RayOrg, RayDir, LockedPlaneNormal, GizmoPos);
 }
 
-FVector URotationGizmoActor::GetRotationDelta(const FVector& CurrentIntersect, const FVector& StartIntersect, EGizmoAxis Axis)
+float URotationGizmoActor::GetRotationDelta(const FVector& CurrentIntersect, const FVector& StartIntersect, EGizmoAxis Axis)
 {
-	if (!RootComponent) return FVector::Zero;
+	if (!RootComponent) return 0.0f;
 	FVector GizmoPos = RootComponent->GetPosition();
 
 	FVector V1 = StartIntersect - GizmoPos;
@@ -159,16 +168,12 @@ FVector URotationGizmoActor::GetRotationDelta(const FVector& CurrentIntersect, c
 
 	FVector CrossProd = V1.Cross(V2);
 	float DotProd = V1.Dot(V2);
+
+	// 고정된 가상 평면(LockedPlaneNormal)을 축으로 삼아 로드리게스 단일 각도 추출
 	float AngleRadian = atan2f(CrossProd.Dot(LockedPlaneNormal), DotProd);
-	float Degree = Math::ToDegrees(AngleRadian);
-
-	FVector RotationDelta = FVector::Zero;
-	if (Axis == EGizmoAxis::X) RotationDelta.X = Degree;
-	if (Axis == EGizmoAxis::Y) RotationDelta.Y = Degree;
-	if (Axis == EGizmoAxis::Z) RotationDelta.Z = Degree;
-
-	return RotationDelta;
+	return Math::ToDegrees(AngleRadian);
 }
+
 void URotationGizmoActor::Release()
 {
 	AActor::Release();
