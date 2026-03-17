@@ -1,13 +1,13 @@
 #include "pch.h"
-#include "GizmoActor.h"
+#include "LocationGizmoActor.h"
 #include "World.h"
 #include "ArrowComponent.h"
 #include "SphereComponent.h"
 #include "FEditorViewportClient.h"
 
-IMPLEMENT_CLASS(UGizmoActor, AActor)
+IMPLEMENT_CLASS(ULocationGizmoActor, AActor)
 
-void UGizmoActor::BeginPlay()
+void ULocationGizmoActor::BeginPlay()
 {
 	ArrowY = AddComponent<UArrowComponent>();
 	ArrowY->SetColor({ 0.f, 1.f, 0.f, 1.f });
@@ -32,7 +32,7 @@ void UGizmoActor::BeginPlay()
 	RootComponent = BasePoint;
 }
 
-void UGizmoActor::Tick(float DeltaTime)
+void ULocationGizmoActor::Tick(float DeltaTime)
 {
 	if (!RootComponent) return;
 
@@ -77,7 +77,7 @@ void UGizmoActor::Tick(float DeltaTime)
 	}
 }
 
-EGizmoAxis UGizmoActor::CheckGizmoPicking()
+EGizmoAxis ULocationGizmoActor::CheckGizmoPicking()
 {
 	UWorld* World = GetWorld();
 	if (!World || !World->ViewPort) return EGizmoAxis::None;
@@ -97,7 +97,7 @@ EGizmoAxis UGizmoActor::CheckGizmoPicking()
 	return EGizmoAxis::None;
 }
 
-void UGizmoActor::Release()
+void ULocationGizmoActor::Release()
 {
 	AActor::Release();
 }

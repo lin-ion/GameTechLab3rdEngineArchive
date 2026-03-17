@@ -4,9 +4,9 @@
 class UArrowComponent;
 class USphereComponent;
 
-class UGizmoActor : public AActor
+class ULocationGizmoActor : public AActor
 {
-	DECLARE_CLASS(UGizmoActor, AActor)
+	DECLARE_CLASS(ULocationGizmoActor, AActor)
 
 public:
 	virtual void BeginPlay() override;

@@ -8,8 +8,9 @@
 #include "Object.h"
 
 #include "CubeComponent.h"
-#include "GizmoActor.h"
 #include "ArrowComponent.h"
+#include "LocationGizmoActor.h"
+#include "RotationGizmoActor.h"
 
 #include "PrimitiveComponent.h"
 #include "SphereComponent.h"
@@ -33,7 +34,8 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	resourceManager = &ResourceManager;
 
 	AActor* CubeActor = SpawnActor<AActor>();
-	MainGizmoActor = SpawnActor<UGizmoActor>();
+	LocationGizmoActor = SpawnActor<ULocationGizmoActor>();
+	RotationGizmoActor = SpawnActor<URotationGizmoActor>();
 
 
 	//레벨에 엑터 추가
@@ -43,10 +45,10 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeActor->RootComponent = CubeComponent;
 
 
-	GizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
-	GizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
-	GizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
-	MainGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
+	LocationGizmoActor->ArrowY->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
+	LocationGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
+	LocationGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoPosition"));
+	LocationGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
 	{
 		int iDebug = 0;
@@ -73,15 +75,15 @@ void UWorld::Tick(float DeltaTime)
 	// 마우스 좌클릭 시 피킹
 	if (Input.IsKeyDown(VK_LBUTTON))
 	{
-		if (MainGizmoActor)
+		if (LocationGizmoActor)
 		{
 			// 현재 마우스가 기즈모의 어느 축 위에 있는지 확인
-			CurrentDraggingAxis = MainGizmoActor->CheckGizmoPicking();
+			CurrentDraggingAxis = LocationGizmoActor->CheckGizmoPicking();
 
 			if (CurrentDraggingAxis != EGizmoAxis::None)
 			{
 				bIsDragging = true;
-				GizmoStartLocation = MainGizmoActor->RootComponent->GetPosition();
+				GizmoStartLocation = LocationGizmoActor->RootComponent->GetPosition();
 
 				// Center를 잡았을 때는 평면 투영, 그 외에는 선 투영
 				if (CurrentDraggingAxis == EGizmoAxis::Center)  
@@ -131,7 +133,7 @@ void UWorld::Tick(float DeltaTime)
 		FVector Delta = CurrentPoint - DragStartPoint;
 
 		// 기즈모를 시작 위치에서 변위만큼 이동
-		MainGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
+		LocationGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
 	}
 
 	// 3. 버튼을 뗀 경우 (IsKeyUp)
@@ -174,7 +176,7 @@ AActor* UWorld::GetPickedActor()
 	{
 		AActor* TargetActor = ActorArray[ActorIndex];
 		// [핵심 방어] 기즈모를 담고 있는 액터 자체는 피킹 검수에서 제외합니다.
-		if (MainGizmoActor == TargetActor) continue;
+		if (LocationGizmoActor == TargetActor) continue;
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 
@@ -234,18 +236,18 @@ bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, 
 
 FVector UWorld::CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)
 {
-	if (!MainGizmoActor) return FVector::Zero;
+	if (!LocationGizmoActor) return FVector::Zero;
 
 	FVector AxisDir;
 	switch (Axis)
 	{
-	case EGizmoAxis::X: AxisDir = MainGizmoActor->ArrowX->GetUpVector(); break;
-	case EGizmoAxis::Y: AxisDir = MainGizmoActor->ArrowY->GetUpVector(); break;
-	case EGizmoAxis::Z: AxisDir = MainGizmoActor->ArrowZ->GetUpVector(); break;
-	default: return MainGizmoActor->RootComponent->GetPosition();
+	case EGizmoAxis::X: AxisDir = LocationGizmoActor->ArrowX->GetUpVector(); break;
+	case EGizmoAxis::Y: AxisDir = LocationGizmoActor->ArrowY->GetUpVector(); break;  
+	case EGizmoAxis::Z: AxisDir = LocationGizmoActor->ArrowZ->GetUpVector(); break;
+	default: return LocationGizmoActor->RootComponent->GetPosition();
 	}
 
-	FVector GizmoPos = MainGizmoActor->RootComponent->GetPosition();
+	FVector GizmoPos = LocationGizmoActor->RootComponent->GetPosition();
 
 	// [수정] 복잡한 공식은 지우고 Math 모듈 호출
 	return Math::ClosestPointOnLine(RayOrg, RayDir, GizmoPos, AxisDir);

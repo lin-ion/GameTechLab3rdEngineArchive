@@ -50,7 +50,8 @@ public:
 	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
 private:
-	class UGizmoActor* MainGizmoActor = { nullptr };
+	class ULocationGizmoActor* LocationGizmoActor = { nullptr };
+	class URotationGizmoActor* RotationGizmoActor = { nullptr };
 
 private:
 	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
