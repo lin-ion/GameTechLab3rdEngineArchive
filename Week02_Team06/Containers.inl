@@ -38,9 +38,27 @@ inline uint64 TArray<T>::Size()
 }
 
 template<typename T>
+inline void TArray<T>::SetNum(uint64 NewSize)
+{
+	Container.resize(NewSize);
+}
+
+template<typename T>
 inline void TArray<T>::Clear()
 {
 	Container.clear();
+}
+
+template<typename T>
+inline T* TArray<T>::GetData()
+{
+	return Container.data();
+}
+
+template<typename T>
+inline const T* TArray<T>::GetData() const
+{
+	return Container.data();
 }
 
 //array

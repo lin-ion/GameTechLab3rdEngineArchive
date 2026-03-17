@@ -56,7 +56,6 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 
 	CubeComponent->SetPosition({ 0.0f, 0.0f, 3.0f }); // 카메라 앞에 배치
 	CubeComponent->SetScale({ 0.5f, 0.5f, 0.5f });
-	
 }
 
 void UWorld::Tick(float DeltaTime)
@@ -106,7 +105,7 @@ AActor* UWorld::GetPickedActor()
 			FVector _CameraRay = FMatrix::TransformNormal(ViewPort->GetCameraRayDirection(), ModelWorld.Inverse());
 
 			const UMesh* MeshData = Primitive->GetMesh();
-			const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Primitive->GetMesh()->GetVertexData());
+			const FVertexSimple* BufferData = Primitive->GetMesh()->GetVertexData();
 
 			for (uint64 vertexIndex = 0; vertexIndex < MeshData->GetVertexCount(); vertexIndex += 3)
 			{
@@ -202,7 +201,7 @@ bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, 
 	FVector _CameraPos = FMatrix::TransformCoord(RayOrigin, WorldMatrix.Inverse());
 	FVector _CameraRay = FMatrix::TransformNormal(RayDir, WorldMatrix.Inverse());
 
-	const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Mesh->GetVertexData());
+	const FVertexSimple* BufferData = Mesh->GetVertexData();
 
 	for (uint64 vertexIndex = 0; vertexIndex < Mesh->GetVertexCount(); vertexIndex += 3)
 	{
