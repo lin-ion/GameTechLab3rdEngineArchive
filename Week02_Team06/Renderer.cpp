@@ -448,11 +448,13 @@ void URenderer::UpdateConstantBuffer(const FConstantData& Data)
 
 void URenderer::RenderGrid()
 {
+	FVector CameraOffset = { ViewportClient.GetViewLocation().X, 0.f, ViewportClient.GetViewLocation().Z };
+	FMatrix LocationMatrix = FMatrix::MakeTranslation(CameraOffset);
 
-	FMatrix  VP     = ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
+	FMatrix  MVP     = LocationMatrix * ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
 	FVector  CamPos = ViewportClient.GetViewLocation();
 
-	UpdateConstantBuffer({ VP, FVector4(CamPos.X, CamPos.Y, CamPos.Z, 0.f) });
+	UpdateConstantBuffer({ MVP, FVector4(CamPos.X, CamPos.Y, CamPos.Z, 0.f) });
 
 	DeviceContext->VSSetShader(GridVertexShader, nullptr, 0);
 	DeviceContext->PSSetShader(GridPixelShader,  nullptr, 0);
