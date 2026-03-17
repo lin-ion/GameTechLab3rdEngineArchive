@@ -89,8 +89,8 @@ void UWorld::Tick(float DeltaTime)
 				if (CurrentDraggingAxis == EGizmoAxis::Center)
 				{
 					FVector PlaneNormal = RayOrigin - GizmoStartLocation;
-					PlaneNormal.Normalize(); // 카메라를 바라보는 수직 벡터
-					DragStartPoint = CalculateRayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
+					PlaneNormal.Normalize();
+					DragStartPoint = Math::RayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
 				}
 				else
 				{
@@ -122,7 +122,7 @@ void UWorld::Tick(float DeltaTime)
 		{
 			FVector PlaneNormal = RayOrigin - GizmoStartLocation;
 			PlaneNormal.Normalize();
-			CurrentPoint = CalculateRayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
+			CurrentPoint = Math::RayPlaneIntersection(RayOrigin, RayDir, PlaneNormal, GizmoStartLocation);
 		}
 		else
 		{
@@ -194,7 +194,11 @@ AActor* UWorld::GetPickedActor()
 
 			for (uint64 vertexIndex = 0; vertexIndex < MeshData->GetVertexCount(); vertexIndex += 3)
 			{
-				if (RayIntersectsTriangle(_CameraPos, _CameraRay, BufferData[vertexIndex], BufferData[vertexIndex + 1], BufferData[vertexIndex + 2]))
+				FVector V0 = { BufferData[vertexIndex].X,     BufferData[vertexIndex].Y,     BufferData[vertexIndex].Z };
+				FVector V1 = { BufferData[vertexIndex + 1].X, BufferData[vertexIndex + 1].Y, BufferData[vertexIndex + 1].Z };
+				FVector V2 = { BufferData[vertexIndex + 2].X, BufferData[vertexIndex + 2].Y, BufferData[vertexIndex + 2].Z };
+
+				if (Math::RayIntersectsTriangle(_CameraPos, _CameraRay, V0, V1, V2))
 				{
 					PickedActor = TargetActor;
 					return TargetActor;
@@ -204,6 +208,30 @@ AActor* UWorld::GetPickedActor()
 	}
 
 	return nullptr;
+}
+
+// 공용 매시 충돌검사 함수
+bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix)
+{
+	if (!Mesh) return false;
+
+	FVector _CameraPos = FMatrix::TransformCoord(RayOrigin, WorldMatrix.Inverse());
+	FVector _CameraRay = FMatrix::TransformNormal(RayDir, WorldMatrix.Inverse());
+
+	const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Mesh->GetVertexData());
+
+	for (uint64 i = 0; i < Mesh->GetVertexCount(); i += 3)
+	{
+		FVector V0 = { BufferData[i].X,     BufferData[i].Y,     BufferData[i].Z };
+		FVector V1 = { BufferData[i + 1].X, BufferData[i + 1].Y, BufferData[i + 1].Z };
+		FVector V2 = { BufferData[i + 2].X, BufferData[i + 2].Y, BufferData[i + 2].Z };
+
+		if (Math::RayIntersectsTriangle(_CameraPos, _CameraRay, V0, V1, V2))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 FVector UWorld::CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)
@@ -221,99 +249,8 @@ FVector UWorld::CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector
 
 	FVector GizmoPos = MainGizmoActor->RootComponent->GetPosition();
 
-	// 두 직선(마우스 광선, 기즈모 축) 간의 최단 거리 계수 t를 구하는 공식
-	FVector w0 = RayOrg - GizmoPos;
-	float a = RayDir.Dot(RayDir);
-	float b = RayDir.Dot(AxisDir);
-	float c = AxisDir.Dot(AxisDir);
-	float d = RayDir.Dot(w0);
-	float e = AxisDir.Dot(w0);
-
-	float Denom = a * c - b * b;
-	if (abs(Denom) < 1e-6f) return GizmoPos; // 평행할 경우
-
-	// t2는 기즈모 축 직선상의 매개변수
-	float t2 = (a * e - b * d) / Denom;
-
-	// 최종 월드 좌표 반환
-	return GizmoPos + (AxisDir * t2);
-}
-
-FVector UWorld::CalculateRayPlaneIntersection(const FVector& RayOrg, const FVector& RayDir, const FVector& PlaneNormal, const FVector& PlaneOrigin)
-{
-	// 광선과 평면 법선의 내적 계산 (0이면 광선과 평면이 서로 평행함)
-	float Denom = RayDir.Dot(PlaneNormal);
-	if (abs(Denom) < 1e-6f) return PlaneOrigin;
-
-	// 교차점 계수 t = ((평면원점 - 광선원점) 내적 법선) / Denom
-	FVector Diff = PlaneOrigin - RayOrg;
-	float t = Diff.Dot(PlaneNormal) / Denom;
-
-	// 광선의 원점에서 방향(RayDir)으로 t만큼 이동한 최종 교차점 반환
-	return RayOrg + (RayDir * t);
-}
-
-bool UWorld::RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2)
-{
-
-	FVector Vertex0 = { V0.X, V0.Y, V0.Z };
-	FVector Vertex1 = { V1.X, V1.Y, V1.Z };
-	FVector Vertex2 = { V2.X, V2.Y, V2.Z };
-
-	FVector Edge1 = Vertex1 - Vertex0;
-	FVector Edge2 = Vertex2 - Vertex0;
-
-	FVector Normal = Edge1.FVector::Cross(Edge2);
-
-	//후면인지 판단
-	if (Normal.FVector::Dot(CameraRay) > 0)
-	{
-		return false;
-	}
-	constexpr float epsilon = std::numeric_limits <float> ::epsilon();
-
-	// det 계산 — 0이면 광선이 삼각형 평면과 평행
-	FVector RayCrossE2 = CameraRay.Cross(Edge2);
-	float   Det = Edge1.Dot(RayCrossE2);
-	if (abs(Det) < epsilon) return false;
-
-	float   InvDet = 1.f / Det;
-	FVector S = CameraPos - Vertex0;
-
-	// u 범위 체크
-	float U = InvDet * S.Dot(RayCrossE2);
-	if (U < 0.f || U > 1.f) return false;
-
-	// v 범위 체크
-	FVector SCrossE1 = S.Cross(Edge1);
-	float   V = InvDet * CameraRay.Dot(SCrossE1);
-	if (V < 0.f || U + V > 1.f) return false;
-
-	// t > 0 이면 광선 방향 앞쪽에 교차점 존재
-	float T = InvDet * Edge2.Dot(SCrossE1);
-	//위치 겟ㄴ은 나온 T를 이용하여 Origin + t * Ray방향벡터로 계산
-	return T > epsilon;
-}
-
-// 공용 매시 충돌검사 함수
-bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix)
-{
-	if (!Mesh) return false;
-
-	// 광선을 월드 공간에서 로컬 공간으로 변환
-	FVector _CameraPos = FMatrix::TransformCoord(RayOrigin, WorldMatrix.Inverse());
-	FVector _CameraRay = FMatrix::TransformNormal(RayDir, WorldMatrix.Inverse());
-
-	const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Mesh->GetVertexData());
-
-	for (uint64 vertexIndex = 0; vertexIndex < Mesh->GetVertexCount(); vertexIndex += 3)
-	{
-		if (RayIntersectsTriangle(_CameraPos, _CameraRay, BufferData[vertexIndex], BufferData[vertexIndex + 1], BufferData[vertexIndex + 2]))
-		{
-			return true;
-		}
-	}
-	return false;
+	// [수정] 복잡한 공식은 지우고 Math 모듈 호출
+	return Math::ClosestPointOnLine(RayOrg, RayDir, GizmoPos, AxisDir);
 }
 
 void UWorld::Release()
