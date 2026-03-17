@@ -524,9 +524,6 @@ void URenderer::RenderPrimitive(UWorld* World)
 	if (ForegroundPrimitives.Size() > 0)
 	{
 		DeviceContext->ClearDepthStencilView(DepthStensilView, D3D11_CLEAR_DEPTH, 1.f, 0);
-		
-		// 깊이 검사(Z-Buffer)를 완전히 꺼버립니다
-		DeviceContext->OMSetDepthStencilState(DepthStencilStateNoDepth, 0);
 
 		for (uint32 i = 0; i < ForegroundPrimitives.Size(); ++i)
 		{
