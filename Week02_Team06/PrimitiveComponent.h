@@ -41,4 +41,9 @@ protected:
 	UMesh* MeshData = nullptr;
 	
 	bool bAlwaysOnTop = { false };
+
+	FString GetType() const { return Type; }
+
+protected:
+	FString Type;
 };

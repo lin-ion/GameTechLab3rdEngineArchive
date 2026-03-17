@@ -3,6 +3,11 @@
 #include "Window.h"
 #include "Input.h"
 #include "Renderer.h"
+#include "App.h"
+
+UINT g_width = 0;
+UINT g_height = 0;
+bool bResized = false;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -76,19 +81,18 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		UInput::GetInstance().AddMouseWheelDelta(MouseWheelDelta);
 		break;
 	}
+	case WM_SIZE:
+	{
+		g_width = LOWORD(lParam);
+		g_height = HIWORD(lParam);
+		bResized = true;
+
+		break;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
-	case WM_SIZE:
-		UINT width = LOWORD(lParam);
-		UINT height = HIWORD(lParam);
 		
-		if (GRenderer)
-		{
-			GRenderer->OnResize(width, height);
-		}
-
-		break;
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);

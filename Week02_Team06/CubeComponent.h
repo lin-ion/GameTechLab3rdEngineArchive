@@ -9,7 +9,7 @@ class UCubeComponent : public UPrimitiveComponent
     DECLARE_CLASS(UCubeComponent, UPrimitiveComponent)
 
 public:
-    UCubeComponent() = default;
+    UCubeComponent();
     virtual ~UCubeComponent() = default;
 
 public:

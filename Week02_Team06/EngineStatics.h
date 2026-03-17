@@ -8,8 +8,24 @@ public:
 		return NextUUID++;
 	}
 
+	static void SetUUID(uint32 UUID)
+	{
+		NextUUID = UUID;
+	}
+
+	static uint32 GetSceneUUID()
+	{
+		return SceneUUID++;
+	}
+
+	static void SetSceneUUID(uint32 UUID)
+	{
+		SceneUUID = UUID;
+	}
+
 public:
 	static uint32 NextUUID;
+	static uint32 SceneUUID;
 };
 
 //일단 단순 디스크립터

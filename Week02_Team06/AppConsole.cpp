@@ -59,12 +59,9 @@ struct AppConsole
         Items.push_back(Strdup(buf));
     }
 
-    void AddLog(const char* fmt, va_list args)
+    void UEAddLog(const char* str)
     {
-        char buf[1024];
-        vsnprintf(buf, IM_COUNTOF(buf), fmt, args);
-        buf[IM_COUNTOF(buf) - 1] = 0;
-        Items.push_back(Strdup(buf));
+        Items.push_back(Strdup(str));
     }
 
     void    Draw(const char* title, bool* p_open)
@@ -358,7 +355,12 @@ void AddLogToConsole(const char* fmt, ...)
     {
         va_list args;
         va_start(args, fmt);
-        appConsole->AddLog(fmt, args);
-        va_end(args);
+        
+        std::vector<char> buf(4096);
+        vsnprintf(buf.data(), buf.size(), fmt, args);
+
+        va_end(args); 
+
+        appConsole->UEAddLog(buf.data());
     }
 }

@@ -38,6 +38,7 @@ public:
 		Actor->BeginPlay();
 		return Actor;
 	}
+
 	virtual void Release() override;
 
 public:
@@ -53,6 +54,9 @@ private:
 	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
 	AActor* GetSelectedActor() const { return SelectedActor; }
 	FVector CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
+
+	void ClearScene();
+
 
 public:
 	// 월드가 시작할 때 초기 레벨

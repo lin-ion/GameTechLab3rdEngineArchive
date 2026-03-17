@@ -14,9 +14,6 @@
 #include "Actor.h"
 #include "GizmoActor.h"
 
-// Test
-#include "SceneSerializer.h"
-
 bool UApp::Initialize(HINSTANCE hInstance)
 {
 	Window = new UWindow;
@@ -40,6 +37,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ResourceManager->Initialize(*Graphics->GetDevice());
 
 	World = UObjectFactory::NewObject<UWorld>();
+
 	World->InitWorld(*ResourceManager, ViewportClient);
 
 	ImGuiDrawer = new UImGuiDrawer;
@@ -47,21 +45,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 
 
 	// console Test Code
-	UE_LOG("Hello World");
-
-
-	// json Test Code
-	/*
-	UScene* scene = SceneManager->GetCurrentScene();
-	scene->data.Version = 1;
-	scene->data.NextUUID = 8;
-	USceneSerializer::SaveScene("Test", scene->data);
-	USceneSerializer::LoadScene("Test", scene->data);
-
-	UE_LOG("Version: %d", scene->data.Version);
-	UE_LOG("NextUUID: %d", scene->data.NextUUID);
-	* 
-	*/
+	UE_LOG("Hello World %d", 2025);
 
 	return true;
 }
@@ -95,6 +79,12 @@ void UApp::Run()
 		{
 			StartTime = EndTime;
 			DeltaTime = static_cast<float>(ElapsedMilliSecond / 1000.f); // 초단위로
+
+			if (bResized)
+			{
+				Renderer->OnResize(g_width, g_height);
+				bResized = false;
+			}
 
 			//input
 			UInput::GetInstance().Update();
@@ -142,7 +132,6 @@ void UApp::Release()
 		Renderer->Release();
 		delete Renderer;
 	}
-
 	UObjectFactory::DestroyAllObjects();
 
 	if (ViewportClient)

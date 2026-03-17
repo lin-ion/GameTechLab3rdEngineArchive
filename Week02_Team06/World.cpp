@@ -21,13 +21,12 @@
 #include "Mesh.h"
 
 
+
 void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort)
 {
 	CurrentLevel = UObjectFactory::NewObject<ULevel>();
 	CurrentLevel->OwningWorld = this;
 	ViewPort = _ViewPort;
-
-
 
 	resourceManager = &ResourceManager;
 
@@ -152,16 +151,20 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 	for (int i = 0; i < params.Count; i++)
 	{
 		AActor* actor = SpawnActor<AActor>();
+		if (params.bOverrideUUID)
+			actor->SceneUUID = params.UUID;
+		else
+			actor->SceneUUID = UEngineStatics::GetSceneUUID();
 
 		if (params.PrimitiveType == "Cube")
 		{
 			UCubeComponent* Cube = actor->AddComponent<UCubeComponent>();
-			Cube->SetMesh(resourceManager->FindMeshData("Cube"));
+			Cube->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
 			actor->RootComponent = Cube;
 		}
 		else
 		{
-			return;
+			continue;
 		}
 
 		actor->RootComponent->SetPosition(params.Location);
@@ -260,3 +263,15 @@ void UWorld::Release()
 	// World는 참조만 정리
 	CurrentLevel = nullptr;
 }
+
+void UWorld::ClearScene()
+{
+	for (size_t i = 0; i < CurrentLevel->Actors.Size(); ++i)
+	{
+		UObjectFactory::DestroyObject(CurrentLevel->Actors[i]);
+	}
+
+	CurrentLevel->Actors.Clear();
+	UEngineStatics::SceneUUID = 0;
+}
+

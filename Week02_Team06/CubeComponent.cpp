@@ -4,6 +4,11 @@
 
 IMPLEMENT_CLASS(UCubeComponent, UPrimitiveComponent)
 
+UCubeComponent::UCubeComponent()
+{
+    Type = "Cube";
+}
+
 void* UCubeComponent::operator new(size_t size)
 {
     UE_LOG("Create : CubeComponent");
