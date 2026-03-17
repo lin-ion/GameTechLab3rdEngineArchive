@@ -1,6 +1,8 @@
 #pragma once
 
+using int8   = signed char;
 using int32  = int;
+using uint8  = unsigned char;
 using uint32 = unsigned int;
 using uint64 = unsigned long long;
 

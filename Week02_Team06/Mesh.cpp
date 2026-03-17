@@ -14,6 +14,8 @@ void UMesh::Release()
 		IndexBuffer->Release();
 		IndexBuffer = nullptr;
 	}
+
+	CpuVertices.Clear();
 }
 
 void UMesh::Draw(ID3D11DeviceContext& DeviceContext)
