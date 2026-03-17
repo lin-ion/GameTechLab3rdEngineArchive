@@ -135,7 +135,7 @@ void FEditorViewportClient::HandleMouseRightDrag()
 
 	constexpr float RotationSpeed = 0.2f;
 	FVector Rotation = ViewTransform.GetRotation();
-	Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.0f, 89.0f);
+	Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.9f, 89.9f);
 	Rotation.Y = Rotation.Y + (DeltaMouseX * RotationSpeed);
 
 	bool bIsOrbiting = Input.IsKeyPressing(VK_LMENU);

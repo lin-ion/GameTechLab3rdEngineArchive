@@ -10,6 +10,7 @@ void USceneComponent::UpdateTransform()
 	FMatrix TranslationMatrix = FMatrix::MakeTranslation(Position);
 	FMatrix RotationMatrix = FMatrix::MakeRotation(Rotation);
 	FMatrix ScaleMatrix = FMatrix::MakeScale(Scale);
+	// TODO: Lazy Update 고려
 	ComponentToWorld = ScaleMatrix * RotationMatrix * TranslationMatrix;
 }
 
