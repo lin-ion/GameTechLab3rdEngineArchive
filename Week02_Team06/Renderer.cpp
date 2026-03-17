@@ -31,6 +31,8 @@ void URenderer::Initialize()
 
 	CreateLineAxisBuffer();
 	CreateGridBuffer();
+	CreateGridShader();
+	CreateAlphaBlendState();
 
 }
 
@@ -83,6 +85,8 @@ void URenderer::EndScene()
 
 void URenderer::Release()
 {
+	ReleaseAlphaBlendState();
+	ReleaseGridShader();
 	ReleaseGridBuffer();
 	ReleaseLineAxisBuffer();
 	ReleaseConstantBuffer();
@@ -245,10 +249,10 @@ void URenderer::CreateDepthStencilState()
 
 
 	D3D11_DEPTH_STENCIL_DESC dsDescNoDepth = {};
-	dsDesc.DepthEnable = FALSE;
-	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
-	dsDesc.StencilEnable = FALSE;
+	dsDescNoDepth.DepthEnable = FALSE;
+	dsDescNoDepth.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsDescNoDepth.DepthFunc = D3D11_COMPARISON_LESS;
+	dsDescNoDepth.StencilEnable = FALSE;
 
 	Device->CreateDepthStencilState(&dsDesc, &DepthStencilStateNoDepth);
 
@@ -340,15 +344,13 @@ void URenderer::ReleaseConstantBuffer()
 
 void URenderer::CreateLineAxisBuffer()
 {
-	FVertexSimple Axis_Vertices[6] =
+	FVertexSimple Axis_Vertices[2] =
 	{
-		{0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f}, {50.f, 0.f,  0.f,  1.f, 0.f, 0.f, 1.f},
-		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f,  50.f, 0.f,  0.f, 1.f, 0.f, 1.f},
-		{0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f}, {0.f,  0.f,  50.f, 0.f, 0.f, 1.f, 1.f},
+		{0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f}, {0.f, 1000.f,  0.f,  0.f, 1.f, 0.f, 1.f}
 	};
 
 	D3D11_BUFFER_DESC vertexBufferDesc = {};
-	vertexBufferDesc.ByteWidth = sizeof(FVertexSimple) * 6;
+	vertexBufferDesc.ByteWidth = sizeof(FVertexSimple) * 2;
 	vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
@@ -364,40 +366,25 @@ void URenderer::ReleaseLineAxisBuffer()
 
 void URenderer::CreateGridBuffer()
 {
-	const float GridSize = 200.f;
-	const float GridStep = 5.f;
-	const int   HalfCount = (int)(GridSize / GridStep);
-	const int   LineCount = HalfCount * 2 + 1;
-
-	GridVertexCount = LineCount * 2 * 2;
-
-	FVertexSimple GridVertices[324];
-	int idx = 0;
-
-	const float r = 0.2f, g = 0.2f, b = 0.2f, a = 1.f;
-
-	//그리드를 살짝 눈속임용으로 아래로 
-	for (int i = -HalfCount; i <= HalfCount; i++)
+	const float S = 1000.f;
+	FVertexSimple GridQuad[6] =
 	{
-		float z = i * GridStep;
-		GridVertices[idx++] = { -GridSize, -0.005f,  z, r, g, b, a };
-		GridVertices[idx++] = { GridSize, -0.005f,  z, r, g, b, a };
-	}
+		{ -S, -0.01f, -S,  0,0,0,0 },
+		{  S, -0.01f, -S,  0,0,0,0 },
+		{  S, -0.01f,  S,  0,0,0,0 },
+		{ -S, -0.01f, -S,  0,0,0,0 },
+		{  S, -0.01f,  S,  0,0,0,0 },
+		{ -S, -0.01f,  S,  0,0,0,0 },
+	};
+	GridVertexCount = 6;
 
-	for (int i = -HalfCount; i <= HalfCount; i++)
-	{
-		float x = i * GridStep;
-		GridVertices[idx++] = { x, -0.005f, -GridSize, r, g, b, a };
-		GridVertices[idx++] = { x, -0.005f,  GridSize, r, g, b, a };
-	}
+	D3D11_BUFFER_DESC desc = {};
+	desc.ByteWidth  = sizeof(GridQuad);
+	desc.Usage      = D3D11_USAGE_IMMUTABLE;
+	desc.BindFlags  = D3D11_BIND_VERTEX_BUFFER;
 
-	D3D11_BUFFER_DESC vertexBufferDesc = {};
-	vertexBufferDesc.ByteWidth = sizeof(FVertexSimple) * GridVertexCount;
-	vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { GridVertices };
-	Device->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &GridBuffer);
+	D3D11_SUBRESOURCE_DATA srd = { GridQuad };
+	Device->CreateBuffer(&desc, &srd, &GridBuffer);
 }
 
 void URenderer::ReleaseGridBuffer()
@@ -409,6 +396,47 @@ void URenderer::ReleaseGridBuffer()
 	}
 }
 
+void URenderer::CreateGridShader()
+{
+	ID3DBlob* VSBlob = nullptr;
+	ID3DBlob* PSBlob = nullptr;
+
+	HRESULT hr = D3DCompileFromFile(TEXT("ShaderGrid.hlsl"), nullptr, nullptr, "VS_GRID", "vs_5_0", 0, 0, &VSBlob, nullptr);
+	assert(SUCCEEDED(hr) && "ShaderGrid VS compile failed");
+	Device->CreateVertexShader(VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), nullptr, &GridVertexShader);
+	VSBlob->Release();
+
+	hr = D3DCompileFromFile(TEXT("ShaderGrid.hlsl"), nullptr, nullptr, "PS_GRID", "ps_5_0", 0, 0, &PSBlob, nullptr);
+	assert(SUCCEEDED(hr) && "ShaderGrid PS compile failed");
+	Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(), nullptr, &GridPixelShader);
+	PSBlob->Release();
+}
+
+void URenderer::ReleaseGridShader()
+{
+	if (GridVertexShader) { GridVertexShader->Release(); GridVertexShader = nullptr; }
+	if (GridPixelShader)  { GridPixelShader->Release();  GridPixelShader  = nullptr; }
+}
+
+void URenderer::CreateAlphaBlendState()
+{
+	D3D11_BLEND_DESC desc = {};
+	desc.RenderTarget[0].BlendEnable           = TRUE;
+	desc.RenderTarget[0].SrcBlend              = D3D11_BLEND_SRC_ALPHA;
+	desc.RenderTarget[0].DestBlend             = D3D11_BLEND_INV_SRC_ALPHA;
+	desc.RenderTarget[0].BlendOp               = D3D11_BLEND_OP_ADD;
+	desc.RenderTarget[0].SrcBlendAlpha         = D3D11_BLEND_ONE;
+	desc.RenderTarget[0].DestBlendAlpha        = D3D11_BLEND_ZERO;
+	desc.RenderTarget[0].BlendOpAlpha          = D3D11_BLEND_OP_ADD;
+	desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	Device->CreateBlendState(&desc, &AlphaBlendState);
+}
+
+void URenderer::ReleaseAlphaBlendState()
+{
+	if (AlphaBlendState) { AlphaBlendState->Release(); AlphaBlendState = nullptr; }
+}
+
 void URenderer::UpdateConstantBuffer(const FConstantData& Data)
 {
 	D3D11_MAPPED_SUBRESOURCE MSR;
@@ -418,28 +446,46 @@ void URenderer::UpdateConstantBuffer(const FConstantData& Data)
 	DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
 }
 
+void URenderer::RenderGrid()
+{
+
+	FMatrix  VP     = ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
+	FVector  CamPos = ViewportClient.GetViewLocation();
+
+	UpdateConstantBuffer({ VP, FVector4(CamPos.X, CamPos.Y, CamPos.Z, 0.f) });
+
+	DeviceContext->VSSetShader(GridVertexShader, nullptr, 0);
+	DeviceContext->PSSetShader(GridPixelShader,  nullptr, 0);
+	DeviceContext->IASetInputLayout(SimpleInputLayout);
+	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	float BlendFactor[4] = {};
+	DeviceContext->OMSetBlendState(AlphaBlendState, BlendFactor, 0xffffffff);
+
+	UINT Stride = sizeof(FVertexSimple), Offset = 0;
+	DeviceContext->IASetVertexBuffers(0, 1, &GridBuffer, &Stride, &Offset);
+	DeviceContext->Draw(GridVertexCount, 0);
+
+	DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+	DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
+	DeviceContext->PSSetShader(SimplePixelShader,  nullptr, 0);
+}
+
 void URenderer::RenderAxisLine()
 {
 	if (!ConstantBuffer) return;
 
+	// 셰이더 기반 그리드 렌더링
+	RenderGrid();
+
+	// 축라인 렌더
 	FMatrix VP = ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
 	UpdateConstantBuffer({ VP, FVector4() });
 
 	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-
-	UINT Stride = sizeof(FVertexSimple);
-	UINT Offset = 0;
-
-	// 그리드 렌더링
-	if (GridBuffer)
-	{
-		DeviceContext->IASetVertexBuffers(0, 1, &GridBuffer, &Stride, &Offset);
-		DeviceContext->Draw(GridVertexCount, 0);
-	}
-
-	// 축 라인 렌더링
+	UINT Stride = sizeof(FVertexSimple), Offset = 0;
 	DeviceContext->IASetVertexBuffers(0, 1, &LineAxisBuffer, &Stride, &Offset);
-	DeviceContext->Draw(6, 0);
+	DeviceContext->Draw(2, 0);
 	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 

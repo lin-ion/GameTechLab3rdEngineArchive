@@ -52,7 +52,7 @@ public:
 	float FOVAngle = 60.0f; // horizontal field of view
 
 protected:
-	float FarPlane = 100.0f;
+	float FarPlane = 1000.0f;
 	float NearPlane = 0.1f;
 	float bIsPerspective = true;
 	FViewportCameraTransform ViewTransform;
