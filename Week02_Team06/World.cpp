@@ -86,7 +86,7 @@ void UWorld::Tick(float DeltaTime)
 				GizmoStartLocation = MainGizmoActor->RootComponent->GetPosition();
 
 				// Center를 잡았을 때는 평면 투영, 그 외에는 선 투영
-				if (CurrentDraggingAxis == EGizmoAxis::Center)
+				if (CurrentDraggingAxis == EGizmoAxis::Center)  
 				{
 					FVector PlaneNormal = RayOrigin - GizmoStartLocation;
 					PlaneNormal.Normalize();

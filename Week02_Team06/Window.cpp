@@ -3,6 +3,7 @@
 #include "Window.h"
 #include "Input.h"
 #include "Renderer.h"
+#include "App.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -80,15 +81,19 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		PostQuitMessage(0);
 		return 0;
 	case WM_SIZE:
-		UINT width = LOWORD(lParam);
-		UINT height = HIWORD(lParam);
-		
-		if (GRenderer)
+	{
+		if (wParam != SIZE_MINIMIZED)
 		{
-			GRenderer->OnResize(width, height);
-		}
+			UINT width = LOWORD(lParam);
+			UINT height = HIWORD(lParam);
 
+			if (UApp::GetInstance().GetRenderer() != nullptr)
+			{
+				UApp::GetInstance().GetRenderer()->OnResize(width, height);
+			}
+		}
 		break;
+	}
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);
