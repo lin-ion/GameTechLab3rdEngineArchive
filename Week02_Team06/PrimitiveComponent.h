@@ -15,11 +15,15 @@ public:
 	const UMesh* GetMesh() const { return MeshData; }
 	void  SetMesh(UMesh* _MeshData) { MeshData = _MeshData; }
 
-	const FVector4& GetColor() { return Color; };
-	void  SetColor(const FVector4& _color) { Color = _color; };
+	const FVector4& GetColor() const { return Color; }
+	void SetColor(const FVector4& InColor) { Color = InColor; }
 
 	bool  IsSelected() { return IsHovering; }
 	void  SetHovering(bool bFlag) { IsHovering = bFlag; };
+
+	// 항상 화면 위(최상단)에 렌더링할지 여부
+	bool IsAlwaysOnTop() const { return bAlwaysOnTop; }
+	void SetAlwaysOnTop(bool bFlag) { bAlwaysOnTop = bFlag; }
 
 	bool  IsDebugMode() { return IsDebugUse; };
 	void  SetDebugMode(bool isDebug) { IsDebugUse = isDebug; };
@@ -30,6 +34,10 @@ public:
 	void Release() override;
 
 protected:
+	FVector4 Color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	UMesh* MeshData = nullptr;
+	
+	bool bAlwaysOnTop = { false };
 	bool IsHovering = { false };
 	bool IsDebugUse = { false };
 

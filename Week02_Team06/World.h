@@ -4,7 +4,7 @@
 #include "ImGuiDrawer.h"
 #include "Math.h"
 
-
+class UMesh;
 class AActor;
 class UGizmoComponent;
 class UResourceManager;
@@ -44,13 +44,18 @@ public:
 	virtual void InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort);
 	void Tick(float DeltaTime);
 	
+	EGizmoAxis GetDraggingAxis() const { return bIsDragging ? CurrentDraggingAxis : EGizmoAxis::None; }
 	AActor* GetPickedActor();
 	void SpawnActorFromEditor(FSpawnParameters params);
+	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
 private:
-	bool RayIntersectsTriangle(const FVector& CameraPos, const FVector& CameraRay, const FVertexSimple& V0, const FVertexSimple& V1, const FVertexSimple& V2);
-	AActor* GetSelectedActor() const { return SelectedActor; }
+	class UGizmoActor* MainGizmoActor = { nullptr };
 
+private:
+	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
+	AActor* GetSelectedActor() const { return SelectedActor; }
+	FVector CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
 
 public:
 	// 월드가 시작할 때 초기 레벨
@@ -68,5 +73,13 @@ public:
 	//FScene* Scene = { nullptr };
 private:
 	AActor* SelectedActor = { nullptr };
+
+	// 드래그 관련 상태 변수
+	EGizmoAxis CurrentDraggingAxis = EGizmoAxis::None; // 현재 잡고 있는 축
+	FVector DragStartPoint = { 0.f, 0.f, 0.f };      // 클릭한 시점의 3D 축 위 좌표
+	FVector GizmoStartLocation = { 0.f, 0.f, 0.f };  // 클릭한 시점의 기즈모 위치
+	bool bIsDragging = false;    // 드래그 중인지 여부
+
+	//void TransferGizmo(AActor* NewTarget);
 };
 
