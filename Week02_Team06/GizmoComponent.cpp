@@ -34,7 +34,7 @@ void UGizmoComponent::Render(ID3D11DeviceContext* DeviceContext, const FMatrix& 
 
     UResourceManager* ResMgr = UApp::GetInstance().GetResourceManager();
     UMesh* ArrowMesh = ResMgr->FindMeshData("Gizmo");
-    UMesh* SphereMesh = ResMgr->FindMeshData("Sphere");
+    UMesh* SphereMesh = ResMgr->FindMeshData("Sphere");    
     if (!ArrowMesh) return;
 
     URenderer* Renderer = UApp::GetInstance().GetRenderer();
