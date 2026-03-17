@@ -70,7 +70,6 @@ void UWorld::Tick(float DeltaTime)
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-
 	UInput& Input = UInput::GetInstance();
 	FVector RayOrigin = ViewPort->GetViewLocation();
 	FVector RayDir = ViewPort->GetCameraRayDirection();
@@ -99,18 +98,6 @@ void UWorld::Tick(float DeltaTime)
 				{
 					DragStartPoint = CalculateClosestPointOnAxis(RayOrigin, RayDir, CurrentDraggingAxis);
 				}
-			}
-		}
-		
-		else
-		{
-			// 기즈모가 아니라면 월드 공간의 액터를 피킹합니다.
-			AActor* HitActor = GetPickedActor();
-
-			// 액터가 선택되었다면 기즈모를 해당 액터로 이사시킵니다.
-			if (HitActor)
-			{
-				//TransferGizmo(HitActor);   
 			}
 		}
 	}
@@ -170,7 +157,7 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 	}
 }
 
-// 가장 가까운 것만 골라가도록 추후 수정
+
 AActor* UWorld::GetPickedActor()
 {
 	auto ActorArray = CurrentLevel->Actors;

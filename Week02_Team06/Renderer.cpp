@@ -75,7 +75,10 @@ void URenderer::Render(UWorld* World)
 
 void URenderer::EndScene()
 {
-	SwapChain->Present(1, 0);
+	//프레임 제한 해제
+	SwapChain->Present(0, 0);
+	// 제한
+	//SwapChain->Present(1, 0);
 }
 
 void URenderer::Release()
