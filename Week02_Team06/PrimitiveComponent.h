@@ -28,6 +28,10 @@ public:
 	bool  IsSelected() { return IsHovering; }
 	void  SetHovering(bool bFlag) { IsHovering = bFlag; };
 
+	// 항상 화면 위(최상단)에 렌더링할지 여부
+	bool IsAlwaysOnTop() const { return bAlwaysOnTop; }
+	void SetAlwaysOnTop(bool bFlag) { bAlwaysOnTop = bFlag; }
+
 public:
 	void TickComponent(float DeltaTime) override;
 	virtual void Render(ID3D11DeviceContext& DeviceContext) override = 0;
@@ -35,7 +39,8 @@ public:
 
 protected:
 	FVector4 Color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	
-	bool IsHovering = { false };
 	UMesh* MeshData = nullptr;
+	
+	bool bAlwaysOnTop = { false };
+	bool IsHovering = { false };
 };
