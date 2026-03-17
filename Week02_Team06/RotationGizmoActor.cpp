@@ -11,58 +11,103 @@ void URotationGizmoActor::BeginPlay()
 {
 	AActor::BeginPlay();
 
-	// 1. X축 회전 링 (Red) - YZ 평면에 배치되도록 회전
+	BasePoint = AddComponent<USphereComponent>();
+	BasePoint->SetScale({ 0.f, 0.f, 0.f });
+	RootComponent = BasePoint;
+
+	// 1. X축 회전 링 (Red)
 	RingX = AddComponent<URingComponent>();
-	RingX->SetRotation({ 0.0f, 0.0f, -90.0f }); // 필요에 따라 수정
+	RingX->SetRotation({ 0.0f, 0.0f, -90.0f });
 	RingX->SetColor(ColorX);
 	RingX->SetAlwaysOnTop(true);
 
-	// 2. Y축 회전 링 (Green) - XZ 평면에 배치되도록 회전
+	// 2. Y축 회전 링 (Green) - XZ 평면에 배치
 	RingY = AddComponent<URingComponent>();
 	RingY->SetRotation({ 0.0f, 0.0f, 0.0f }); // 필요에 따라 수정
 	RingY->SetColor(ColorY);
 	RingY->SetAlwaysOnTop(true);
 
-	// 3. Z축 회전 링 (Blue) - XY 평면에 배치 (기본형)
+	// 3. Z축 회전 링 (Blue) - XY 평면에 배치
 	RingZ = AddComponent<URingComponent>();
 	RingZ->SetRotation({ 90.0f, 0.0f, 0.0f });
 	RingZ->SetColor(ColorZ);
 	RingZ->SetAlwaysOnTop(true);
-
-	RootComponent = RingZ;
 }
 
 void URotationGizmoActor::Tick(float DeltaTime)
 {
+	AActor::Tick(DeltaTime);
+	UWorld* World = GetWorld();
+
+	if (World && World->GetCurrentMode() != UWorld::EGizmoMode::Rotation)
+	{
+		if (RingX) RingX->SetScale({ 0.f, 0.f, 0.f });
+		if (RingY) RingY->SetScale({ 0.f, 0.f, 0.f });
+		if (RingZ) RingZ->SetScale({ 0.f, 0.f, 0.f });
+		return;
+	}
+
+	if (!RootComponent) return;
+
+	FVector CurrentPos = RootComponent->GetPosition();
+	FVector CurrentRot = RootComponent->GetRotation();
+
+	if (RingX) RingX->SetPosition(CurrentPos);
+	if (RingY) RingY->SetPosition(CurrentPos);
+	if (RingZ) RingZ->SetPosition(CurrentPos);
+
+	// 각 링의 조립 오프셋을 유지한 채 부모와 함께 회전시킵니다.
+	if (RingX) RingX->SetRotation(CurrentRot + FVector(0.0f, 0.0f, -90.0f));
+	if (RingY) RingY->SetRotation(CurrentRot + FVector(0.0f, 0.0f, 0.0f));
+	if (RingZ) RingZ->SetRotation(CurrentRot + FVector(90.0f, 0.0f, 0.0f));
+
 	// 카메라 거리에 따른 스케일 보정
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
 	float Distance = (Viewport->GetViewLocation() - RootComponent->GetComponentLocation()).Length();
-	float ScaleFactor = Distance * 0.15f; // 메쉬 원본 크기에 따라 배율 조절 필요
+	float ScaleFactor = Distance * 0.15f;
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
-	RingX->SetScale(ResultScale);
-	RingY->SetScale(ResultScale);
-	RingZ->SetScale(ResultScale);
-	BoundingSphere->SetScale(ResultScale);
+	if (RingX) RingX->SetScale(ResultScale);
+	if (RingY) RingY->SetScale(ResultScale);
+	if (RingZ) RingZ->SetScale(ResultScale);
+	if (BoundingSphere) BoundingSphere->SetScale(ResultScale);
 
-	RingX->SetColor(ColorX);
-	RingY->SetColor(ColorY);
-	RingZ->SetColor(ColorZ);
+	if (RingX) RingX->SetColor(ColorX);
+	if (RingY) RingY->SetColor(ColorY);
+	if (RingZ) RingZ->SetColor(ColorZ);
 
-	// 호버링 및 드래그 상태에 따른 색상 하이라이트
-	UWorld* World = GetWorld();
-	EGizmoAxis ActiveAxis = (World != nullptr) ? World->GetDraggingAxis() : EGizmoAxis::None;
+	// --- 호버링 및 드래그 색상 처리 ---
+	EGizmoAxis ActiveAxis = EGizmoAxis::None;
+
+	// [수정] World 포인터가 유효할 때만 내부 로직을 수행하도록 안전하게 감쌉니다.
+	if (World != nullptr)
+	{
+		ActiveAxis = World->GetDraggingAxis();
+
+		if (ActiveAxis == EGizmoAxis::None)
+		{
+			// World가 절대 NULL이 아닌 곳에서만 호출되므로 C6011 에러가 사라집니다.
+			ActiveAxis = World->GetHoveredAxis();
+		}
+	}
+
+	// BoundingSphere 경고 방어 (초기화되지 않았을 경우 대비)
+	if (BoundingSphere != nullptr)
+	{
+		BoundingSphere->SetScale(ResultScale);
+	}
 
 	if (ActiveAxis == EGizmoAxis::None)
 	{
-		ActiveAxis = CheckGizmoPicking();
+		// 직접 쏘지 않고 통제소(World)의 판정을 얌전히 받습니다.
+		ActiveAxis = World->GetHoveredAxis();
 	}
 
 	switch (ActiveAxis)
 	{
-	case EGizmoAxis::X: RingX->SetColor(ColorHover); break;
-	case EGizmoAxis::Y: RingY->SetColor(ColorHover); break;
-	case EGizmoAxis::Z: RingZ->SetColor(ColorHover); break;
+	case EGizmoAxis::X: if (RingX) RingX->SetColor(ColorHover); break;
+	case EGizmoAxis::Y: if (RingY) RingY->SetColor(ColorHover); break;
+	case EGizmoAxis::Z: if (RingZ) RingZ->SetColor(ColorHover); break;
 	case EGizmoAxis::None: break;
 	}
 }
@@ -83,6 +128,47 @@ EGizmoAxis URotationGizmoActor::CheckGizmoPicking()
 	return EGizmoAxis::None;
 }
 
+void URotationGizmoActor::LockDragPlane(EGizmoAxis Axis)
+{
+	switch (Axis)
+	{
+	case EGizmoAxis::X: LockedPlaneNormal = RingX->GetUpVector(); break;
+	case EGizmoAxis::Y: LockedPlaneNormal = RingY->GetUpVector(); break;
+	case EGizmoAxis::Z: LockedPlaneNormal = RingZ->GetUpVector(); break;
+	default: LockedPlaneNormal = FVector(0.f, 0.f, 1.f); break;
+	}
+}
+
+FVector URotationGizmoActor::GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)
+{
+	if (!RootComponent) return FVector::Zero;
+	FVector GizmoPos = RootComponent->GetPosition();
+	
+	return Math::RayPlaneIntersection(RayOrg, RayDir, LockedPlaneNormal, GizmoPos);
+}
+
+FVector URotationGizmoActor::GetRotationDelta(const FVector& CurrentIntersect, const FVector& StartIntersect, EGizmoAxis Axis)
+{
+	if (!RootComponent) return FVector::Zero;
+	FVector GizmoPos = RootComponent->GetPosition();
+
+	FVector V1 = StartIntersect - GizmoPos;
+	FVector V2 = CurrentIntersect - GizmoPos;
+	V1.Normalize();
+	V2.Normalize();
+
+	FVector CrossProd = V1.Cross(V2);
+	float DotProd = V1.Dot(V2);
+	float AngleRadian = atan2f(CrossProd.Dot(LockedPlaneNormal), DotProd);
+	float Degree = Math::ToDegrees(AngleRadian);
+
+	FVector RotationDelta = FVector::Zero;
+	if (Axis == EGizmoAxis::X) RotationDelta.X = Degree;
+	if (Axis == EGizmoAxis::Y) RotationDelta.Y = Degree;
+	if (Axis == EGizmoAxis::Z) RotationDelta.Z = Degree;
+
+	return RotationDelta;
+}
 void URotationGizmoActor::Release()
 {
 	AActor::Release();

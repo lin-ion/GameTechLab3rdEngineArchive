@@ -43,15 +43,23 @@ void ULocationGizmoActor::BeginPlay()
 void ULocationGizmoActor::Tick(float DeltaTime)
 {
 	AActor::Tick(DeltaTime);
+	UWorld* World = GetWorld();
+
+	if (World && World->GetCurrentMode() != UWorld::EGizmoMode::Location)
+	{
+		BasePoint->SetScale({ 0.f, 0.f, 0.f });
+		ArrowX->SetScale({ 0.f, 0.f, 0.f });
+		ArrowY->SetScale({ 0.f, 0.f, 0.f });
+		ArrowZ->SetScale({ 0.f, 0.f, 0.f });
+		return;
+	}
+
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
 	float Distance = (Viewport->GetViewLocation() - RootComponent->GetComponentLocation()).Length();
 	float ScaleFactor = Distance * 0.15f;
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
-	//ArrowY->SetScale(ResultScale);
-	//ArrowX->SetScale(ResultScale);
-	//ArrowZ->SetScale(ResultScale);
-	BasePoint->SetScale((BasePoint->GetRelativeScale()) * ScaleFactor);
+	BasePoint->SetScale({ 0.1f * ScaleFactor, 0.1f * ScaleFactor, 0.1f * ScaleFactor });
 	BoundingSphere->SetScale(ResultScale);
 
 	// 일단 모두 기본 색상으로 초기화
@@ -61,15 +69,22 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 	BasePoint->SetColor(ColorCenter);
 
 	// 월드로부터 현재 드래그 중인 축 확인
-	UWorld* World = GetWorld();
-	EGizmoAxis ActiveAxis = (World != nullptr) ? World->GetDraggingAxis() : EGizmoAxis::None;
+	EGizmoAxis ActiveAxis = EGizmoAxis::None;
 
-	// 3. 드래그 중이 아니라면, 마우스가 닿아있는(호버링) 축을 찾습니다.
-	if (ActiveAxis == EGizmoAxis::None)
+	if (World)
 	{
-		ActiveAxis = CheckGizmoPicking();
+		// 드래그 중인 축이 있으면 무조건 그 축을 활성화
+		ActiveAxis = World->GetDraggingAxis();
+
+		// 드래그 중이 아니라면, World가 방금 PreparePicking()에서 판정해둔 Hover 축을 가져옴
+		if (ActiveAxis == EGizmoAxis::None)
+		{
+			// 직접 CheckGizmoPicking()을 호출하지 않고 World의 상태를 읽습니다.
+			ActiveAxis = World->GetHoveredAxis();
+		}
 	}
 
+	// ActiveAxis 결과에 따라 주황색 불 켜기
 	switch (ActiveAxis)
 	{
 	case EGizmoAxis::X: ArrowX->SetColor(ColorHover); break;
@@ -78,6 +93,33 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 	case EGizmoAxis::Center: BasePoint->SetColor(ColorHover); break;
 	case EGizmoAxis::None: break;
 	}
+}
+
+FVector ULocationGizmoActor::GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)
+{
+	if (!RootComponent) return FVector::Zero;
+
+	FVector GizmoPos = RootComponent->GetPosition();
+
+	// Center (가운데 구체)를 잡았을 때는 카메라를 바라보는 가상 평면과의 교차점을 구합니다.
+	if (Axis == EGizmoAxis::Center)
+	{
+		FVector PlaneNormal = RayOrg - GizmoPos;
+		PlaneNormal.Normalize();
+		return Math::RayPlaneIntersection(RayOrg, RayDir, PlaneNormal, GizmoPos);
+	}
+
+	// 특정 축(X, Y, Z)을 잡았을 때는 해당 축의 선분과 가장 가까운 점을 구합니다.
+	FVector AxisDir;
+	switch (Axis)
+	{
+	case EGizmoAxis::X: AxisDir = ArrowX->GetUpVector(); break;
+	case EGizmoAxis::Y: AxisDir = ArrowY->GetUpVector(); break;
+	case EGizmoAxis::Z: AxisDir = ArrowZ->GetUpVector(); break;
+	default: return GizmoPos;
+	}
+
+	return Math::ClosestPointOnLine(RayOrg, RayDir, GizmoPos, AxisDir);
 }
 
 EGizmoAxis ULocationGizmoActor::CheckGizmoPicking()

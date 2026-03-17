@@ -42,14 +42,19 @@ public:
 	virtual void Release() override;
 
 public:
+	enum class EGizmoMode { Location, Rotation, Scale };
+	EGizmoMode GetCurrentMode() const { return CurrentMode; }
+	
 	virtual void InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort);
 	void Tick(float DeltaTime);
 	
 	EGizmoAxis GetDraggingAxis() const { return bIsDragging ? CurrentDraggingAxis : EGizmoAxis::None; }
+	EGizmoAxis GetHoveredAxis() const { return HoveredAxis; }
 	AActor* GetPickedActor();
 	void SpawnActorFromEditor(FSpawnParameters params);
 	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
+	void PreparePicking();
 	void ClearScene();
 
 private:
@@ -59,8 +64,6 @@ private:
 private:
 	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
 	AActor* GetSelectedActor() const { return SelectedActor; }
-	FVector CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
-
 
 public:
 	// 월드가 시작할 때 초기 레벨
@@ -78,9 +81,13 @@ private:
 	AActor* SelectedActor = { nullptr };
 
 	// 드래그 관련 상태 변수
+	EGizmoMode CurrentMode = EGizmoMode::Location;
+	EGizmoAxis HoveredAxis = EGizmoAxis::None;
 	EGizmoAxis CurrentDraggingAxis = EGizmoAxis::None; // 현재 잡고 있는 축
-	FVector DragStartPoint = { 0.f, 0.f, 0.f };      // 클릭한 시점의 3D 축 위 좌표
-	FVector GizmoStartLocation = { 0.f, 0.f, 0.f };  // 클릭한 시점의 기즈모 위치
+	FVector DragStartPoint = { 0.f, 0.f, 0.f };        // 클릭한 시점의 3D 축 위 좌표
+	FVector GizmoStartLocation = { 0.f, 0.f, 0.f };    // 클릭한 시점의 기즈모 위치
+	FVector GizmoStartRotation = { 0.f, 0.f, 0.f };    // 클릭한 시점의 기즈모 회전
+	FVector TargetStartRotation = { 0.f, 0.f, 0.f };   // 클릭한 시점의 타겟 액터 회전 (회전 모드용)
 	bool bIsDragging = false;    // 드래그 중인지 여부
 
 	//void TransferGizmo(AActor* NewTarget);

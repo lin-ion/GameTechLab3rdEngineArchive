@@ -15,6 +15,7 @@ public:
 
 public:
 	EGizmoAxis CheckGizmoPicking();
+	FVector GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
 
 public:
 	UArrowComponent* ArrowY = nullptr; // Y축 초
