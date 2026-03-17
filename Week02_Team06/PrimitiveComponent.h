@@ -27,7 +27,7 @@ public:
 
 public:
 	void TickComponent(float DeltaTime) override;
-	virtual void Render(ID3D11DeviceContext* DeviceContext, const FMatrix& ViewProjection, ID3D11Buffer* ConstantBuffer) override = 0;
+	virtual void Render(ID3D11DeviceContext& DeviceContext) override = 0;
 	void Release() override;
 
 protected:

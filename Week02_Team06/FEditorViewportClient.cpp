@@ -1,7 +1,5 @@
 ﻿#include "pch.h"
 #include "FEditorViewportClient.h"
-#include "PickingComponent.h"
-#include "GizmoComponent.h"
 #include "Input.h"
 
 FMatrix FEditorViewportClient::GetViewMatrix() const
@@ -62,26 +60,17 @@ FVector FEditorViewportClient::GetCameraRayDirection()
 {
 	POINT MousePos = UInput::GetInstance().GetMousePosition();
 
-	// 1. Client 좌표로 변환 (이미 검증됨)
-	HWND hWnd = GetActiveWindow();
-	ScreenToClient(hWnd, &MousePos);
-
-	// 2. NDC 좌표 계산 (정중앙이 0,0이 되도록)
 	float NDCX = (2.0f * MousePos.x) / WindowSizeWidth - 1.0f;
 	float NDCY = 1.0f - (2.0f * MousePos.y) / WindowSizeHeight;
 
-	// 3. 역행렬 준비 (View * Proj의 역행렬 하나로 통합 가능)
 	FMatrix InvViewProj = (GetViewMatrix() * GetProjectionMatrix()).Inverse();
 
-	// 4. [핵심] 근평면과 원평면의 두 점을 월드 공간으로 복원
-	// TransformCoord는 W 성분을 1로 취급하고 결과에서 W로 나누어 투영을 해제합니다.
 	FVector NearNDC = { NDCX, NDCY, 0.0f };
 	FVector FarNDC = { NDCX, NDCY, 1.0f };
 
 	FVector WorldNear = FMatrix::TransformCoord(NearNDC, InvViewProj);
 	FVector WorldFar = FMatrix::TransformCoord(FarNDC, InvViewProj);
 
-	// 5. 방향 벡터 산출 및 정규화
 	FVector WorldDirection = WorldFar - WorldNear;
 	WorldDirection.Normalize();
 

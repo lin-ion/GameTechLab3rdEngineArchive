@@ -2,6 +2,8 @@
 #include "GizmoActor.h"
 #include "World.h"
 #include "UArrowComponent.h"
+#include "SphereComponent.h"
+
 #include "FEditorViewportClient.h"
 
 IMPLEMENT_CLASS(UGizmoActor, AActor)
@@ -17,7 +19,10 @@ void UGizmoActor::BeginPlay()
 	
 	ArrowZ->SetRotation({ 90.0f, 0.0f, 0.0f });
 
-	RootComponent = ArrowY;
+	BasePoint = AddComponent<USphereComponent>();
+
+	// Sphere가 Base
+	RootComponent = BasePoint;
 }
 
 void UGizmoActor::Tick(float DeltaTime)

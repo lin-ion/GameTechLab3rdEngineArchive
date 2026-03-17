@@ -17,8 +17,7 @@ void UCubeComponent::operator delete(void* ptr) noexcept
     return ::operator delete(ptr);
 }
 
-void UCubeComponent::Render(ID3D11DeviceContext* DeviceContext, const FMatrix& ViewProjection, ID3D11Buffer* ConstantBuffer)
+void UCubeComponent::Render(ID3D11DeviceContext& DeviceContext)
 {
-    if (!DeviceContext || !MeshData) return;
-    MeshData->Draw(*DeviceContext);
+    MeshData->Draw(DeviceContext);
 }
