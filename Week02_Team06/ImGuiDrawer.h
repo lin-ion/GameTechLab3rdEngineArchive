@@ -7,11 +7,13 @@ class UWorld;
 
 struct FSpawnParameters
 {
-	std::string PrimitiveType;
+	bool bOverrideUUID = false;
+	int Count;
+	uint32 UUID;
 	FVector Location;
 	FVector Rotation;
 	FVector Scale;
-	int Count;
+	FString PrimitiveType;
 };
 
 class UImGuiDrawer

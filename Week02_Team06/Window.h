@@ -1,5 +1,9 @@
 #pragma once
 
+extern UINT g_width;
+extern UINT g_height;
+extern bool bResized;
+
 class UWindow
 {
 public:

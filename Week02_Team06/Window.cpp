@@ -5,6 +5,10 @@
 #include "Renderer.h"
 #include "App.h"
 
+UINT g_width = 0;
+UINT g_height = 0;
+bool bResized = false;
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 bool UWindow::Initialize(HINSTANCE _hInstance, uint32 _width, uint32 _height)
@@ -77,23 +81,18 @@ LRESULT CALLBACK UWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		UInput::GetInstance().AddMouseWheelDelta(MouseWheelDelta);
 		break;
 	}
+	case WM_SIZE:
+	{
+		g_width = LOWORD(lParam);
+		g_height = HIWORD(lParam);
+		bResized = true;
+
+		break;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
-	case WM_SIZE:
-	{
-		if (wParam != SIZE_MINIMIZED)
-		{
-			UINT width = LOWORD(lParam);
-			UINT height = HIWORD(lParam);
-
-			if (UApp::GetInstance().GetRenderer() != nullptr)
-			{
-				UApp::GetInstance().GetRenderer()->OnResize(width, height);
-			}
-		}
-		break;
-	}
+		
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);

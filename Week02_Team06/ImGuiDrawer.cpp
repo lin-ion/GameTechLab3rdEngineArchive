@@ -5,6 +5,8 @@
 #include "FEditorViewportClient.h"
 #include "World.h"
 #include "StaticMeshActor.h"
+#include "EngineStatics.h"
+#include "App.h"
 
 UImGuiDrawer::UImGuiDrawer()
 {
@@ -91,9 +93,21 @@ void UImGuiDrawer::DrawSceneControlPanel()
 	static char sceneName[128] = "Default";
 	ImGui::InputText("Scene Name", sceneName, IM_COUNTOF(sceneName));
 
-	if (ImGui::Button("New Scene")) { /*Scene 초기화 로직 */ }
-	if (ImGui::Button("Save Scene")) { /* sceneName으로 저장 로직 */ }
-	if (ImGui::Button("Load Scene")) { /* sceneName 불러오기 로직 */ }
+	if (ImGui::Button("New Scene")) 
+	{ 
+		World->ClearScene();
+		strncpy_s(sceneName, "Default", IM_COUNTOF(sceneName));
+	}
+
+	if (ImGui::Button("Save Scene"))
+	{
+		USceneSerializer::SaveScene(sceneName, World);
+	}
+
+	if (ImGui::Button("Load Scene"))
+	{
+		USceneSerializer::LoadScene(sceneName, World);
+	}
 }
 
 void UImGuiDrawer::DrawCameraPanel(FEditorViewportClient* ViewportClient)

@@ -50,6 +50,7 @@ private:
 
 public:
 	uint32 UUID = { 0 };
+	uint32 SceneUUID = { 0 };
 	uint64 internalIndex = { }; // Index of GUObjectArray
 };
 
