@@ -50,12 +50,12 @@ public:
 	void SpawnActorFromEditor(FSpawnParameters params);
 	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
+	void ClearScene();
+
 private:
 	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
 	AActor* GetSelectedActor() const { return SelectedActor; }
 	FVector CalculateClosestPointOnAxis(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
-
-	void ClearScene();
 
 
 public:

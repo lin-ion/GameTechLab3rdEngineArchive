@@ -19,13 +19,14 @@ public:
 	void SetColor(const FVector4& InColor) { Color = InColor; }
 	bool  IsSelected() { return IsHovering; }
 	void  SetHovering(bool bFlag) { IsHovering = bFlag; };
-
-
 	bool  IsDebugMode() { return IsDebugUse; };
 	void  SetDebugMode(bool isDebug) { IsDebugUse = isDebug; }
 	// 항상 화면 위(최상단)에 렌더링할지 여부
 	bool IsAlwaysOnTop() const { return bAlwaysOnTop; }
 	void SetAlwaysOnTop(bool bFlag) { bAlwaysOnTop = bFlag; }
+
+	FString GetType() const { return Type; }
+
 
 public:
 	void TickComponent(float DeltaTime) override;
@@ -41,8 +42,6 @@ protected:
 	UMesh* MeshData = nullptr;
 	
 	bool bAlwaysOnTop = { false };
-
-	FString GetType() const { return Type; }
 
 protected:
 	FString Type;
