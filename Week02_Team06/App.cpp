@@ -56,9 +56,9 @@ void UApp::Run()
 
 	LARGE_INTEGER StartTime, EndTime, Frequency;
 
-	double		  TargetFrameMilliSecond = 1.f / TargetFrame * 1000.f;
-	double		  ElapsedMilliSecond = 0.f;
-
+	//double		  TargetFrameMilliSecond = 1.f / TargetFrame ;
+	//double		  ElapsedMilliSecond = 0.f;
+	
 	QueryPerformanceFrequency(&Frequency);
 	QueryPerformanceCounter(&StartTime);
 
@@ -73,12 +73,17 @@ void UApp::Run()
 
 		QueryPerformanceCounter(&EndTime);
 		double CounterInterval = static_cast<double>(EndTime.QuadPart - StartTime.QuadPart);
-		ElapsedMilliSecond = CounterInterval / Frequency.QuadPart * 1000.f;
 
-		if (ElapsedMilliSecond >= TargetFrameMilliSecond)
+		//ElapsedMilliSecond = CounterInterval / Frequency.QuadPart * 1000.f;
+		DeltaTime = static_cast<float>(CounterInterval / Frequency.QuadPart);
+
+		//if(ElapsedMilliSecond >= TargetFrameMilliSecond)
+		if (true)
 		{
 			StartTime = EndTime;
-			DeltaTime = static_cast<float>(ElapsedMilliSecond / 1000.f); // 초단위로
+			//60프레인 제한시
+			//DeltaTime = static_cast<float>(ElapsedMilliSecond / 1000.f); // 초단위로
+			DeltaTime = static_cast<float>(CounterInterval / Frequency.QuadPart);
 
 			if (bResized)
 			{
@@ -89,6 +94,7 @@ void UApp::Run()
 			//input
 			UInput::GetInstance().Update();
 
+			//Viewport 정보 갱신
 			ViewportClient->Tick(DeltaTime);
 
 			//GameLogic
@@ -105,10 +111,10 @@ void UApp::Run()
 
 			Renderer->EndScene();
 		}
-		else
+		/*else
 		{
 			Sleep(0);
-		}
+		}*/
 
 	}
 }

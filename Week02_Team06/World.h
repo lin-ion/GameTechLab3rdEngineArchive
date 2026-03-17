@@ -83,6 +83,5 @@ private:
 	FVector GizmoStartLocation = { 0.f, 0.f, 0.f };  // 클릭한 시점의 기즈모 위치
 	bool bIsDragging = false;    // 드래그 중인지 여부
 
-	//void TransferGizmo(AActor* NewTarget);
 };
 
