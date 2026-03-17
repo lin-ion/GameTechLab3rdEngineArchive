@@ -3,7 +3,6 @@
 #include "World.h"
 #include "ArrowComponent.h"
 #include "SphereComponent.h"
-
 #include "FEditorViewportClient.h"
 
 IMPLEMENT_CLASS(UGizmoActor, AActor)
@@ -24,6 +23,11 @@ void UGizmoActor::BeginPlay()
 	BasePoint = AddComponent<USphereComponent>();
 	BasePoint->SetColor({ 1.f, 1.f, 1.f, 1.f });
 
+	ArrowY->SetAlwaysOnTop(true);
+	ArrowX->SetAlwaysOnTop(true);
+	ArrowZ->SetAlwaysOnTop(true);
+	BasePoint->SetAlwaysOnTop(true);
+
 	// Sphere가 Base
 	RootComponent = BasePoint;
 }
@@ -31,6 +35,11 @@ void UGizmoActor::BeginPlay()
 void UGizmoActor::Tick(float DeltaTime)
 {
 	if (!RootComponent) return;
+
+	FVector CurrentPos = RootComponent->GetPosition();
+	ArrowX->SetPosition(CurrentPos);
+	ArrowY->SetPosition(CurrentPos);
+	ArrowZ->SetPosition(CurrentPos);
 
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
 
@@ -42,14 +51,23 @@ void UGizmoActor::Tick(float DeltaTime)
 	ArrowZ->SetScale({ ScaleFactor, ScaleFactor, ScaleFactor });
 	BasePoint->SetScale({ ScaleFactor * 0.1f, ScaleFactor * 0.1f, ScaleFactor * 0.1f });
 
+	// 일단 모두 기본 색상으로 초기화
 	ArrowX->SetColor(ColorX);
 	ArrowY->SetColor(ColorY);
 	ArrowZ->SetColor(ColorZ);
 	BasePoint->SetColor(ColorCenter);
 
-	EGizmoAxis HoveredAxis = CheckGizmoPicking();
+	// 월드로부터 현재 드래그 중인 축 확인
+	UWorld* World = GetWorld();
+	EGizmoAxis ActiveAxis = (World != nullptr) ? World->GetDraggingAxis() : EGizmoAxis::None;
 
-	switch (HoveredAxis)
+	// 3. 드래그 중이 아니라면, 마우스가 닿아있는(호버링) 축을 찾습니다.
+	if (ActiveAxis == EGizmoAxis::None)
+	{
+		ActiveAxis = CheckGizmoPicking();
+	}
+
+	switch (ActiveAxis)
 	{
 	case EGizmoAxis::X: ArrowX->SetColor(ColorHover); break;
 	case EGizmoAxis::Y: ArrowY->SetColor(ColorHover); break;

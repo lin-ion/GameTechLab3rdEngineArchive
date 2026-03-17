@@ -80,11 +80,19 @@ void URenderer::Release()
 	ReleaseShader();
 
 	DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	
 	if (DepthStencilState)
 	{
 		DepthStencilState->Release();
 		DepthStencilState = nullptr;
 	}
+
+	if (DepthStencilStateNoDepth)
+	{
+		DepthStencilStateNoDepth->Release();
+		DepthStencilStateNoDepth = nullptr;
+	}
+
 	ReleaseRasterizerState();
 	ReleaseDepthStensilView();
 	ReleaseRenderTargetView();
@@ -223,9 +231,11 @@ void URenderer::CreateDepthStencilState()
 	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
 	dsDesc.StencilEnable = FALSE;
-
-	// 헤더에서 바꾼 변수명(DepthStencilState)에 저장합니다.
 	Device->CreateDepthStencilState(&dsDesc, &DepthStencilState);
+
+	// 기즈모용으로 깊이검사 안하는 스탠실 상태
+	dsDesc.DepthEnable = FALSE; // 깊이 검사를 끕니다.
+	Device->CreateDepthStencilState(&dsDesc, &DepthStencilStateNoDepth);
 }
 
 void URenderer::CreateShader(ID3D11Device& Device, const std::wstring& Filename, const D3D11_INPUT_ELEMENT_DESC Layout[], int ElementNum)
@@ -440,6 +450,9 @@ void URenderer::RenderPrimitive(UWorld* World)
 	FMatrix VP = ViewportClient.GetViewMatrix() * ViewportClient.GetProjectionMatrix();
 	TArray<AActor*> Actors = World->CurrentLevel->Actors;
 
+	// 화면 위(최상단)에 렌더링할 기즈모 컴포넌트들을 담아둘 대기열
+	TArray<UPrimitiveComponent*> ForegroundPrimitives;
+
 	for (size_t i = 0; i < Actors.Size(); ++i)
 	{
 		TArray<UPrimitiveComponent*> Primitives = Actors[i]->GetComponentArrayByClass<UPrimitiveComponent>();
@@ -448,6 +461,13 @@ void URenderer::RenderPrimitive(UWorld* World)
 		{
 			UPrimitiveComponent* Primitive = Primitives[j];
 			if (!Primitive || !Primitive->GetMesh()) continue;
+
+			// 항상 화면 위(최상단)에 렌더링할 기즈모 컴포넌트는 일단 대기열에 넣어두고, 나중에 따로 렌더링
+			if (Primitive->IsAlwaysOnTop())
+			{
+				ForegroundPrimitives.PushBack(Primitive);
+				continue;
+			}
 
 			FMatrix Model = Primitive->GetComponentTransform();
 
@@ -460,6 +480,25 @@ void URenderer::RenderPrimitive(UWorld* World)
 				Primitive->Render(*DeviceContext);
 			}
 			// 원본 패스
+			UpdateConstantBuffer({ Model * VP, Primitive->GetColor() });
+			DeviceContext->RSSetState(RasterizerState);
+			Primitive->Render(*DeviceContext);
+		}
+	}
+
+	if (ForegroundPrimitives.Size() > 0)
+	{
+		DeviceContext->ClearDepthStencilView(DepthStensilView, D3D11_CLEAR_DEPTH, 1.f, 0);
+		
+		// 깊이 검사(Z-Buffer)를 완전히 꺼버립니다
+		DeviceContext->OMSetDepthStencilState(DepthStencilState, 1);
+
+		for (uint32 i = 0; i < ForegroundPrimitives.Size(); ++i)
+		{
+			UPrimitiveComponent* Primitive = ForegroundPrimitives[i];
+			FMatrix Model = Primitive->GetComponentTransform();
+
+			// 기즈모는 외곽선 없이 본체만 강제로 위에 덧그립니다.
 			UpdateConstantBuffer({ Model * VP, Primitive->GetColor() });
 			DeviceContext->RSSetState(RasterizerState);
 			Primitive->Render(*DeviceContext);

@@ -1,5 +1,59 @@
 #include "pch.h"
 
+bool Math::RayIntersectsTriangle(const FVector& RayOrigin, const FVector& RayDir, const FVector& V0, const FVector& V1, const FVector& V2)
+{
+    FVector Edge1 = V1 - V0;
+    FVector Edge2 = V2 - V0;
+    FVector Normal = Edge1.Cross(Edge2);
+
+    if (Normal.Dot(RayDir) > 0) return false; // 후면 판정
+
+    constexpr float epsilon = 1e-6f;
+    FVector RayCrossE2 = RayDir.Cross(Edge2);
+    float Det = Edge1.Dot(RayCrossE2);
+    if (std::abs(Det) < epsilon) return false;
+
+    float InvDet = 1.0f / Det;
+    FVector S = RayOrigin - V0;
+    float U = InvDet * S.Dot(RayCrossE2);
+    if (U < 0.f || U > 1.f) return false;
+
+    FVector SCrossE1 = S.Cross(Edge1);
+    float V = InvDet * RayDir.Dot(SCrossE1);
+    if (V < 0.f || U + V > 1.f) return false;
+
+    float T = InvDet * Edge2.Dot(SCrossE1);
+    return T > epsilon;
+}
+
+FVector Math::RayPlaneIntersection(const FVector& RayOrigin, const FVector& RayDir, const FVector& PlaneNormal, const FVector& PlaneOrigin)
+{
+    float Denom = RayDir.Dot(PlaneNormal);
+    if (std::abs(Denom) < 1e-6f) return PlaneOrigin;
+
+    FVector Diff = PlaneOrigin - RayOrigin;
+    float t = Diff.Dot(PlaneNormal) / Denom;
+    return RayOrigin + (RayDir * t);
+}
+
+FVector Math::ClosestPointOnLine(const FVector& RayOrigin, const FVector& RayDir, const FVector& LineOrigin, const FVector& LineDir)
+{
+    FVector w0 = RayOrigin - LineOrigin;
+    float a = RayDir.Dot(RayDir);
+    float b = RayDir.Dot(LineDir);
+    float c = LineDir.Dot(LineDir);
+    float d = RayDir.Dot(w0);
+    float e = LineDir.Dot(w0);
+
+    float Denom = a * c - b * b;
+    if (std::abs(Denom) < 1e-6f) return LineOrigin;
+
+    float t2 = (a * e - b * d) / Denom;
+    return LineOrigin + (LineDir * t2);
+}
+
+const FVector FVector::Zero = { 0.0f, 0.0f, 0.0f };
+
 FMatrix::FMatrix(float _00, float _01, float _02, float _03,
                  float _10, float _11, float _12, float _13,
                  float _20, float _21, float _22, float _23,
