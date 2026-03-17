@@ -9,7 +9,7 @@
 
 #include "CubeComponent.h"
 #include "GizmoActor.h"
-#include "UArrowComponent.h"
+#include "ArrowComponent.h"
 
 #include "PrimitiveComponent.h"
 #include "SphereComponent.h"

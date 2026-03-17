@@ -22,6 +22,9 @@ public:
 	const UMesh* GetMesh() const { return MeshData; }
 	void  SetMesh(UMesh* _MeshData) { MeshData = _MeshData; }
 
+	const FVector4& GetColor() const { return Color; }
+	void SetColor(const FVector4& InColor) { Color = InColor; }
+
 	bool  IsSelected() { return IsHovering; }
 	void  SetHovering(bool bFlag) { IsHovering = bFlag; };
 
@@ -31,6 +34,8 @@ public:
 	void Release() override;
 
 protected:
+	FVector4 Color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	
 	bool IsHovering = { false };
 	UMesh* MeshData = nullptr;
 };

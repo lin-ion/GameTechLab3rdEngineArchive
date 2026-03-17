@@ -460,7 +460,7 @@ void URenderer::RenderPrimitive(UWorld* World)
 				Primitive->Render(*DeviceContext);
 			}
 			// 원본 패스
-			UpdateConstantBuffer({ Model * VP, FVector4() });
+			UpdateConstantBuffer({ Model * VP, Primitive->GetColor() });
 			DeviceContext->RSSetState(RasterizerState);
 			Primitive->Render(*DeviceContext);
 		}

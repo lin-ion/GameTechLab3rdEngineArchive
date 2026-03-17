@@ -184,7 +184,7 @@
     <ClCompile Include="SphereComponent.cpp" />
     <ClCompile Include="Types.cpp" />
     <ClCompile Include="Mesh.cpp" />
-    <ClCompile Include="UArrowComponent.cpp" />
+    <ClCompile Include="ArrowComponent.cpp" />
     <ClCompile Include="Window.cpp" />
     <ClCompile Include="World.cpp" />
   </ItemGroup>
@@ -231,7 +231,7 @@
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="Mesh.h" />
-    <ClInclude Include="UArrowComponent.h" />
+    <ClInclude Include="ArrowComponent.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="World.h" />
   </ItemGroup>
