@@ -46,6 +46,7 @@ private:
 	void ReleaseDepthStensilView();
 	void CreateDepthStencilState();
 	ID3D11DepthStencilState* DepthStencilState = { nullptr };
+	ID3D11DepthStencilState* DepthStencilStateNoDepth = { nullptr };
 
 	void CreateShader(ID3D11Device& Device, const std::wstring& Filename, const D3D11_INPUT_ELEMENT_DESC Layout[], int ElemnetNum);
 	void ReleaseShader();

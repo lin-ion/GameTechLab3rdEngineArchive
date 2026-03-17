@@ -24,6 +24,11 @@ void UGizmoActor::BeginPlay()
 	BasePoint = AddComponent<USphereComponent>();
 	BasePoint->SetColor({ 1.f, 1.f, 1.f, 1.f });
 
+	ArrowY->SetAlwaysOnTop(true);
+	ArrowX->SetAlwaysOnTop(true);
+	ArrowZ->SetAlwaysOnTop(true);
+	BasePoint->SetAlwaysOnTop(true);
+
 	// Sphere가 Base
 	RootComponent = BasePoint;
 }
