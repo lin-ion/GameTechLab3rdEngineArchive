@@ -117,8 +117,16 @@ void UImGuiDrawer::DrawCameraPanel(FEditorViewportClient* ViewportClient)
 	ViewportClient->SetPerspective(!bIsOrthogonal);
 
 	float FOV = ViewportClient->GetFOVAngle();
+	if (bIsOrthogonal)
+	{
+		ImGui::BeginDisabled();
+	}
 	ImGui::SliderFloat("FOV", &FOV, 10.0f, 120.0f);
 	ViewportClient->SetFOVAngle(FOV);
+	if (bIsOrthogonal)
+	{
+		ImGui::EndDisabled();
+	}
 
 	std::array<float, 3> Position = {
 			ViewportClient->GetViewLocation().X,

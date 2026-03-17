@@ -4,6 +4,7 @@
 #include "ArrowComponent.h"
 #include "SphereComponent.h"
 #include "FEditorViewportClient.h"
+#include "Input.h"
 
 IMPLEMENT_CLASS(ULocationGizmoActor, AActor)
 
@@ -127,17 +128,21 @@ EGizmoAxis ULocationGizmoActor::CheckGizmoPicking()
 	UWorld* World = GetWorld();
 	if (!World || !World->ViewPort) return EGizmoAxis::None;
 
-	FVector RayOrigin = World->ViewPort->GetViewLocation();
-	FVector RayDir = World->ViewPort->GetCameraRayDirection();
+	UInput& Input = UInput::GetInstance();
+	FVector2D ScreenPos = { static_cast<float>(Input.GetMousePosition().x), static_cast<float>(Input.GetMousePosition().y) };
+	FVector RayOrigin;
+	FVector RayDirection;
+
+	World->ViewPort->DeprojectScreenToWorld(ScreenPos, RayOrigin, RayDirection);
 
 	// 구체(Center)를 가장 먼저 검사 (제일 작고 중앙에 있으므로)
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, BasePoint->GetMesh(), BasePoint->GetComponentTransform()))
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, BasePoint->GetMesh(), BasePoint->GetComponentTransform()))
 		return EGizmoAxis::Center;
 
 	// 각 화살표 검사 (이미 회전이 적용된 상태이므로 그대로 넘김)
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, ArrowX->GetMesh(), ArrowX->GetComponentTransform())) return EGizmoAxis::X;
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, ArrowY->GetMesh(), ArrowY->GetComponentTransform())) return EGizmoAxis::Y;
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, ArrowZ->GetMesh(), ArrowZ->GetComponentTransform())) return EGizmoAxis::Z;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowX->GetMesh(), ArrowX->GetComponentTransform())) return EGizmoAxis::X;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowY->GetMesh(), ArrowY->GetComponentTransform())) return EGizmoAxis::Y;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowZ->GetMesh(), ArrowZ->GetComponentTransform())) return EGizmoAxis::Z;
 
 	return EGizmoAxis::None;
 }

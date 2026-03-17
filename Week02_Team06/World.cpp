@@ -78,8 +78,10 @@ void UWorld::Tick(float DeltaTime)
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
 	}
 
-	FVector RayOrigin = ViewPort->GetViewLocation();
-	FVector RayDir = ViewPort->GetCameraRayDirection();
+	FVector2D ScreenPos = { static_cast<float>(Input.GetMousePosition().x), static_cast<float>(Input.GetMousePosition().y) };
+	FVector RayDirection;
+	FVector RayOrigin;
+	ViewPort->DeprojectScreenToWorld(ScreenPos, RayOrigin, RayDirection);
 
 	// 드래그 시작 (초기 상태 저장)
 	if (Input.IsKeyDown(VK_LBUTTON) && HoveredAxis != EGizmoAxis::None)
@@ -90,7 +92,7 @@ void UWorld::Tick(float DeltaTime)
 		if (CurrentMode == EGizmoMode::Location && LocationGizmoActor)
 		{
 			GizmoStartLocation = LocationGizmoActor->RootComponent->GetPosition();
-			DragStartPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			DragStartPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 		}
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
 		{
@@ -102,7 +104,7 @@ void UWorld::Tick(float DeltaTime)
 			RotationGizmoActor->LockDragPlane(CurrentDraggingAxis);
 
 			// 이후 교차점 계산
-			DragStartPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			DragStartPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 		}
 	}
 
@@ -111,13 +113,13 @@ void UWorld::Tick(float DeltaTime)
 	{
 		if (CurrentMode == EGizmoMode::Location && LocationGizmoActor)
 		{
-			FVector CurrentPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			FVector CurrentPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 			FVector Delta = CurrentPoint - DragStartPoint;
 			LocationGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
 		}
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
 		{
-			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 
 			// 🚨 로드리게스 원리로 추출한 단일 회전 각도(float)를 받아옵니다.
 			float DeltaAngle = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);

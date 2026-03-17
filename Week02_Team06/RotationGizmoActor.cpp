@@ -4,6 +4,7 @@
 #include "RingComponent.h"
 #include "SphereComponent.h"
 #include "FEditorViewportClient.h"
+#include "Input.h"
 
 IMPLEMENT_CLASS(URotationGizmoActor, AActor)
 
@@ -109,13 +110,16 @@ EGizmoAxis URotationGizmoActor::CheckGizmoPicking()
 	UWorld* World = GetWorld();
 	if (!World || !World->ViewPort) return EGizmoAxis::None;
 
-	FVector RayOrigin = World->ViewPort->GetViewLocation();
-	FVector RayDir = World->ViewPort->GetCameraRayDirection();
+	UInput& Input = UInput::GetInstance();
+	FVector2D ScreenPos = { static_cast<float>(Input.GetMousePosition().x), static_cast<float>(Input.GetMousePosition().y) };
+	FVector RayDirection;
+	FVector RayOrigin;
+	World->ViewPort->DeprojectScreenToWorld(ScreenPos, RayOrigin, RayDirection);
 
 	// 회전 링 피킹 검사
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, RingX->GetMesh(), RingX->GetComponentTransform())) return EGizmoAxis::X;
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, RingY->GetMesh(), RingY->GetComponentTransform())) return EGizmoAxis::Y;
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, RingZ->GetMesh(), RingZ->GetComponentTransform())) return EGizmoAxis::Z;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingX->GetMesh(), RingX->GetComponentTransform())) return EGizmoAxis::X;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingY->GetMesh(), RingY->GetComponentTransform())) return EGizmoAxis::Y;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingZ->GetMesh(), RingZ->GetComponentTransform())) return EGizmoAxis::Z;
 
 	return EGizmoAxis::None;
 }
