@@ -6,7 +6,7 @@ bool Math::RayIntersectsTriangle(const FVector& RayOrigin, const FVector& RayDir
     FVector Edge2 = V2 - V0;
     FVector Normal = Edge1.Cross(Edge2);
 
-    if (Normal.Dot(RayDir) > 0) return false; // 후면 판정
+    //if (Normal.Dot(RayDir) > 0) return false; // 후면 판정
 
     constexpr float epsilon = 1e-6f;
     FVector RayCrossE2 = RayDir.Cross(Edge2);

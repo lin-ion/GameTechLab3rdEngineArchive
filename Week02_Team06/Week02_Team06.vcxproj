@@ -186,6 +186,7 @@
     <ClCompile Include="SceneComponent.cpp" />
     <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="SphereComponent.cpp" />
+    <ClCompile Include="TriangleComponent.cpp" />
     <ClCompile Include="Types.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="ArrowComponent.cpp" />
@@ -233,6 +234,7 @@
     <ClInclude Include="SceneComponent.h" />
     <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="SphereComponent.h" />
+    <ClInclude Include="TriangleComponent.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="ArrowComponent.h" />
