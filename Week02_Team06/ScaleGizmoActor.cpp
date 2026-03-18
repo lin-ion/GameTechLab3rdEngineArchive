@@ -53,6 +53,38 @@ void UScaleGizmoActor::Tick(float DeltaTime)
 		return;
 	}
 
+	AActor* SelectedActor = World->SelectedActor;
+	if (SelectedActor && SelectedActor->RootComponent && RootComponent)
+	{
+		FVector TargetPos = SelectedActor->RootComponent->GetPosition();
+		FVector TargetRot = SelectedActor->RootComponent->GetRotation(); // 오일러 각도
+
+		// 위치 동기화
+		BasePoint->SetPosition(TargetPos);
+		if (HammerX) HammerX->SetPosition(TargetPos);
+		if (HammerY) HammerY->SetPosition(TargetPos);
+		if (HammerZ) HammerZ->SetPosition(TargetPos);
+
+		// 회전 동기화 (행렬 공간에서 결합하여 짐벌락 방지)
+		FMatrix TargetRotMat = FMatrix::MakeRotation(TargetRot);
+
+		BasePoint->SetRotation(TargetRot);
+		if (HammerY) HammerY->SetRotation(TargetRot); // Y는 기본 회전이 0이므로 그대로 적용
+
+		if (HammerX)
+		{
+			// X축: 원래 Z축으로 -90도 누워있었으므로, 그 상태에서 타겟 회전을 곱함
+			FMatrix MatX = FMatrix::MakeRotationZ(-90.0f) * TargetRotMat;
+			HammerX->SetRotation(Math::MatrixToEuler(MatX));
+		}
+		if (HammerZ)
+		{
+			// Z축: 원래 X축으로 90도 누워있었으므로, 그 상태에서 타겟 회전을 곱함
+			FMatrix MatZ = FMatrix::MakeRotationX(90.0f) * TargetRotMat;
+			HammerZ->SetRotation(Math::MatrixToEuler(MatZ));
+		}
+	}
+
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
 	float Distance = (Viewport->GetViewLocation() - RootComponent->GetComponentLocation()).Length();
 	float ScaleFactor = Distance * 0.15f;
