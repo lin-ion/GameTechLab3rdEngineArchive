@@ -23,14 +23,6 @@ UWorld* AActor::GetWorld()
 
 void AActor::BeginPlay()
 {
-	//모든 엑터에 레이 충돌용 바운드 스피어를 생성
-
-	//바운드 스피어 대신에 내부 RootComponent Scale로 계산
-	// 
-	//BoundingSphere = AddComponent<USphereComponent>();
-	//BoundingSphere->SetDebugMode(true);
-	//BoundingSphere->SetMesh(GetWorld()->resourceManager->FindMeshData("Sphere"));
-	//BoundingSphere->SetRelativeScale({ 3.f, 3.f, 3.f });
 }
 
 void AActor::Tick(float DeltaTime)
@@ -62,6 +54,11 @@ void AActor::Tick(float DeltaTime)
 
 void AActor::Release()
 {
+	for (size_t i = 0; i < Components.Size(); ++i)
+	{
+		UObjectFactory::DestroyObject(Components[i]);
+	}
+
 	// Actor 컴포넌트 또한 GUIObject가 관리한다
 	Components.Clear();
 	if (bIsSelected) {
