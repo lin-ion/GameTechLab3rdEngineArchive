@@ -147,7 +147,7 @@ namespace Math
 	static constexpr float PI = 3.1415926535f;
 	static inline float ToRadians(float Degree) { return Degree * (PI / 180.0f); }
 	static inline float ToDegrees(float Radian) { return Radian * (180.0f / PI); }
-
+	FVector MatrixToEuler(const FMatrix& M);
 	bool RayIntersectsTriangle(const FVector& RayOrigin, const FVector& RayDir, const FVector& V0, const FVector& V1, const FVector& V2);
 	FVector RayPlaneIntersection(const FVector& RayOrigin, const FVector& RayDir, const FVector& PlaneNormal, const FVector& PlaneOrigin);
 	FVector ClosestPointOnLine(const FVector& RayOrigin, const FVector& RayDir, const FVector& LineOrigin, const FVector& LineDir);

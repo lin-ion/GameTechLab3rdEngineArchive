@@ -52,6 +52,38 @@ FVector Math::ClosestPointOnLine(const FVector& RayOrigin, const FVector& RayDir
     return LineOrigin + (LineDir * t2);
 }
 
+FVector Math::MatrixToEuler(const FMatrix& M)
+{
+    FVector Euler;
+
+    // FMatrix::MakeRotation (Rx * Ry * Rz) 구조를 역산합니다.
+    float sy = -M.M[0][2];
+
+    // 짐벌락(Gimbal Lock) 판단 기준: Y축이 거의 90도나 -90도로 꺾였을 때
+    bool bGimbalLock = (std::abs(sy) > 0.9999f);
+
+    if (!bGimbalLock)
+    {
+        Euler.Y = asinf(sy);
+        Euler.X = atan2f(M.M[1][2], M.M[2][2]);
+        Euler.Z = atan2f(M.M[0][1], M.M[0][0]);
+    }
+    else
+    {
+        //짐벌락 발생 시: X를 0으로 고정하고 Z만으로 회전 상태를 표현
+        Euler.X = 0.0f;
+        Euler.Y = (sy > 0.0f) ? (PI / 2.0f) : (-PI / 2.0f);
+        Euler.Z = atan2f(-M.M[1][0], M.M[1][1]);
+    }
+
+    // 라디안으로 계산된 값을 다시 우리가 쓰는 '디그리(Degree)'로 변환
+    Euler.X = Math::ToDegrees(Euler.X);
+    Euler.Y = Math::ToDegrees(Euler.Y);
+    Euler.Z = Math::ToDegrees(Euler.Z);
+
+    return Euler;
+}
+
 const FVector FVector::Zero = { 0.0f, 0.0f, 0.0f };
 
 FMatrix::FMatrix(float _00, float _01, float _02, float _03,
