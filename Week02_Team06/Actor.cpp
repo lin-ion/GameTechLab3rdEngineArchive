@@ -36,19 +36,17 @@ void AActor::Tick(float DeltaTime)
 	for (int32 i = 0; i < Components.Size(); ++i)
 	{
 		if (!Components[i]->IsA(USceneComponent::StaticClass())) continue;
+		if (RootComponent == Components[i]) continue;
 
 		USceneComponent* SceneComponent = static_cast<USceneComponent*>(Components[i]);
 
-		if (Components[i]->IsA(USceneComponent::StaticClass()))
-		{
-			USceneComponent* SceneComponent = static_cast<USceneComponent*>(Components[i]);
-			SceneComponent->SetPosition(RootComponent->GetPosition());
+		SceneComponent->SetPosition(RootComponent->GetPosition());
 
-			FVector RootScale = RootComponent->GetScale();
-			FVector RelativeScale = SceneComponent->GetRelativeScale();
+		FVector RootScale = RootComponent->GetScale();
+		FVector RelativeScale = SceneComponent->GetRelativeScale();
 
-			SceneComponent->SetScale({ RootScale.X * RelativeScale.X , RootScale.Y * RelativeScale.Y , RootScale.Z * RelativeScale.Z });
-		}
+		SceneComponent->SetScale({ RootScale.X * RelativeScale.X , RootScale.Y * RelativeScale.Y , RootScale.Z * RelativeScale.Z });
+
 	}
 }
 

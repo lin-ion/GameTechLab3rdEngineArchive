@@ -61,7 +61,9 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
 	BasePoint->SetScale({ 0.1f * ScaleFactor, 0.1f * ScaleFactor, 0.1f * ScaleFactor });
-	//BoundingSphere->SetScale(ResultScale);
+	if (ArrowX) ArrowX->SetScale(ResultScale);
+	if (ArrowY) ArrowY->SetScale(ResultScale);
+	if (ArrowZ) ArrowZ->SetScale(ResultScale);
 
 	// 일단 모두 기본 색상으로 초기화
 	ArrowX->SetColor(ColorX);

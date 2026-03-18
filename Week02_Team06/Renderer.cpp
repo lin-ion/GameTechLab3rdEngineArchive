@@ -128,9 +128,11 @@ void URenderer::CreateRasterizerState()
 
 	RasterizerDesc = {};
 	RasterizerDesc.FillMode = D3D11_FILL_SOLID;
-	RasterizerDesc.CullMode = D3D11_CULL_FRONT;
-	RasterizerDesc.FrontCounterClockwise = FALSE;
+	RasterizerDesc.CullMode = D3D11_CULL_NONE;
+	RasterizerDesc.FrontCounterClockwise = FALSE; 
 	RasterizerDesc.DepthClipEnable = TRUE;
+	RasterizerDesc.DepthBias = 10000;
+	RasterizerDesc.SlopeScaledDepthBias = 1.0f;
 
 	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateOutline);
 
