@@ -133,7 +133,6 @@ public:
 
 public:
 	USceneComponent* RootComponent = nullptr;
-	USphereComponent* BoundingSphere = nullptr;
 
 	ULevel*          OwningLevel   = nullptr;
 

@@ -44,7 +44,7 @@ void UScaleGizmoActor::Tick(float DeltaTime)
 	AActor::Tick(DeltaTime);
 	UWorld* World = GetWorld();
 
-	AActor* SelectedActor = World ? World->SelectedActor : nullptr;
+	AActor* SelectedActor = World->SelectedActor;
 
 	if (!World || World->GetCurrentMode() != UWorld::EGizmoMode::Scale || !SelectedActor)
 	{
@@ -114,7 +114,7 @@ void UScaleGizmoActor::Tick(float DeltaTime)
 
 void UScaleGizmoActor::Release()
 {
-
+	AActor::Release();
 }
 
 EGizmoAxis UScaleGizmoActor::CheckGizmoPicking()

@@ -5,7 +5,6 @@
 
 class UMesh;
 class AActor;
-class UGizmoComponent;
 class UResourceManager;
 class FEditorViewportClient;
 class USceneComponent;
@@ -23,8 +22,6 @@ public:
 	{
 		static_assert(std::is_base_of_v<AActor, T>, "T must derive from AActor");
 
-		//언리얼 5로 가면서 NewObject로 바뀌었다고는 하는데.. 교차검증 필요 
-		//ConstructObject와 뭐가 다른건지
 		T* Actor           = NewObject<T>();
 
 		Actor->OwningLevel = CurrentLevel;
@@ -58,6 +55,9 @@ public:
 	
 	void ClearScene();
 	TArray<AActor*> GetSerializableActors() const;
+	void RefreshGizmo();
+	void DestroyCurrentGizmo();
+	void SetGizmoMode(EGizmoMode NewMode);
 
 private:
 	class ULocationGizmoActor* LocationGizmoActor = { nullptr };
@@ -77,11 +77,7 @@ public:
 
 	AActor* SelectedActor = { nullptr };
 
-	//나중엔 씬을 만들것임
-	//FScene* Scene = { nullptr };
 private:
-	// bIsActorSelected가 true인 오브젝트가 해제될때는 World에서도 SelectedActor 참조를 제거
-	
 	// 드래그 관련 상태 변수
 	EGizmoMode CurrentMode = EGizmoMode::Location;
 	EGizmoAxis HoveredAxis = EGizmoAxis::None;
