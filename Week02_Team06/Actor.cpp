@@ -25,10 +25,12 @@ void AActor::BeginPlay()
 {
 	//모든 엑터에 레이 충돌용 바운드 스피어를 생성
 
-	BoundingSphere = AddComponent<USphereComponent>();
-	BoundingSphere->SetDebugMode(true);
-	BoundingSphere->SetMesh(GetWorld()->resourceManager->FindMeshData("Sphere"));
-	BoundingSphere->SetRelativeScale({ 3.f, 3.f, 3.f });
+	//바운드 스피어 대신에 내부 RootComponent Scale로 계산
+	// 
+	//BoundingSphere = AddComponent<USphereComponent>();
+	//BoundingSphere->SetDebugMode(true);
+	//BoundingSphere->SetMesh(GetWorld()->resourceManager->FindMeshData("Sphere"));
+	//BoundingSphere->SetRelativeScale({ 3.f, 3.f, 3.f });
 }
 
 void AActor::Tick(float DeltaTime)

@@ -40,8 +40,11 @@ float4 PS_GRID(PS_INPUT input) : SV_Target
     // small grid every 5 units
     float2 coordSmall = WorldXZ / 5.0;
     float2 fS = frac(coordSmall - 0.5) - 0.5;
-    float2 distSmall = abs(fS) / fwidth(coordSmall);
-    float smallGrid = 1.0 - saturate(min(distSmall.x, distSmall.y));
+    
+    // coord의 값을 이용하여 다음 픽셀까지 얼마나 몇 픽셀인지를 계산
+    float2 pixelDistSmall = abs(fS) / fwidth(coordSmall);
+    //smallGrid가 1이면선임
+    float smallGrid = 1.0 - saturate(min(pixelDistSmall.x, pixelDistSmall.y));
 
     // big grid every 25 units
     float2 coordBig = WorldXZ / 25.0;
@@ -49,6 +52,7 @@ float4 PS_GRID(PS_INPUT input) : SV_Target
     float2 distBig = abs(fB) / fwidth(coordBig);
     float bigGrid = 1.0 - saturate(min(distBig.x, distBig.y) - 0.4); // minus bias to make big grid thinner
     
+    //최종적인 그리드의 알파값을 정하기
     float alpha = max(smallGrid * 0.3, bigGrid) * fade;
     
     float4 color = float4(0.38, 0.38, 0.38, alpha);

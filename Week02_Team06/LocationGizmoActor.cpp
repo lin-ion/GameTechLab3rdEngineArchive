@@ -61,7 +61,7 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
 	BasePoint->SetScale({ 0.1f * ScaleFactor, 0.1f * ScaleFactor, 0.1f * ScaleFactor });
-	BoundingSphere->SetScale(ResultScale);
+	//BoundingSphere->SetScale(ResultScale);
 
 	// 일단 모두 기본 색상으로 초기화
 	ArrowX->SetColor(ColorX);
@@ -102,12 +102,10 @@ FVector ULocationGizmoActor::GetDragIntersectionPoint(const FVector& RayOrg, con
 
 	FVector GizmoPos = RootComponent->GetPosition();
 
-	// Center (가운데 구체)를 잡았을 때는 카메라를 바라보는 가상 평면과의 교차점을 구합니다.
+	// Center (가운데 구체)를 잡았을 때는 드래그 시작 시 고정된 평면과의 교차점을 구합니다.
 	if (Axis == EGizmoAxis::Center)
 	{
-		FVector PlaneNormal = RayOrg - GizmoPos;
-		PlaneNormal.Normalize();
-		return Math::RayPlaneIntersection(RayOrg, RayDir, PlaneNormal, GizmoPos);
+		return Math::RayPlaneIntersection(RayOrg, RayDir, LockedPlaneNormal, GizmoPos);
 	}
 
 	// 특정 축(X, Y, Z)을 잡았을 때는 해당 축의 선분과 가장 가까운 점을 구합니다.
@@ -136,15 +134,22 @@ EGizmoAxis ULocationGizmoActor::CheckGizmoPicking()
 	World->ViewPort->DeprojectScreenToWorld(ScreenPos, RayOrigin, RayDirection);
 
 	// 구체(Center)를 가장 먼저 검사 (제일 작고 중앙에 있으므로)
-	if (World->RayIntersectsMesh(RayOrigin, RayDirection, BasePoint->GetMesh(), BasePoint->GetComponentTransform()))
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, BasePoint->GetMesh(), BasePoint->GetComponentTransform()) >= 0.f)
 		return EGizmoAxis::Center;
 
 	// 각 화살표 검사 (이미 회전이 적용된 상태이므로 그대로 넘김)
-	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowX->GetMesh(), ArrowX->GetComponentTransform())) return EGizmoAxis::X;
-	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowY->GetMesh(), ArrowY->GetComponentTransform())) return EGizmoAxis::Y;
-	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowZ->GetMesh(), ArrowZ->GetComponentTransform())) return EGizmoAxis::Z;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowX->GetMesh(), ArrowX->GetComponentTransform()) >= 0.f) return EGizmoAxis::X;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowY->GetMesh(), ArrowY->GetComponentTransform()) >= 0.f) return EGizmoAxis::Y;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, ArrowZ->GetMesh(), ArrowZ->GetComponentTransform()) >= 0.f) return EGizmoAxis::Z;
 
 	return EGizmoAxis::None;
+}
+
+void ULocationGizmoActor::LockDragPlane(const FVector& RayOrg)
+{
+	FVector PlaneNormal = RayOrg - RootComponent->GetPosition();
+	PlaneNormal.Normalize();
+	LockedPlaneNormal = PlaneNormal;
 }
 
 void ULocationGizmoActor::Release()
