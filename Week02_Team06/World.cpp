@@ -136,27 +136,42 @@ void UWorld::Tick(float DeltaTime)
 		{
 			FVector CurrentPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 			FVector Delta = CurrentPoint - DragStartPoint;
-			LocationGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
+			if (SelectedActor && SelectedActor->RootComponent)
+			{
+				SelectedActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
+			}
 		}
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
 		{
+			// 마우스의 현재 교차점을 구하고, 시작점과의 회전 차이(DeltaAngle)를 계산합니다.
 			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
-
-			// 로드리게스 원리로 추출한 단일 회전 각도(float)를 받아옵니다.
 			float DeltaAngle = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
 
-			// 1. 타겟 액터 회전 (선택된 축에만 각도 더하기)
+			// 1. 타겟 액터 회전
 			if (SelectedActor)
 			{
-				FVector TargetDelta = FVector::Zero;
-				if (CurrentDraggingAxis == EGizmoAxis::X) TargetDelta.X = DeltaAngle;
-				if (CurrentDraggingAxis == EGizmoAxis::Y) TargetDelta.Y = DeltaAngle;
-				if (CurrentDraggingAxis == EGizmoAxis::Z) TargetDelta.Z = DeltaAngle;
+				// 큐브의 시작 오일러 각도를 '회전 행렬'로 승격시킵니다.
+				FMatrix StartMatrix = FMatrix::MakeRotation(TargetStartRotation);
 
-				SelectedActor->RootComponent->SetRotation(TargetStartRotation + TargetDelta);
+				// 기즈모의 회전 변화량(Delta)을 3D 회전 행렬로 만듭니다.
+				FMatrix DeltaMatrix;
+				if (CurrentDraggingAxis == EGizmoAxis::X)
+					DeltaMatrix = FMatrix::MakeRotationX(DeltaAngle);
+				else if (CurrentDraggingAxis == EGizmoAxis::Y)
+					DeltaMatrix = FMatrix::MakeRotationY(DeltaAngle);
+				else if (CurrentDraggingAxis == EGizmoAxis::Z)
+					DeltaMatrix = FMatrix::MakeRotationZ(DeltaAngle);
+				else
+					DeltaMatrix = FMatrix::Identity;
+
+				// 행렬 곱셈 수행!
+				FMatrix FinalMatrix = StartMatrix * DeltaMatrix;
+
+				// 완성된 행렬에서 오일러 각도를 다시 뽑아내어 큐브에 먹입니다.
+				FVector FinalEuler = Math::MatrixToEuler(FinalMatrix);
+				SelectedActor->RootComponent->SetRotation(FinalEuler);
 			}
 
-			// 2. 기즈모 전체가 아닌, '잡고 있는 링' 하나만 제자리에서 돌립니다!
 			RotationGizmoActor->ApplyRingRotation(CurrentDraggingAxis, DeltaAngle);
 		}
 		else if (CurrentMode == EGizmoMode::Scale && ScaleGizmoActor)
@@ -167,20 +182,33 @@ void UWorld::Tick(float DeltaTime)
 			if (SelectedActor)
 			{
 				FVector NewScale = TargetStartScale;
-				// 마우스 이동량에 따른 감도 조절 (0.1f 정도가 적당합니다)
 				float Sensitivity = 0.05f;
+				float DragAmount = 0.0f;
 
-				if (CurrentDraggingAxis == EGizmoAxis::X) NewScale.X += Delta.X * Sensitivity;
-				else if (CurrentDraggingAxis == EGizmoAxis::Y) NewScale.Y += Delta.Y * Sensitivity;
-				else if (CurrentDraggingAxis == EGizmoAxis::Z) NewScale.Z += Delta.Z * Sensitivity;
-				else if (CurrentDraggingAxis == EGizmoAxis::Center) // 전체(Uniform) 스케일링
+				// Delta의 절대 좌표(X,Y,Z)가 아닌, 각 기즈모 축이 바라보는 방향(UpVector)으로의 내적(투영 길이)을 구합니다.
+				if (CurrentDraggingAxis == EGizmoAxis::X)
 				{
-					// 대각선 이동량의 평균을 구하여 전체 스케일에 반영
+					DragAmount = Delta.Dot(ScaleGizmoActor->HammerX->GetUpVector());
+					NewScale.X += DragAmount * Sensitivity;
+				}
+				else if (CurrentDraggingAxis == EGizmoAxis::Y)
+				{
+					DragAmount = Delta.Dot(ScaleGizmoActor->HammerY->GetUpVector());
+					NewScale.Y += DragAmount * Sensitivity;
+				}
+				else if (CurrentDraggingAxis == EGizmoAxis::Z)
+				{
+					DragAmount = Delta.Dot(ScaleGizmoActor->HammerZ->GetUpVector());
+					NewScale.Z += DragAmount * Sensitivity;
+				}
+				else if (CurrentDraggingAxis == EGizmoAxis::Center)
+				{
+					// 전체 스케일링은 기존처럼 이동량의 합을 사용
 					float UniformDelta = (Delta.X + Delta.Y + Delta.Z) * Sensitivity;
 					NewScale = NewScale + FVector(UniformDelta, UniformDelta, UniformDelta);
 				}
 
-				// 0 이하로 작아져서 메쉬가 뒤집히는 것 방지 (방어 코드)
+				// 0 이하로 작아져서 메쉬가 뒤집히는 것 방지
 				if (NewScale.X < 0.01f) NewScale.X = 0.01f;
 				if (NewScale.Y < 0.01f) NewScale.Y = 0.01f;
 				if (NewScale.Z < 0.01f) NewScale.Z = 0.01f;

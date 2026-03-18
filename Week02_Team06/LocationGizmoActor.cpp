@@ -46,13 +46,26 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 	AActor::Tick(DeltaTime);
 	UWorld* World = GetWorld();
 
-	if (World && World->GetCurrentMode() != UWorld::EGizmoMode::Location)
+	AActor* SelectedActor = World ? World->SelectedActor : nullptr;
+
+	// 모드가 다르거나 선택된 액터가 없으면 기즈모 숨김
+	if (!World || World->GetCurrentMode() != UWorld::EGizmoMode::Location || !SelectedActor)
 	{
 		BasePoint->SetScale({ 0.f, 0.f, 0.f });
-		ArrowX->SetScale({ 0.f, 0.f, 0.f });
-		ArrowY->SetScale({ 0.f, 0.f, 0.f });
-		ArrowZ->SetScale({ 0.f, 0.f, 0.f });
+		if (ArrowX) ArrowX->SetScale({ 0.f, 0.f, 0.f });
+		if (ArrowY) ArrowY->SetScale({ 0.f, 0.f, 0.f });
+		if (ArrowZ) ArrowZ->SetScale({ 0.f, 0.f, 0.f });
 		return;
+	}
+
+	// 타겟 액터의 '위치'로 기즈모 동기화 (회전은 월드축 고정)
+	if (SelectedActor->RootComponent && RootComponent)
+	{
+		FVector TargetPos = SelectedActor->RootComponent->GetPosition();
+		RootComponent->SetPosition(TargetPos);
+		if (ArrowX) ArrowX->SetPosition(TargetPos);
+		if (ArrowY) ArrowY->SetPosition(TargetPos);
+		if (ArrowZ) ArrowZ->SetPosition(TargetPos);
 	}
 
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
