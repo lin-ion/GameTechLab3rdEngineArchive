@@ -12,6 +12,7 @@ void UResourceManager::Initialize(ID3D11Device& Device)
 	LoadResourceData(Device, "Triangle", "Content/Meshes/Triangle.json", nullptr, 0);
 	LoadResourceData(Device, "GizmoLocation", "Content/Meshes/GizmoLocation.json", nullptr, 0);
 	LoadResourceData(Device, "GizmoRotation", "Content/Meshes/GizmoRotation.json", nullptr, 0);
+	LoadResourceData(Device, "GizmoScale", "Content/Meshes/GizmoScale.json", nullptr, 0);
 }
 
 void UResourceManager::LoadResourceData(ID3D11Device& Device, const FString& MeshName, const FString& FilePath, const uint32* Indices, UINT IndexCount)

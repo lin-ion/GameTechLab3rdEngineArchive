@@ -60,6 +60,7 @@ public:
 private:
 	class ULocationGizmoActor* LocationGizmoActor = { nullptr };
 	class URotationGizmoActor* RotationGizmoActor = { nullptr };
+	class UScaleGizmoActor* ScaleGizmoActor = { nullptr };
 
 private:
 	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
@@ -88,6 +89,7 @@ private:
 	FVector GizmoStartLocation = { 0.f, 0.f, 0.f };    // 클릭한 시점의 기즈모 위치
 	FVector GizmoStartRotation = { 0.f, 0.f, 0.f };    // 클릭한 시점의 기즈모 회전
 	FVector TargetStartRotation = { 0.f, 0.f, 0.f };   // 클릭한 시점의 타겟 액터 회전 (회전 모드용)
+	FVector TargetStartScale = { 1.f, 1.f, 1.f };      // 클릭한 시점의 타겟 액터 스케일 (스케일 모드용)
 	bool bIsDragging = false;    // 드래그 중인지 여부
 
 };
