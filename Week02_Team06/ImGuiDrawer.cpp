@@ -150,7 +150,7 @@ void UImGuiDrawer::DrawPrimitiveDataPanel()
 {
 	ImGui::Begin("Jungle Property Window");
 
-	//SelectedTarget = World->GetPickedActor();
+	SelectedTarget = World->SelectedActor;
 
 	if (SelectedTarget)
 	{
