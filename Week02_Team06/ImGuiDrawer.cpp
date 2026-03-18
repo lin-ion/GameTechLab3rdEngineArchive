@@ -102,6 +102,7 @@ void UImGuiDrawer::DrawSceneControlPanel()
 	if (ImGui::Button("Save Scene"))
 	{
 		USceneSerializer::SaveScene(sceneName, World);
+		USceneSerializer::SaveEditorConfig();
 	}
 
 	if (ImGui::Button("Load Scene"))
@@ -149,29 +150,31 @@ void UImGuiDrawer::DrawPrimitiveDataPanel()
 {
 	ImGui::Begin("Jungle Property Window");
 
+	//SelectedTarget = World->GetPickedActor();
+
 	if (SelectedTarget)
 	{
-		ActorLocation = SelectedTarget->GetPosition();
-		ActorRotation = SelectedTarget->GetRotation();
-		ActorScale = SelectedTarget->GetScale();
+		ActorLocation = SelectedTarget->RootComponent->GetPosition();
+		ActorRotation = SelectedTarget->RootComponent->GetRotation();
+		ActorScale = SelectedTarget->RootComponent->GetScale();
 	}
 
 	
 	if (ImGui::DragFloat3("Translation", &ActorLocation.X, 0.1f))
 	{
-		if (SelectedTarget) SelectedTarget->SetPosition(ActorLocation);
+		if (SelectedTarget) SelectedTarget->RootComponent->SetPosition(ActorLocation);
 	}
 
 	
 	if (ImGui::DragFloat3("Rotation", &ActorRotation.X, 0.1f))
 	{
-		if (SelectedTarget) SelectedTarget->SetRotation(ActorRotation);
+		if (SelectedTarget) SelectedTarget->RootComponent->SetRotation(ActorRotation);
 	}
 
 	
 	if (ImGui::DragFloat3("Scale", &ActorScale.X, 0.1f))
 	{
-		if (SelectedTarget) SelectedTarget->SetScale(ActorScale);
+		if (SelectedTarget) SelectedTarget->RootComponent->SetScale(ActorScale);
 	}
 
 	ImGui::End();

@@ -31,10 +31,15 @@ FString USceneSerializer::Serialize(SceneSaveData& sceneInfo)
 
 	for (size_t i = 0; i < sceneInfo.Primitives.Size(); ++i)
 	{
-		UPrimitiveComponent* RootComponent = sceneInfo.Primitives[i]->GetComponentByClass<UPrimitiveComponent>();
+		UPrimitiveComponent* RootComponent = nullptr;
 
+		if(sceneInfo.Primitives[i]->RootComponent->IsA(UPrimitiveComponent::StaticClass()))
+			RootComponent = static_cast<UPrimitiveComponent*>(sceneInfo.Primitives[i]->RootComponent);
+		
 		if (!RootComponent || RootComponent->GetType().empty())
 			continue;
+
+		UE_LOG("Type: %s", RootComponent->GetType().c_str());
 
 		json objData = json::object();
 
@@ -43,7 +48,7 @@ FString USceneSerializer::Serialize(SceneSaveData& sceneInfo)
 		objData["Scale"] = VectorToJson(RootComponent->GetScale());
 		objData["Type"] = RootComponent->GetType();
 		
-		primitive[std::to_string(sceneInfo.Primitives[i]->SceneUUID)] = objData;
+		primitive[std::to_string(sceneInfo.Primitives[i]->UUID)] = objData;
 	}
 
 	root["Primitives"] = primitive;
@@ -56,7 +61,7 @@ bool USceneSerializer::SaveScene(const FString& sceneName, UWorld* World)
 	SceneSaveData sceneData;
 
 	sceneData.Name = sceneName;
-	sceneData.NextUUID = UEngineStatics::SceneUUID;
+	sceneData.NextUUID = UEngineStatics::NextUUID;
 
 	TArray<AActor*> Actors = World->CurrentLevel->Actors;
 	for (size_t i = 0; i < Actors.Size(); ++i)
@@ -82,6 +87,8 @@ bool USceneSerializer::SaveScene(const FString& sceneName, UWorld* World)
 
 bool USceneSerializer::LoadScene(const FString& sceneName, UWorld* World)
 {
+	UEngineStatics::bIsLoading = true;
+
 	FString fullPath = GetSaveDirectory() + sceneName + ".Scene";
 
 	std::ifstream file(fullPath);
@@ -92,7 +99,8 @@ bool USceneSerializer::LoadScene(const FString& sceneName, UWorld* World)
 
 	json root = json::parse(buffer.str());
 	World->ClearScene();
-	UEngineStatics::SetSceneUUID(root["NextUUID"]);
+
+	UEngineStatics::NextUUID = root["NextUUID"];
 
 	for (auto& item : root["Primitives"].items())
 	{
@@ -109,5 +117,33 @@ bool USceneSerializer::LoadScene(const FString& sceneName, UWorld* World)
 
 		World->SpawnActorFromEditor(params);
 	}
+
+	UEngineStatics::bIsLoading = false;
+	return true;
+}
+
+bool USceneSerializer::SaveEditorConfig()
+{
+	json config;
+	config["NextUUID"] = UEngineStatics::NextUUID;
+
+	std::ofstream file("Content/Editor.config");
+	if (!file.is_open()) return false;
+
+	file << config.dump(4);
+	file.close();
+	return true;
+}
+
+bool USceneSerializer::LoadEditorConfig()
+{
+	std::ifstream file("Content/Editor.config");
+	if (!file.is_open()) return false;
+
+	std::stringstream buffer;
+	buffer << file.rdbuf();
+
+	json config = json::parse(buffer.str());
+	UEngineStatics::NextUUID = config["NextUUID"];
 	return true;
 }

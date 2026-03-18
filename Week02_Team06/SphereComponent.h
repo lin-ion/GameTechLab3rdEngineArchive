@@ -9,7 +9,7 @@ class USphereComponent : public UPrimitiveComponent
     DECLARE_CLASS(USphereComponent, UPrimitiveComponent)
 
 public:
-    USphereComponent() = default;
+    USphereComponent();
     virtual ~USphereComponent() = default;
 
 public:

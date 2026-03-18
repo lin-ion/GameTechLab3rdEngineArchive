@@ -93,7 +93,7 @@ void URotationGizmoActor::Tick(float DeltaTime)
 	if (ActiveAxis == EGizmoAxis::None)
 	{
 		// 직접 쏘지 않고 통제소(World)의 판정을 얌전히 받습니다.
-		ActiveAxis = World->GetHoveredAxis();
+		ActiveAxis = GetWorld()->GetHoveredAxis();
 	}
 
 	switch (ActiveAxis)
@@ -147,9 +147,9 @@ void URotationGizmoActor::ApplyRingRotation(EGizmoAxis Axis, float DeltaAngle)
 	if (RingY) RingY->SetRotation(BaseY);
 	if (RingZ) RingZ->SetRotation(BaseZ);
 
-	if(Axis == EGizmoAxis::X && RingX) RingX->SetRotation({ 0.f, DeltaAngle, -90.f }); // Y를 돌리고 Z로 세운다
-	if (Axis == EGizmoAxis::Y && RingY) RingY->SetRotation({ 0.f, DeltaAngle, 0.f });   // Y만 돌린다
-	if (Axis == EGizmoAxis::Z && RingZ) RingZ->SetRotation({ 90.f, 0.f, DeltaAngle });  // X로 세우고 Z를 돌린다
+	if(Axis == EGizmoAxis::X && RingX) RingX->SetRotation({ 0.f, BaseX.Y + DeltaAngle, BaseX.Z }); // Y를 돌리고 Z로 세운다
+	if (Axis == EGizmoAxis::Y && RingY) RingY->SetRotation({ 0.f, BaseY.Y + DeltaAngle, 0.f });   // Y만 돌린다
+	if (Axis == EGizmoAxis::Z && RingZ) RingZ->SetRotation({ BaseZ.X, 0.f, BaseZ.Z + DeltaAngle });  // X로 세우고 Z를 돌린다
 }
 
 FVector URotationGizmoActor::GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis)

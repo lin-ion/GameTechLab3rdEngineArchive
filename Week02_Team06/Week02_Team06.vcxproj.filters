@@ -131,6 +131,8 @@
     <ClCompile Include="SphereComponent.cpp" />
     <ClCompile Include="RotationGizmoActor.cpp" />
     <ClCompile Include="RingComponent.cpp" />
+    <ClCompile Include="ScaleGizmoActor.cpp" />
+    <ClCompile Include="HammerComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -217,6 +219,8 @@
     <ClInclude Include="SphereComponent.h" />
     <ClInclude Include="RotationGizmoActor.h" />
     <ClInclude Include="RingComponent.h" />
+    <ClInclude Include="ScaleGizmoActor.h" />
+    <ClInclude Include="HammerComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

@@ -10,7 +10,7 @@
 #include "ResourceManager.h"
 
 
-IMPLEMENT_CLASS(AActor , UObject)
+IMPLEMENT_CLASS(AActor, UObject)
 
 UWorld* AActor::GetWorld()
 {
@@ -24,10 +24,11 @@ UWorld* AActor::GetWorld()
 void AActor::BeginPlay()
 {
 	//모든 엑터에 레이 충돌용 바운드 스피어를 생성
+
 	BoundingSphere = AddComponent<USphereComponent>();
 	BoundingSphere->SetDebugMode(true);
 	BoundingSphere->SetMesh(GetWorld()->resourceManager->FindMeshData("Sphere"));
-	BoundingSphere->SetRelativeScale({3.f, 3.f, 3.f});
+	BoundingSphere->SetRelativeScale({ 3.f, 3.f, 3.f });
 }
 
 void AActor::Tick(float DeltaTime)
@@ -37,7 +38,7 @@ void AActor::Tick(float DeltaTime)
 		Components[i]->TickComponent(DeltaTime);
 	}
 
-	
+
 	for (int32 i = 0; i < Components.Size(); ++i)
 	{
 		if (!Components[i]->IsA(USceneComponent::StaticClass())) continue;
@@ -52,7 +53,7 @@ void AActor::Tick(float DeltaTime)
 			FVector RootScale = RootComponent->GetScale();
 			FVector RelativeScale = SceneComponent->GetRelativeScale();
 
-			SceneComponent->SetScale({RootScale.X * RelativeScale.X , RootScale.Y * RelativeScale.Y , RootScale.Z * RelativeScale.Z});
+			SceneComponent->SetScale({ RootScale.X * RelativeScale.X , RootScale.Y * RelativeScale.Y , RootScale.Z * RelativeScale.Z });
 		}
 	}
 }
@@ -61,4 +62,7 @@ void AActor::Release()
 {
 	// Actor 컴포넌트 또한 GUIObject가 관리한다
 	Components.Clear();
+	if (bIsSelected) {
+		OwningLevel->GetWorld()->SelectedActor = nullptr;
+	}
 }

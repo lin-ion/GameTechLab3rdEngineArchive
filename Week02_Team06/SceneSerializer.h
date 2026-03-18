@@ -17,6 +17,9 @@ public:
 	static bool SaveScene(const FString& sceneName, UWorld* World);
 	static bool LoadScene(const FString& sceneName, UWorld* World);
 
+	static bool SaveEditorConfig();
+	static bool LoadEditorConfig();
+
 private:
 	static FString Serialize(SceneSaveData& sceneInfo);
 
