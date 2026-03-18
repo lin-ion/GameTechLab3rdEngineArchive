@@ -281,10 +281,10 @@ AActor* UWorld::RaycastForActor(const FVector& RayOrigin, const FVector& RayDire
 		if (LocationGizmoActor == TargetActor || RotationGizmoActor == TargetActor || ScaleGizmoActor == TargetActor) continue;
 
 		// 구와 레이 충돌로 불필요한 정점 순회를 막음
-		if (!RayIntersectsSphere(RayOrigin, RayDirection, TargetActor->RootComponent, TargetActor->RootComponent->GetComponentTransform()))
-		{
-			continue;
-		}
+		//if (!RayIntersectsSphere(RayOrigin, RayDirection, TargetActor->RootComponent, TargetActor->RootComponent->GetComponentTransform()))
+		//{
+		//	continue;
+		//}
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 
@@ -424,7 +424,6 @@ TArray<AActor*> UWorld::GetSerializableActors() const
 			continue;
 		
 		Result.PushBack(CurrentLevel->Actors[i]);
-		UE_LOG("Actor");
 	}
 
 	return Result;
