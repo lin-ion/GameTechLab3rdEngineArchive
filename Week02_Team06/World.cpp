@@ -136,11 +136,14 @@ void UWorld::Tick(float DeltaTime)
 		{
 			FVector CurrentPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 			FVector Delta = CurrentPoint - DragStartPoint;
-			LocationGizmoActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
+			if (SelectedActor && SelectedActor->RootComponent)
+			{
+				SelectedActor->RootComponent->SetPosition(GizmoStartLocation + Delta);
+			}
 		}
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
 		{
-			// 🚨 마우스의 현재 교차점을 구하고, 시작점과의 회전 차이(DeltaAngle)를 계산합니다.
+			// 마우스의 현재 교차점을 구하고, 시작점과의 회전 차이(DeltaAngle)를 계산합니다.
 			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 			float DeltaAngle = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
 
@@ -161,7 +164,7 @@ void UWorld::Tick(float DeltaTime)
 				else
 					DeltaMatrix = FMatrix::Identity;
 
-				// 행렬 곱셈 수행! 
+				// 행렬 곱셈 수행!
 				FMatrix FinalMatrix = StartMatrix * DeltaMatrix;
 
 				// 완성된 행렬에서 오일러 각도를 다시 뽑아내어 큐브에 먹입니다.
@@ -169,7 +172,6 @@ void UWorld::Tick(float DeltaTime)
 				SelectedActor->RootComponent->SetRotation(FinalEuler);
 			}
 
-			// 2. 기즈모 전체가 아닌, '잡고 있는 링' 하나만 제자리에서 돌립니다!
 			RotationGizmoActor->ApplyRingRotation(CurrentDraggingAxis, DeltaAngle);
 		}
 		else if (CurrentMode == EGizmoMode::Scale && ScaleGizmoActor)
@@ -183,7 +185,7 @@ void UWorld::Tick(float DeltaTime)
 				float Sensitivity = 0.05f;
 				float DragAmount = 0.0f;
 
-				// 🚨 [수정] Delta의 절대 좌표(X,Y,Z)가 아닌, 각 기즈모 축이 바라보는 방향(UpVector)으로의 내적(투영 길이)을 구합니다.
+				// Delta의 절대 좌표(X,Y,Z)가 아닌, 각 기즈모 축이 바라보는 방향(UpVector)으로의 내적(투영 길이)을 구합니다.
 				if (CurrentDraggingAxis == EGizmoAxis::X)
 				{
 					DragAmount = Delta.Dot(ScaleGizmoActor->HammerX->GetUpVector());
