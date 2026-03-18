@@ -29,14 +29,15 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	ViewPort = _ViewPort;
 
 	resourceManager = &ResourceManager;
-
+	
 	AActor* CubeActor = SpawnActor<AActor>();
 
 	MainGizmoActor = SpawnActor<UGizmoActor>();
 
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
-
+	
+	
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 	CubeComponent->SetHovering(true);
 	CubeActor->RootComponent = CubeComponent;
@@ -57,7 +58,6 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 
 	CubeComponent->SetPosition({ 0.0f, 0.0f, 3.0f }); // 카메라 앞에 배치
 	CubeComponent->SetScale({ 0.5f, 0.5f, 0.5f });
-	
 }
 
 void UWorld::Tick(float DeltaTime)
@@ -109,7 +109,7 @@ void UWorld::Tick(float DeltaTime)
 			// 액터가 선택되었다면 기즈모를 해당 액터로 이사시킵니다.
 			if (HitActor)
 			{
-				//TransferGizmo(HitActor);   
+				//TransferGizmo(HitActor);  
 			}
 		}
 	}
@@ -143,33 +143,6 @@ void UWorld::Tick(float DeltaTime)
 	{
 		bIsDragging = false;
 		CurrentDraggingAxis = EGizmoAxis::None;
-	}
-}
-
-void UWorld::SpawnActorFromEditor(FSpawnParameters params)
-{
-	for (int i = 0; i < params.Count; i++)
-	{
-		AActor* actor = SpawnActor<AActor>();
-		if (params.bOverrideUUID)
-			actor->SceneUUID = params.UUID;
-		else
-			actor->SceneUUID = UEngineStatics::GetSceneUUID();
-
-		if (params.PrimitiveType == "Cube")
-		{
-			UCubeComponent* Cube = actor->AddComponent<UCubeComponent>();
-			Cube->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
-			actor->RootComponent = Cube;
-		}
-		else
-		{
-			continue;
-		}
-
-		actor->RootComponent->SetPosition(params.Location);
-		actor->RootComponent->SetRotation(params.Rotation);
-		actor->RootComponent->SetScale(params.Scale);
 	}
 }
 
@@ -264,6 +237,37 @@ void UWorld::Release()
 	CurrentLevel = nullptr;
 }
 
+void UWorld::SpawnActorFromEditor(FSpawnParameters params)
+{
+	for (int i = 0; i < params.Count; i++)
+	{
+		AActor* actor = SpawnActor<AActor>();
+		if (params.bOverrideUUID)
+			actor->UUID = params.UUID;
+
+		if (params.PrimitiveType == "Cube")
+		{
+			UCubeComponent* Cube = actor->AddComponent<UCubeComponent>();
+			Cube->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
+			actor->RootComponent = Cube;
+		}
+		else if (params.PrimitiveType == "Sphere")
+		{
+			USphereComponent* Sphere = actor->AddComponent<USphereComponent>();
+			Sphere->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
+			actor->RootComponent = Sphere;
+		}
+		else
+		{
+			continue;
+		}
+
+		actor->RootComponent->SetPosition(params.Location);
+		actor->RootComponent->SetRotation(params.Rotation);
+		actor->RootComponent->SetScale(params.Scale);
+	}
+}
+
 void UWorld::ClearScene()
 {
 	for (size_t i = 0; i < CurrentLevel->Actors.Size(); ++i)
@@ -272,6 +276,5 @@ void UWorld::ClearScene()
 	}
 
 	CurrentLevel->Actors.Clear();
-	UEngineStatics::SceneUUID = 0;
 }
 

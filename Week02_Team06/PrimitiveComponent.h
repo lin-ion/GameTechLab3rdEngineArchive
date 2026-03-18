@@ -43,6 +43,5 @@ protected:
 	
 	bool bAlwaysOnTop = { false };
 
-protected:
 	FString Type;
 };

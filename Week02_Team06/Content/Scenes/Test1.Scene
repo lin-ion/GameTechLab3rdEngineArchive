@@ -1,0 +1,42 @@
+{
+    "Version": 1,
+    "NextUUID": 17,
+    "Primitives": {
+        "11": {
+            "Location": [
+                0.0,
+                0.0,
+                3.0
+            ],
+            "Rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "Scale": [
+                3.0,
+                3.0,
+                3.0
+            ],
+            "Type": "Sphere"
+        },
+        "14": {
+            "Location": [
+                0.0,
+                3.0,
+                3.0
+            ],
+            "Rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "Scale": [
+                3.0,
+                3.0,
+                3.0
+            ],
+            "Type": "Sphere"
+        }
+    }
+}
