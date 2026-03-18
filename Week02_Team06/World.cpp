@@ -37,12 +37,6 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 	CubeActor->RootComponent = CubeComponent;
 
-	// TODO: 디버깅용 코드
-	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
-	{
-		int iDebug = 0;
-	}
-
 	CubeComponent->SetPosition({ 0.0f, 0.0f, 3.0f }); // 카메라 앞에 배치
 	CubeComponent->SetScale({ 0.5f, 0.5f, 0.5f });
 

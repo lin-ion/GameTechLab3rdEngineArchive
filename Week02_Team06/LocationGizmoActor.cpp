@@ -26,11 +26,11 @@ void ULocationGizmoActor::BeginPlay()
 	ArrowZ = AddComponent<UArrowComponent>();
 	ArrowZ->SetColor({ 0.f, 0.f, 1.f, 1.f });
 	ArrowZ->SetRotation({ 90.0f, 0.0f, 0.0f });
-	ArrowZ->SetRelativeScale(RelativeScaleFactor); 
+	ArrowZ->SetRelativeScale(RelativeScaleFactor);
 
 	BasePoint = AddComponent<USphereComponent>();
 	BasePoint->SetColor({ 1.f, 1.f, 1.f, 1.f });
-	BasePoint->SetRelativeScale({ 0.1f, 0.1f, 0.1f }); // Root 및 BasePoint의 절대크기(Arrow의 Relative Scale이 이에 대한 상대크기임.)
+	BasePoint->SetRelativeScale({0.1f, 0.1f, 0.1f }); // Root 및 BasePoint의 절대크기(Arrow의 Relative Scale이 이에 대한 상대크기임.)
 
 	ArrowY->SetAlwaysOnTop(true);
 	ArrowX->SetAlwaysOnTop(true);
@@ -61,9 +61,11 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
 	BasePoint->SetScale({ 0.1f * ScaleFactor, 0.1f * ScaleFactor, 0.1f * ScaleFactor });
-	if (ArrowX) ArrowX->SetScale(ResultScale);
-	if (ArrowY) ArrowY->SetScale(ResultScale);
-	if (ArrowZ) ArrowZ->SetScale(ResultScale);
+	if (ArrowX) ArrowX->SetScale({ ScaleFactor, ScaleFactor , ScaleFactor });
+	if (ArrowY) ArrowY->SetScale({ ScaleFactor, ScaleFactor , ScaleFactor });
+	if (ArrowZ) ArrowZ->SetScale({ ScaleFactor, ScaleFactor , ScaleFactor });
+
+	//BoundingSphere->SetScale(ResultScale);
 
 	// 일단 모두 기본 색상으로 초기화
 	ArrowX->SetColor(ColorX);

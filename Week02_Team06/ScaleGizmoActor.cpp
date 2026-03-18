@@ -92,11 +92,9 @@ void UScaleGizmoActor::Tick(float DeltaTime)
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
 	BasePoint->SetScale({ 0.1f * ScaleFactor, 0.1f * ScaleFactor, 0.1f * ScaleFactor });
-	FVector HammerScale = { 0.8f * ScaleFactor, 0.8f * ScaleFactor, 0.8f * ScaleFactor };
-	if (HammerX) HammerX->SetScale(HammerScale);
-	if (HammerY) HammerY->SetScale(HammerScale);
-	if (HammerZ) HammerZ->SetScale(HammerScale);
-
+	if (HammerX) HammerX->SetScale({ ScaleFactor, ScaleFactor , ScaleFactor });
+	if (HammerY) HammerY->SetScale({ ScaleFactor, ScaleFactor , ScaleFactor });
+	if (HammerZ) HammerZ->SetScale({ ScaleFactor, ScaleFactor , ScaleFactor });
 	// 색상 초기화
 	HammerX->SetColor(ColorX);
 	HammerY->SetColor(ColorY);
