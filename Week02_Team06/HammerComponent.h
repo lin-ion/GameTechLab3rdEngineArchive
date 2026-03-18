@@ -3,13 +3,13 @@
 
 class UMesh;
 
-class URingComponent : public UPrimitiveComponent
+class UHammerComponent : public UPrimitiveComponent
 {
-    DECLARE_CLASS(URingComponent, UPrimitiveComponent)
+    DECLARE_CLASS(UHammerComponent, UPrimitiveComponent)
 
 public:
-    URingComponent();
-    virtual ~URingComponent() = default;
+    UHammerComponent();
+    virtual ~UHammerComponent() = default;
 
 public:
     // new, delete 오버로딩

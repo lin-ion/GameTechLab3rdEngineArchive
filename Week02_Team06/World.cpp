@@ -7,14 +7,16 @@
 #include "Actor.h"
 #include "Object.h"
 
-#include "CubeComponent.h"
-#include "ArrowComponent.h"
-#include "RingComponent.h"
 #include "LocationGizmoActor.h"
 #include "RotationGizmoActor.h"
+#include "ScaleGizmoActor.h"
 
 #include "PrimitiveComponent.h"
 #include "SphereComponent.h"
+#include "CubeComponent.h"
+#include "ArrowComponent.h"
+#include "RingComponent.h"
+#include "HammerComponent.h"
 
 #include "ImGuiDrawer.h"
 #include "FEditorViewportClient.h"
@@ -35,6 +37,7 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	AActor* CubeActor = SpawnActor<AActor>();
 	LocationGizmoActor = SpawnActor<ULocationGizmoActor>();
 	RotationGizmoActor = SpawnActor<URotationGizmoActor>();
+	ScaleGizmoActor = SpawnActor<UScaleGizmoActor>();
 
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
@@ -53,6 +56,12 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	LocationGizmoActor->ArrowX->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
 	LocationGizmoActor->ArrowZ->SetMesh(ResourceManager.FindMeshData("GizmoLocation"));
 	LocationGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Sphere"));
+
+	ScaleGizmoActor->HammerX->SetMesh(ResourceManager.FindMeshData("GizmoScale"));
+	ScaleGizmoActor->HammerY->SetMesh(ResourceManager.FindMeshData("GizmoScale"));
+	ScaleGizmoActor->HammerZ->SetMesh(ResourceManager.FindMeshData("GizmoScale"));
+	ScaleGizmoActor->BasePoint->SetMesh(ResourceManager.FindMeshData("Cube"));
+
 	if (CubeComponent->IsA(UPrimitiveComponent::StaticClass()))
 	{
 		int iDebug = 0;
@@ -68,9 +77,10 @@ void UWorld::Tick(float DeltaTime)
 
 	UInput& Input = UInput::GetInstance();
 
-	// 모드 전환 스위치 (Z: 이동, X: 회전)
+	// 모드 전환 스위치 (Z: 이동, X: 회전, C: 스케일)
 	if (Input.IsKeyDown('Z')) CurrentMode = EGizmoMode::Location;
 	if (Input.IsKeyDown('X')) CurrentMode = EGizmoMode::Rotation;
+	if (Input.IsKeyDown('C')) CurrentMode = EGizmoMode::Scale;
 
 	PreparePicking();
 
@@ -107,6 +117,13 @@ void UWorld::Tick(float DeltaTime)
 			// 이후 교차점 계산
 			DragStartPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 		}
+		else if (CurrentMode == EGizmoMode::Scale && ScaleGizmoActor)
+		{
+			if (SelectedActor) TargetStartScale = SelectedActor->RootComponent->GetScale();
+			DragStartPoint = ScaleGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
+		}
+		bIsDragging = true;
+		CurrentDraggingAxis = HoveredAxis;
 	}
 
 	// 드래그 진행 중
@@ -122,7 +139,7 @@ void UWorld::Tick(float DeltaTime)
 		{
 			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 
-			// 🚨 로드리게스 원리로 추출한 단일 회전 각도(float)를 받아옵니다.
+			// 로드리게스 원리로 추출한 단일 회전 각도(float)를 받아옵니다.
 			float DeltaAngle = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
 
 			// 1. 타겟 액터 회전 (선택된 축에만 각도 더하기)
@@ -138,6 +155,35 @@ void UWorld::Tick(float DeltaTime)
 
 			// 2. 기즈모 전체가 아닌, '잡고 있는 링' 하나만 제자리에서 돌립니다!
 			RotationGizmoActor->ApplyRingRotation(CurrentDraggingAxis, DeltaAngle);
+		}
+		else if (CurrentMode == EGizmoMode::Scale && ScaleGizmoActor)
+		{
+			FVector CurrentPoint = ScaleGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
+			FVector Delta = CurrentPoint - DragStartPoint;
+
+			if (SelectedActor)
+			{
+				FVector NewScale = TargetStartScale;
+				// 마우스 이동량에 따른 감도 조절 (0.1f 정도가 적당합니다)
+				float Sensitivity = 0.05f;
+
+				if (CurrentDraggingAxis == EGizmoAxis::X) NewScale.X += Delta.X * Sensitivity;
+				else if (CurrentDraggingAxis == EGizmoAxis::Y) NewScale.Y += Delta.Y * Sensitivity;
+				else if (CurrentDraggingAxis == EGizmoAxis::Z) NewScale.Z += Delta.Z * Sensitivity;
+				else if (CurrentDraggingAxis == EGizmoAxis::Center) // 전체(Uniform) 스케일링
+				{
+					// 대각선 이동량의 평균을 구하여 전체 스케일에 반영
+					float UniformDelta = (Delta.X + Delta.Y + Delta.Z) * Sensitivity;
+					NewScale = NewScale + FVector(UniformDelta, UniformDelta, UniformDelta);
+				}
+
+				// 0 이하로 작아져서 메쉬가 뒤집히는 것 방지 (방어 코드)
+				if (NewScale.X < 0.01f) NewScale.X = 0.01f;
+				if (NewScale.Y < 0.01f) NewScale.Y = 0.01f;
+				if (NewScale.Z < 0.01f) NewScale.Z = 0.01f;
+
+				SelectedActor->RootComponent->SetScale(NewScale);
+			}
 		}
 	}
 	
@@ -169,6 +215,10 @@ void UWorld::PreparePicking()
 	{
 		HoveredAxis = RotationGizmoActor->CheckGizmoPicking();
 	}
+	else if (CurrentMode == EGizmoMode::Scale && ScaleGizmoActor)
+	{
+		HoveredAxis = ScaleGizmoActor->CheckGizmoPicking();
+	}
 }
 
 // 가장 가까운 것만 골라가도록 추후 수정
@@ -180,7 +230,7 @@ AActor* UWorld::GetPickedActor()
 	{
 		AActor* TargetActor = ActorArray[ActorIndex];
 		// 기즈모를 담고 있는 액터 자체는 피킹 검수에서 제외합니다.
-		if (LocationGizmoActor == TargetActor || RotationGizmoActor == TargetActor) continue;
+		if (LocationGizmoActor == TargetActor || RotationGizmoActor == TargetActor || ScaleGizmoActor == TargetActor) continue;
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 
