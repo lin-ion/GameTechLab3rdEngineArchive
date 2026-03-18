@@ -12,6 +12,7 @@
 #include "World.h"
 #include "ObjectFactory.h"
 #include "Actor.h"
+#include "SceneSerializer.h"
 #include "LocationGizmoActor.h"
 
 bool UApp::Initialize(HINSTANCE hInstance)
@@ -43,6 +44,7 @@ bool UApp::Initialize(HINSTANCE hInstance)
 	ImGuiDrawer = new UImGuiDrawer;
 	ImGuiDrawer->Initialize(Window->GetHWnd(), Graphics->GetDevice(), Graphics->GetDeviceContext(), World);
 
+	USceneSerializer::LoadEditorConfig();
 
 	// console Test Code
 	UE_LOG("Hello World %d", 2025);
@@ -161,4 +163,6 @@ void UApp::Release()
 		Window->Release();
 		delete Window;
 	}
+
+	USceneSerializer::SaveEditorConfig();
 }

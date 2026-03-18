@@ -5,6 +5,11 @@
 
 IMPLEMENT_CLASS(USphereComponent, UPrimitiveComponent)
 
+USphereComponent::USphereComponent()
+{
+    Type = "Sphere";
+}
+
 void* USphereComponent::operator new(size_t size)
 {
     UE_LOG("Create : SphereComponent");

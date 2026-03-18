@@ -1,9 +1,9 @@
 #pragma once
 
-class UPrimitiveComponent;
 class UScene;
 class FEditorViewportClient;
 class UWorld;
+class AActor;
 
 struct FSpawnParameters
 {
@@ -29,7 +29,7 @@ public:
 
 	UWorld* World;
 
-	UPrimitiveComponent* SelectedTarget;
+	AActor* SelectedTarget;
 
 	UImGuiDrawer();
 	~UImGuiDrawer() {};
