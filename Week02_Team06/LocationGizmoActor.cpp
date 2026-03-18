@@ -55,8 +55,6 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 		return;
 	}
 
-	World->SelectedActor->RootComponent->SetPosition(RootComponent->GetPosition());
-
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
 	float Distance = (Viewport->GetViewLocation() - RootComponent->GetComponentLocation()).Length();
 	float ScaleFactor = Distance * 0.15f;
