@@ -48,38 +48,36 @@ public:
 	virtual void InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort);
 	void Tick(float DeltaTime);
 	
-	EGizmoAxis GetDraggingAxis() const { return bIsDragging ? CurrentDraggingAxis : EGizmoAxis::None; }
-	EGizmoAxis GetHoveredAxis() const { return HoveredAxis; }
-	AActor* GetPickedActor();
 	void SpawnActorFromEditor(FSpawnParameters params);
-	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
 
 	void PreparePicking();
+	EGizmoAxis GetDraggingAxis() const { return bIsDragging ? CurrentDraggingAxis : EGizmoAxis::None; }
+	EGizmoAxis GetHoveredAxis() const { return HoveredAxis; }
+	AActor* RaycastForActor(const FVector& RayOrigin, const FVector& RayDirection);
+	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
+
 	void ClearScene();
 
 private:
 	class ULocationGizmoActor* LocationGizmoActor = { nullptr };
 	class URotationGizmoActor* RotationGizmoActor = { nullptr };
 
-private:
-	//void PickActor(const FVector& RayOrigin, const FVector& RayDir);
-	AActor* GetSelectedActor() const { return SelectedActor; }
-
 public:
 	// 월드가 시작할 때 초기 레벨
-	//원래는 월드가 바뀌어도 그려지는 PersisteneLevel과 StreamingLevel로 구별됨
+	// 원래는 월드가 바뀌어도 그려지는 PersisteneLevel과 StreamingLevel로 구별됨
 	ULevel* CurrentLevel = { nullptr };
+
 	FEditorViewportClient* ViewPort = { nullptr };
 
-	//Picked된 Actor
-
 	UResourceManager* resourceManager;
+
+	AActor* SelectedActor = { nullptr };
 
 	//나중엔 씬을 만들것임
 	//FScene* Scene = { nullptr };
 private:
-	AActor* SelectedActor = { nullptr };
-
+	// bIsActorSelected가 true인 오브젝트가 해제될때는 World에서도 SelectedActor 참조를 제거
+	
 	// 드래그 관련 상태 변수
 	EGizmoMode CurrentMode = EGizmoMode::Location;
 	EGizmoAxis HoveredAxis = EGizmoAxis::None;

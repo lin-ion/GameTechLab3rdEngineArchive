@@ -40,9 +40,10 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
 
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
-	CubeComponent->SetHovering(true);
+
 	CubeActor->RootComponent = CubeComponent;
 	CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
+	CubeActor->SetSelected(true);
 
 	RotationGizmoActor->RingY->SetMesh(ResourceManager.FindMeshData("GizmoRotation"));
 	RotationGizmoActor->RingX->SetMesh(ResourceManager.FindMeshData("GizmoRotation"));
@@ -71,6 +72,8 @@ void UWorld::Tick(float DeltaTime)
 	if (Input.IsKeyDown('Z')) CurrentMode = EGizmoMode::Location;
 	if (Input.IsKeyDown('X')) CurrentMode = EGizmoMode::Rotation;
 
+	// 기즈모 축 피킹 수행 
+	// TODO: 직관적인 이름으로 Rename 필요합니다
 	PreparePicking();
 
 	for (uint32 i = 0; i < CurrentLevel->Actors.Size(); ++i)
@@ -82,6 +85,34 @@ void UWorld::Tick(float DeltaTime)
 	FVector RayDirection;
 	FVector RayOrigin;
 	ViewPort->DeprojectScreenToWorld(ScreenPos, RayOrigin, RayDirection);
+
+	// Gizmo를 조작중이 아닐 때만 액터 피킹 수행
+	if (Input.IsKeyDown(VK_LBUTTON) && !bIsDragging)
+	{
+		AActor* PreviousSelectedActor = SelectedActor;
+		SelectedActor = RaycastForActor(RayOrigin, RayDirection);
+
+		if (PreviousSelectedActor == SelectedActor
+			|| PreviousSelectedActor == nullptr && SelectedActor == nullptr)
+		{
+			// nothing to do
+		}
+		else if (PreviousSelectedActor && !SelectedActor)
+		{
+			// 기존 액터에서 선택 해제
+			PreviousSelectedActor->SetSelected(false);
+		}
+		else if (!PreviousSelectedActor && SelectedActor)
+		{
+			// 새로운 액터 선택 시작
+			SelectedActor->SetSelected(true);
+		}
+		else if (PreviousSelectedActor && SelectedActor)
+		{
+			PreviousSelectedActor->SetSelected(false);
+			SelectedActor->SetSelected(true);
+		}
+	}
 
 	// 드래그 시작 (초기 상태 저장)
 	if (Input.IsKeyDown(VK_LBUTTON) && HoveredAxis != EGizmoAxis::None)
@@ -139,7 +170,7 @@ void UWorld::Tick(float DeltaTime)
 			RotationGizmoActor->ApplyRingRotation(CurrentDraggingAxis, DeltaAngle);
 		}
 	}
-	
+
 
 	if (Input.IsKeyUp(VK_LBUTTON))
 	{
@@ -196,8 +227,9 @@ void UWorld::PreparePicking()
 	}
 }
 
+// TODO: 
 // 가장 가까운 것만 골라가도록 추후 수정
-AActor* UWorld::GetPickedActor()
+AActor* UWorld::RaycastForActor(const FVector& RayOrigin, const FVector& RayDirection)
 {
 	auto ActorArray = CurrentLevel->Actors;
 
@@ -215,22 +247,10 @@ AActor* UWorld::GetPickedActor()
 			if (!Primitive) continue;
 
 			FMatrix ModelWorld = Primitive->GetComponentTransform();
-			FVector _CameraPos = FMatrix::TransformCoord(ViewPort->GetViewLocation(), ModelWorld.Inverse());
-			FVector _CameraRay = FMatrix::TransformNormal(ViewPort->GetCameraRayDirection(), ModelWorld.Inverse());
 
-			const UMesh* MeshData = Primitive->GetMesh();
-			const FVertexSimple* BufferData = Primitive->GetMesh()->GetVertexData();
-
-			for (uint64 vertexIndex = 0; vertexIndex < MeshData->GetVertexCount(); vertexIndex += 3)
+			if (RayIntersectsMesh(RayOrigin, RayDirection, Primitive->GetMesh(), ModelWorld))
 			{
-				FVector V0 = { BufferData[vertexIndex].X,     BufferData[vertexIndex].Y,     BufferData[vertexIndex].Z };
-				FVector V1 = { BufferData[vertexIndex + 1].X, BufferData[vertexIndex + 1].Y, BufferData[vertexIndex + 1].Z };
-				FVector V2 = { BufferData[vertexIndex + 2].X, BufferData[vertexIndex + 2].Y, BufferData[vertexIndex + 2].Z };
-
-				if (Math::RayIntersectsTriangle(_CameraPos, _CameraRay, V0, V1, V2))
-				{
-					return TargetActor;
-				}
+				return TargetActor;
 			}
 		}
 	}
@@ -239,12 +259,12 @@ AActor* UWorld::GetPickedActor()
 }
 
 // 공용 매시 충돌검사 함수
-bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix)
+bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDirection, const UMesh* Mesh, const FMatrix& WorldMatrix)
 {
 	if (!Mesh) return false;
 
-	FVector _CameraPos = FMatrix::TransformCoord(RayOrigin, WorldMatrix.Inverse());
-	FVector _CameraRay = FMatrix::TransformNormal(RayDir, WorldMatrix.Inverse());
+	FVector LocalRayOrigin = FMatrix::TransformCoord(RayOrigin, WorldMatrix.Inverse());
+	FVector LocalRayDirection = FMatrix::TransformNormal(RayDirection, WorldMatrix.Inverse());
 
 	const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Mesh->GetVertexData());
 
@@ -254,7 +274,7 @@ bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, 
 		FVector V1 = { BufferData[i + 1].X, BufferData[i + 1].Y, BufferData[i + 1].Z };
 		FVector V2 = { BufferData[i + 2].X, BufferData[i + 2].Y, BufferData[i + 2].Z };
 
-		if (Math::RayIntersectsTriangle(_CameraPos, _CameraRay, V0, V1, V2))
+		if (Math::RayIntersectsTriangle(LocalRayOrigin, LocalRayDirection, V0, V1, V2))
 		{
 			return true;
 		}

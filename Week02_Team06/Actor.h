@@ -128,6 +128,9 @@ public:
 		return Result;
 	}
 
+	bool IsSelected() const { return bIsSelected; }
+	void SetSelected(bool bInSelected) { bIsSelected = bInSelected; }
+
 public:
 	USceneComponent* RootComponent = nullptr;
 	USphereComponent* BoundingSphere = nullptr;
@@ -136,4 +139,5 @@ public:
 
 private:
 	TArray<UActorComponent*> Components;
+	bool bIsSelected = { false };
 };

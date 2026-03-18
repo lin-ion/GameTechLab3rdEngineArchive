@@ -61,4 +61,7 @@ void AActor::Release()
 {
 	// Actor 컴포넌트 또한 GUIObject가 관리한다
 	Components.Clear();
+	if (bIsSelected) {
+		OwningLevel->GetWorld()->SelectedActor = nullptr;
+	}
 }
