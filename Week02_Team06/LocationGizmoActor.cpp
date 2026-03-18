@@ -49,9 +49,9 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 	if (!World || !World->SelectedActor || World->GetCurrentMode() != UWorld::EGizmoMode::Location)
 	{
 		BasePoint->SetScale({ 0.f, 0.f, 0.f });
-		ArrowX->SetScale({ 0.f, 0.f, 0.f });
-		ArrowY->SetScale({ 0.f, 0.f, 0.f });
-		ArrowZ->SetScale({ 0.f, 0.f, 0.f });
+		if (ArrowX) ArrowX->SetScale({ 0.f, 0.f, 0.f });
+		if (ArrowY) ArrowY->SetScale({ 0.f, 0.f, 0.f });
+		if (ArrowZ) ArrowZ->SetScale({ 0.f, 0.f, 0.f });
 		return;
 	}
 

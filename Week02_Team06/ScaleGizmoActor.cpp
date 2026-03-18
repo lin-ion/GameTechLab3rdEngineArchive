@@ -44,16 +44,17 @@ void UScaleGizmoActor::Tick(float DeltaTime)
 	AActor::Tick(DeltaTime);
 	UWorld* World = GetWorld();
 
-	if (World && World->GetCurrentMode() != UWorld::EGizmoMode::Scale)
+	AActor* SelectedActor = World->SelectedActor;
+
+	if (!World || World->GetCurrentMode() != UWorld::EGizmoMode::Scale || !SelectedActor)
 	{
 		BasePoint->SetScale({ 0.f, 0.f, 0.f });
-		HammerX->SetScale({ 0.f, 0.f, 0.f });
-		HammerY->SetScale({ 0.f, 0.f, 0.f });
-		HammerZ->SetScale({ 0.f, 0.f, 0.f });
+		if (HammerX) HammerX->SetScale({ 0.f, 0.f, 0.f });
+		if (HammerY) HammerY->SetScale({ 0.f, 0.f, 0.f });
+		if (HammerZ)HammerZ->SetScale({ 0.f, 0.f, 0.f });
 		return;
 	}
 
-	AActor* SelectedActor = World->SelectedActor;
 	if (SelectedActor && SelectedActor->RootComponent && RootComponent)
 	{
 		FVector TargetPos = SelectedActor->RootComponent->GetPosition();

@@ -40,7 +40,9 @@ void URotationGizmoActor::Tick(float DeltaTime)
 	AActor::Tick(DeltaTime);
 	UWorld* World = GetWorld();
 
-	if (World && World->GetCurrentMode() != UWorld::EGizmoMode::Rotation)
+	AActor* SelectedActor = World ? World->SelectedActor : nullptr;
+
+	if (!World || World->GetCurrentMode() != UWorld::EGizmoMode::Rotation || !SelectedActor)
 	{
 		if (RingX) RingX->SetScale({ 0.f, 0.f, 0.f });
 		if (RingY) RingY->SetScale({ 0.f, 0.f, 0.f });
@@ -48,10 +50,21 @@ void URotationGizmoActor::Tick(float DeltaTime)
 		return;
 	}
 
+	if (SelectedActor && SelectedActor->RootComponent && RootComponent)
+	{
+		FVector TargetPos = SelectedActor->RootComponent->GetPosition();
+
+		// 위치 동기화
+		BasePoint->SetPosition(TargetPos);
+		if (RingX) RingX->SetPosition(TargetPos);
+		if (RingY) RingY->SetPosition(TargetPos);
+		if (RingZ) RingZ->SetPosition(TargetPos);
+	}
+
 	if (!RootComponent) return;
 	FVector CurrentPos = RootComponent->GetPosition();
 	if (RingX) RingX->SetPosition(CurrentPos);
-	if (RingY) RingY->SetPosition(CurrentPos);
+	if (RingY) RingY->SetPosition(CurrentPos);  
 	if (RingZ) RingZ->SetPosition(CurrentPos);
 
 	// 카메라 거리에 따른 스케일 보정
