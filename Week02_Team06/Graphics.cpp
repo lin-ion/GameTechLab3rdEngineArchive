@@ -30,7 +30,10 @@ void UGraphics::CreateDeviceAnsSwapChain(HWND hWnd)
     swapchaindesc.BufferCount = 2; // 더블 버퍼링
     swapchaindesc.OutputWindow = hWnd; // 렌더링할 창 핸들
     swapchaindesc.Windowed = TRUE; // 창 모드
-    swapchaindesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // 스왑 방식
+
+    swapchaindesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; //프레임 제한해제
+
+    //swapchaindesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // 스왑 방식
 
     // Direct3D 장치와 스왑 체인을 생성
     D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,

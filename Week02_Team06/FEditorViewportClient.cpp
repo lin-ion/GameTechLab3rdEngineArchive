@@ -56,12 +56,70 @@ void FEditorViewportClient::SetPerspective(bool bInIsPerspective)
 	bIsPerspective = bInIsPerspective;
 }
 
+void FEditorViewportClient::DeprojectScreenToWorld(const FVector2D& ScreenPos, FVector& out_WorldOrigin, FVector& out_WorldDirection)
+{	
+	FVector2D ViewportSize = { ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y };
+	FVector2D NormalizedScreenPos = { ScreenPos.X / ViewportSize.X - 0.5f, 0.5f - ScreenPos.Y / ViewportSize.Y };
+
+	if (!bIsPerspective)
+	{
+		float OrthoHeight = ViewTransform.GetOrthoSize();
+		float OrthoWidth = OrthoHeight * AspectRatio;
+
+		FVector Forward = ViewTransform.GetForwardVector();
+		FVector Right = ViewTransform.GetRightVector();
+		FVector Up = ViewTransform.GetUpVector();
+
+		out_WorldOrigin = ViewTransform.GetLocation()
+			+ (Right * NormalizedScreenPos.X * OrthoWidth)
+			+ (Up * NormalizedScreenPos.Y * OrthoHeight);
+
+		out_WorldDirection = Forward;
+	}
+	else 
+	{
+		//if (ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+		//{
+		//	out_WorldOrigin = ViewTransform.GetLocation();
+		//	out_WorldDirection = ViewTransform.GetForwardVector();
+		//	return;
+		//}
+
+		float NDCX = (2.0f * ScreenPos.X) / ViewportSize.X - 1.0f;
+		float NDCY = 1.0f - (2.0f * ScreenPos.Y) / ViewportSize.Y;
+
+		FMatrix InvViewProj = (GetViewMatrix() * GetProjectionMatrix()).Inverse();
+
+		FVector NearNDC = { NDCX, NDCY, 0.0f };
+		FVector FarNDC = { NDCX, NDCY, 1.0f };
+
+		FVector WorldNear = FMatrix::TransformCoord(NearNDC, InvViewProj);
+		FVector WorldFar = FMatrix::TransformCoord(FarNDC, InvViewProj);
+
+		out_WorldOrigin = ViewTransform.GetLocation();
+		out_WorldDirection = WorldFar - WorldNear;
+	}
+}
+
 FVector FEditorViewportClient::GetCameraRayDirection()
 {
+	if (!bIsPerspective)
+	{
+		return ViewTransform.GetForwardVector();
+	}
+
 	POINT MousePos = UInput::GetInstance().GetMousePosition();
 
-	float NDCX = (2.0f * MousePos.x) / WindowSizeWidth - 1.0f;
-	float NDCY = 1.0f - (2.0f * MousePos.y) / WindowSizeHeight;
+	// 고정된 WindowSizeWidth/Height 상수 대신, 실시간으로 변하는 창 크기를 가져옵니다.
+	float CurrentWidth = ImGui::GetIO().DisplaySize.x;
+	float CurrentHeight = ImGui::GetIO().DisplaySize.y;
+
+	// 최소화 등으로 창 크기가 0이 되었을 때의 0 나누기 방어코드
+	if (CurrentWidth <= 0.0f || CurrentHeight <= 0.0f) return FVector(0.f, 0.f, 1.f);
+
+	// 가져온 동적 크기를 사용하여 정밀한 NDC(정규화 장치 좌표)를 계산합니다.
+	float NDCX = (2.0f * MousePos.x) / CurrentWidth - 1.0f;
+	float NDCY = 1.0f - (2.0f * MousePos.y) / CurrentHeight;
 
 	FMatrix InvViewProj = (GetViewMatrix() * GetProjectionMatrix()).Inverse();
 
@@ -127,7 +185,7 @@ void FEditorViewportClient::HandleMouseRightDrag()
 
 	constexpr float RotationSpeed = 0.2f;
 	FVector Rotation = ViewTransform.GetRotation();
-	Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.0f, 89.0f);
+	Rotation.X = std::clamp(Rotation.X + (DeltaMouseY * RotationSpeed), -89.9f, 89.9f);
 	Rotation.Y = Rotation.Y + (DeltaMouseX * RotationSpeed);
 
 	bool bIsOrbiting = Input.IsKeyPressing(VK_LMENU);

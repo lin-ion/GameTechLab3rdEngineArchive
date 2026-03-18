@@ -11,7 +11,10 @@ public:
 	void PushBack(T Element);
 	void PopBack();
 	uint64 Size();
+	void SetNum(uint64 NewSize);
 	void Clear();
+	T* GetData();
+	const T* GetData() const;
 
 private:
 	std::vector<T> Container;

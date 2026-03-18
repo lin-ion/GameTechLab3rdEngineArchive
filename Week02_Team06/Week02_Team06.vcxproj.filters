@@ -125,10 +125,12 @@
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="FEditorViewportClient.cpp" />
     <ClCompile Include="Memory.cpp" />
-    <ClCompile Include="GizmoActor.cpp" />
+    <ClCompile Include="LocationGizmoActor.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="ArrowComponent.cpp" />
     <ClCompile Include="SphereComponent.cpp" />
+    <ClCompile Include="RotationGizmoActor.cpp" />
+    <ClCompile Include="RingComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -157,9 +159,6 @@
     </ClInclude>
     <ClInclude Include="Object.h">
       <Filter>Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Sphere.h">
-      <Filter>리소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="Math.h">
       <Filter>Defines</Filter>
@@ -198,8 +197,6 @@
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="PrimitiveComponent.h" />
     <ClInclude Include="SceneComponent.h" />
-    <ClInclude Include="Triangle.h" />
-    <ClInclude Include="Cube.h" />
     <ClInclude Include="AppConsole.h">
       <Filter>App\ImGuiDrawer</Filter>
     </ClInclude>
@@ -210,20 +207,22 @@
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="CubeComponent.h" />
     <ClInclude Include="SceneSerializer.h" />
-    <ClInclude Include="Gizmo.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="FEditorViewportClient.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="Macro.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ArrowComponent.h" />
-    <ClInclude Include="GizmoActor.h" />
+    <ClInclude Include="LocationGizmoActor.h" />
     <ClInclude Include="SphereComponent.h" />
+    <ClInclude Include="RotationGizmoActor.h" />
+    <ClInclude Include="RingComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">
       <Filter>App\Renderer\Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="ShaderGrid.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Containers.inl" />

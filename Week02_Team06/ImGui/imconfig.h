@@ -131,7 +131,8 @@
 //#define IM_DEBUG_BREAK  IM_ASSERT(0)
 //#define IM_DEBUG_BREAK  __debugbreak()
 
-//---- Debug Tools: Enable highlight ID conflicts _before_ hovering items. When io.ConfigDebugHighlightIdConflicts is set.
+//---- Debug Tools: Enable highlight ID conflicts _before_ 
+// items. When io.ConfigDebugHighlightIdConflicts is set.
 // (THIS WILL SLOW DOWN DEAR IMGUI. Only use occasionally and disable after use)
 //#define IMGUI_DEBUG_HIGHLIGHT_ALL_ID_CONFLICTS
 

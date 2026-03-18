@@ -12,7 +12,7 @@ protected:
 	// TODO: Use FRotator instead of FVector
 	FVector ViewRotation;
 	float Distance;
-	float OrthoSize;
+	float OrthoSize; // vertical size of orthographic view
 
 public:
 	const FVector& GetLocation() const { return ViewLocation; }
@@ -52,7 +52,7 @@ public:
 	float FOVAngle = 60.0f; // horizontal field of view
 
 protected:
-	float FarPlane = 100.0f;
+	float FarPlane = 1000.0f;
 	float NearPlane = 0.1f;
 	float bIsPerspective = true;
 	FViewportCameraTransform ViewTransform;
@@ -78,6 +78,8 @@ public:
 	void SetNearPlane(float InNearPlane) { NearPlane = InNearPlane; }
 	void SetPerspective(bool bInIsPerspective);
 	const bool IsPerspective() const { return bIsPerspective; };
+	void DeprojectScreenToWorld(const FVector2D& ScreenPos, FVector& OutWorldOrigin, FVector& OutWorldDirection);
+	// Deprecated: Use DeprojectScreenToWorld
 	FVector GetCameraRayDirection();
 	void Tick(float DeltaTime);
 

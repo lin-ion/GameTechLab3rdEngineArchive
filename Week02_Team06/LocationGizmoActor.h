@@ -4,9 +4,9 @@
 class UArrowComponent;
 class USphereComponent;
 
-class UGizmoActor : public AActor
+class ULocationGizmoActor : public AActor
 {
-	DECLARE_CLASS(UGizmoActor, AActor)
+	DECLARE_CLASS(ULocationGizmoActor, AActor)
 
 public:
 	virtual void BeginPlay() override;
@@ -15,6 +15,7 @@ public:
 
 public:
 	EGizmoAxis CheckGizmoPicking();
+	FVector GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
 
 public:
 	UArrowComponent* ArrowY = nullptr; // Y축 초
