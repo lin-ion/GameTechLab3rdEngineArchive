@@ -140,6 +140,7 @@ void UApp::Release()
 		Renderer->Release();
 		delete Renderer;
 	}
+
 	UObjectFactory::DestroyAllObjects();
 
 	if (ViewportClient)

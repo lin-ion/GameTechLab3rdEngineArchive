@@ -77,18 +77,23 @@ void UImGuiDrawer::DrawSpawnPanel()
 	ImGui::Combo("Primitive", &primitiveType, items, IM_ARRAYSIZE(items));
 
 	actorParameters.PrimitiveType = items[primitiveType];
-	actorParameters.Location = ActorLocation;
-	actorParameters.Rotation = ActorRotation;
-	actorParameters.Scale = ActorScale;
+	actorParameters.Location = World->ViewPort->GetViewTransform().GetPivotLocation();
+	actorParameters.Rotation = {0.0f, 0.0f, 0.0f};
+	actorParameters.Scale = {1.0f, 1.0f, 1.0f};
 
 	if (ImGui::Button("Spawn"))
 	{
 		World->SpawnActorFromEditor(actorParameters);
 	}
 	ImGui::SameLine();
-	static int count = 0;
+	static int count = 1;
 	ImGui::InputInt("Count", &count);
 	actorParameters.Count = count;
+
+	//if (ImGui::Button("Delete"))
+	//{
+	//	UObjectFactory::DestroyObject(SelectedTarget);
+	//}
 }
 
 void UImGuiDrawer::DrawSceneControlPanel()
@@ -161,24 +166,23 @@ void UImGuiDrawer::DrawPrimitiveDataPanel()
 		ActorLocation = SelectedTarget->RootComponent->GetPosition();
 		ActorRotation = SelectedTarget->RootComponent->GetRotation();
 		ActorScale = SelectedTarget->RootComponent->GetScale();
-	}
 
-	
-	if (ImGui::DragFloat3("Translation", &ActorLocation.X, 0.1f))
-	{
-		if (SelectedTarget) SelectedTarget->RootComponent->SetPosition(ActorLocation);
-	}
+		if (ImGui::DragFloat3("Translation", &ActorLocation.X, 0.1f))
+		{
+			if (SelectedTarget) SelectedTarget->RootComponent->SetPosition(ActorLocation);
+		}
 
-	
-	if (ImGui::DragFloat3("Rotation", &ActorRotation.X, 0.1f))
-	{
-		if (SelectedTarget) SelectedTarget->RootComponent->SetRotation(ActorRotation);
-	}
 
-	
-	if (ImGui::DragFloat3("Scale", &ActorScale.X, 0.1f))
-	{
-		if (SelectedTarget) SelectedTarget->RootComponent->SetScale(ActorScale);
+		if (ImGui::DragFloat3("Rotation", &ActorRotation.X, 0.1f))
+		{
+			if (SelectedTarget) SelectedTarget->RootComponent->SetRotation(ActorRotation);
+		}
+
+
+		if (ImGui::DragFloat3("Scale", &ActorScale.X, 0.1f))
+		{
+			if (SelectedTarget) SelectedTarget->RootComponent->SetScale(ActorScale);
+		}
 	}
 
 	ImGui::End();

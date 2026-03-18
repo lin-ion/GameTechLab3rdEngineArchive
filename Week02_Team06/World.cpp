@@ -53,17 +53,19 @@ void UWorld::Tick(float DeltaTime)
 
 	UInput& Input = UInput::GetInstance();
 
-	if (Input.IsKeyDown('Z'))
-	{
-		SetGizmoMode(EGizmoMode::Location);
-	}
-	if (Input.IsKeyDown('X'))
-	{
-		SetGizmoMode(EGizmoMode::Rotation);
-	}
-	if (Input.IsKeyDown('C'))
-	{
-		SetGizmoMode(EGizmoMode::Scale);
+	if (!bIsDragging) {
+		if (Input.IsKeyDown('Z'))
+		{
+			SetGizmoMode(EGizmoMode::Location);
+		}
+		if (Input.IsKeyDown('X'))
+		{
+			SetGizmoMode(EGizmoMode::Rotation);
+		}
+		if (Input.IsKeyDown('C'))
+		{
+			SetGizmoMode(EGizmoMode::Scale);
+		}
 	}
 
 	if (Input.IsKeyDown(VK_SPACE))
@@ -163,7 +165,7 @@ void UWorld::Tick(float DeltaTime)
 		}
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
 		{
-			// 🚨 마우스의 현재 교차점을 구하고, 시작점과의 회전 차이(DeltaAngle)를 계산합니다.
+			// 마우스의 현재 교차점을 구하고, 시작점과의 회전 차이(DeltaAngle)를 계산합니다.
 			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 			float DeltaAngle = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
 
@@ -294,10 +296,10 @@ AActor* UWorld::RaycastForActor(const FVector& RayOrigin, const FVector& RayDire
 		if (LocationGizmoActor == TargetActor || RotationGizmoActor == TargetActor || ScaleGizmoActor == TargetActor) continue;
 
 		// 구와 레이 충돌로 불필요한 정점 순회를 막음
-		if (!RayIntersectsSphere(RayOrigin, RayDirection, TargetActor->RootComponent, TargetActor->RootComponent->GetComponentTransform()))
-		{
-			continue;
-		}
+		//if (!RayIntersectsSphere(RayOrigin, RayDirection, TargetActor->RootComponent, TargetActor->RootComponent->GetComponentTransform()))
+		//{
+		//	continue;
+		//}
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 
@@ -443,7 +445,6 @@ TArray<AActor*> UWorld::GetSerializableActors() const
 			continue;
 		
 		Result.PushBack(CurrentLevel->Actors[i]);
-		UE_LOG("Actor");
 	}
 
 	return Result;
