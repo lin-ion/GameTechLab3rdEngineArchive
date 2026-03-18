@@ -63,7 +63,6 @@ void URotationGizmoActor::Tick(float DeltaTime)
 	if (RingX) RingX->SetScale(ResultScale);
 	if (RingY) RingY->SetScale(ResultScale);
 	if (RingZ) RingZ->SetScale(ResultScale);
-	if (BoundingSphere) BoundingSphere->SetScale(ResultScale);
 
 	if (RingX) RingX->SetColor(ColorX);
 	if (RingY) RingY->SetColor(ColorY);
@@ -84,12 +83,7 @@ void URotationGizmoActor::Tick(float DeltaTime)
 		}
 	}
 
-	// BoundingSphere 경고 방어 (초기화되지 않았을 경우 대비)
-	if (BoundingSphere != nullptr)
-	{
-		BoundingSphere->SetScale(ResultScale);
-	}
-
+	
 	if (ActiveAxis == EGizmoAxis::None)
 	{
 		// 직접 쏘지 않고 통제소(World)의 판정을 얌전히 받습니다.

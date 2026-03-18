@@ -45,8 +45,8 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 {
 	AActor::Tick(DeltaTime);
 	UWorld* World = GetWorld();
-
-	if (World && World->GetCurrentMode() != UWorld::EGizmoMode::Location)
+	
+	if (!World || !World->SelectedActor || World->GetCurrentMode() != UWorld::EGizmoMode::Location)
 	{
 		BasePoint->SetScale({ 0.f, 0.f, 0.f });
 		ArrowX->SetScale({ 0.f, 0.f, 0.f });
@@ -54,6 +54,8 @@ void ULocationGizmoActor::Tick(float DeltaTime)
 		ArrowZ->SetScale({ 0.f, 0.f, 0.f });
 		return;
 	}
+
+	World->SelectedActor->RootComponent->SetPosition(RootComponent->GetPosition());
 
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
 	float Distance = (Viewport->GetViewLocation() - RootComponent->GetComponentLocation()).Length();

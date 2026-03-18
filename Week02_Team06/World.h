@@ -5,7 +5,6 @@
 
 class UMesh;
 class AActor;
-class UGizmoComponent;
 class UResourceManager;
 class FEditorViewportClient;
 class USceneComponent;
@@ -57,6 +56,9 @@ public:
 	AActor* RaycastForActor(const FVector& RayOrigin, const FVector& RayDirection);
 	
 	void ClearScene();
+	void RefreshGizmo();
+	void DestroyCurrentGizmo();
+	void SetGizmoMode(EGizmoMode NewMode);
 
 private:
 	class ULocationGizmoActor* LocationGizmoActor = { nullptr };
@@ -74,11 +76,7 @@ public:
 
 	AActor* SelectedActor = { nullptr };
 
-	//나중엔 씬을 만들것임
-	//FScene* Scene = { nullptr };
 private:
-	// bIsActorSelected가 true인 오브젝트가 해제될때는 World에서도 SelectedActor 참조를 제거
-	
 	// 드래그 관련 상태 변수
 	EGizmoMode CurrentMode = EGizmoMode::Location;
 	EGizmoAxis HoveredAxis = EGizmoAxis::None;
