@@ -72,6 +72,21 @@ void UWorld::Tick(float DeltaTime)
 		SetGizmoMode(EGizmoMode::Scale);
 	}
 
+	if (Input.IsKeyDown(VK_SPACE))
+	{
+		EGizmoMode NextMode = EGizmoMode::Location;
+
+		// 현재 모드에 따라 다음 모드 결정 (Location -> Rotation -> Scale -> Location)
+		switch (CurrentMode)
+		{
+		case EGizmoMode::Location: NextMode = EGizmoMode::Rotation; break;
+		case EGizmoMode::Rotation: NextMode = EGizmoMode::Scale; break;
+		case EGizmoMode::Scale:    NextMode = EGizmoMode::Location; break;
+		}
+
+		SetGizmoMode(NextMode);
+	}
+
 	for (uint32 i = 0; i < CurrentLevel->Actors.Size(); ++i)
 	{
 		CurrentLevel->Actors[i]->Tick(DeltaTime);
@@ -90,6 +105,8 @@ void UWorld::Tick(float DeltaTime)
 	// 드래그 시작 (초기 상태 저장)
 	if (Input.IsKeyDown(VK_LBUTTON))
 	{
+		
+		
 		// 기즈모 축을 잡은 상태
 		if (HoveredAxis != EGizmoAxis::None && SelectedActor)
 		{
@@ -467,6 +484,7 @@ void UWorld::RefreshGizmo()
 		LocationGizmoActor->ArrowY->SetMesh(resourceManager->FindMeshData("GizmoLocation"));
 		LocationGizmoActor->ArrowZ->SetMesh(resourceManager->FindMeshData("GizmoLocation"));
 		LocationGizmoActor->BasePoint->SetMesh(resourceManager->FindMeshData("Sphere"));
+
 		break;
 
 	case EGizmoMode::Rotation:
