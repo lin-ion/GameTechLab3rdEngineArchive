@@ -86,34 +86,6 @@ void UWorld::Tick(float DeltaTime)
 	FVector RayOrigin;
 	ViewPort->DeprojectScreenToWorld(ScreenPos, RayOrigin, RayDirection);
 
-	// Gizmo를 조작중이 아닐 때만 액터 피킹 수행
-	if (Input.IsKeyDown(VK_LBUTTON) && !bIsDragging)
-	{
-		AActor* PreviousSelectedActor = SelectedActor;
-		SelectedActor = RaycastForActor(RayOrigin, RayDirection);
-
-		if (PreviousSelectedActor == SelectedActor
-			|| PreviousSelectedActor == nullptr && SelectedActor == nullptr)
-		{
-			// nothing to do
-		}
-		else if (PreviousSelectedActor && !SelectedActor)
-		{
-			// 기존 액터에서 선택 해제
-			PreviousSelectedActor->SetSelected(false);
-		}
-		else if (!PreviousSelectedActor && SelectedActor)
-		{
-			// 새로운 액터 선택 시작
-			SelectedActor->SetSelected(true);
-		}
-		else if (PreviousSelectedActor && SelectedActor)
-		{
-			PreviousSelectedActor->SetSelected(false);
-			SelectedActor->SetSelected(true);
-		}
-	}
-
 	// 드래그 시작 (초기 상태 저장)
 	if (Input.IsKeyDown(VK_LBUTTON) && HoveredAxis != EGizmoAxis::None)
 	{
@@ -183,6 +155,35 @@ void UWorld::Tick(float DeltaTime)
 			RotationGizmoActor->ApplyRingRotation(EGizmoAxis::None, 0.0f);
 		}
 	}
+
+	// Gizmo를 조작중이 아닐 때만 액터 피킹 수행
+	if (Input.IsKeyDown(VK_LBUTTON) && !bIsDragging)
+	{
+		AActor* PreviousSelectedActor = SelectedActor;
+		SelectedActor = RaycastForActor(RayOrigin, RayDirection);
+
+		if (PreviousSelectedActor == SelectedActor
+			|| PreviousSelectedActor == nullptr && SelectedActor == nullptr)
+		{
+			// nothing to do
+		}
+		else if (PreviousSelectedActor && !SelectedActor)
+		{
+			// 기존 액터에서 선택 해제
+			PreviousSelectedActor->SetSelected(false);
+		}
+		else if (!PreviousSelectedActor && SelectedActor)
+		{
+			// 새로운 액터 선택 시작
+			SelectedActor->SetSelected(true);
+		}
+		else if (PreviousSelectedActor && SelectedActor)
+		{
+			PreviousSelectedActor->SetSelected(false);
+			SelectedActor->SetSelected(true);
+		}
+	}
+
 }
 
 void UWorld::SpawnActorFromEditor(FSpawnParameters params)
