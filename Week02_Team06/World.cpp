@@ -152,7 +152,7 @@ void UWorld::Tick(float DeltaTime)
 		}
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
 		{
-			// 🚨 마우스의 현재 교차점을 구하고, 시작점과의 회전 차이(DeltaAngle)를 계산합니다.
+			// 마우스의 현재 교차점을 구하고, 시작점과의 회전 차이(DeltaAngle)를 계산합니다.
 			FVector CurrentPoint = RotationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 			float DeltaAngle = RotationGizmoActor->GetRotationDelta(CurrentPoint, DragStartPoint, CurrentDraggingAxis);
 
