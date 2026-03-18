@@ -163,11 +163,37 @@ void FEditorViewportClient::HandleKeyboardMovement(float DeltaTime)
 	{
 		MovementDirection = MovementDirection + ViewTransform.GetForwardVector();
 	}
+
+	// 이동 방향이 없을 때의 불필요한 연산을 막기 위한 안전장치 (선택 사항)
+	if (MovementDirection.Length() == 0.0f)
+	{
+		return;
+	}
+
 	MovementDirection.Normalize();
 
-	constexpr float MovementSpeed = 5.0f;
+	constexpr float MovementSpeed = 12.0f;
 	FVector Movement = ViewTransform.GetLocation() + MovementDirection * DeltaTime * MovementSpeed;
 	ViewTransform.SetLocation(Movement);
+
+	if (Input.IsKeyPressing('A'))
+	{
+		MovementDirection = MovementDirection - ViewTransform.GetRightVector();
+	}
+	if (Input.IsKeyPressing('D'))
+	{
+		MovementDirection = MovementDirection + ViewTransform.GetRightVector();
+	}
+	if (Input.IsKeyPressing('S'))
+	{
+		MovementDirection = MovementDirection - ViewTransform.GetForwardVector();
+	}
+	if (Input.IsKeyPressing('W'))
+	{
+		MovementDirection = MovementDirection + ViewTransform.GetForwardVector();
+	}
+	MovementDirection.Normalize();
+
 }
 
 void FEditorViewportClient::HandleMouseRightDrag()
@@ -214,7 +240,7 @@ void FEditorViewportClient::HandleMouseWheel()
 
 	if (bIsPerspective)
 	{
-		constexpr float PerspectiveZoomSpeed = 1.0f;
+		constexpr float PerspectiveZoomSpeed = 2.0f;
 		float NewDistance = ViewTransform.GetDistance() - MouseWheelDelta * PerspectiveZoomSpeed;
 		NewDistance = (std::max)(NewDistance, 1.0f);
 		FVector NewViewLocation = ViewTransform.GetPivotLocation() - ViewTransform.GetForwardVector() * NewDistance;
@@ -223,7 +249,7 @@ void FEditorViewportClient::HandleMouseWheel()
 	}
 	else
 	{
-		constexpr float OrthoZoomSpeed = 1.0f;
+		constexpr float OrthoZoomSpeed = 2.0f;
 		float NewOrthoSize = ViewTransform.GetOrthoSize() - MouseWheelDelta * OrthoZoomSpeed;
 		NewOrthoSize = (std::max)(NewOrthoSize, 1.0f);
 		ViewTransform.SetOrthoSize(NewOrthoSize);
