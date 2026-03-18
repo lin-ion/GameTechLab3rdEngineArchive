@@ -2,7 +2,6 @@
 #include "Object.h"
 #include "Level.h"
 #include "ImGuiDrawer.h"
-#include "Math.h"
 
 class UMesh;
 class AActor;
@@ -10,6 +9,7 @@ class UGizmoComponent;
 class UResourceManager;
 class FEditorViewportClient;
 class UPrimitiveComponent;
+class USphereComponent;
 
 class UWorld : public UObject
 {
@@ -53,6 +53,7 @@ public:
 	AActor* GetPickedActor();
 	void SpawnActorFromEditor(FSpawnParameters params);
 	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
+	bool RayIntersectsSphere(const FVector& RayOrigin, const FVector& RayDir, const USphereComponent* SceneComponent, const FMatrix& WorldMatrix); // 구 충돌 검사함수
 
 	void PreparePicking();
 	void ClearScene();

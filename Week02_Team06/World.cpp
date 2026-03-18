@@ -7,22 +7,21 @@
 #include "Actor.h"
 #include "Object.h"
 
+#include "PrimitiveComponent.h"
 #include "CubeComponent.h"
 #include "ArrowComponent.h"
 #include "RingComponent.h"
+#include "SphereComponent.h"
+
 #include "LocationGizmoActor.h"
 #include "RotationGizmoActor.h"
 
-#include "PrimitiveComponent.h"
-#include "SphereComponent.h"
 
 #include "ImGuiDrawer.h"
 #include "FEditorViewportClient.h"
 
 #include "Input.h"
 #include "Mesh.h"
-
-
 
 void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient* _ViewPort)
 {
@@ -261,6 +260,24 @@ bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, 
 	}
 	return false;
 }
+
+bool UWorld::RayIntersectsSphere(const FVector& RayOrigin, const FVector& RayDir, const USphereComponent* SphereComponent, const FMatrix& WorldMatrix)
+{
+	//구와 직선의 충돌 방정식을 구한다.
+	//(Center - 레이의 한점) ^ 2 =  Radius ^ 2 ;
+	//여기선 근의 공식을 사용하여 충돌 여부를 확인한다.
+
+	FVector CenterToOrigin = (RayOrigin - SphereComponent->GetComponentLocation());
+	FVector ObjectScale = SphereComponent->GetScale();
+	float Radius = max(ObjectScale.Z, max(ObjectScale.X, ObjectScale.Y));
+
+	float a = RayDir.Dot(RayDir);	
+	float b = 2 * CenterToOrigin.Dot(RayDir);
+	float c = CenterToOrigin.Dot(CenterToOrigin) - Radius * Radius;
+
+	return (b * b - 4 * a * c >= 0);
+}
+
 
 void UWorld::Release()
 {
