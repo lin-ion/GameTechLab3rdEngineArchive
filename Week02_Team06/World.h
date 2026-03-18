@@ -2,14 +2,13 @@
 #include "Object.h"
 #include "Level.h"
 #include "ImGuiDrawer.h"
-#include "Math.h"
 
 class UMesh;
 class AActor;
 class UGizmoComponent;
 class UResourceManager;
 class FEditorViewportClient;
-class UPrimitiveComponent;
+class USceneComponent;
 
 class UWorld : public UObject
 {
@@ -49,13 +48,14 @@ public:
 	void Tick(float DeltaTime);
 	
 	void SpawnActorFromEditor(FSpawnParameters params);
+	float RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수 
+	bool RayIntersectsSphere(const FVector& RayOrigin, const FVector& RayDir, const USceneComponent* SceneComponent, const FMatrix& WorldMatrix); // 구 충돌 검사함수
 
 	void PreparePicking();
 	EGizmoAxis GetDraggingAxis() const { return bIsDragging ? CurrentDraggingAxis : EGizmoAxis::None; }
 	EGizmoAxis GetHoveredAxis() const { return HoveredAxis; }
 	AActor* RaycastForActor(const FVector& RayOrigin, const FVector& RayDirection);
-	bool RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDir, const UMesh* Mesh, const FMatrix& WorldMatrix); // 공용 매시 충돌검사 함수
-
+	
 	void ClearScene();
 
 private:

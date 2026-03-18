@@ -16,6 +16,7 @@ public:
 public:
 	EGizmoAxis CheckGizmoPicking();
 	FVector GetDragIntersectionPoint(const FVector& RayOrg, const FVector& RayDir, EGizmoAxis Axis);
+	void LockDragPlane(const FVector& RayOrg);
 
 public:
 	UArrowComponent* ArrowY = nullptr; // Y축 초
@@ -32,4 +33,6 @@ private:
 	const FVector4 ColorZ = { 0.f, 0.f, 1.f, 1.f };      // 파랑
 	const FVector4 ColorCenter = { 1.f, 1.f, 1.f, 1.f }; // 흰색
 	const FVector4 ColorHover = { 1.f, 0.5f, 0.f, 1.f }; // 주황
+
+	FVector LockedPlaneNormal = FVector::Zero; // Center 드래그 시 고정된 평면 노멀
 };

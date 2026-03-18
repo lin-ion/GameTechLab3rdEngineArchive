@@ -117,9 +117,9 @@ EGizmoAxis URotationGizmoActor::CheckGizmoPicking()
 	World->ViewPort->DeprojectScreenToWorld(ScreenPos, RayOrigin, RayDirection);
 
 	// 회전 링 피킹 검사
-	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingX->GetMesh(), RingX->GetComponentTransform())) return EGizmoAxis::X;
-	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingY->GetMesh(), RingY->GetComponentTransform())) return EGizmoAxis::Y;
-	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingZ->GetMesh(), RingZ->GetComponentTransform())) return EGizmoAxis::Z;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingX->GetMesh(), RingX->GetComponentTransform()) >= 0.f) return EGizmoAxis::X;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingY->GetMesh(), RingY->GetComponentTransform()) >= 0.f) return EGizmoAxis::Y;
+	if (World->RayIntersectsMesh(RayOrigin, RayDirection, RingZ->GetMesh(), RingZ->GetComponentTransform()) >= 0.f) return EGizmoAxis::Z;
 
 	return EGizmoAxis::None;
 }

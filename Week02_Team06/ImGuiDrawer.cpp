@@ -41,6 +41,9 @@ void UImGuiDrawer::UpdateUI(FEditorViewportClient* ViewportClient)
     ImGui::Text("Hello Jungle World!");
 	float fps = ImGui::GetIO().Framerate;
 	float ms = (fps > 0.0f) ? (1000.0f / fps) : 0.0f;
+	ImGui::Separator();
+	ImGui::Text("TotalAllocationBytes: %d", FMemory::TotalAllocationBytes);
+	ImGui::Text("TotalAllocationCount: %d", FMemory::TotalAllocationCount);
 	ImGui::Text("FPS %.0f (%.0fms)", fps, ms);
 	ImGui::Separator();
 
@@ -150,7 +153,7 @@ void UImGuiDrawer::DrawPrimitiveDataPanel()
 {
 	ImGui::Begin("Jungle Property Window");
 
-	//SelectedTarget = World->GetPickedActor();
+	SelectedTarget = World->SelectedActor;
 
 	if (SelectedTarget)
 	{
