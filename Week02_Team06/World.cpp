@@ -17,6 +17,7 @@
 #include "ArrowComponent.h"
 #include "RingComponent.h"
 #include "HammerComponent.h"
+#include "TriangleComponent.h"
 
 #include "ImGuiDrawer.h"
 #include "FEditorViewportClient.h"
@@ -58,17 +59,34 @@ void UWorld::Tick(float DeltaTime)
 
 	UInput& Input = UInput::GetInstance();
 
-	if (Input.IsKeyDown('Z'))
-	{
-		SetGizmoMode(EGizmoMode::Location);
+	if (!bIsDragging) {
+		if (Input.IsKeyDown('Z'))
+		{
+			SetGizmoMode(EGizmoMode::Location);
+		}
+		if (Input.IsKeyDown('X'))
+		{
+			SetGizmoMode(EGizmoMode::Rotation);
+		}
+		if (Input.IsKeyDown('C'))
+		{
+			SetGizmoMode(EGizmoMode::Scale);
+		}
 	}
-	if (Input.IsKeyDown('X'))
+
+	if (Input.IsKeyDown(VK_SPACE))
 	{
-		SetGizmoMode(EGizmoMode::Rotation);
-	}
-	if (Input.IsKeyDown('C'))
-	{
-		SetGizmoMode(EGizmoMode::Scale);
+		EGizmoMode NextMode = EGizmoMode::Location;
+
+		// 현재 모드에 따라 다음 모드 결정 (Location -> Rotation -> Scale -> Location)
+		switch (CurrentMode)
+		{
+		case EGizmoMode::Location: NextMode = EGizmoMode::Rotation; break;
+		case EGizmoMode::Rotation: NextMode = EGizmoMode::Scale; break;
+		case EGizmoMode::Scale:    NextMode = EGizmoMode::Location; break;
+		}
+
+		SetGizmoMode(NextMode);
 	}
 
 	for (uint32 i = 0; i < CurrentLevel->Actors.Size(); ++i)
@@ -89,6 +107,8 @@ void UWorld::Tick(float DeltaTime)
 	// 드래그 시작 (초기 상태 저장)
 	if (Input.IsKeyDown(VK_LBUTTON))
 	{
+		
+		
 		// 기즈모 축을 잡은 상태
 		if (HoveredAxis != EGizmoAxis::None && SelectedActor)
 		{
@@ -110,6 +130,7 @@ void UWorld::Tick(float DeltaTime)
 				break;
 
 			case EGizmoMode::Scale:
+				TargetStartScale = SelectedActor->RootComponent->GetScale();
 				TargetStartRotation = SelectedActor->RootComponent->GetRotation();
 				DragStartPoint = ScaleGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 				break;
@@ -184,7 +205,7 @@ void UWorld::Tick(float DeltaTime)
 			FVector Delta = CurrentPoint - DragStartPoint;
 
 			FVector NewScale = TargetStartScale;
-			float Sensitivity = 0.05f;
+			float Sensitivity = 0.15f;
 			float DragAmount = 0.0f;
 
 			// 🚨 [수정] Delta의 절대 좌표(X,Y,Z)가 아닌, 각 기즈모 축이 바라보는 방향(UpVector)으로의 내적(투영 길이)을 구합니다.
@@ -379,6 +400,12 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 			Sphere->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
 			actor->RootComponent = Sphere;
 		}
+		else if (params.PrimitiveType == "Triangle")
+		{
+			UTriangleComponent* Triangle = actor->AddComponent<UTriangleComponent>();
+			Triangle->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
+			actor->RootComponent = Triangle;
+		}
 		else
 		{
 			continue;
@@ -458,6 +485,7 @@ void UWorld::RefreshGizmo()
 		LocationGizmoActor->ArrowY->SetMesh(resourceManager->FindMeshData("GizmoLocation"));
 		LocationGizmoActor->ArrowZ->SetMesh(resourceManager->FindMeshData("GizmoLocation"));
 		LocationGizmoActor->BasePoint->SetMesh(resourceManager->FindMeshData("Sphere"));
+
 		break;
 
 	case EGizmoMode::Rotation:
