@@ -6,6 +6,7 @@ extern AppConsole* appConsole;
 
 void CreateAppConsole();
 void DestroyAppConsole();
+void ClearAppConsole();
 
 void DrawAppConsole(const char* title, bool* open);
 

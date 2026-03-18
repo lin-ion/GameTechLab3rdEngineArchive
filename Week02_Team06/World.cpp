@@ -382,6 +382,10 @@ void UWorld::ClearScene()
 {
 	for (size_t i = 0; i < CurrentLevel->Actors.Size(); ++i)
 	{
+		if (CurrentLevel->Actors[i]->IsA(ULocationGizmoActor::StaticClass()))
+		{
+			continue;
+		}
 		UObjectFactory::DestroyObject(CurrentLevel->Actors[i]);
 	}
 

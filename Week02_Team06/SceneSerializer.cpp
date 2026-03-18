@@ -39,8 +39,6 @@ FString USceneSerializer::Serialize(SceneSaveData& sceneInfo)
 		if (!RootComponent || RootComponent->GetType().empty())
 			continue;
 
-		UE_LOG("Type: %s", RootComponent->GetType().c_str());
-
 		json objData = json::object();
 
 		objData["Location"] = VectorToJson(RootComponent->GetPosition());

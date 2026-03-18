@@ -5,7 +5,7 @@
 #include "Renderer.h"
 #include "Input.h"
 #include "Graphics.h"
-
+#include "AppConsole.h"
 #include "ImGuiDrawer.h"
 #include "ResourceManager.h"
 #include "FEditorViewportClient.h"
