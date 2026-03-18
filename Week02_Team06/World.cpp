@@ -59,17 +59,19 @@ void UWorld::Tick(float DeltaTime)
 
 	UInput& Input = UInput::GetInstance();
 
-	if (Input.IsKeyDown('Z'))
-	{
-		SetGizmoMode(EGizmoMode::Location);
-	}
-	if (Input.IsKeyDown('X'))
-	{
-		SetGizmoMode(EGizmoMode::Rotation);
-	}
-	if (Input.IsKeyDown('C'))
-	{
-		SetGizmoMode(EGizmoMode::Scale);
+	if (!bIsDragging) {
+		if (Input.IsKeyDown('Z'))
+		{
+			SetGizmoMode(EGizmoMode::Location);
+		}
+		if (Input.IsKeyDown('X'))
+		{
+			SetGizmoMode(EGizmoMode::Rotation);
+		}
+		if (Input.IsKeyDown('C'))
+		{
+			SetGizmoMode(EGizmoMode::Scale);
+		}
 	}
 
 	for (uint32 i = 0; i < CurrentLevel->Actors.Size(); ++i)
