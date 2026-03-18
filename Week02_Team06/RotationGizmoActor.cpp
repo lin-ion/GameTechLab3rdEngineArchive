@@ -69,7 +69,7 @@ void URotationGizmoActor::Tick(float DeltaTime)
 
 	// 카메라 거리에 따른 스케일 보정
 	FEditorViewportClient* Viewport = GetWorld()->ViewPort;
-	float Distance = (Viewport->GetViewLocation() - RootComponent->GetComponentLocation()).Length();
+	float Distance = (Viewport->GetViewLocation() - RootComponent->GetPosition()).Length();
 	float ScaleFactor = Distance * 0.15f;
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
