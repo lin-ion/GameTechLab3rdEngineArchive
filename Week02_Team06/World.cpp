@@ -120,7 +120,7 @@ void UWorld::Tick(float DeltaTime)
 		else if (CurrentMode == EGizmoMode::Scale && ScaleGizmoActor)
 		{
 			if (SelectedActor) TargetStartScale = SelectedActor->RootComponent->GetScale();
-			DragStartPoint = ScaleGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			DragStartPoint = ScaleGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 		}
 		bIsDragging = true;
 		CurrentDraggingAxis = HoveredAxis;
@@ -158,7 +158,7 @@ void UWorld::Tick(float DeltaTime)
 		}
 		else if (CurrentMode == EGizmoMode::Scale && ScaleGizmoActor)
 		{
-			FVector CurrentPoint = ScaleGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDir, CurrentDraggingAxis);
+			FVector CurrentPoint = ScaleGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 			FVector Delta = CurrentPoint - DragStartPoint;
 
 			if (SelectedActor)
