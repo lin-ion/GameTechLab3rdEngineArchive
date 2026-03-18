@@ -180,20 +180,33 @@ void UWorld::Tick(float DeltaTime)
 			if (SelectedActor)
 			{
 				FVector NewScale = TargetStartScale;
-				// 마우스 이동량에 따른 감도 조절 (0.1f 정도가 적당합니다)
 				float Sensitivity = 0.05f;
+				float DragAmount = 0.0f;
 
-				if (CurrentDraggingAxis == EGizmoAxis::X) NewScale.X += Delta.X * Sensitivity;
-				else if (CurrentDraggingAxis == EGizmoAxis::Y) NewScale.Y += Delta.Y * Sensitivity;
-				else if (CurrentDraggingAxis == EGizmoAxis::Z) NewScale.Z += Delta.Z * Sensitivity;
-				else if (CurrentDraggingAxis == EGizmoAxis::Center) // 전체(Uniform) 스케일링
+				// 🚨 [수정] Delta의 절대 좌표(X,Y,Z)가 아닌, 각 기즈모 축이 바라보는 방향(UpVector)으로의 내적(투영 길이)을 구합니다.
+				if (CurrentDraggingAxis == EGizmoAxis::X)
 				{
-					// 대각선 이동량의 평균을 구하여 전체 스케일에 반영
+					DragAmount = Delta.Dot(ScaleGizmoActor->HammerX->GetUpVector());
+					NewScale.X += DragAmount * Sensitivity;
+				}
+				else if (CurrentDraggingAxis == EGizmoAxis::Y)
+				{
+					DragAmount = Delta.Dot(ScaleGizmoActor->HammerY->GetUpVector());
+					NewScale.Y += DragAmount * Sensitivity;
+				}
+				else if (CurrentDraggingAxis == EGizmoAxis::Z)
+				{
+					DragAmount = Delta.Dot(ScaleGizmoActor->HammerZ->GetUpVector());
+					NewScale.Z += DragAmount * Sensitivity;
+				}
+				else if (CurrentDraggingAxis == EGizmoAxis::Center)
+				{
+					// 전체 스케일링은 기존처럼 이동량의 합을 사용
 					float UniformDelta = (Delta.X + Delta.Y + Delta.Z) * Sensitivity;
 					NewScale = NewScale + FVector(UniformDelta, UniformDelta, UniformDelta);
 				}
 
-				// 0 이하로 작아져서 메쉬가 뒤집히는 것 방지 (방어 코드)
+				// 0 이하로 작아져서 메쉬가 뒤집히는 것 방지
 				if (NewScale.X < 0.01f) NewScale.X = 0.01f;
 				if (NewScale.Y < 0.01f) NewScale.Y = 0.01f;
 				if (NewScale.Z < 0.01f) NewScale.Z = 0.01f;
