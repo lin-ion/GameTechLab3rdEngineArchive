@@ -25,7 +25,7 @@ void UObjectFactory::DestroyAllObjects()
 {
 	for (uint64 i = 0; i < GUObjectArray.Size(); i++)
 	{
-		GUObjectArray[i]->Release();
+		//GUObjectArray[i]->Release();
 		delete GUObjectArray[i];
 	}
 

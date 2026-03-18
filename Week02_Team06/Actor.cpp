@@ -32,7 +32,6 @@ void AActor::Tick(float DeltaTime)
 		Components[i]->TickComponent(DeltaTime);
 	}
 
-
 	for (int32 i = 0; i < Components.Size(); ++i)
 	{
 		if (!Components[i]->IsA(USceneComponent::StaticClass())) continue;

@@ -123,11 +123,6 @@ void UApp::Run()
 
 void UApp::Release()
 {
-	if (World)
-	{
-		World->Release();
-	}
-
 	if (ImGuiDrawer)
 	{
 		ImGuiDrawer->Release();
