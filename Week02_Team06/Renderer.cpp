@@ -558,7 +558,7 @@ void URenderer::RenderPrimitive(UWorld* World)
 			FMatrix Model = Primitive->GetComponentTransform();
 
 			// 아웃라인 패스
-			if (Primitive->IsSelected())
+			if (Actors[i]->IsSelected())
 			{
 				FMatrix OutlineModel = FMatrix::MakeScale(FVector(1.05f, 1.05f, 1.05f)) * Model;
 				UpdateConstantBuffer({ OutlineModel * VP, FVector4(FVector(1.f, 0.22f, 0.f), 1.f) });

@@ -17,8 +17,6 @@ public:
 
 	const FVector4& GetColor() const { return Color; }
 	void SetColor(const FVector4& InColor) { Color = InColor; }
-	bool  IsSelected() { return IsHovering; }
-	void  SetHovering(bool bFlag) { IsHovering = bFlag; };
 	bool  IsDebugMode() { return IsDebugUse; };
 	void  SetDebugMode(bool isDebug) { IsDebugUse = isDebug; }
 	// 항상 화면 위(최상단)에 렌더링할지 여부
@@ -34,7 +32,6 @@ public:
 	void Release() override;
 
 protected:
-	bool IsHovering = { false };
 	bool IsDebugUse = { false };
 
 	FVector4 Color = { 1.0f, 1.0f, 1.0f, 0.0f };
