@@ -94,12 +94,12 @@ EGizmoAxis UScaleGizmoActor::CheckGizmoPicking()
 	FVector RayDir = World->ViewPort->GetCameraRayDirection();
 
 	// 큐브(Center)를 가장 먼저 검사 (제일 작고 중앙에 있으므로)
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, BasePoint->GetMesh(), BasePoint->GetComponentTransform()))
+	if (World->RayIntersectsMesh(RayOrigin, RayDir, BasePoint->GetMesh(), BasePoint->GetComponentTransform()) >= 0.f)
 		return EGizmoAxis::Center;
 
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, HammerX->GetMesh(), HammerX->GetComponentTransform())) return EGizmoAxis::X;
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, HammerY->GetMesh(), HammerY->GetComponentTransform())) return EGizmoAxis::Y;
-	if (World->RayIntersectsMesh(RayOrigin, RayDir, HammerZ->GetMesh(), HammerZ->GetComponentTransform())) return EGizmoAxis::Z;
+	if (World->RayIntersectsMesh(RayOrigin, RayDir, HammerX->GetMesh(), HammerX->GetComponentTransform()) >= 0.f) return EGizmoAxis::X;
+	if (World->RayIntersectsMesh(RayOrigin, RayDir, HammerY->GetMesh(), HammerY->GetComponentTransform()) >= 0.f) return EGizmoAxis::Y;
+	if (World->RayIntersectsMesh(RayOrigin, RayDir, HammerZ->GetMesh(), HammerZ->GetComponentTransform()) >= 0.f) return EGizmoAxis::Z;
 
 	return EGizmoAxis::None;
 }

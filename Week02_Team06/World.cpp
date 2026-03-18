@@ -31,7 +31,7 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	ViewPort = _ViewPort;
 
 	resourceManager = &ResourceManager;
-	
+
 	AActor* CubeActor = SpawnActor<AActor>();
 	LocationGizmoActor = SpawnActor<ULocationGizmoActor>();
 	RotationGizmoActor = SpawnActor<URotationGizmoActor>();
@@ -39,12 +39,12 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 
 	//레벨에 엑터 추가
 	UCubeComponent* CubeComponent = CubeActor->AddComponent<UCubeComponent>();
-	
-	
+
+
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 
 	CubeActor->RootComponent = CubeComponent;
-	CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
+	//CubeActor->BoundingSphere->SetScale(CubeActor->RootComponent->GetScale() * 1.5f);
 
 	RotationGizmoActor->RingY->SetMesh(ResourceManager.FindMeshData("GizmoRotation"));
 	RotationGizmoActor->RingX->SetMesh(ResourceManager.FindMeshData("GizmoRotation"));
@@ -105,6 +105,7 @@ void UWorld::Tick(float DeltaTime)
 		if (CurrentMode == EGizmoMode::Location && LocationGizmoActor)
 		{
 			GizmoStartLocation = LocationGizmoActor->RootComponent->GetPosition();
+			LocationGizmoActor->LockDragPlane(RayOrigin);
 			DragStartPoint = LocationGizmoActor->GetDragIntersectionPoint(RayOrigin, RayDirection, CurrentDraggingAxis);
 		}
 		else if (CurrentMode == EGizmoMode::Rotation && RotationGizmoActor)
@@ -235,6 +236,7 @@ void UWorld::Tick(float DeltaTime)
 
 void UWorld::PreparePicking()
 {
+
 	HoveredAxis = EGizmoAxis::None;
 	if (bIsDragging) return;
 
@@ -252,17 +254,24 @@ void UWorld::PreparePicking()
 	}
 }
 
-// TODO: 
-// 가장 가까운 것만 골라가도록 추후 수정
 AActor* UWorld::RaycastForActor(const FVector& RayOrigin, const FVector& RayDirection)
 {
 	auto ActorArray = CurrentLevel->Actors;
+
+	AActor* ClosestActor = nullptr;
+	float MinT = 1e9;
 
 	for (size_t ActorIndex = 0; ActorIndex < ActorArray.Size(); ++ActorIndex)
 	{
 		AActor* TargetActor = ActorArray[ActorIndex];
 		// 기즈모를 담고 있는 액터 자체는 피킹 검수에서 제외합니다.
 		if (LocationGizmoActor == TargetActor || RotationGizmoActor == TargetActor || ScaleGizmoActor == TargetActor) continue;
+
+		// 구와 레이 충돌로 불필요한 정점 순회를 막음
+		if (!RayIntersectsSphere(RayOrigin, RayDirection, TargetActor->RootComponent, TargetActor->RootComponent->GetComponentTransform()))
+		{
+			continue;
+		}
 
 		TArray<UPrimitiveComponent*> PrimitiveComponents = TargetActor->GetComponentArrayByClass<UPrimitiveComponent>();
 
@@ -273,51 +282,58 @@ AActor* UWorld::RaycastForActor(const FVector& RayOrigin, const FVector& RayDire
 
 			FMatrix ModelWorld = Primitive->GetComponentTransform();
 
-			if (RayIntersectsMesh(RayOrigin, RayDirection, Primitive->GetMesh(), ModelWorld))
+			float T = RayIntersectsMesh(RayOrigin, RayDirection, Primitive->GetMesh(), ModelWorld);
+			if (T > 0.f && T < MinT)
 			{
-				return TargetActor;
+				MinT = T;
+				ClosestActor = TargetActor;
 			}
 		}
 	}
 
-	return nullptr;
+	return ClosestActor;
 }
 
-// 공용 매시 충돌검사 함수
-bool UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDirection, const UMesh* Mesh, const FMatrix& WorldMatrix)
+// 공용 매시 충돌검사 함수 
+float UWorld::RayIntersectsMesh(const FVector& RayOrigin, const FVector& RayDirection, const UMesh* Mesh, const FMatrix& WorldMatrix)
 {
-	if (!Mesh) return false;
+	if (!Mesh) return -1.f;
 
 	FVector LocalRayOrigin = FMatrix::TransformCoord(RayOrigin, WorldMatrix.Inverse());
 	FVector LocalRayDirection = FMatrix::TransformNormal(RayDirection, WorldMatrix.Inverse());
 
 	const FVertexSimple* BufferData = static_cast<const FVertexSimple*>(Mesh->GetVertexData());
 
+	float MinT = 1e9;
 	for (uint64 i = 0; i < Mesh->GetVertexCount(); i += 3)
 	{
-		FVector V0 = { BufferData[i].X,     BufferData[i].Y,     BufferData[i].Z };
+		FVector V0 = { BufferData[i].X, BufferData[i].Y, BufferData[i].Z };
 		FVector V1 = { BufferData[i + 1].X, BufferData[i + 1].Y, BufferData[i + 1].Z };
 		FVector V2 = { BufferData[i + 2].X, BufferData[i + 2].Y, BufferData[i + 2].Z };
 
-		if (Math::RayIntersectsTriangle(LocalRayOrigin, LocalRayDirection, V0, V1, V2))
+		float T;
+		if (Math::RayIntersectsTriangle(LocalRayOrigin, LocalRayDirection, V0, V1, V2, T))
 		{
-			return true;
+			MinT = min(MinT, T);
 		}
 	}
-	return false;
+
+	return (MinT == 1e9) ? -1.f : MinT;
 }
 
-bool UWorld::RayIntersectsSphere(const FVector& RayOrigin, const FVector& RayDir, const USphereComponent* SphereComponent, const FMatrix& WorldMatrix)
+bool UWorld::RayIntersectsSphere(const FVector& RayOrigin, const FVector& RayDir, const USceneComponent* SceneComponent, const FMatrix& WorldMatrix)
 {
+	if (!SceneComponent) return false;
+
 	//구와 직선의 충돌 방정식을 구한다.
 	//(Center - 레이의 한점) ^ 2 =  Radius ^ 2 ;
 	//여기선 근의 공식을 사용하여 충돌 여부를 확인한다.
 
-	FVector CenterToOrigin = (RayOrigin - SphereComponent->GetComponentLocation());
-	FVector ObjectScale = SphereComponent->GetScale();
-	float Radius = max(ObjectScale.Z, max(ObjectScale.X, ObjectScale.Y));
+	FVector CenterToOrigin = (RayOrigin - SceneComponent->GetComponentLocation());
+	FVector ObjectScale = SceneComponent->GetScale();
+	float Radius = max(max(ObjectScale.X, ObjectScale.Y), ObjectScale.Z) * 3.f;
 
-	float a = RayDir.Dot(RayDir);	
+	float a = RayDir.Dot(RayDir);
 	float b = 2 * CenterToOrigin.Dot(RayDir);
 	float c = CenterToOrigin.Dot(CenterToOrigin) - Radius * Radius;
 

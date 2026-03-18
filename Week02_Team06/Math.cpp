@@ -1,6 +1,6 @@
 #include "pch.h"
 
-bool Math::RayIntersectsTriangle(const FVector& RayOrigin, const FVector& RayDir, const FVector& V0, const FVector& V1, const FVector& V2)
+bool Math::RayIntersectsTriangle(const FVector& RayOrigin, const FVector& RayDir, const FVector& V0, const FVector& V1, const FVector& V2, float& OutT)
 {
     FVector Edge1 = V1 - V0;
     FVector Edge2 = V2 - V0;
@@ -23,7 +23,9 @@ bool Math::RayIntersectsTriangle(const FVector& RayOrigin, const FVector& RayDir
     if (V < 0.f || U + V > 1.f) return false;
 
     float T = InvDet * Edge2.Dot(SCrossE1);
-    return T > epsilon;
+
+    if (T > epsilon) { OutT = T; return true; }
+    return false;
 }
 
 FVector Math::RayPlaneIntersection(const FVector& RayOrigin, const FVector& RayDir, const FVector& PlaneNormal, const FVector& PlaneOrigin)
