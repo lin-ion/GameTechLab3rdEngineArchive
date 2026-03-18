@@ -398,14 +398,44 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 	}
 }
 
+bool UWorld::IsGizmoActor(AActor* Actor) const
+{
+	return Actor == LocationGizmoActor ||
+		Actor == RotationGizmoActor ||
+		Actor == ScaleGizmoActor;
+}
+
 void UWorld::ClearScene()
 {
+	TArray<AActor*> RemaingActors;
+
 	for (size_t i = 0; i < CurrentLevel->Actors.Size(); ++i)
 	{
+		if (IsGizmoActor(CurrentLevel->Actors[i]))
+		{
+			RemaingActors.PushBack(CurrentLevel->Actors[i]);
+			continue;
+		}
 		UObjectFactory::DestroyObject(CurrentLevel->Actors[i]);
 	}
 
-	CurrentLevel->Actors.Clear();
+	CurrentLevel->Actors = RemaingActors;
+}
+
+TArray<AActor*> UWorld::GetSerializableActors() const
+{
+	TArray<AActor*> Result;
+
+	for (size_t i = 0; i < CurrentLevel->Actors.Size(); ++i)
+	{
+		if (IsGizmoActor(CurrentLevel->Actors[i])) 
+			continue;
+		
+		Result.PushBack(CurrentLevel->Actors[i]);
+		UE_LOG("Actor");
+	}
+
+	return Result;
 }
 
 void UWorld::SetGizmoMode(EGizmoMode NewMode)

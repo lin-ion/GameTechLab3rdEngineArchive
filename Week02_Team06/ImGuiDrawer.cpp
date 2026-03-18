@@ -99,6 +99,7 @@ void UImGuiDrawer::DrawSceneControlPanel()
 	if (ImGui::Button("New Scene")) 
 	{ 
 		World->ClearScene();
+		ClearAppConsole();
 		strncpy_s(sceneName, "Default", IM_COUNTOF(sceneName));
 	}
 

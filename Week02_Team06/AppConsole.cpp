@@ -25,7 +25,6 @@ struct AppConsole
         Commands.push_back("CLASSIFY");
         AutoScroll = true;
         ScrollToBottom = false;
-        AddLog("Welcome to Dear ImGui!");
     }
     ~AppConsole()
     {
@@ -345,6 +344,11 @@ void DestroyAppConsole()
     delete appConsole;
 }
 
+void ClearAppConsole()
+{
+    if (appConsole) appConsole->ClearLog();
+}
+
 void DrawAppConsole(const char* title, bool* open)
 {
     if (appConsole) appConsole->Draw(title, open);
@@ -357,11 +361,11 @@ void AddLogToConsole(const char* fmt, ...)
         va_list args;
         va_start(args, fmt);
         
-        std::vector<char> buf(4096);
-        vsnprintf(buf.data(), buf.size(), fmt, args);
+        char buf[4096];
+        vsnprintf(buf, sizeof(buf), fmt, args);
 
         va_end(args); 
 
-        appConsole->UEAddLog(buf.data());
+        appConsole->UEAddLog(buf);
     }
 }
