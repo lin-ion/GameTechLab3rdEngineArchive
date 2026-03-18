@@ -59,7 +59,6 @@ void UScaleGizmoActor::Tick(float DeltaTime)
 	FVector ResultScale = { ScaleFactor, ScaleFactor, ScaleFactor };
 
 	BasePoint->SetScale({ 0.1f * ScaleFactor, 0.1f * ScaleFactor, 0.1f * ScaleFactor });
-	BoundingSphere->SetScale(ResultScale);
 
 	// 색상 초기화
 	HammerX->SetColor(ColorX);
