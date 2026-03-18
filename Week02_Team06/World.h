@@ -57,11 +57,14 @@ public:
 	AActor* RaycastForActor(const FVector& RayOrigin, const FVector& RayDirection);
 	
 	void ClearScene();
+	TArray<AActor*> GetSerializableActors() const;
 
 private:
 	class ULocationGizmoActor* LocationGizmoActor = { nullptr };
 	class URotationGizmoActor* RotationGizmoActor = { nullptr };
 	class UScaleGizmoActor* ScaleGizmoActor = { nullptr };
+
+	bool IsGizmoActor(AActor* Actor) const;
 
 public:
 	// 월드가 시작할 때 초기 레벨

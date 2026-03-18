@@ -33,10 +33,12 @@ FString USceneSerializer::Serialize(SceneSaveData& sceneInfo)
 	{
 		UPrimitiveComponent* RootComponent = nullptr;
 
-		if(sceneInfo.Primitives[i]->RootComponent->IsA(UPrimitiveComponent::StaticClass()))
+		if (sceneInfo.Primitives[i]->RootComponent->IsA(UPrimitiveComponent::StaticClass()))
+		{
 			RootComponent = static_cast<UPrimitiveComponent*>(sceneInfo.Primitives[i]->RootComponent);
-		
-		if (!RootComponent || RootComponent->GetType().empty())
+		}
+	
+		if (!RootComponent)
 			continue;
 
 		json objData = json::object();
@@ -61,14 +63,7 @@ bool USceneSerializer::SaveScene(const FString& sceneName, UWorld* World)
 	sceneData.Name = sceneName;
 	sceneData.NextUUID = UEngineStatics::NextUUID;
 
-	TArray<AActor*> Actors = World->CurrentLevel->Actors;
-	for (size_t i = 0; i < Actors.Size(); ++i)
-	{
-		if (!Actors[i]->GetComponentByClass<UPrimitiveComponent>())
-			continue;
-
-		sceneData.Primitives.PushBack(Actors[i]);
-	}
+	sceneData.Primitives = World->GetSerializableActors();
 
 	FString fullPath = GetSaveDirectory() + sceneName + ".Scene";
 	std::filesystem::create_directories(GetSaveDirectory());
