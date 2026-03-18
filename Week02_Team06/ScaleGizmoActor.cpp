@@ -113,7 +113,7 @@ void UScaleGizmoActor::Tick(float DeltaTime)
 
 void UScaleGizmoActor::Release()
 {
-
+	AActor::Release();
 }
 
 EGizmoAxis UScaleGizmoActor::CheckGizmoPicking()

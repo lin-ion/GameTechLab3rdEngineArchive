@@ -458,6 +458,7 @@ void UWorld::DestroyCurrentGizmo()
 	{
 		if (Gizmo)
 		{
+			// CurrentLevel->Actors 배열에서 제거
 			for (uint32 i = 0; i < CurrentLevel->Actors.Size(); ++i)
 			{
 				if (CurrentLevel->Actors[i] == Gizmo)
@@ -468,7 +469,7 @@ void UWorld::DestroyCurrentGizmo()
 						std::swap(CurrentLevel->Actors[i], CurrentLevel->Actors[LastIndex]);
 						--i;
 					}
-					UObjectFactory::DestroyObject(Gizmo);
+					UObjectFactory::DestroyObject(CurrentLevel->Actors[LastIndex]);
 					CurrentLevel->Actors.PopBack();
 					break;
 				}
