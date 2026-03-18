@@ -133,6 +133,7 @@
     <ClCompile Include="RingComponent.cpp" />
     <ClCompile Include="ScaleGizmoActor.cpp" />
     <ClCompile Include="HammerComponent.cpp" />
+    <ClCompile Include="TriangleComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -221,6 +222,7 @@
     <ClInclude Include="RingComponent.h" />
     <ClInclude Include="ScaleGizmoActor.h" />
     <ClInclude Include="HammerComponent.h" />
+    <ClInclude Include="TriangleComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderW0.hlsl">

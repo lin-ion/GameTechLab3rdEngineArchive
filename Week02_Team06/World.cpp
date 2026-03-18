@@ -17,6 +17,7 @@
 #include "ArrowComponent.h"
 #include "RingComponent.h"
 #include "HammerComponent.h"
+#include "TriangleComponent.h"
 
 #include "ImGuiDrawer.h"
 #include "FEditorViewportClient.h"
@@ -182,7 +183,7 @@ void UWorld::Tick(float DeltaTime)
 			if (SelectedActor)
 			{
 				FVector NewScale = TargetStartScale;
-				float Sensitivity = 0.05f;
+				float Sensitivity = 0.1f;
 				float DragAmount = 0.0f;
 
 				// Delta의 절대 좌표(X,Y,Z)가 아닌, 각 기즈모 축이 바라보는 방향(UpVector)으로의 내적(투영 길이)을 구합니다.
@@ -394,6 +395,13 @@ void UWorld::SpawnActorFromEditor(FSpawnParameters params)
 			USphereComponent* Sphere = actor->AddComponent<USphereComponent>();
 			Sphere->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
 			actor->RootComponent = Sphere;
+		}
+
+		else if (params.PrimitiveType == "Triangle")
+		{
+			UTriangleComponent* Triangle = actor->AddComponent<UTriangleComponent>();
+			Triangle->SetMesh(resourceManager->FindMeshData(params.PrimitiveType));
+			actor->RootComponent = Triangle;
 		}
 		else
 		{
