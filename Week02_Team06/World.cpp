@@ -37,8 +37,8 @@ void UWorld::InitWorld(UResourceManager& ResourceManager, FEditorViewportClient*
 	CubeComponent->SetMesh(ResourceManager.FindMeshData("Cube"));
 	CubeActor->RootComponent = CubeComponent;
 
-	CubeComponent->SetPosition({ 0.0f, 0.0f, 3.0f }); // 카메라 앞에 배치
-	CubeComponent->SetScale({ 0.5f, 0.5f, 0.5f });
+	CubeComponent->SetPosition({ 0.0f, 0.0f, 0.0f });
+	CubeComponent->SetScale({ 1.0f, 1.0f, 1.0f });
 
 	// 초기 상태 명시적 세팅
 	CurrentMode = EGizmoMode::Location;

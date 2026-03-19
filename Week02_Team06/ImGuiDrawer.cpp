@@ -88,6 +88,7 @@ void UImGuiDrawer::DrawSpawnPanel()
 	ImGui::SameLine();
 	static int count = 1;
 	ImGui::InputInt("Count", &count);
+	if (count < 1) count = 1;
 	actorParameters.Count = count;
 
 	//if (ImGui::Button("Delete"))
