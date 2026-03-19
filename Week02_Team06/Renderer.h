@@ -81,6 +81,7 @@ private:
 	ID3D11DepthStencilView* DepthStensilView = { nullptr };
 
 	ID3D11RasterizerState* RasterizerStateDefault     = { nullptr };
+	ID3D11RasterizerState* RasterizerStateOutlineTriangle     = { nullptr };
 	ID3D11RasterizerState* RasterizerStateOutline     = { nullptr };
 	ID3D11RasterizerState* RasterizerStateDebug		  = { nullptr };
 

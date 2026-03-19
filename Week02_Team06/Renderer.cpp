@@ -6,6 +6,7 @@
 #include "FEditorViewportClient.h"
 #include "Actor.h"
 
+#include "TriangleComponent.h"
 
 URenderer* GRenderer = nullptr;
 
@@ -134,8 +135,18 @@ void URenderer::CreateRasterizerState()
 	RasterizerDesc.DepthBias = 10000;
 	RasterizerDesc.SlopeScaledDepthBias = 1.0f;
 
-	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateOutline);
+	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateOutlineTriangle);
 
+
+	RasterizerDesc = {};
+	RasterizerDesc.FillMode = D3D11_FILL_SOLID;
+	RasterizerDesc.CullMode = D3D11_CULL_FRONT;
+	RasterizerDesc.FrontCounterClockwise = FALSE;
+	RasterizerDesc.DepthClipEnable = TRUE;
+	RasterizerDesc.DepthBias = 10000;
+	RasterizerDesc.SlopeScaledDepthBias = 1.0f;
+
+	Device->CreateRasterizerState(&RasterizerDesc, &RasterizerStateOutline);
 
 	RasterizerDesc = {};
 	RasterizerDesc.FillMode = D3D11_FILL_WIREFRAME;
@@ -162,11 +173,17 @@ void URenderer::ReleaseRasterizerState()
 		RasterizerStateDefault->Release();
 		RasterizerStateDefault = nullptr;
 	}
-
+	
 	if (RasterizerStateOutline)
 	{
 		RasterizerStateOutline->Release();
 		RasterizerStateOutline = nullptr;
+	}
+
+	if (RasterizerStateOutlineTriangle)
+	{
+		RasterizerStateOutlineTriangle->Release();
+		RasterizerStateOutlineTriangle = nullptr;
 	}
 }
 
@@ -560,11 +577,18 @@ void URenderer::RenderPrimitive(UWorld* World)
 			FMatrix Model = Primitive->GetComponentTransform();
 
 			// 아웃라인 패스
-			if (Actors[i]->IsSelected())
+			if (Actors[i]->IsSelected() )
 			{
 				FMatrix OutlineModel = FMatrix::MakeScale(FVector(1.05f, 1.05f, 1.05f)) * Model;
 				UpdateConstantBuffer({ OutlineModel * VP, FVector4(FVector(1.f, 0.22f, 0.f), 1.f) });
-				DeviceContext->RSSetState(RasterizerStateOutline);
+				if (Primitive->IsA(UTriangleComponent::StaticClass()))
+				{
+					DeviceContext->RSSetState(RasterizerStateOutlineTriangle);
+				}
+				else
+				{
+					DeviceContext->RSSetState(RasterizerStateOutline);
+				}
 				Primitive->Render(*DeviceContext);
 			}
 			// 원본 패스
