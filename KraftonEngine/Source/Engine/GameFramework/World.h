@@ -33,8 +33,8 @@ public:
 	void SetActiveCamera(UCameraComponent* InCamera) { ActiveCamera = InCamera; }
 	UCameraComponent* GetActiveCamera() const { return ActiveCamera; }
 
-	UScene* GetPersistentScene() const { return ActiveScene; }
-	UScene* GetActiveScene() const { return PersistentScene; }
+	UScene* GetActiveScene() const { return ActiveScene; }
+	UScene* GetPersistentScene() const { return PersistentScene; }
 
 private:
 	UScene* ActiveScene = nullptr;

@@ -35,9 +35,7 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	GetWorld()->InitWorld();
 
 	// Selection & Gizmo
-	SelectionManager.Init();
-	// Gizmo는 월드 외부의 객체이므로 ActiveScene의 Proxy에 수동으로 등록
-	GetWorld()->GetActiveScene()->GetRenderProxy().AddProxy(GetGizmo()->CreateProxy());
+	SelectionManager.Init(GetWorld());
 
 	// 뷰포트 레이아웃 초기화 + 저장된 설정 복원
 	ViewportLayout.Initialize(this, Window, Renderer, &SelectionManager);

@@ -30,6 +30,8 @@ public:
 		UGizmoComponent* Gizmo = static_cast<UGizmoComponent*>(Owner);
 		if (!Bus.GetShowFlags().bGizmo || !Gizmo->IsVisible()) return;
 
+		Gizmo->UpdateAxisMask(Bus.GetViewportType());
+
 		FMeshBuffer* GizmoMesh = Gizmo->GetMeshBuffer();
 		const FVector CameraPos = Bus.GetView().GetInverseFast().GetLocation();
 		float PerViewScale = Gizmo->ComputeScreenSpaceScale(CameraPos, Bus.IsOrtho(), Bus.GetOrthoWidth());

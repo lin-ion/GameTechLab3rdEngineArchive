@@ -34,14 +34,6 @@ void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, F
 	RenderBus.AddGridEntry(std::move(Entry));
 }
 
-void FRenderCollector::CollectGizmo(UGizmoComponent* Gizmo, ELevelViewportType ViewportType, FRenderBus& RenderBus)
-{
-	if (!Gizmo) return;
-
-	Gizmo->UpdateAxisMask(ViewportType);
-	Gizmo->CollectRender(RenderBus);
-}
-
 void FRenderCollector::CollectOverlayText(bool bActive, const FOverlayStatSystem& OverlaySystem, const UEditorEngine& Editor, FRenderBus& RenderBus)
 {
 	if (!bActive) return;

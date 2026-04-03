@@ -430,7 +430,7 @@ void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext&
 			if (!ActorObj || !ActorObj->IsA<AActor>()) continue;
 			Actor = static_cast<AActor*>(ActorObj);
 			Actor->SetWorld(World);
-			World->GetPersistentScene()->AddActor(Actor);
+			World->GetActiveScene()->AddActor(Actor);
 		}
 
 		if (ActorJSON.hasKey(SceneKeys::Visible)) {

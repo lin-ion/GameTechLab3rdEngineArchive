@@ -83,7 +83,6 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	Collector.CollectWorld(World, SelectedActors, Bus);
 	Collector.CollectGrid(Opts.GridSpacing, Opts.GridHalfLineCount, Bus);
-	Collector.CollectGizmo(Editor->GetGizmo(), Opts.ViewportType, Bus);
 	Collector.CollectOverlayText(bIsActiveViewport, Editor->GetOverlayStatSystem(), *Editor, Bus);
 
 	// 3. Bus에 담긴 커맨드와 엔트리를 기반으로 렌더러에 배치
