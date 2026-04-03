@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include <d3d11.h>
@@ -81,6 +81,7 @@ private:
 	void EnsureViewportSlots(int32 RequiredCount);
 	void ShrinkViewportSlots(int32 RequiredCount);
 	void RenderPaneToolbar(int32 SlotIndex);
+	void RenderActiveViewportStatOverlay();
 
 	// 아이콘 텍스처
 	void LoadLayoutIcons(ID3D11Device* Device);
