@@ -19,6 +19,8 @@ UStaticMesh::~UStaticMesh()
 			static_cast<uint32>(StaticMeshAsset->Indices.size() * sizeof(uint32));
 
 		MemoryStats::SubStaticMeshCPUMemory(CPUSize);
+		delete StaticMeshAsset;
+		StaticMeshAsset = nullptr;
 	}
 }
 

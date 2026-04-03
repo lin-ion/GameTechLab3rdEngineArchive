@@ -6,6 +6,7 @@
 #include <type_traits>
 
 class UWorld;
+class UScene;
 class UPrimitiveComponent;
 
 class AActor : public UObject
@@ -28,6 +29,13 @@ public:
 		T* Comp = UObjectManager::Get().CreateObject<T>();
 		Comp->SetOwner(this);
 		OwnedComponents.push_back(Comp);
+		bPrimitiveCacheDirty = true;
+
+		if (GetScene())
+		{
+			Comp->OnRegister();
+		}
+
 		return Comp;
 	}
 
@@ -64,14 +72,21 @@ public:
 	void SetWorld(UWorld* World) { OwningWorld = World; }
 	UWorld* GetWorld() const { return OwningWorld; }
 
+	void SetScene(UScene* Scene) { OwningScene = Scene; }
+	UScene* GetScene() const { return OwningScene; }
+
 	bool IsVisible() const { return bVisible; }
 	void SetVisible(bool Visible) { bVisible = Visible; }
+
+	virtual void RegisterAllComponents();
+	virtual void UnregisterAllComponents();
 
 	const TArray<UPrimitiveComponent*>& GetPrimitiveComponents() const;
 
 protected:
 	USceneComponent* RootComponent = nullptr;
 	UWorld* OwningWorld = nullptr;
+	UScene* OwningScene = nullptr;
 
 	FVector PendingActorLocation = FVector(0, 0, 0);
 	bool bVisible = true;

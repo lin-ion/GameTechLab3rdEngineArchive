@@ -35,7 +35,6 @@ public:
 	FOverlayStatLayout& GetLayout() { return Layout; }
 
 	TArray<FOverlayStatGroup> BuildGroups(const UEditorEngine& Editor) const;
-	TArray<FOverlayStatLine> BuildLines(const UEditorEngine& Editor) const;
 
 private:
 	bool bShowFPS = false;

@@ -1,4 +1,4 @@
-#include "Editor/Viewport/FLevelViewportLayout.h"
+﻿#include "Editor/Viewport/FLevelViewportLayout.h"
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
@@ -523,6 +523,8 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			RenderPaneToolbar(i);
 		}
 
+		RenderActiveViewportStatOverlay();
+
 		// 분할 바 렌더 (재귀 수집)
 		if (RootSplitter)
 		{
@@ -620,6 +622,94 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
 	ImGui::End();
 	ImGui::PopStyleVar();
+}
+
+void FLevelViewportLayout::RenderActiveViewportStatOverlay()
+{
+	if (!Editor || !ActiveViewportClient) return;
+
+	int32 ActiveSlotIndex = -1;
+	for (int32 i = 0; i < ActiveSlotCount; ++i)
+	{
+		if (i < static_cast<int32>(LevelViewportClients.size()) && LevelViewportClients[i] == ActiveViewportClient)
+		{
+			ActiveSlotIndex = i;
+			break;
+		}
+	}
+
+	if (ActiveSlotIndex < 0 || !ViewportWindows[ActiveSlotIndex]) return;
+
+	const FOverlayStatSystem& OverlaySystem = Editor->GetOverlayStatSystem();
+	const TArray<FOverlayStatGroup> Groups = OverlaySystem.BuildGroups(*Editor);
+	if (Groups.empty()) return;
+
+	const FOverlayStatLayout& Layout = OverlaySystem.GetLayout();
+	const FRect& PaneRect = ViewportWindows[ActiveSlotIndex]->GetRect();
+
+	char OverlayID[64];
+	snprintf(OverlayID, sizeof(OverlayID), "##ViewportStatOverlay_%d", ActiveSlotIndex);
+
+	ImGui::SetNextWindowPos(ImVec2(PaneRect.X + Layout.StartX, PaneRect.Y + Layout.StartY));
+	ImGui::SetNextWindowBgAlpha(0.72f);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 4.0f));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.09f, 0.11f, 0.72f));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.42f, 0.55f, 0.85f));
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.92f, 0.95f, 0.98f, 1.0f));
+
+	ImGuiWindowFlags OverlayFlags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoNav |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoInputs;
+
+	ImGui::Begin(OverlayID, nullptr, OverlayFlags);
+	ImGui::SetWindowFontScale(Layout.TextScale);
+	ImGui::TextUnformatted("Status");
+	ImGui::Separator();
+
+	for (size_t GroupIdx = 0; GroupIdx < Groups.size(); ++GroupIdx)
+	{
+		const FOverlayStatGroup& Group = Groups[GroupIdx];
+		for (const FString& Line : Group.Lines)
+		{
+			const size_t DelimPos = Line.find(':');
+			if (DelimPos != FString::npos)
+			{
+				const FString Key = Line.substr(0, DelimPos + 1);
+				const FString Value = DelimPos + 1 < Line.size() ? Line.substr(DelimPos + 1) : FString();
+
+				ImGui::TextColored(ImVec4(0.67f, 0.75f, 0.85f, 1.0f), "%s", Key.c_str());
+				if (!Value.empty())
+				{
+					ImGui::SameLine();
+					ImGui::TextUnformatted(Value.c_str());
+				}
+			}
+			else
+			{
+				ImGui::TextUnformatted(Line.c_str());
+			}
+		}
+
+		if (GroupIdx + 1 < Groups.size() && !Group.Lines.empty())
+		{
+			ImGui::Dummy(ImVec2(0.0f, Layout.GroupSpacing * 0.5f));
+			ImGui::Separator();
+			ImGui::Dummy(ImVec2(0.0f, Layout.GroupSpacing * 0.25f));
+		}
+	}
+
+	ImGui::End();
+	ImGui::PopStyleColor(3);
+	ImGui::PopStyleVar(4);
 }
 
 // ─── 각 뷰포트 패인 툴바 오버레이 ──────────────────────────

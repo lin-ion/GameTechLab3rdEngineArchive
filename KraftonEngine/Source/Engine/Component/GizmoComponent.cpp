@@ -1,4 +1,4 @@
-﻿#include "GizmoComponent.h"
+#include "GizmoComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"
 #include "Math/Quat.h"
@@ -6,6 +6,62 @@
 #include "Render/Resource/ShaderManager.h"
 #include "Render/Resource/ConstantBufferPool.h"
 #include "Collision/RayUtils.h"
+#include "Render/Pipeline/PrimitiveProxy.h"
+#include "GameFramework/World.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
+
+class FGizmoProxy : public FPrimitiveProxy
+{
+public:
+	FGizmoProxy(UGizmoComponent* InOwner) : FPrimitiveProxy(InOwner) {}
+
+	void UpdateProxy() override
+	{
+	}
+
+	void CollectRender(FRenderBus& Bus, bool bSelected) override
+	{
+		if (IsDirty())
+		{
+			UpdateProxy();
+			bIsDirty = false;
+		}
+
+		UGizmoComponent* Gizmo = static_cast<UGizmoComponent*>(Owner);
+		if (!Bus.GetShowFlags().bGizmo || !Gizmo->IsVisible()) return;
+
+		Gizmo->UpdateAxisMask(Bus.GetViewportType());
+
+		FMeshBuffer* GizmoMesh = Gizmo->GetMeshBuffer();
+		const FVector CameraPos = Bus.GetView().GetInverseFast().GetLocation();
+		float PerViewScale = Gizmo->ComputeScreenSpaceScale(CameraPos, Bus.IsOrtho(), Bus.GetOrthoWidth());
+
+		FMatrix WorldMatrix = FMatrix::MakeScaleMatrix(FVector(PerViewScale, PerViewScale, PerViewScale))
+			* Gizmo->GetRelativeQuat().ToMatrix()
+			* FMatrix::MakeTranslationMatrix(Gizmo->GetWorldLocation());
+
+		auto CreateGizmoCmd = [&](bool bInner) {
+			FRenderCommand Cmd = {};
+			Cmd.Shader = FShaderManager::Get().GetShader(EShaderType::Gizmo);
+			Cmd.MeshBuffer = GizmoMesh;
+			Cmd.PerObjectConstants = FPerObjectConstants{ WorldMatrix };
+
+			auto& G = Cmd.ExtraCB.Bind<FGizmoConstants>(
+				FConstantBufferPool::Get().GetBuffer(ECBSlot::Gizmo, sizeof(FGizmoConstants)), ECBSlot::Gizmo);
+			G.ColorTint = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+			G.bIsInnerGizmo = bInner ? 1 : 0;
+			G.bClicking = Gizmo->IsHolding() ? 1 : 0;
+			G.SelectedAxis = Gizmo->GetSelectedAxis() >= 0 ? (uint32)Gizmo->GetSelectedAxis() : 0xffffffffu;
+			G.HoveredAxisOpacity = 0.7f;
+			G.AxisMask = Gizmo->GetAxisMask();
+
+			return Cmd;
+		};
+
+		Bus.AddCommand(ERenderPass::GizmoOuter, CreateGizmoCmd(false));
+		Bus.AddCommand(ERenderPass::GizmoInner, CreateGizmoCmd(true));
+	}
+};
 
 IMPLEMENT_CLASS(UGizmoComponent, UPrimitiveComponent)
 
@@ -14,6 +70,17 @@ UGizmoComponent::UGizmoComponent()
 {
 	MeshData = &FMeshBufferManager::Get().GetMeshData(EMeshShape::TransGizmo);
 	LocalExtents = FVector(1.5f, 1.5f, 1.5f);
+}
+
+FPrimitiveProxy* UGizmoComponent::CreateProxy()
+{
+	return new FGizmoProxy(this);
+}
+
+UWorld* UGizmoComponent::GetWorld() const
+{
+	if (ExplicitWorld) return ExplicitWorld;
+	return UPrimitiveComponent::GetWorld();
 }
 
 bool UGizmoComponent::IntersectRayAxis(const FRay& Ray, FVector AxisEnd, float& OutRayT)
@@ -126,27 +193,25 @@ void UGizmoComponent::RotateTarget(float DragAmount)
 			if (!Actor || !Actor->GetRootComponent()) return;
 			USceneComponent* Root = Actor->GetRootComponent();
 			const FQuat& CurQuat = Root->GetRelativeQuat();
-			// 월드 스페이스: Delta * Cur, 로컬 스페이스: Cur * Delta
 			FQuat NewQuat = bIsWorldSpace ? (DeltaQuat * CurQuat) : (CurQuat * DeltaQuat);
 
-			// Euler 캐시를 기즈모 축 기준으로 직접 업데이트 (짐벌락 방지)
 			FRotator EulerHint = Root->GetCachedEditRotator();
 			if (bIsWorldSpace)
 			{
 				switch (SelectedAxis)
 				{
-				case 0: EulerHint.Roll  += DeltaDeg; break;  // World X = Roll
-				case 1: EulerHint.Pitch += DeltaDeg; break;  // World Y = Pitch
-				case 2: EulerHint.Yaw   += DeltaDeg; break;  // World Z = Yaw
+				case 0: EulerHint.Roll  += DeltaDeg; break;
+				case 1: EulerHint.Pitch += DeltaDeg; break;
+				case 2: EulerHint.Yaw   += DeltaDeg; break;
 				}
 			}
 			else
 			{
 				switch (SelectedAxis)
 				{
-				case 0: EulerHint.Roll  += DeltaDeg; break;  // Local X = Roll
-				case 1: EulerHint.Pitch += DeltaDeg; break;  // Local Y = Pitch
-				case 2: EulerHint.Yaw   += DeltaDeg; break;  // Local Z = Yaw
+				case 0: EulerHint.Roll  += DeltaDeg; break;
+				case 1: EulerHint.Pitch += DeltaDeg; break;
+				case 2: EulerHint.Yaw   += DeltaDeg; break;
 				}
 			}
 			Root->SetRelativeRotationWithEulerHint(NewQuat, EulerHint);
@@ -341,6 +406,7 @@ void UGizmoComponent::UpdateAngularDrag(const FRay& Ray)
 
 void UGizmoComponent::UpdateHoveredAxis(int Index)
 {
+	int32 OldAxis = SelectedAxis;
 	if (Index < 0)
 	{
 		if (IsHolding() == false) SelectedAxis = -1;
@@ -352,7 +418,6 @@ void UGizmoComponent::UpdateHoveredAxis(int Index)
 			uint32 VertexIndex = MeshData->Indices[Index];
 			uint32 HitAxis = MeshData->Vertices[VertexIndex].SubID;
 
-			// 마스크에 의해 숨겨진 축은 선택 불가
 			if (AxisMask & (1u << HitAxis))
 			{
 				SelectedAxis = HitAxis;
@@ -362,6 +427,11 @@ void UGizmoComponent::UpdateHoveredAxis(int Index)
 				SelectedAxis = -1;
 			}
 		}
+	}
+
+	if (OldAxis != SelectedAxis)
+	{
+		MarkRenderStateDirty();
 	}
 }
 
@@ -381,11 +451,9 @@ void UGizmoComponent::UpdateDrag(const FRay& Ray)
 	{
 		UpdateAngularDrag(Ray);
 	}
-
 	else
 	{
 		UpdateLinearDrag(Ray);
-
 	}
 }
 
@@ -402,10 +470,20 @@ void UGizmoComponent::SetNextMode()
 	UpdateGizmoMode(NextMode);
 }
 
+void UGizmoComponent::SetHolding(bool bHold)
+{
+	if (bIsHolding != bHold)
+	{
+		bIsHolding = bHold;
+		MarkRenderStateDirty();
+	}
+}
+
 void UGizmoComponent::UpdateGizmoMode(EGizmoMode NewMode)
 {
 	CurMode = NewMode;
 	UpdateGizmoTransform();
+	MarkRenderStateDirty();
 }
 
 void UGizmoComponent::UpdateGizmoTransform()
@@ -433,6 +511,7 @@ void UGizmoComponent::UpdateGizmoTransform()
 		MeshData = &FMeshBufferManager::Get().GetMeshData(EMeshShape::TransGizmo);
 		break;
 	}
+	MarkRenderStateDirty();
 }
 
 float UGizmoComponent::ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth)
@@ -454,6 +533,7 @@ void UGizmoComponent::ApplyScreenSpaceScaling(const FVector& CameraLocation, boo
 {
 	float NewScale = ComputeScreenSpaceScale(CameraLocation, bIsOrtho, OrthoWidth);
 	SetRelativeScale(FVector(NewScale, NewScale, NewScale));
+	MarkRenderStateDirty();
 }
 
 void UGizmoComponent::SetWorldSpace(bool bWorldSpace)
@@ -472,27 +552,34 @@ void UGizmoComponent::UpdateAxisMask(ELevelViewportType ViewportType)
 	{
 	case ELevelViewportType::Top:
 	case ELevelViewportType::Bottom:
-		ViewAxis = 0x4; break; // Z
+		ViewAxis = 0x4; break;
 	case ELevelViewportType::Front:
 	case ELevelViewportType::Back:
-		ViewAxis = 0x1; break; // X
+		ViewAxis = 0x1; break;
 	case ELevelViewportType::Left:
 	case ELevelViewportType::Right:
-		ViewAxis = 0x2; break; // Y
+		ViewAxis = 0x2; break;
 	default: break;
 	}
 
+	uint32 NewMask;
 	if (ViewAxis == AllAxes)
 	{
-		AxisMask = AllAxes;
+		NewMask = AllAxes;
 	}
 	else if (CurMode == EGizmoMode::Rotate)
 	{
-		AxisMask = ViewAxis;            // Rotate: 시선 축만
+		NewMask = ViewAxis;
 	}
 	else
 	{
-		AxisMask = AllAxes & ~ViewAxis;  // Translate/Scale: 시선 축 제외
+		NewMask = AllAxes & ~ViewAxis;
+	}
+
+	if (AxisMask != NewMask)
+	{
+		AxisMask = NewMask;
+		MarkRenderStateDirty();
 	}
 }
 
@@ -502,6 +589,7 @@ void UGizmoComponent::Deactivate()
 	AllSelectedActors = nullptr;
 	SetVisibility(false);
 	SelectedAxis = -1;
+	MarkRenderStateDirty();
 }
 
 FMeshBuffer* UGizmoComponent::GetMeshBuffer() const
@@ -523,39 +611,8 @@ FMeshBuffer* UGizmoComponent::GetMeshBuffer() const
 
 void UGizmoComponent::CollectRender(FRenderBus& Bus) const
 {
-	if (!Bus.GetShowFlags().bGizmo) return;
-	if (!IsVisible()) return;
-
-	FMeshBuffer* GizmoMesh = GetMeshBuffer();
-
-	// Per-viewport 스케일 계산 — 활성 뷰포트의 스케일과 독립
-	const FVector CameraPos = Bus.GetView().GetInverseFast().GetLocation();
-	float PerViewScale = const_cast<UGizmoComponent*>(this)->ComputeScreenSpaceScale(
-		CameraPos, Bus.IsOrtho(), Bus.GetOrthoWidth());
-
-	// WorldMatrix를 per-viewport 스케일로 재구성 (S * R * T)
-	FMatrix WorldMatrix = FMatrix::MakeScaleMatrix(FVector(PerViewScale, PerViewScale, PerViewScale))
-		* FMatrix::MakeRotationEuler(GetRelativeRotation().ToVector())
-		* FMatrix::MakeTranslationMatrix(GetWorldLocation());
-
-	auto CreateGizmoCmd = [&](bool bInner) {
-		FRenderCommand Cmd = {};
-		Cmd.Shader = FShaderManager::Get().GetShader(EShaderType::Gizmo);
-		Cmd.MeshBuffer = GizmoMesh;
-		Cmd.PerObjectConstants = FPerObjectConstants{ WorldMatrix };
-
-		auto& G = Cmd.ExtraCB.Bind<FGizmoConstants>(
-			FConstantBufferPool::Get().GetBuffer(ECBSlot::Gizmo, sizeof(FGizmoConstants)), ECBSlot::Gizmo);
-		G.ColorTint = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
-		G.bIsInnerGizmo = bInner ? 1 : 0;
-		G.bClicking = bIsHolding ? 1 : 0;
-		G.SelectedAxis = SelectedAxis >= 0 ? (uint32)SelectedAxis : 0xffffffffu;
-		G.HoveredAxisOpacity = 0.7f;
-		G.AxisMask = AxisMask;
-
-		return Cmd;
-		};
-
-	Bus.AddCommand(ERenderPass::GizmoOuter, CreateGizmoCmd(false));
-	Bus.AddCommand(ERenderPass::GizmoInner, CreateGizmoCmd(true));
+	if (Proxy)
+	{
+		Proxy->CollectRender(Bus, false);
+	}
 }

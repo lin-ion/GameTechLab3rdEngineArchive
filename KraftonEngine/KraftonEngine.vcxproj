@@ -230,6 +230,7 @@
     <ClCompile Include="Source\Engine\Component\TextRenderComponent.cpp" />
     <ClCompile Include="Source\Engine\Core\EngineTypes.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\AActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\Scene.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\StaticMeshActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\World.cpp" />
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp" />
@@ -260,9 +261,12 @@
     <ClCompile Include="Source\Engine\Render\Device\DepthStencilStateManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Device\RasterizerStateManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\DefaultRenderPipeline.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\RenderBus.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\RenderCollector.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\StaticMeshProxy.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\WorldRenderProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Resource\Buffer.cpp" />
     <ClCompile Include="Source\Engine\Render\Resource\ConstantBufferPool.cpp" />
     <ClCompile Include="Source\Engine\Render\Resource\MeshBufferManager.cpp" />
@@ -332,6 +336,7 @@
     <ClInclude Include="Source\Engine\Core\ResourceTypes.h" />
     <ClInclude Include="Source\Engine\Core\Singleton.h" />
     <ClInclude Include="Source\Engine\GameFramework\AActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\Scene.h" />
     <ClInclude Include="Source\Engine\GameFramework\StaticMeshActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\World.h" />
     <ClInclude Include="Source\Engine\GameFramework\WorldContext.h" />
@@ -369,11 +374,14 @@
     <ClInclude Include="Source\Engine\Render\Device\RasterizerStateManager.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\DefaultRenderPipeline.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\IRenderPipeline.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\PrimitiveProxy.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderBus.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollector.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollectorContext.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCommand.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\Renderer.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\StaticMeshProxy.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\WorldRenderProxy.h" />
     <ClInclude Include="Source\Engine\Render\Resource\Buffer.h" />
     <ClInclude Include="Source\Engine\Render\Resource\ConstantBufferPool.h" />
     <ClInclude Include="Source\Engine\Render\Resource\MeshBufferManager.h" />

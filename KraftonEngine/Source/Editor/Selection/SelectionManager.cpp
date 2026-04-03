@@ -1,12 +1,29 @@
-﻿#include "Editor/Selection/SelectionManager.h"
+#include "Editor/Selection/SelectionManager.h"
 #include "Object/Object.h"
 #include "Component/GizmoComponent.h"
+#include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
+#include "GameFramework/AActor.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
 
-void FSelectionManager::Init()
+void FSelectionManager::Init(UWorld* InWorld)
 {
 	Gizmo = UObjectManager::Get().CreateObject<UGizmoComponent>();
 	Gizmo->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
 	Gizmo->Deactivate();
+
+	if (InWorld)
+	{
+		Gizmo->SetExplicitWorld(InWorld);
+		// 명시적으로 OnRegister를 호출하여 Proxy를 생성
+		Gizmo->OnRegister();
+
+		// World의 PersistentScene에 Gizmo의 Proxy를 수동 등록
+		if (UScene* PersistentScene = InWorld->GetPersistentScene())
+		{
+			PersistentScene->GetRenderProxy().AddProxy(Gizmo->GetProxy());
+		}
+	}
 }
 
 void FSelectionManager::Shutdown()

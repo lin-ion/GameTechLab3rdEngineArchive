@@ -3,7 +3,9 @@
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Component/CameraComponent.h"
+#include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Object/ObjectFactory.h"
@@ -33,7 +35,7 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	GetWorld()->InitWorld();
 
 	// Selection & Gizmo
-	SelectionManager.Init();
+	SelectionManager.Init(GetWorld());
 
 	// 뷰포트 레이아웃 초기화 + 저장된 설정 복원
 	ViewportLayout.Initialize(this, Window, Renderer, &SelectionManager);

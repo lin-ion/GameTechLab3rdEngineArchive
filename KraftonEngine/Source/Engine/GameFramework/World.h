@@ -1,13 +1,18 @@
 ﻿#pragma once
+
 #include "Object/Object.h"
 #include "GameFramework/AActor.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
+#include <memory>
 
+// === Forward Declaration
 class UCameraComponent;
+class UScene;
 
 class UWorld : public UObject {
 public:
 	DECLARE_CLASS(UWorld, UObject)
-	UWorld() = default;
+	UWorld();
 	~UWorld() override;
 
 	// Actor lifecycle
@@ -15,8 +20,7 @@ public:
 	T* SpawnActor();
 	void DestroyActor(AActor* Actor);
 
-	const TArray<AActor*>& GetActors() const { return Actors; }
-	void AddActor(AActor* Actor) { Actors.push_back(Actor); }
+	const TArray<AActor*>& GetActors() const;
 
 	void InitWorld();      // Set up the world before gameplay begins
 	void BeginPlay();      // Triggers BeginPlay on all actors
@@ -29,11 +33,18 @@ public:
 	void SetActiveCamera(UCameraComponent* InCamera) { ActiveCamera = InCamera; }
 	UCameraComponent* GetActiveCamera() const { return ActiveCamera; }
 
+	UScene* GetActiveScene() const { return ActiveScene; }
+	UScene* GetPersistentScene() const { return PersistentScene; }
+
 private:
-	TArray<AActor*> Actors;
+	UScene* ActiveScene = nullptr;
+	UScene* PersistentScene = nullptr;
+
 	UCameraComponent* ActiveCamera = nullptr;
 	bool bHasBegunPlay = false;
 };
+
+#include "GameFramework/Scene.h"
 
 template<typename T>
 inline T* UWorld::SpawnActor()
@@ -41,10 +52,9 @@ inline T* UWorld::SpawnActor()
 	// create and register an actor
 	T* Actor = UObjectManager::Get().CreateObject<T>();
 	Actor->SetWorld(this);
-	if (bHasBegunPlay)
-	{
-		Actor->BeginPlay();
-	}
-	Actors.push_back(Actor);
+	
+	// Default to ActiveScene
+	ActiveScene->AddActor(Actor);
+
 	return Actor;
 }

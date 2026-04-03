@@ -7,6 +7,7 @@
 
 #include "SimpleJSON/json.hpp"
 #include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
 #include "GameFramework/AActor.h"
 #include "Component/SceneComponent.h"
 #include "Component/ActorComponent.h"
@@ -429,7 +430,7 @@ void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext&
 			if (!ActorObj || !ActorObj->IsA<AActor>()) continue;
 			Actor = static_cast<AActor*>(ActorObj);
 			Actor->SetWorld(World);
-			World->AddActor(Actor);
+			World->GetActiveScene()->AddActor(Actor);
 		}
 
 		if (ActorJSON.hasKey(SceneKeys::Visible)) {

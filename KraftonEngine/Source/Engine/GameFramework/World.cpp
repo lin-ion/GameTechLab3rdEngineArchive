@@ -1,11 +1,19 @@
 ﻿#include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
 #include "Object/ObjectFactory.h"
+#include <algorithm>
+#include <memory>
 
 IMPLEMENT_CLASS(UWorld, UObject)
 
+UWorld::UWorld()
+{
+	InitWorld();
+}
+
 UWorld::~UWorld()
 {
-	if (!Actors.empty())
+	if (bHasBegunPlay)
 	{
 		EndPlay();
 	}
@@ -13,59 +21,56 @@ UWorld::~UWorld()
 
 void UWorld::DestroyActor(AActor* Actor)
 {
-	// remove and clean up
 	if (!Actor) return;
-	Actor->EndPlay();
-	// Remove from actor list
-	auto it = std::find(Actors.begin(), Actors.end(), Actor);
-	if (it != Actors.end())
-		Actors.erase(it);
+
+	if (UScene* Scene = Actor->GetScene())
+	{
+		Scene->RemoveActor(Actor);
+	}
 
 	// Mark for garbage collection
 	UObjectManager::Get().DestroyObject(Actor);
 }
 
+const TArray<AActor*>& UWorld::GetActors() const
+{
+	// NOTE: For compatibility, we return PersistentScene's actors.
+	// In the future, we might want to return a combined list or change the API.
+	return ActiveScene->GetActors();
+}
+
 void UWorld::InitWorld()
 {
-
+	if (!ActiveScene)
+	{
+		ActiveScene = UObjectManager::Get().CreateObject<UScene>();
+		ActiveScene->SetWorld(this);
+	}
+	if (!PersistentScene)
+	{
+		PersistentScene = UObjectManager::Get().CreateObject<UScene>();
+		PersistentScene->SetWorld(this);
+	}
 }
 
 void UWorld::BeginPlay()
 {
 	bHasBegunPlay = true;
 
-	for (AActor* Actor : Actors)
-	{
-		if (Actor)
-		{
-			Actor->BeginPlay();
-		}
-	}
+	if (ActiveScene) ActiveScene->BeginPlay();
+	if (PersistentScene) PersistentScene->BeginPlay();
 }
 
 void UWorld::Tick(float DeltaTime)
 {
-	for (AActor* Actor : Actors)
-	{
-		if (Actor)
-		{
-			Actor->Tick(DeltaTime);
-		}
-	}
+	if (ActiveScene) ActiveScene->Tick(DeltaTime);
+	if (PersistentScene) PersistentScene->Tick(DeltaTime);
 }
 
 void UWorld::EndPlay()
 {
 	bHasBegunPlay = false;
 
-	for (AActor* Actor : Actors)
-	{
-		if (Actor)
-		{
-			Actor->EndPlay();
-			UObjectManager::Get().DestroyObject(Actor);
-		}
-	}
-
-	Actors.clear();
+	if (ActiveScene) ActiveScene->EndPlay();
+	if (PersistentScene) PersistentScene->EndPlay();
 }
