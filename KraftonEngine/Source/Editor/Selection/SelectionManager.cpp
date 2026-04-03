@@ -1,6 +1,7 @@
 ﻿#include "Editor/Selection/SelectionManager.h"
 #include "Object/Object.h"
 #include "Component/GizmoComponent.h"
+#include "GameFramework/AActor.h"
 
 void FSelectionManager::Init()
 {
@@ -116,6 +117,15 @@ void FSelectionManager::SyncGizmo()
 	AActor* Primary = GetPrimarySelection();
 	if (Primary)
 	{
+		// 기즈모가 타겟의 월드를 따라가도록 설정
+		if (Primary->GetWorld())
+		{
+			Gizmo->SetExplicitWorld(Primary->GetWorld());
+			// UGizmoComponent는 UPrimitiveComponent를 상속하므로 OnRegister가 프록시를 생성함.
+			// 명시적으로 OnRegister를 호출하여 타겟 월드의 프록시 리스트에 등록되게 함.
+			Gizmo->OnRegister(); 
+		}
+
 		Gizmo->SetTarget(Primary);
 		Gizmo->SetSelectedActors(&SelectedActors);
 	}

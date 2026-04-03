@@ -15,11 +15,15 @@ enum EGizmoMode
 	End
 };
 
+class FGizmoProxy;
+
 class UGizmoComponent : public UPrimitiveComponent
 {
 public:
 	DECLARE_CLASS(UGizmoComponent, UPrimitiveComponent)
 	UGizmoComponent();
+
+	FPrimitiveProxy* CreateProxy() override;
 
 	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult) override;
 
@@ -27,7 +31,7 @@ public:
 	void RenderGizmo() {}
 	void SetTarget(AActor* NewTarget);
 	void SetSelectedActors(const TArray<AActor*>* InSelectedActors) { AllSelectedActors = InSelectedActors; }
-	inline void SetHolding(bool bHold) { bIsHolding = bHold; }
+	inline void SetHolding(bool bHold);
 	inline bool IsHolding() const { return bIsHolding; }
 	inline bool IsHovered() const { return SelectedAxis != -1; }
 	inline bool HasTarget() const { return TargetActor != nullptr; }
@@ -68,6 +72,9 @@ public:
 	void CollectRender(FRenderBus& Bus) const override;
 	void CollectSelection(FRenderBus& Bus) const override {}  // Gizmo는 선택 이펙트 없음
 
+	void SetExplicitWorld(UWorld* InWorld) { ExplicitWorld = InWorld; }
+	UWorld* GetWorld() const;
+
 private:
 	bool IntersectRayAxis(const FRay& Ray, FVector AxisEnd, float& OutRayT);
 
@@ -83,6 +90,7 @@ private:
 private:
 	AActor* TargetActor = nullptr;
 	const TArray<AActor*>* AllSelectedActors = nullptr;
+	UWorld* ExplicitWorld = nullptr;
 	EGizmoMode CurMode = EGizmoMode::Translate;
 	FVector LastIntersectionLocation;
 	const float AxisLength = 1.0f;
