@@ -36,6 +36,9 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 
 void FEditorMainPanel::Release()
 {
+	ConsoleWidget.Clear();
+	FEditorConsoleWidget::ClearHistory();
+
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
