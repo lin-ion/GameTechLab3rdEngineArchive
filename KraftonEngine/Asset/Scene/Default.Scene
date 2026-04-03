@@ -20,8 +20,7 @@
         "ClassName" : "UStaticMeshComponent",
         "Properties" : {
           "Element 0" : {
-            "Path" : "BasicShapeMaterial",
-            "UVScroll" : false
+            "Path" : "Asset/MeshCache/Cube_BasicShapeMaterial.mbin"
           },
           "Location" : [0.000000, 0.000000, 0.000000],
           "Rotation" : [-0.000000, 0.000000, 0.000000],

@@ -72,6 +72,10 @@ void UStaticMesh::InitResources(ID3D11Device* InDevice)
 		{
 			Mat.MaterialInterface->DiffuseTexture = UTexture2D::LoadFromFile(
 				Mat.MaterialInterface->DiffuseTextureFilePath, InDevice);
+			if (!Mat.MaterialInterface->DiffuseTexture)
+			{
+				Mat.MaterialInterface->DiffuseColor = FVector4(1.0f, 0.0f, 1.0f, 1.0f);
+			}
 		}
 	}
 }

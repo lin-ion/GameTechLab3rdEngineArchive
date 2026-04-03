@@ -7,6 +7,7 @@
 #include "Engine/Platform/Paths.h"
 #include <filesystem>
 #include <algorithm>
+#include <chrono>
 
 std::map<FString, UStaticMesh*> FObjManager::StaticMeshCache;
 TMap<FString, UMaterial*> FObjManager::MaterialCache;
@@ -41,21 +42,63 @@ FString FObjManager::GetBinaryFilePath(const FString& OriginalPath)
 	return FPaths::ToUtf8(RelPath.generic_wstring());
 }
 
-FString FObjManager::GetMBinaryFilePath(const FString& OriginalPath)
+FString FObjManager::SanitizeForFilename(const FString& Input)
 {
-	std::filesystem::path SrcPath(FPaths::ToWide(OriginalPath));
-	std::wstring Ext = SrcPath.extension().wstring();
-
-	// 이미 bin 경로가 들어온 경우에는 그대로 사용
-	if (Ext == L".mbin")
+	// Windows 파일명 금지 문자 \ / : * ? " < > | 를 '_'로 교체합니다.
+	// 점(.)과 하이픈(-) 등 대부분의 문자는 그대로 유지됩니다.
+	// 예: "MatID_1.001" → "MatID_1.001"  (변화 없음)
+	//     "Mat::Red"    → "Mat__Red"
+	//     "a/b\\c"      → "a_b_c"
+	static constexpr char Forbidden[] = R"(\/:*?"<>|)";
+	FString Result = Input;
+	for (char& C : Result)
 	{
-		return OriginalPath;
+		if (std::strchr(Forbidden, C))
+			C = '_';
+	}
+	return Result;
+}
+
+FString FObjManager::ComputeMBinaryFilePath(const FString& MtlFilePath, const FString& SlotName)
+{
+	// MtlFilePath: "Data/model/model.mtl" 또는 "".
+	// SlotName: usemtl 원문.
+	// 반환 예시: "Asset/MeshCache/model/{safe_material}.mbin", "Asset/MeshCache/None.mbin"
+
+	// MeshCache 루트 디렉토리 보장
+	static bool bCacheDirCreated = false;
+	if (!bCacheDirCreated)
+	{
+		FPaths::CreateDir(FPaths::RootDir() + L"Asset\\MeshCache\\");
+		bCacheDirCreated = true;
 	}
 
-	// GetBinaryFilePath 에서 이미 생성하므로 중복 호출 불필요
+	// MTL stem을 하위 폴더명으로 사용, 비어 있으면 루트 사용
+	FString Prefix;
+	if (!MtlFilePath.empty())
+	{
+		std::filesystem::path MtlPath(FPaths::ToWide(MtlFilePath));
+		Prefix = FPaths::ToUtf8(MtlPath.stem().wstring()); // 확장자 제외 파일명
+	}
 
-	// 상대 경로로 반환
-	std::filesystem::path RelPath = std::filesystem::path(L"Asset\\MeshCache") / SrcPath.stem();
+	// 슬롯명에서 파일시스템 금지 문자만 치환
+	FString SafeSlotName = SanitizeForFilename(SlotName);
+
+	// 경로 생성
+	std::filesystem::path RelPath = std::filesystem::path(L"Asset\\MeshCache");
+
+	if (!Prefix.empty())
+	{
+		// Prefix가 있으면 하위 디렉토리 생성
+		RelPath /= FPaths::ToWide(Prefix);
+
+		// 디렉토리 보장
+		std::wstring FullDir = FPaths::RootDir() + RelPath.wstring() + L"\\";
+		FPaths::CreateDir(FullDir);
+	}
+
+	// 최종 mbin 경로
+	RelPath /= FPaths::ToWide(SafeSlotName);
 	RelPath += L".mbin";
 
 	return FPaths::ToUtf8(RelPath.generic_wstring());
@@ -67,14 +110,12 @@ void FObjManager::ScanMeshAssets()
 
 	const std::filesystem::path MeshCacheRoot = FPaths::RootDir() + L"Asset\\MeshCache\\";
 
-
 	if (!std::filesystem::exists(MeshCacheRoot))
 	{
 		return;
 	}
 
 	const std::filesystem::path ProjectRoot(FPaths::RootDir());
-
 
 	for (const auto& Entry : std::filesystem::recursive_directory_iterator(MeshCacheRoot))
 	{
@@ -94,7 +135,7 @@ void FObjManager::ScanMaterialAssets()
 {
 	AvailableMaterialFiles.clear();
 
-	// .mbin 파일도 .bin과 동일하게 MeshCache 폴더에 생성됨
+	// .mbin은 MeshCache 하위 폴더까지 재귀 스캔
 	const std::filesystem::path MeshCacheRoot = FPaths::RootDir() + L"Asset\\MeshCache\\";
 
 	if (!std::filesystem::exists(MeshCacheRoot))
@@ -110,13 +151,26 @@ void FObjManager::ScanMaterialAssets()
 
 		const std::filesystem::path& Path = Entry.path();
 
-		// 확장자가 .mbin인지 확인
+		// .mbin만 대상
 		if (Path.extension() != L".mbin") continue;
 		if (Path.stem() == L"None") continue; // Fallback 머티리얼은 목록에서 제외
 
 		FMaterialAssetListItem Item;
-		Item.DisplayName = FPaths::ToUtf8(Path.stem().wstring());
 		Item.FullPath = FPaths::ToUtf8(Path.lexically_relative(ProjectRoot).generic_wstring());
+
+		// DisplayName: "부모폴더 / 파일명" (루트면 파일명만)
+		FString Stem = FPaths::ToUtf8(Path.stem().wstring());
+		FString ParentDirName = FPaths::ToUtf8(Path.parent_path().filename().wstring());
+
+		if (ParentDirName == "MeshCache" || ParentDirName == "None" || ParentDirName.empty())
+		{
+			Item.DisplayName = Stem;
+		}
+		else
+		{
+			Item.DisplayName = ParentDirName + " / " + Stem;
+		}
+
 		AvailableMaterialFiles.push_back(std::move(Item));
 	}
 }
@@ -171,218 +225,186 @@ const TArray<FMeshAssetListItem>& FObjManager::GetAvailableObjFiles()
 UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, const FImportOptions& Options, ID3D11Device* InDevice)
 {
 	FString CacheKey = GetBinaryFilePath(PathFileName);
-
-	// 옵션이 다를 수 있으므로 기존 캐시 무효화
-	StaticMeshCache.erase(CacheKey);
+	auto ImportStartTime = std::chrono::high_resolution_clock::now();
+	UE_LOG("[IMPORT] OBJ BEGIN src=%s key=%s", PathFileName.c_str(), CacheKey.c_str());
 
 	UStaticMesh* StaticMesh = UObjectManager::Get().CreateObject<UStaticMesh>();
-
-	FString BinPath = CacheKey;
-
-	// 항상 리빌드 (옵션이 달라질 수 있음)
 	FStaticMesh* NewMeshAsset = new FStaticMesh();
 	TArray<FStaticMaterial> ParsedMaterials;
 
-	if (FObjImporter::Import(PathFileName, Options, *NewMeshAsset, ParsedMaterials))
+	// 원본 OBJ 파일 파싱
+	if (!FObjImporter::Import(PathFileName, Options, *NewMeshAsset, ParsedMaterials))
 	{
-		// 머티리얼 .mbin 저장 ("None" Fallback 머티리얼은 저장하지 않음)
-		for (auto& Mat : ParsedMaterials)
+		delete NewMeshAsset;
+
+		auto ImportEndTime = std::chrono::high_resolution_clock::now();
+		const double ImportMs = std::chrono::duration<double, std::milli>(ImportEndTime - ImportStartTime).count();
+		UE_LOG("[IMPORT] OBJ END result=FAIL src=%s key=%s time_ms=%.3f",
+			PathFileName.c_str(),
+			CacheKey.c_str(),
+			ImportMs);
+
+		UObjectManager::Get().DestroyObject(StaticMesh);
+		return nullptr;
+	}
+
+	// 파싱된 각 머티리얼을 .mbin 으로 캐시 저장
+	for (auto& Mat : ParsedMaterials)
+	{
+		if (Mat.MaterialInterface)
 		{
-			if (Mat.MaterialInterface)
+			// MatCachePath: 예) "Asset/MeshCache/model_MatID.mbin"
+			const FString& MatCachePath = Mat.MaterialInterface->CachePath;
+
+			// 디스크에 직렬화 저장
+			FWindowsBinWriter MatWriter(MatCachePath);
+			if (MatWriter.IsValid())
 			{
-				MaterialCache[Mat.MaterialInterface->PathFileName] = Mat.MaterialInterface;
-				if (Mat.MaterialInterface->PathFileName == "None")
-					continue;
-
-				FString MatBinPath = FObjManager::GetMBinaryFilePath(Mat.MaterialInterface->PathFileName);
-
-				FWindowsBinWriter MatWriter(MatBinPath);
-				if (MatWriter.IsValid())
-				{
-					Mat.MaterialInterface->Serialize(MatWriter);
-				}
+				Mat.MaterialInterface->Serialize(MatWriter);
 			}
-		}
-
-		NewMeshAsset->PathFileName = PathFileName;
-		StaticMesh->SetStaticMeshAsset(NewMeshAsset);
-		StaticMesh->SetStaticMaterials(std::move(ParsedMaterials));
-
-		// .bin 저장
-		FWindowsBinWriter Writer(BinPath);
-		if (Writer.IsValid())
-		{
-			StaticMesh->Serialize(Writer);
 		}
 	}
 
+	NewMeshAsset->PathFileName = PathFileName;
+	StaticMesh->SetStaticMeshAsset(NewMeshAsset);
+	StaticMesh->SetStaticMaterials(std::move(ParsedMaterials));
+
+	// 완성된 StaticMesh를 .bin 으로 캐시 저장
+	FWindowsBinWriter Writer(CacheKey);
+	if (Writer.IsValid())
+	{
+		StaticMesh->Serialize(Writer);
+	}
+
+	// Import 직후 에디터 드롭다운이 즉시 갱신되도록 캐시 목록을 재스캔
+	ScanMeshAssets();
+	ScanMaterialAssets();
+
+	// GPU 리소스 생성 및 메모리 캐시 등록
 	StaticMesh->InitResources(InDevice);
 	StaticMeshCache[CacheKey] = StaticMesh;
+
+	auto ImportEndTime = std::chrono::high_resolution_clock::now();
+	const double ImportMs = std::chrono::duration<double, std::milli>(ImportEndTime - ImportStartTime).count();
+	UE_LOG("[IMPORT] OBJ END result=SUCCESS src=%s key=%s time_ms=%.3f",
+		PathFileName.c_str(),
+		CacheKey.c_str(),
+		ImportMs);
 
 	return StaticMesh;
 }
 
-UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11Device* InDevice)
+// 캐시 기반 로드 (캐시가 없거나 원본이 더 최신이면 자동 임포트=재빌드)
+UStaticMesh* FObjManager::LoadObjStaticMesh(const std::string& PathFileName, ID3D11Device* InDevice)
 {
 	FString CacheKey = GetBinaryFilePath(PathFileName);
 
-	// 캐시 확인 (O(1) 룩업)
-	auto It = StaticMeshCache.find(CacheKey);
-	if (It != StaticMeshCache.end())
+	// 1. RAM 캐시 조회
+	if (auto It = StaticMeshCache.find(CacheKey); It != StaticMeshCache.end())
 	{
 		return It->second;
 	}
 
-	// UStaticMesh 생성 + FStaticMesh 소유권 이전 + 머티리얼 설정
-	UStaticMesh* StaticMesh = UObjectManager::Get().CreateObject<UStaticMesh>();
-
-	FString BinPath = CacheKey;
+	// 2. 디스크 캐시(.bin) 최신 여부 확인
 	bool bNeedRebuild = true;
-
-	// 3. 타임스탬프 비교 (디스크 캐시 확인)
-	std::filesystem::path BinPathW(FPaths::ToWide(BinPath));
+	std::filesystem::path BinPathW(FPaths::ToWide(CacheKey));
 	std::filesystem::path PathFileNameW(FPaths::ToWide(PathFileName));
+
 	if (std::filesystem::exists(BinPathW))
 	{
-		if (!std::filesystem::exists(PathFileNameW) || PathFileName == BinPath ||
+		// 원본 파일이 없거나, 원본 파일이 .bin 자체이거나, 캐시가 원본보다 최신이면 재사용
+		if (!std::filesystem::exists(PathFileNameW) || PathFileName == CacheKey ||
 			std::filesystem::last_write_time(BinPathW) >= std::filesystem::last_write_time(PathFileNameW))
 		{
 			bNeedRebuild = false;
 		}
 	}
 
+	// 3. 디스크 캐시에서 로드
 	if (!bNeedRebuild)
 	{
-		// BIN 파일에서 통째로 로드
-		FWindowsBinReader Reader(BinPath);
+		UStaticMesh* StaticMesh = UObjectManager::Get().CreateObject<UStaticMesh>();
+		FWindowsBinReader Reader(CacheKey);
+
 		if (Reader.IsValid())
 		{
 			StaticMesh->Serialize(Reader);
+
+			StaticMesh->InitResources(InDevice);
+			StaticMeshCache[CacheKey] = StaticMesh;
+			return StaticMesh;
 		}
 		else
 		{
-			bNeedRebuild = true; // 읽기 실패 시 강제 파싱
+			UObjectManager::Get().DestroyObject(StaticMesh);
+			StaticMeshCache.erase(CacheKey);
+			bNeedRebuild = true; // 읽기 실패 시 강제 재빌드로 폴백
 		}
 	}
 
+	// 4. 캐시 실패 또는 최신화 필요 시 강제 재빌드(Import)로 위임
 	if (bNeedRebuild)
 	{
-		// 무거운 OBJ 파싱 진행
-		FStaticMesh* NewMeshAsset = new FStaticMesh();
-		TArray<FStaticMaterial> ParsedMaterials;
+		StaticMeshCache.erase(CacheKey);
 
-		if (FObjImporter::Import(PathFileName, *NewMeshAsset, ParsedMaterials))
+		if (PathFileName == CacheKey)
 		{
-			for (auto& Mat : ParsedMaterials)
-			{
-				if (Mat.MaterialInterface)
-				{
-					MaterialCache[Mat.MaterialInterface->PathFileName] = Mat.MaterialInterface;
-					if (Mat.MaterialInterface->PathFileName == "None")
-						continue;
-
-					FString MatBinPath = FObjManager::GetMBinaryFilePath(Mat.MaterialInterface->PathFileName);
-
-					FWindowsBinWriter MatWriter(MatBinPath);
-					if (MatWriter.IsValid())
-					{
-						Mat.MaterialInterface->Serialize(MatWriter); // UMaterial 데이터 직렬화
-					}
-				}
-			}
-
-			StaticMesh->SetStaticMeshAsset(NewMeshAsset);
-			StaticMesh->SetStaticMaterials(std::move(ParsedMaterials));
-
-			// 파싱 결과를 하드디스크에 굽기 (다음 로딩 속도 최적화)
-			FWindowsBinWriter Writer(BinPath);
-			if (Writer.IsValid())
-			{
-				StaticMesh->Serialize(Writer);
-			}
+			return nullptr;
 		}
+
+		return LoadObjStaticMesh(PathFileName, FImportOptions::Default(), InDevice);
 	}
 
-	StaticMesh->InitResources(InDevice);
-
-	// 캐시 등록
-	StaticMeshCache[CacheKey] = StaticMesh;
-
-	return StaticMesh;
+	return nullptr;
 }
 
-
-UMaterial* FObjManager::GetOrLoadMaterial(const FString& MaterialName)
+UMaterial* FObjManager::GetOrLoadMaterial(const FString& CachePath)
 {
-	std::filesystem::path SrcPath = FPaths::ToWide(MaterialName);
-	FString FileNameOnly = FPaths::ToUtf8(SrcPath.stem().wstring());
+	// CachePath 예시: "Asset/MeshCache/model/material.mbin"
 
-	// 1. 캐시(RAM)에 이미 있는지 검사
-	if (MaterialCache.contains(FileNameOnly))
+	// 1. RAM 캐시 조회
+	if (MaterialCache.contains(CachePath))
 	{
-		UE_LOG("Cached MaterialName: %s;", FileNameOnly.c_str());
-		return MaterialCache[FileNameOnly];
+		return MaterialCache[CachePath];
 	}
 
-	// 2. 캐시에 없다면 빈 객체 생성
+	// 2. 빈 UMaterial 생성
 	UMaterial* NewMaterial = UObjectManager::Get().CreateObject<UMaterial>();
-	UE_LOG("Cache Missed MaterialName: %s;", FileNameOnly.c_str());
 
-	FString MBinPath = GetMBinaryFilePath(MaterialName);
-	std::filesystem::path MBinPathW = FPaths::ToWide(MBinPath);
-	bool bNeedRebuild = true;
-
+	// 3. 디스크(.mbin)에서 복원 시도
+	std::filesystem::path MBinPathW = FPaths::ToWide(CachePath);
 	if (std::filesystem::exists(MBinPathW))
 	{
-		// 원본 파일이 없거나, 이미 mbin 경로가 들어왔거나, 
-		// mbin 파일의 수정 날짜가 원본 파일보다 최신(또는 같음)인 경우 리빌드 생략
-		if (!std::filesystem::exists(SrcPath) || MaterialName == MBinPath ||
-			std::filesystem::last_write_time(MBinPathW) >= std::filesystem::last_write_time(SrcPath))
-		{
-			bNeedRebuild = false;
-		}
-	}
-
-	if (!bNeedRebuild)
-	{
-		// MBIN 파일에서 통째로 로드
-		FWindowsBinReader Reader(MBinPath);
+		FWindowsBinReader Reader(CachePath);
 		if (Reader.IsValid())
 		{
+			// Serialize 과정에서 MaterialName, DiffuseTextureFilePath 등이 복원됨
 			NewMaterial->Serialize(Reader);
 		}
-		else
-		{
-			bNeedRebuild = true; // 파일 읽기 실패 시 강제 리빌드로 전환
-		}
 	}
 
-	// 3. 하드디스크(.bin)에 있다면 로드
-	if (bNeedRebuild)
+	// 4. RAM 캐시 등록 후 반환
+	MaterialCache[CachePath] = NewMaterial;
+	return NewMaterial;
+}
+
+void FObjManager::InitializeNoneMaterial()
+{
+	FString NoneCachePath = ComputeMBinaryFilePath("", "None");
+	std::filesystem::path MBinPathW = FPaths::ToWide(NoneCachePath);
+
+	// 파일이 없으면 기본 WorldGridMaterial(None) 생성
+	if (!std::filesystem::exists(MBinPathW))
 	{
-		// [리빌드 진행 영역]
-		// 현재 첨부된 코드 상에는 ObjImporter에서 Material을 같이 추출하지만,
-		// 추후 Material 단독 파일(예: .mat, .json 등)을 파싱하는 전용 Importer가 있다면 이 부분에서 파싱을 수행해야 합니다.
+		UMaterial* NoneMaterial = UObjectManager::Get().CreateObject<UMaterial>();
+		NoneMaterial->MaterialName = "None";
+		NoneMaterial->CachePath = NoneCachePath;
+		NoneMaterial->DiffuseColor = FVector4(1.0f, 0.0f, 1.0f, 1.0f); // Magenta
 
-		// 기존 코드 동작 유지 보장: 파일이 존재하면 기존처럼 읽어들이기 시도
-		if (std::filesystem::exists(SrcPath))
-		{
-			FWindowsBinReader Reader(MaterialName);
-			if (Reader.IsValid())
-			{
-				NewMaterial->Serialize(Reader);
-			}
-		}
-
-		FWindowsBinWriter Writer(MBinPath);
+		FWindowsBinWriter Writer(NoneCachePath);
 		if (Writer.IsValid())
 		{
-			NewMaterial->Serialize(Writer);
+			NoneMaterial->Serialize(Writer);
 		}
-
 	}
-
-	// 4. 캐시에 등록 후 반환
-	MaterialCache[FileNameOnly] = NewMaterial;
-	return NewMaterial;
 }

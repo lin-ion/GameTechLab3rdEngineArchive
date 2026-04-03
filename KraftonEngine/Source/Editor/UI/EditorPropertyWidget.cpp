@@ -39,6 +39,25 @@ static FString GetStemFromPath(const FString& Path)
 	return RemoveExtension(FileName);
 }
 
+static FString GetMaterialDisplayNameFromCachePath(const FString& CachePath)
+{
+	if (CachePath.empty() || CachePath == "None")
+	{
+		return "None";
+	}
+
+	std::filesystem::path Path(FPaths::ToWide(CachePath));
+	FString Stem = FPaths::ToUtf8(Path.stem().wstring());
+	FString ParentDirName = FPaths::ToUtf8(Path.parent_path().filename().wstring());
+
+	if (ParentDirName.empty() || ParentDirName == "MeshCache" || ParentDirName == "None")
+	{
+		return Stem;
+	}
+
+	return ParentDirName + " / " + Stem;
+}
+
 FString FEditorPropertyWidget::OpenObjFileDialog()
 {
 	wchar_t FilePath[MAX_PATH] = {};
@@ -559,7 +578,13 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor>& Pr
 		ImGui::SameLine(120);
 		ImGui::SetNextItemWidth(-1);
 
-		FString Preview = (Slot->empty() || *Slot == "None") ? "None" : GetStemFromPath(*Slot);
+		// Preview: 현재 선택된 머티리얼의 유저 친화적 이름 표시
+		FString Preview = "None";
+		if (!Slot->empty() && *Slot != "None")
+		{
+			Preview = GetMaterialDisplayNameFromCachePath(*Slot);
+		}
+
 		if (ImGui::BeginCombo("##Mat", Preview.c_str()))
 		{
 			// "None" 선택지 기본 제공

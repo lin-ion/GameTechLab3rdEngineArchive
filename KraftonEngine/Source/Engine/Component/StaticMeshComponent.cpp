@@ -24,10 +24,10 @@ void UStaticMeshComponent::SetStaticMesh(UStaticMesh* InMesh)
 
 		for (int32 i = 0; i < (int32)DefaultMaterials.size(); ++i)
 		{
-			OverrideMaterials[i]        = DefaultMaterials[i].MaterialInterface;
+			OverrideMaterials[i] = DefaultMaterials[i].MaterialInterface;
 
 			if (OverrideMaterials[i])
-				OverrideMaterialPaths[i] = OverrideMaterials[i]->GetAssetPathFileName();
+				OverrideMaterialPaths[i] = OverrideMaterials[i]->CachePath;
 			else
 				OverrideMaterialPaths[i] = "None";
 		}
@@ -229,7 +229,7 @@ void UStaticMeshComponent::PostEditProperty(const char* PropertyName)
 	{
 		if (StaticMeshPath.empty() || StaticMeshPath == "None")
 		{
-			StaticMesh = nullptr;
+			SetStaticMesh(nullptr);
 		}
 		else
 		{

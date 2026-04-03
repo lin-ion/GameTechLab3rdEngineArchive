@@ -1,14 +1,12 @@
 ﻿#include "Mesh/ObjImporter.h"
 #include "Mesh/StaticMeshAsset.h"
 #include "Materials/Material.h"
-#include "Editor/UI/EditorConsoleWidget.h"
 #include "Engine/Platform/Paths.h"
 #include "Mesh/ObjManager.h"
 #include <algorithm>
 #include <fstream>
 #include <filesystem>
 #include <charconv>
-#include <chrono>
 
 const FVector FallbackColor3 = FVector(1.0f, 0.0f, 1.0f);
 const FVector4 FallbackColor4 = FVector4(FallbackColor3, 1.0f);
@@ -145,7 +143,6 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 	std::ifstream File(FPaths::ToWide(ObjFilePath), std::ios::binary | std::ios::ate);
 	if (!File.is_open())
 	{
-		UE_LOG("Failed to open OBJ file: %s", ObjFilePath.c_str());
 		return false;
 	}
 
@@ -154,7 +151,6 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 	TArray<char> Buffer(FileSize);
 	if (!File.read(Buffer.data(), FileSize))
 	{
-		UE_LOG("Failed to read OBJ file: %s", ObjFilePath.c_str());
 		return false;
 	}
 
@@ -232,7 +228,6 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 
 			if (FaceVertices.size() < 3)
 			{
-				UE_LOG("Face with less than 3 vertices");
 				continue;
 			}
 
@@ -264,7 +259,6 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 				else
 					Line = std::string_view();
 				OutObjInfo.MaterialLibraryFilePath = FPaths::ResolveAssetPath(ObjFilePath, std::string(Line));
-				UE_LOG("Found material library: '%s' -> resolved: '%s'", std::string(Line).c_str(), OutObjInfo.MaterialLibraryFilePath.c_str());
 			}
 			else if (Prefix == "usemtl")
 			{
@@ -290,7 +284,6 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 				}
 				Section.FirstIndex = static_cast<uint32>(OutObjInfo.PosIndices.size());
 				OutObjInfo.Sections.emplace_back(Section);
-				UE_LOG("New section with material: '%s'", Section.MaterialNameInObjFile.c_str());
 			}
 			else if (Prefix == "o")
 			{
@@ -313,11 +306,6 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 		OutObjInfo.UVs.emplace_back(FVector2{ 0.0f, 0.0f });
 	}
 
-	UE_LOG("ParseObj complete: %s | Positions=%zu UVs=%zu Normals=%zu Sections=%zu TotalIndices=%zu",
-		ObjFilePath.c_str(),
-		OutObjInfo.Positions.size(), OutObjInfo.UVs.size(), OutObjInfo.Normals.size(),
-		OutObjInfo.Sections.size(), OutObjInfo.PosIndices.size());
-
 	return true;
 }
 
@@ -328,7 +316,6 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 
 	if (!File.is_open())
 	{
-		UE_LOG("Failed to open MTL file: %s", MtlFilePath.c_str());
 		return false;
 	}
 
@@ -337,7 +324,6 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 	TArray<char> Buffer(FileSize);
 	if (!File.read(Buffer.data(), FileSize))
 	{
-		UE_LOG("Failed to read MTL file: %s", MtlFilePath.c_str());
 		return false;
 	}
 
@@ -453,12 +439,9 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 			if (!TextureFileName.empty())
 			{
 				OutMtlInfos.back().map_Kd = FPaths::ResolveAssetPath(MtlFilePath, TextureFileName);
-				UE_LOG("  map_Kd '%s' -> resolved: '%s'", TextureFileName.c_str(), OutMtlInfos.back().map_Kd.c_str());
 			}
 		}
 	}
-
-	UE_LOG("ParseMtl complete: %s | Materials=%zu", MtlFilePath.c_str(), OutMtlInfos.size());
 	return true;
 }
 
@@ -513,55 +496,56 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 		}
 	}
 
+	// "None" 머티리얼의 CachePath — GetOrLoadMaterial에서 없으면 자동으로 Magenta로 생성
+	const FString NoneCachePath = FObjManager::ComputeMBinaryFilePath("", "None");
+
 	// 수집된 순서대로 머티리얼 생성 및 인덱스 매핑
 	for (const FString& TargetSlotName : OrderedMaterialSlots)
 	{
-		// 슬롯 이름과 일치하는 파싱된 머티리얼 데이터 선형 탐색
-		const FObjMaterialInfo* MatchedMaterial = nullptr;
+		// usemtl 슬롯명으로 MTL 파일에서 정의된 머티리얼 탐색
 		auto It = std::find_if(MtlInfos.begin(), MtlInfos.end(),
 			[&TargetSlotName](const FObjMaterialInfo& Mat) {
 				return Mat.MaterialNameInMtlFile == TargetSlotName;
 			});
 
+		const FString MatCachePath = FObjManager::ComputeMBinaryFilePath(ObjInfo.MaterialLibraryFilePath, TargetSlotName);
+
 		if (It != MtlInfos.end())
 		{
-			MatchedMaterial = &(*It);
-			// 섹션 머티리얼 슬롯 이름과 일치하는 머티리얼 이름이 MTL 파일에서 발견된 경우, 해당 머티리얼 로드 또는 생성
-			UE_LOG("Importer TargetSlotName: %s;", TargetSlotName.c_str());
-			UMaterial* MaterialObject = FObjManager::GetOrLoadMaterial(TargetSlotName);
+			const FObjMaterialInfo& MatchedMaterial = *It;
 
-			// 머티리얼 객체가 새로 생성된 경우에만 속성 설정 (캐시에서 로드된 경우 이미 설정되어 있다고 가정)
-			if (MaterialObject->PathFileName.empty())
+			// CachePath를 키로 RAM 캐시 또는 mbin에서 로드
+			UMaterial* MaterialObject = FObjManager::GetOrLoadMaterial(MatCachePath);
+
+			// 새로 생성된 경우에만 속성 설정 (mbin 로드 시 이미 복원되어 있음)
+			if (MaterialObject->MaterialName.empty())
 			{
-				MaterialObject->PathFileName = TargetSlotName;
+				// MaterialName: usemtl 슬롯명 원문 (예: "MatID_1.001")
+				MaterialObject->MaterialName = TargetSlotName;
+				MaterialObject->CachePath = MatCachePath;
 
-				if (!MatchedMaterial->map_Kd.empty())
+				if (!MatchedMaterial.map_Kd.empty())
 				{
-					MaterialObject->DiffuseTextureFilePath = MatchedMaterial->map_Kd;
+					// DiffuseTextureFilePath: "Data/model/texture.png" (ResolveAssetPath로 정규화된 경로)
+					MaterialObject->DiffuseTextureFilePath = MatchedMaterial.map_Kd;
 					MaterialObject->DiffuseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 				}
 				else
 				{
-					MaterialObject->DiffuseColor = { MatchedMaterial->Kd.X, MatchedMaterial->Kd.Y, MatchedMaterial->Kd.Z, 1.0f };
+					MaterialObject->DiffuseColor = { MatchedMaterial.Kd.X, MatchedMaterial.Kd.Y, MatchedMaterial.Kd.Z, 1.0f };
 				}
 			}
 
-			// FStaticMaterial 슬롯 생성 및 OutMaterials에 추가
 			FStaticMaterial NewStaticMaterial;
 			NewStaticMaterial.MaterialInterface = MaterialObject;
 			NewStaticMaterial.MaterialSlotName = TargetSlotName;
 			OutMaterials.push_back(NewStaticMaterial);
 		}
-		else // Material Slot이 MTL 파일에 정의되어 있지 않은 경우
+		else // MTL 파일에 정의되지 않은 슬롯 → None 머티리얼로 대체
 		{
-			UMaterial* DefaultMaterialObject = FObjManager::GetOrLoadMaterial("None");
-			if (DefaultMaterialObject->PathFileName.empty())
-			{
-				DefaultMaterialObject->PathFileName = "None";
-				DefaultMaterialObject->DiffuseColor = FallbackColor4;
-			}
+			UMaterial* DefaultMaterialObject = FObjManager::GetOrLoadMaterial(NoneCachePath);
+			// GetOrLoadMaterial이 None.mbin 없으면 Magenta로 자동 생성하므로 추가 설정 불필요
 
-			// FStaticMaterial 슬롯 생성 및 OutMaterials에 추가
 			FStaticMaterial NewEmptyStaticMaterial;
 			NewEmptyStaticMaterial.MaterialInterface = DefaultMaterialObject;
 			NewEmptyStaticMaterial.MaterialSlotName = TargetSlotName;
@@ -572,17 +556,11 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 	// "None" 슬롯이 존재했다면 맨 마지막에 배치
 	if (bHasNoneSlot)
 	{
-		UMaterial* DefaultMaterialObject = FObjManager::GetOrLoadMaterial("None");
-		if (DefaultMaterialObject->PathFileName.empty())
-		{
-			DefaultMaterialObject->PathFileName = "None";
-			DefaultMaterialObject->DiffuseColor = FallbackColor4;
-		}
+		UMaterial* DefaultMaterialObject = FObjManager::GetOrLoadMaterial(NoneCachePath);
 
 		FStaticMaterial NewDefaultStaticMaterial;
 		NewDefaultStaticMaterial.MaterialInterface = DefaultMaterialObject;
 		NewDefaultStaticMaterial.MaterialSlotName = "None";
-
 		OutMaterials.push_back(NewDefaultStaticMaterial);
 	}
 
@@ -607,7 +585,6 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 		{
 			// "None" 슬롯이 없고 매칭되는 슬롯도 없는 경우, 기본 머티리얼로 할당
 			MaterialIndex = OutMaterials.size() - 1; // "None" 슬롯이 마지막에 배치되어 있다고 가정
-			UE_LOG("Warning: Material slot '%s' not found. Assigning to Default slot.", RawSection.MaterialNameInObjFile.c_str());
 		}
 
 		for (uint32 i = 0; i < RawSection.NumTriangles; ++i)
@@ -714,9 +691,6 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 		OutMesh.Sections.push_back(NewSection);
 	}
 
-	UE_LOG("Convert complete: Vertices=%zu Indices=%zu Sections=%zu Materials=%zu",
-		OutMesh.Vertices.size(), OutMesh.Indices.size(), OutMesh.Sections.size(), OutMaterials.size());
-
     return true;
 }
 
@@ -727,14 +701,11 @@ bool FObjImporter::Import(const FString& ObjFilePath, FStaticMesh& OutMesh, TArr
 
 bool FObjImporter::Import(const FString& ObjFilePath, const FImportOptions& Options, FStaticMesh& OutMesh, TArray<FStaticMaterial>& OutMaterials)
 {
-	auto StartTime = std::chrono::high_resolution_clock::now();
-
 	OutMaterials.clear();
 
 	FObjInfo ObjInfo;
 	if (!FObjImporter::ParseObj(ObjFilePath, ObjInfo))
 	{
-		UE_LOG("ParseObj failed for: %s", ObjFilePath.c_str());
 		return false;
 	}
 
@@ -742,21 +713,15 @@ bool FObjImporter::Import(const FString& ObjFilePath, const FImportOptions& Opti
 	if (!ObjInfo.MaterialLibraryFilePath.empty()) {
 		if (!FObjImporter::ParseMtl(ObjInfo.MaterialLibraryFilePath, ParsedMtlInfos))
 		{
-			UE_LOG("ParseMtl failed for: %s", ObjInfo.MaterialLibraryFilePath.c_str());
 			ObjInfo.MaterialLibraryFilePath.clear();
 			ParsedMtlInfos.clear();
 		}
 	}
 
 	if (!FObjImporter::Convert(ObjInfo, ParsedMtlInfos, Options, OutMesh, OutMaterials)){
-		UE_LOG("Convert failed for: %s", ObjFilePath.c_str());
 		return false;
 	}
 	OutMesh.PathFileName = ObjFilePath;
-
-	auto EndTime = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> Duration = EndTime - StartTime;
-	UE_LOG("OBJ Imported successfully. File: %s. Time taken: %.4f seconds", ObjFilePath.c_str(), Duration.count());
 
 	return true;
 }
