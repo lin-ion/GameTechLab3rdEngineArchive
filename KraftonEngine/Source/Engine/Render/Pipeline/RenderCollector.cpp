@@ -1,6 +1,7 @@
 #include "RenderCollector.h"
 
 #include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/GizmoComponent.h"
@@ -14,7 +15,15 @@ void FRenderCollector::CollectWorld(UWorld* World, const TArray<AActor*>& Select
 {
 	if (!World) return;
 
-	World->GetRenderProxy().CollectWorld(RenderBus, SelectedActors);
+	if (UScene* PersistentScene = World->GetPersistentScene())
+	{
+		PersistentScene->GetRenderProxy().CollectWorld(RenderBus, SelectedActors);
+	}
+
+	if (UScene* ActiveScene = World->GetActiveScene())
+	{
+		ActiveScene->GetRenderProxy().CollectWorld(RenderBus, SelectedActors);
+	}
 }
 
 void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, FRenderBus& RenderBus)
@@ -23,14 +32,6 @@ void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, F
 	Entry.Grid.GridSpacing = GridSpacing;
 	Entry.Grid.GridHalfLineCount = GridHalfLineCount;
 	RenderBus.AddGridEntry(std::move(Entry));
-}
-
-void FRenderCollector::CollectGizmo(UGizmoComponent* Gizmo, ELevelViewportType ViewportType, FRenderBus& RenderBus)
-{
-	if (!Gizmo) return;
-
-	Gizmo->UpdateAxisMask(ViewportType);
-	Gizmo->CollectRender(RenderBus);
 }
 
 void FRenderCollector::CollectOverlayText(bool bActive, const FOverlayStatSystem& OverlaySystem, const UEditorEngine& Editor, FRenderBus& RenderBus)

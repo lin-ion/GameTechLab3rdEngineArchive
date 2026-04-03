@@ -8,7 +8,7 @@ class UGizmoComponent;
 class FSelectionManager
 {
 public:
-	void Init();
+	void Init(class UWorld* InWorld);
 	void Shutdown();
 
 	void Select(AActor* Actor);

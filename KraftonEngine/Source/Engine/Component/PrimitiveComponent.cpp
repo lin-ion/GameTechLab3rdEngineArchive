@@ -5,6 +5,7 @@
 #include "Render/Resource/ShaderManager.h"
 #include "Core/CollisionTypes.h"
 #include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 #include "Render/Pipeline/PrimitiveProxy.h"
 
@@ -31,10 +32,10 @@ void UPrimitiveComponent::OnRegister()
 		Proxy = CreateProxy();
 	}
 
-	UWorld* World = GetWorld();
-	if (Proxy && World)
+	UScene* Scene = GetScene();
+	if (Proxy && Scene)
 	{
-		World->GetRenderProxy().AddProxy(Proxy);
+		Scene->GetRenderProxy().AddProxy(Proxy);
 	}
 }
 
@@ -42,10 +43,10 @@ void UPrimitiveComponent::OnRegister()
 
 void UPrimitiveComponent::OnUnregister()
 {
-	UWorld* World = GetWorld();
-	if (Proxy && World)
+	UScene* Scene = GetScene();
+	if (Proxy && Scene)
 	{
-		World->GetRenderProxy().RemoveProxy(Proxy);
+		Scene->GetRenderProxy().RemoveProxy(Proxy);
 		delete Proxy;
 		Proxy = nullptr;
 	}

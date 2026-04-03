@@ -27,6 +27,8 @@ public:
 	virtual FPrimitiveProxy* CreateProxy();
 	void MarkRenderStateDirty();
 
+	FPrimitiveProxy* GetProxy() const { return Proxy; }
+
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 
 	virtual FMeshBuffer* GetMeshBuffer() const { return nullptr; }

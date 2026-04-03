@@ -7,7 +7,7 @@
 
 // === Forward Declaration
 class UCameraComponent;
-// === Forward Declaration
+class UScene;
 
 class UWorld : public UObject {
 public:
@@ -20,8 +20,7 @@ public:
 	T* SpawnActor();
 	void DestroyActor(AActor* Actor);
 
-	const TArray<AActor*>& GetActors() const { return Actors; }
-	void AddActor(AActor* Actor);
+	const TArray<AActor*>& GetActors() const;
 
 	void InitWorld();      // Set up the world before gameplay begins
 	void BeginPlay();      // Triggers BeginPlay on all actors
@@ -34,15 +33,18 @@ public:
 	void SetActiveCamera(UCameraComponent* InCamera) { ActiveCamera = InCamera; }
 	UCameraComponent* GetActiveCamera() const { return ActiveCamera; }
 
-	FWorldRenderProxy& GetRenderProxy() { return *RenderProxy; }
+	UScene* GetActiveScene() const { return ActiveScene; }
+	UScene* GetPersistentScene() const { return PersistentScene; }
 
 private:
-	TArray<AActor*> Actors;
+	UScene* ActiveScene = nullptr;
+	UScene* PersistentScene = nullptr;
+
 	UCameraComponent* ActiveCamera = nullptr;
 	bool bHasBegunPlay = false;
-
-	std::unique_ptr<FWorldRenderProxy> RenderProxy;
 };
+
+#include "GameFramework/Scene.h"
 
 template<typename T>
 inline T* UWorld::SpawnActor()
@@ -50,11 +52,9 @@ inline T* UWorld::SpawnActor()
 	// create and register an actor
 	T* Actor = UObjectManager::Get().CreateObject<T>();
 	Actor->SetWorld(this);
-	Actor->RegisterAllComponents();
-	if (bHasBegunPlay)
-	{
-		Actor->BeginPlay();
-	}
-	Actors.push_back(Actor);
+	
+	// Default to ActiveScene
+	ActiveScene->AddActor(Actor);
+
 	return Actor;
 }
