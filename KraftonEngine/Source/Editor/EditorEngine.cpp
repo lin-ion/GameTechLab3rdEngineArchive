@@ -3,6 +3,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Component/CameraComponent.h"
+#include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
@@ -34,6 +35,8 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 
 	// Selection & Gizmo
 	SelectionManager.Init();
+	// Gizmo는 월드 외부의 객체이므로 WorldProxy에 수동으로 등록
+	GetWorld()->GetRenderProxy().AddProxy(GetGizmo()->CreateProxy());
 
 	// 뷰포트 레이아웃 초기화 + 저장된 설정 복원
 	ViewportLayout.Initialize(this, Window, Renderer, &SelectionManager);
