@@ -8,6 +8,11 @@ UWorld* UActorComponent::GetWorld() const
 	return Owner ? Owner->GetWorld() : nullptr;
 }
 
+UScene* UActorComponent::GetScene() const
+{
+	return Owner ? Owner->GetScene() : nullptr;
+}
+
 void UActorComponent::BeginPlay()
 {
 	if (bAutoActivate)

@@ -5,6 +5,7 @@
 
 class AActor;
 class UWorld;
+class UScene;
 
 class UActorComponent : public UObject
 {
@@ -33,6 +34,7 @@ public:
 	AActor* GetOwner() const { return Owner; }
 
 	UWorld* GetWorld() const;
+	UScene* GetScene() const;
 
 	// 에디터에 노출할 프로퍼티 목록 반환. 하위 클래스에서 override하여 속성 추가.
 	virtual void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps);
