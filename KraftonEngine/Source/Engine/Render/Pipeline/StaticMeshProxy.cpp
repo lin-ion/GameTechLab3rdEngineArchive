@@ -42,22 +42,15 @@ void FStaticMeshProxy::UpdateProxy()
 
 			for (int32 i = 0; i < (int32)Slots.size(); ++i)
 			{
-				if (Slots[i].MaterialSlotName == Section.MaterialSlotName)
+				const int32 MatIdx = Section.MaterialIndex;
+				if (MatIdx >= 0 && MatIdx < (int32)SMC->OverrideMaterials.size() && SMC->OverrideMaterials[MatIdx])
 				{
-					if (i < (int32)SMC->OverrideMaterials.size() && SMC->OverrideMaterials[i])
-					{
-						auto& Mat = SMC->OverrideMaterials[i];
-						if (Mat->DiffuseTexture)
-							Draw.DiffuseSRV = Mat->DiffuseTexture->GetSRV();
-						Draw.DiffuseColor = Mat->DiffuseColor;
-					}
-
-					if (i < (int32)SMC->MaterialSlots.size())
-					{
-						Draw.bIsUVScroll = SMC->MaterialSlots[i].bUVScroll;
-					}
-					break;
+					auto& Mat = SMC->OverrideMaterials[MatIdx];
+					if (Mat->DiffuseTexture)
+						Draw.DiffuseSRV = Mat->DiffuseTexture->GetSRV();
+					Draw.DiffuseColor = Mat->DiffuseColor;
 				}
+				break;
 			}
 			CachedCommand.SectionDraws.push_back(Draw);
 		}
