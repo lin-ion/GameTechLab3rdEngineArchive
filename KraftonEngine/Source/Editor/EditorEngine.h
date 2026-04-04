@@ -3,6 +3,7 @@
 #include "Engine/Runtime/Engine.h"
 
 #include "Editor/Viewport/FLevelViewportLayout.h"
+#include "Editor/Selection/PickingTypes.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
 #include "Editor/UI/EditorMainPanel.h"
 #include "Editor/Settings/EditorSettings.h"
@@ -60,9 +61,13 @@ public:
 	FOverlayStatSystem& GetOverlayStatSystem() { return OverlayStatSystem; }
 	const FOverlayStatSystem& GetOverlayStatSystem() const { return OverlayStatSystem; }
 
+	void SetPickingMode(EPickingMode InMode) { PickingMode = InMode; }
+	EPickingMode GetPickingMode() const { return PickingMode; }
+
 private:
 	FSelectionManager SelectionManager;
 	FEditorMainPanel MainPanel;
 	FLevelViewportLayout ViewportLayout;
 	FOverlayStatSystem OverlayStatSystem;
+	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 };

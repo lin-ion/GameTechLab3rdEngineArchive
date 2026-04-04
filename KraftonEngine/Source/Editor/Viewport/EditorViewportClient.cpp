@@ -1,8 +1,10 @@
 ﻿#include "Editor/Viewport/EditorViewportClient.h"
 
 #include "Editor/UI/EditorConsoleWidget.h"
+#include "Editor/EditorEngine.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Engine/Input/InputSystem.h"
+#include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
 
 #include "Component/CameraComponent.h"
@@ -305,6 +307,12 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 
 void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 {
+	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
+	if (UEditorEngine* Editor = Cast<UEditorEngine>(GEngine))
+	{
+		PickingMode = Editor->GetPickingMode();
+	}
+
 	FHitResult HitResult{};
 	if (FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
 	{
@@ -314,6 +322,12 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 	{
 		AActor* BestActor = nullptr;
 		float ClosestDistance = FLT_MAX;
+
+		// 1단계: 토글 구조만 선반영. ID Picking 경로는 추후 구현 예정.
+		if (PickingMode == EPickingMode::IDBuffer)
+		{
+			// TODO: ID buffer 기반 픽킹으로 교체
+		}
 
 		for (AActor* Actor : World->GetActors())
 		{
