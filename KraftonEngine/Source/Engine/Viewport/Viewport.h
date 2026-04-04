@@ -1,4 +1,5 @@
 ﻿#pragma once
+#pragma once
 
 #include "Render/Types/RenderTypes.h"
 
@@ -23,7 +24,8 @@ public:
 	// 오프스크린 RT 클리어 + 바인딩 (렌더 시작 시 호출)
 	void BeginRender(ID3D11DeviceContext* Ctx, const float ClearColor[4] = nullptr);
 	void BeginPickingRender(ID3D11DeviceContext* Ctx);
-	bool ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutId) const;
+	bool EnqueuePickingIdReadback(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutRequestId);
+	bool TryReadPickingIdReadback(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId, bool& bOutReady);
 
 	// ViewportClient 참조
 	void SetClient(FViewportClient* InClient) { ViewportClient = InClient; }
@@ -57,7 +59,12 @@ private:
 	ID3D11ShaderResourceView* SRV = nullptr;		// ImGui::Image() 출력용
 	ID3D11Texture2D* PickingTexture = nullptr;
 	ID3D11RenderTargetView* PickingRTV = nullptr;
-	ID3D11Texture2D* PickingReadback = nullptr;
+	static constexpr uint32 PickingReadbackRingSize = 3;
+	ID3D11Texture2D* PickingReadbackRing[PickingReadbackRingSize] = {};
+	uint32 PickingReadbackRequestIds[PickingReadbackRingSize] = {};
+	bool bPickingReadbackInFlight[PickingReadbackRingSize] = {};
+	uint32 NextPickingReadbackSlot = 0;
+	uint32 NextPickingReadbackRequestId = 1;
 
 	// 뎁스/스텐실 (TYPELESS 텍스처 → DSV + StencilSRV 분리)
 	ID3D11Texture2D* DepthTexture = nullptr;

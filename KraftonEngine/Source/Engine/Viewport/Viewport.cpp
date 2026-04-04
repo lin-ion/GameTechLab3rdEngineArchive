@@ -84,13 +84,19 @@ void FViewport::BeginPickingRender(ID3D11DeviceContext* Ctx)
 	Ctx->RSSetViewports(1, &VPRect);
 }
 
-bool FViewport::ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutId) const
+bool FViewport::EnqueuePickingIdReadback(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutRequestId)
 {
-	OutId = 0u;
-	if (!Ctx || !PickingTexture || !PickingReadback) return false;
+	OutRequestId = 0u;
+	if (!Ctx || !PickingTexture) return false;
 	if (X >= Width || Y >= Height) return false;
 
-	//	현재 바인딩된 RTV/DSV와의 충돌을 피하기 위해 언바인딩 후 복사
+	const uint32 Slot = NextPickingReadbackSlot;
+	ID3D11Texture2D* SlotTexture = PickingReadbackRing[Slot];
+	if (!SlotTexture || bPickingReadbackInFlight[Slot])
+	{
+		return false;
+	}
+
 	Ctx->OMSetRenderTargets(0, nullptr, nullptr);
 
 	D3D11_BOX SrcBox = {};
@@ -101,20 +107,67 @@ bool FViewport::ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint
 	SrcBox.bottom = Y + 1;
 	SrcBox.back = 1;
 
-	//	렌더된 texture의 클릭 1x1 픽셀만 CPU 읽기용 texture로 복사
-	Ctx->CopySubresourceRegion(PickingReadback, 0, 0, 0, 0, PickingTexture, 0, &SrcBox);
+	Ctx->CopySubresourceRegion(SlotTexture, 0, 0, 0, 0, PickingTexture, 0, &SrcBox);
 
-	D3D11_MAPPED_SUBRESOURCE Mapped = {};
-	if (FAILED(Ctx->Map(PickingReadback, 0, D3D11_MAP_READ, 0, &Mapped)))
+	uint32 NewRequestId = NextPickingReadbackRequestId++;
+	if (NewRequestId == 0u)
+	{
+		NewRequestId = NextPickingReadbackRequestId++;
+	}
+
+	PickingReadbackRequestIds[Slot] = NewRequestId;
+	bPickingReadbackInFlight[Slot] = true;
+	NextPickingReadbackSlot = (Slot + 1) % PickingReadbackRingSize;
+	OutRequestId = NewRequestId;
+	return true;
+}
+
+bool FViewport::TryReadPickingIdReadback(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId, bool& bOutReady)
+{
+	OutId = 0u;
+	bOutReady = false;
+	if (!Ctx || RequestId == 0u)
 	{
 		return false;
 	}
 
-	const uint32* Pixel = static_cast<const uint32*>(Mapped.pData);
-	OutId = *Pixel;
+	for (uint32 Slot = 0; Slot < PickingReadbackRingSize; ++Slot)
+	{
+		if (!bPickingReadbackInFlight[Slot] || PickingReadbackRequestIds[Slot] != RequestId)
+		{
+			continue;
+		}
 
-	Ctx->Unmap(PickingReadback, 0);
-	return true;
+		ID3D11Texture2D* SlotTexture = PickingReadbackRing[Slot];
+		if (!SlotTexture)
+		{
+			return false;
+		}
+
+		D3D11_MAPPED_SUBRESOURCE Mapped = {};
+		HRESULT hr = Ctx->Map(SlotTexture, 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &Mapped);
+		if (hr == DXGI_ERROR_WAS_STILL_DRAWING)
+		{
+			return true;
+		}
+		if (FAILED(hr))
+		{
+			bPickingReadbackInFlight[Slot] = false;
+			PickingReadbackRequestIds[Slot] = 0u;
+			return false;
+		}
+
+		const uint32* Pixel = static_cast<const uint32*>(Mapped.pData);
+		OutId = *Pixel;
+		Ctx->Unmap(SlotTexture, 0);
+
+		bPickingReadbackInFlight[Slot] = false;
+		PickingReadbackRequestIds[Slot] = 0u;
+		bOutReady = true;
+		return true;
+	}
+
+	return false;
 }
 
 bool FViewport::CreateResources()
@@ -170,8 +223,15 @@ bool FViewport::CreateResources()
 	ReadbackDesc.BindFlags = 0;
 	ReadbackDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-	hr = Device->CreateTexture2D(&ReadbackDesc, nullptr, &PickingReadback);
-	if (FAILED(hr)) return false;
+	for (uint32 i = 0; i < PickingReadbackRingSize; ++i)
+	{
+		hr = Device->CreateTexture2D(&ReadbackDesc, nullptr, &PickingReadbackRing[i]);
+		if (FAILED(hr)) return false;
+		PickingReadbackRequestIds[i] = 0u;
+		bPickingReadbackInFlight[i] = false;
+	}
+	NextPickingReadbackSlot = 0;
+	NextPickingReadbackRequestId = 1;
 
 	// ── 뎁스/스텐실 (TYPELESS → DSV + StencilSRV) ──
 	D3D11_TEXTURE2D_DESC DepthDesc = {};
@@ -229,9 +289,17 @@ bool FViewport::CreateResources()
 
 void FViewport::ReleaseResources()
 {
+	for (uint32 i = 0; i < PickingReadbackRingSize; ++i)
+	{
+		if (PickingReadbackRing[i]) { PickingReadbackRing[i]->Release(); PickingReadbackRing[i] = nullptr; }
+		PickingReadbackRequestIds[i] = 0u;
+		bPickingReadbackInFlight[i] = false;
+	}
+	NextPickingReadbackSlot = 0;
+	NextPickingReadbackRequestId = 1;
+
 	if (DepthSRV) { DepthSRV->Release(); DepthSRV = nullptr; }
 	if (StencilSRV) { StencilSRV->Release(); StencilSRV = nullptr; }
-	if (PickingReadback) { PickingReadback->Release(); PickingReadback = nullptr; }
 	if (PickingRTV) { PickingRTV->Release(); PickingRTV = nullptr; }
 	if (PickingTexture) { PickingTexture->Release(); PickingTexture = nullptr; }
 	if (DSV) { DSV->Release(); DSV = nullptr; }

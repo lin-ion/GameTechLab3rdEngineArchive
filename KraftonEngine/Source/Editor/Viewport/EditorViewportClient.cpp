@@ -297,6 +297,7 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 		if (Gizmo->IsHolding())
 		{
 			Gizmo->UpdateDrag(Ray);
+			InvalidateIdBufferCache();
 		}
 	}
 	else if (InputSystem::Get().GetLeftDragEnd())
@@ -320,6 +321,7 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 
 	if (PickingMode == EPickingMode::IDBuffer)
 	{
+		CancelPendingIdPickReadback();
 		bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
 		const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
 		const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
@@ -333,7 +335,6 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 			return;
 		}
 
-		bPendingIdPickNeedsRender = !IsIdBufferCacheValidForCurrentCamera();
 		bPendingIdPickRequest = true;
 		return;
 	}
@@ -445,11 +446,50 @@ bool FEditorViewportClient::IsIdBufferCacheValidForCurrentCamera() const
 	return bSameProjection && bSameView;
 }
 
+bool FEditorViewportClient::ShouldRenderPendingIdPick() const
+{
+	if (!bIdBufferDirty)
+	{
+		return false;
+	}
+
+	if (bPendingIdPickRequest)
+	{
+		return true;
+	}
+
+	if (LastIdBufferRenderCycles == 0)
+	{
+		return true;
+	}
+
+	const uint64 NowCycles = FPickingPlatformTime::Cycles64();
+	const double ElapsedMs = FPickingPlatformTime::ToMilliseconds(NowCycles - LastIdBufferRenderCycles);
+	return ElapsedMs >= static_cast<double>(IdBufferUpdateIntervalMs);
+}
+
+void FEditorViewportClient::RefreshIdBufferDirtyStateFromCamera()
+{
+	UpdateIdBufferDirtyFromCamera();
+}
+
+void FEditorViewportClient::UpdateIdBufferDirtyFromCamera()
+{
+	if (!Camera)
+	{
+		bIdBufferDirty = true;
+		return;
+	}
+
+	bIdBufferDirty = !IsIdBufferCacheValidForCurrentCamera();
+}
+
 void FEditorViewportClient::UpdateIdBufferCacheCameraState()
 {
 	if (!Camera)
 	{
 		bHasCachedIdPickResult = false;
+		bIdBufferDirty = true;
 		return;
 	}
 
@@ -459,6 +499,8 @@ void FEditorViewportClient::UpdateIdBufferCacheCameraState()
 	bCachedIdPickCameraOrtho = Camera->IsOrthogonal();
 	CachedIdPickCameraFOV = Camera->GetFOV();
 	CachedIdPickCameraOrthoWidth = Camera->GetOrthoWidth();
+	LastIdBufferRenderCycles = FPickingPlatformTime::Cycles64();
+	bIdBufferDirty = false;
 }
 
 void FEditorViewportClient::UpdateLayoutRect()

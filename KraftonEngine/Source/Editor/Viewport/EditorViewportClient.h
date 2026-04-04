@@ -65,14 +65,20 @@ private:
 	void TickInteraction(float DeltaTime);
 	void HandleDragStart(const FRay& Ray, float LocalMouseX, float LocalMouseY);
 	void ProcessPendingIdPickResult();
+	void UpdateIdBufferDirtyFromCamera();
 
 public:
 	bool HasPendingIdPickRequest() const { return bPendingIdPickRequest; }
-	bool ShouldRenderPendingIdPick() const { return bPendingIdPickNeedsRender; }
+	bool ShouldRenderPendingIdPick() const;
 	void GetPendingIdPickCoord(uint32& OutX, uint32& OutY) const { OutX = PendingIdPickX; OutY = PendingIdPickY; }
-	void SetIdPickResult(uint32 InId) { PendingPickedObjectId = InId; bHasPendingIdPickResult = true; bPendingIdPickRequest = false; }
+	void SetIdPickResult(uint32 InId) { PendingPickedObjectId = InId; bHasPendingIdPickResult = true; bPendingIdPickRequest = false; bPendingIdPickReadback = false; PendingIdPickReadbackRequestId = 0u; }
+	bool HasPendingIdPickReadback() const { return bPendingIdPickReadback; }
+	uint32 GetPendingIdPickReadbackRequestId() const { return PendingIdPickReadbackRequestId; }
+	void BeginPendingIdPickReadback(uint32 InRequestId) { bPendingIdPickRequest = false; bPendingIdPickReadback = true; PendingIdPickReadbackRequestId = InRequestId; }
+	void CancelPendingIdPickReadback() { bPendingIdPickReadback = false; PendingIdPickReadbackRequestId = 0u; }
+	void RefreshIdBufferDirtyStateFromCamera();
 	void UpdateIdBufferCacheCameraState();
-	void InvalidateIdBufferCache() { bHasCachedIdPickResult = false; }
+	void InvalidateIdBufferCache() { bHasCachedIdPickResult = false; bIdBufferDirty = true; }
 
 private:
 	FViewport* Viewport = nullptr;
@@ -90,22 +96,23 @@ private:
 
 	bool bIsActive = false;
 	bool bPendingIdPickRequest = false;
-	bool bPendingIdPickNeedsRender = true;
+	bool bPendingIdPickReadback = false;
+	bool bIdBufferDirty = true;
 	bool bHasPendingIdPickResult = false;
 	bool bPendingIdPickCtrlHeld = false;
 	uint32 PendingIdPickX = 0;
 	uint32 PendingIdPickY = 0;
+	uint32 PendingIdPickReadbackRequestId = 0;
 	uint32 PendingPickedObjectId = 0;
 
 	bool bHasCachedIdPickResult = false;
-	uint32 CachedIdPickX = 0;
-	uint32 CachedIdPickY = 0;
-	uint32 CachedPickedObjectId = 0;
 	FVector CachedIdPickCameraLocation = FVector(0.0f, 0.0f, 0.0f);
 	FVector CachedIdPickCameraForward = FVector(0.0f, 0.0f, 0.0f);
 	bool bCachedIdPickCameraOrtho = false;
 	float CachedIdPickCameraFOV = 0.0f;
 	float CachedIdPickCameraOrthoWidth = 0.0f;
+	float IdBufferUpdateIntervalMs = 33.0f;	//	ID 버퍼 렌더 주기 (자주 렌더링 하지 않도록 방지)
+	uint64 LastIdBufferRenderCycles = 0;
 	bool IsIdBufferCacheValidForCurrentCamera() const;
 	// 뷰포트 슬롯의 스크린 좌표 (ImGui screen space = 윈도우 클라이언트 좌표)
 	FRect ViewportScreenRect;

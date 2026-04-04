@@ -122,31 +122,51 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 		FOcclusionManager::Get().ExecuteOcclusionTest(Ctx, ViewContext, AllFrustumVisible);
 	}
 
-	if (Editor->GetPickingMode() == EPickingMode::IDBuffer && VC->HasPendingIdPickRequest())
+	if (Editor->GetPickingMode() == EPickingMode::IDBuffer)
 	{
-		const uint64 IdPickStartCycles = FPickingPlatformTime::Cycles64();
+		VC->RefreshIdBufferDirtyStateFromCamera();
 		if (VC->ShouldRenderPendingIdPick())
 		{
 			Renderer.RenderPicking(ViewContext, VP);
 			VC->UpdateIdBufferCacheCameraState();
 		}
 
-		uint32 PickX = 0;
-		uint32 PickY = 0;
-		VC->GetPendingIdPickCoord(PickX, PickY);
-
-		uint32 PickedId = 0;
-		if (VP->ReadPickingId(Ctx, PickX, PickY, PickedId))
+		if (VC->HasPendingIdPickReadback())
 		{
-			VC->SetIdPickResult(PickedId);
-		}
-		else
-		{
-			VC->SetIdPickResult(0u);
+			const uint64 IdPickStartCycles = FPickingPlatformTime::Cycles64();
+			uint32 PickedId = 0u;
+			bool bReady = false;
+			const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, VC->GetPendingIdPickReadbackRequestId(), PickedId, bReady);
+			if (!bPollOk)
+			{
+				VC->CancelPendingIdPickReadback();
+				VC->SetIdPickResult(0u);
+			}
+			else if (bReady)
+			{
+				VC->SetIdPickResult(PickedId);
+				const uint64 IdPickEndCycles = FPickingPlatformTime::Cycles64();
+				FPickingPerf::Record(EPickingMode::IDBuffer, IdPickEndCycles - IdPickStartCycles);
+			}
+			return;
 		}
 
-		const uint64 IdPickEndCycles = FPickingPlatformTime::Cycles64();
-		FPickingPerf::Record(EPickingMode::IDBuffer, IdPickEndCycles - IdPickStartCycles);
+		if (VC->HasPendingIdPickRequest())
+		{
+			uint32 PickX = 0;
+			uint32 PickY = 0;
+			VC->GetPendingIdPickCoord(PickX, PickY);
+
+			uint32 RequestId = 0u;
+			if (VP->EnqueuePickingIdReadback(Ctx, PickX, PickY, RequestId))
+			{
+				VC->BeginPendingIdPickReadback(RequestId);
+			}
+			else
+			{
+				VC->SetIdPickResult(0u);
+			}
+		}
 	}
 }
 
