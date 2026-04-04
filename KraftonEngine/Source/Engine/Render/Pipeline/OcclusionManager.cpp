@@ -327,8 +327,17 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 	};
 
 	PassConstants consts;
-	// Transpose matrix for HLSL (C++ row-major to HLSL column-major default)
-	consts.ViewProjection = (InView.GetView() * InView.GetProj()).GetTransposed(); 
+	// Use previous frame's ViewProjection if available, otherwise use current
+	FMatrix currentVP = (InView.GetView() * InView.GetProj());
+	if (bHasPrevViewProjection)
+	{
+		consts.ViewProjection = PrevViewProjection.GetTransposed();
+	}
+	else
+	{
+		consts.ViewProjection = currentVP.GetTransposed();
+	}
+	
 	consts.ProxyCount = (uint32)InProxies.size();
 	consts.HZBMipCount = HZBMipCount;
 	consts.HZBSize[0] = (float)HZBWidth;
@@ -360,6 +369,10 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 	ReadbackIndex = (ReadbackIndex + 1) % 2;
 
 	OcclusionTestCS.Unbind(InContext);
+
+	// Store current ViewProjection for next frame
+	PrevViewProjection = currentVP;
+	bHasPrevViewProjection = true;
 }
 
 bool FOcclusionManager::IsVisible(uint32 ProxyId) const

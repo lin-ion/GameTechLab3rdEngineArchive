@@ -34,7 +34,7 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
         depths.w = depths.y;
     }
 
-    float maxDepth = max(max(depths.x, depths.y), max(depths.z, depths.w));
+    float minDepth = min(min(depths.x, depths.y), min(depths.z, depths.w));
     
-    OutTexture[DTid.xy] = maxDepth;
+    OutTexture[DTid.xy] = minDepth;
 }

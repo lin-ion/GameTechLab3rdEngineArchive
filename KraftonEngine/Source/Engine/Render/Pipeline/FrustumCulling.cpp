@@ -53,8 +53,18 @@ FFrustumPlanes FFrustumCulling::BuildFrustumPlanes(const FMatrix& View, const FM
 	const FVector CameraPos = InvView.GetLocation();
 	FVector CameraForward = InvView.TransformVector(FVector(0.0f, 0.0f, 1.0f));
 	CameraForward.Normalize();
-	const float NearZ = (std::fabsf(Proj.M[2][2]) > 1e-6f) ? (-Proj.M[3][2] / Proj.M[2][2]) : 0.1f;
-	const FVector InsidePoint = CameraPos + CameraForward * (NearZ + 1.0f);
+
+	// Near/Far 평면 거리 계산 (Reversed-Z 대응)
+	// Standard: -M[3][2]/M[2][2] = Near, M[3][2]/(1-M[2][2]) = Far
+	// Reversed: -M[3][2]/M[2][2] = Far,  M[3][2]/(1-M[2][2]) = Near
+	float Z1 = (std::fabsf(Proj.M[2][2]) > 1e-6f) ? (-Proj.M[3][2] / Proj.M[2][2]) : 0.1f;
+	float Z2 = (std::fabsf(1.0f - Proj.M[2][2]) > 1e-6f) ? (Proj.M[3][2] / (1.0f - Proj.M[2][2])) : 1000.0f;
+	
+	const float ActualNearZ = std::min(std::max(0.01f, std::min(Z1, Z2)), 10.0f);
+	const float ActualFarZ = std::max(ActualNearZ + 1.0f, std::max(Z1, Z2));
+	
+	// 중간 지점은 항상 내부
+	const FVector InsidePoint = CameraPos + CameraForward * (ActualNearZ + ActualFarZ) * 0.5f;
 
 	for (FPlane& Plane : Frustum.Planes)
 	{
