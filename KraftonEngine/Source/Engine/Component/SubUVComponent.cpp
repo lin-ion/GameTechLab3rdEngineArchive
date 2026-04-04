@@ -1,4 +1,4 @@
-#include "SubUVComponent.h"
+﻿#include "SubUVComponent.h"
 #include "Object/ObjectFactory.h"
 
 #include <cstring>
@@ -24,7 +24,7 @@ public:
 	{
 	}
 
-	void OnDraw(FViewContext& Bus) override
+	void SubmitRenderCommand(FViewContext& Bus) override
 	{
 		USubUVComponent* SubUVComp = static_cast<USubUVComponent*>(Owner);
 		if (!SubUVComp || !SubUVComp->IsVisible()) return;

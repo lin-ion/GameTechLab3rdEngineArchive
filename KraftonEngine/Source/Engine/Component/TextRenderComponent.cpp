@@ -22,7 +22,7 @@ public:
 	{
 	}
 
-	void OnDraw(FViewContext& Bus) override
+	void SubmitRenderCommand(FViewContext& Bus) override
 	{
 		UTextRenderComponent* TextComp = static_cast<UTextRenderComponent*>(Owner);
 		if (!TextComp || !TextComp->IsVisible()) return;

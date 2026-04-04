@@ -11,7 +11,7 @@ public:
 	virtual ~FPrimitiveProxy() = default;
 
 	virtual void UpdateProxy() = 0;
-	virtual void OnDraw(FViewContext& View);
+	virtual void SubmitRenderCommand(FViewContext& View);
 
 	void MarkDirty() { bIsDirty = true; }
 	bool IsDirty() const { return bIsDirty; }

@@ -1,4 +1,4 @@
-#include "BillboardComponent.h"
+﻿#include "BillboardComponent.h"
 #include "GameFramework/World.h"
 #include "Component/CameraComponent.h"
 #include "Render/Resource/ShaderManager.h"
@@ -15,7 +15,7 @@ public:
 	{
 	}
 
-	void OnDraw(FViewContext& View) override
+	void SubmitRenderCommand(FViewContext& View) override
 	{
 		UBillboardComponent* Billboard = static_cast<UBillboardComponent*>(Owner);
 		FMeshBuffer* Buffer = Billboard->GetMeshBuffer();

@@ -9,7 +9,7 @@ FPrimitiveProxy::FPrimitiveProxy(UPrimitiveComponent* InOwner)
 {
 }
 
-void FPrimitiveProxy::OnDraw(FViewContext& View)
+void FPrimitiveProxy::SubmitRenderCommand(FViewContext& View)
 {
 	if (IsDirty())
 	{

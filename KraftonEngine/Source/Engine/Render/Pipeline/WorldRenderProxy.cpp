@@ -125,7 +125,7 @@ void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*
 		}
 		
 		Proxy->SetSelected(bSelected);
-		Proxy->OnDraw(Context);
+		Proxy->SubmitRenderCommand(Context);
 		LastCullingStats.RenderedProxyCount++;
 	}
 }

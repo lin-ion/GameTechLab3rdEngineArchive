@@ -19,7 +19,7 @@ public:
 	{
 	}
 
-	void OnDraw(FViewContext& View) override
+	void SubmitRenderCommand(FViewContext& View) override
 	{
 		if (IsDirty())
 		{
