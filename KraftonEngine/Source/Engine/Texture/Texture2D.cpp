@@ -58,13 +58,24 @@ UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Devi
 
 bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 {
-	//std::filesystem::path TexPath(FilePath);
-	//std::wstring WidePath = TexPath.wstring();
 	std::wstring WidePath = FPaths::ToWide(FilePath);
 
+	// DirectX::DX11::WIC_LOADER_FLAGS LoadFlags = DirectX::DX11::WIC_LOADER_FORCE_SRGB;
+	DirectX::DX11::WIC_LOADER_FLAGS LoadFlags = DirectX::DX11::WIC_LOADER_IGNORE_SRGB;
+
 	ID3D11Resource* Resource = nullptr;
-	HRESULT hr = DirectX::CreateWICTextureFromFile(
-		Device, WidePath.c_str(), &Resource, &SRV);
+	HRESULT hr = DirectX::CreateWICTextureFromFileEx(
+		Device,
+		WidePath.c_str(),
+		0, // MaxSize
+		D3D11_USAGE::D3D11_USAGE_DEFAULT,
+		D3D11_BIND_SHADER_RESOURCE,
+		0, // CPUAccessFlags
+		0, // MiscFlags
+		LoadFlags,
+		&Resource,
+		&SRV
+	);
 
 	if (FAILED(hr))
 	{
