@@ -264,6 +264,7 @@
     <ClCompile Include="Source\Engine\Render\Pipeline\FixedWorldOctree.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\FrustumCulling.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\RenderCollector.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\StaticMeshProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\ViewContext.cpp" />
@@ -445,7 +446,9 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Shaders\Picking.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Shaders\Primitive.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

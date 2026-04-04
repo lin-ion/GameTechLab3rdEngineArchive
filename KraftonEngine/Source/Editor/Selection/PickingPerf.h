@@ -52,6 +52,8 @@ public:
 	{
 		Ray = {};
 		IdBuffer = {};
+		RayBroadPhase = {};
+		RayNarrowPhase = {};
 	}
 
 	static void Record(EPickingMode Mode, uint64 CycleDiff)
@@ -65,8 +67,28 @@ public:
 
 	static const FPickingPerfBucket& GetRay() { return Ray; }
 	static const FPickingPerfBucket& GetIdBuffer() { return IdBuffer; }
+	static const FPickingPerfBucket& GetRayBroadPhase() { return RayBroadPhase; }
+	static const FPickingPerfBucket& GetRayNarrowPhase() { return RayNarrowPhase; }
+
+	static void RecordRayBroadPhase(uint64 CycleDiff)
+	{
+		double Ms = FPickingPlatformTime::ToMilliseconds(CycleDiff);
+		RayBroadPhase.LastPickTimeMs = Ms;
+		RayBroadPhase.TotalPickTimeMs += Ms;
+		++RayBroadPhase.TotalPickCount;
+	}
+
+	static void RecordRayNarrowPhase(uint64 CycleDiff)
+	{
+		double Ms = FPickingPlatformTime::ToMilliseconds(CycleDiff);
+		RayNarrowPhase.LastPickTimeMs = Ms;
+		RayNarrowPhase.TotalPickTimeMs += Ms;
+		++RayNarrowPhase.TotalPickCount;
+	}
 
 private:
 	inline static FPickingPerfBucket Ray;
 	inline static FPickingPerfBucket IdBuffer;
+	inline static FPickingPerfBucket RayBroadPhase;
+	inline static FPickingPerfBucket RayNarrowPhase;
 };

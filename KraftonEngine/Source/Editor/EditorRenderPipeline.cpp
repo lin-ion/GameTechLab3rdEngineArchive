@@ -68,6 +68,7 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	if (VP->ApplyPendingResize())
 	{
 		Camera->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
+		VC->InvalidateIdBufferCache();
 	}
 
 	// 렌더 시작 (RT 클리어 + DSV 바인딩)
@@ -115,7 +116,11 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	if (Editor->GetPickingMode() == EPickingMode::IDBuffer && VC->HasPendingIdPickRequest())
 	{
 		const uint64 IdPickStartCycles = FPickingPlatformTime::Cycles64();
-		Renderer.RenderPicking(ViewContext, VP);
+		if (VC->ShouldRenderPendingIdPick())
+		{
+			Renderer.RenderPicking(ViewContext, VP);
+			VC->UpdateIdBufferCacheCameraState();
+		}
 
 		uint32 PickX = 0;
 		uint32 PickY = 0;

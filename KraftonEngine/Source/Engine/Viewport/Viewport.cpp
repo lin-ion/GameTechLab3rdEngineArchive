@@ -90,11 +90,19 @@ bool FViewport::ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint
 	if (!Ctx || !PickingTexture || !PickingReadback) return false;
 	if (X >= Width || Y >= Height) return false;
 
-	// 현재 바인딩된 RTV/DSV와의 충돌을 피하기 위해 언바인딩 후 복사
+	//	현재 바인딩된 RTV/DSV와의 충돌을 피하기 위해 언바인딩 후 복사
 	Ctx->OMSetRenderTargets(0, nullptr, nullptr);
-	Ctx->Flush();
 
-	Ctx->CopyResource(PickingReadback, PickingTexture);
+	D3D11_BOX SrcBox = {};
+	SrcBox.left = X;
+	SrcBox.top = Y;
+	SrcBox.front = 0;
+	SrcBox.right = X + 1;
+	SrcBox.bottom = Y + 1;
+	SrcBox.back = 1;
+
+	//	렌더된 texture의 클릭 1x1 픽셀만 CPU 읽기용 texture로 복사
+	Ctx->CopySubresourceRegion(PickingReadback, 0, 0, 0, 0, PickingTexture, 0, &SrcBox);
 
 	D3D11_MAPPED_SUBRESOURCE Mapped = {};
 	if (FAILED(Ctx->Map(PickingReadback, 0, D3D11_MAP_READ, 0, &Mapped)))
@@ -102,8 +110,7 @@ bool FViewport::ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint
 		return false;
 	}
 
-	const uint8* Base = static_cast<const uint8*>(Mapped.pData);
-	const uint32* Pixel = reinterpret_cast<const uint32*>(Base + static_cast<size_t>(Y) * Mapped.RowPitch + static_cast<size_t>(X) * sizeof(uint32));
+	const uint32* Pixel = static_cast<const uint32*>(Mapped.pData);
 	OutId = *Pixel;
 
 	Ctx->Unmap(PickingReadback, 0);
@@ -157,6 +164,8 @@ bool FViewport::CreateResources()
 	if (FAILED(hr)) return false;
 
 	D3D11_TEXTURE2D_DESC ReadbackDesc = PickingDesc;
+	ReadbackDesc.Width = 1;
+	ReadbackDesc.Height = 1;
 	ReadbackDesc.Usage = D3D11_USAGE_STAGING;
 	ReadbackDesc.BindFlags = 0;
 	ReadbackDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;

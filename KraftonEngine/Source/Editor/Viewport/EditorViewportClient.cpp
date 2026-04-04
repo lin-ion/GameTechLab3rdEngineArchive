@@ -19,6 +19,8 @@
 #include "Editor/Selection/SelectionManager.h"
 #include "ImGui/imgui.h"
 
+#include <cmath>
+
 void FEditorViewportClient::Initialize(FWindowsWindow* InWindow)
 {
 	Window = InWindow;
@@ -316,8 +318,29 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		PickingMode = Editor->GetPickingMode();
 	}
 
+	if (PickingMode == EPickingMode::IDBuffer)
+	{
+		bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
+		const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
+		const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
+		PendingIdPickX = static_cast<uint32>(Clamp(LocalMouseX, 0.0f, MaxX));
+		PendingIdPickY = static_cast<uint32>(Clamp(LocalMouseY, 0.0f, MaxY));
+
+		FHitResult GizmoHitResult{};
+		if (FRayUtils::RaycastComponent(Gizmo, Ray, GizmoHitResult))
+		{
+			Gizmo->SetPressedOnHandle(true);
+			return;
+		}
+
+		bPendingIdPickNeedsRender = !IsIdBufferCacheValidForCurrentCamera();
+		bPendingIdPickRequest = true;
+		return;
+	}
+
 	const bool bMeasureRayPick = (PickingMode == EPickingMode::RayTriangleBVH);
 	const uint64 RayPickStartCycles = bMeasureRayPick ? FPickingPlatformTime::Cycles64() : 0;
+
 	auto RecordRayPickIfNeeded = [&]()
 	{
 		if (!bMeasureRayPick) return;
@@ -333,17 +356,6 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 	}
 	else
 	{
-		if (PickingMode == EPickingMode::IDBuffer)
-		{
-			bPendingIdPickRequest = true;
-			bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
-			const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
-			const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
-			PendingIdPickX = static_cast<uint32>(Clamp(LocalMouseX, 0.0f, MaxX));
-			PendingIdPickY = static_cast<uint32>(Clamp(LocalMouseY, 0.0f, MaxY));
-			return;
-		}
-
 		float ClosestDistance = FLT_MAX;
 		AActor* BestActor = FPickingService::PickActor(World, Ray, PickingMode, ClosestDistance);
 
@@ -382,6 +394,12 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 	bHasPendingIdPickResult = false;
 
 	UObject* PickedObject = FPickingService::ResolveObjectFromPickingId(PendingPickedObjectId);
+	if (PickedObject == Gizmo)
+	{
+		Gizmo->SetPressedOnHandle(true);
+		return;
+	}
+
 	AActor* PickedActor = Cast<AActor>(PickedObject);
 
 	if (!PickedActor)
@@ -410,6 +428,39 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 		SelectionManager->Select(PickedActor);
 	}
 }
+
+bool FEditorViewportClient::IsIdBufferCacheValidForCurrentCamera() const
+{
+	if (!bHasCachedIdPickResult || !Camera)
+	{
+		return false;
+	}
+
+	const bool bSameProjection = (Camera->IsOrthogonal() == bCachedIdPickCameraOrtho)
+		&& (std::abs(Camera->GetFOV() - CachedIdPickCameraFOV) <= 1e-4f)
+		&& (std::abs(Camera->GetOrthoWidth() - CachedIdPickCameraOrthoWidth) <= 1e-4f);
+	const bool bSameView = FVector::Distance(Camera->GetWorldLocation(), CachedIdPickCameraLocation) <= 1e-4f
+		&& FVector::Distance(Camera->GetForwardVector(), CachedIdPickCameraForward) <= 1e-4f;
+
+	return bSameProjection && bSameView;
+}
+
+void FEditorViewportClient::UpdateIdBufferCacheCameraState()
+{
+	if (!Camera)
+	{
+		bHasCachedIdPickResult = false;
+		return;
+	}
+
+	bHasCachedIdPickResult = true;
+	CachedIdPickCameraLocation = Camera->GetWorldLocation();
+	CachedIdPickCameraForward = Camera->GetForwardVector();
+	bCachedIdPickCameraOrtho = Camera->IsOrthogonal();
+	CachedIdPickCameraFOV = Camera->GetFOV();
+	CachedIdPickCameraOrthoWidth = Camera->GetOrthoWidth();
+}
+
 void FEditorViewportClient::UpdateLayoutRect()
 {
 	if (!LayoutWindow) return;

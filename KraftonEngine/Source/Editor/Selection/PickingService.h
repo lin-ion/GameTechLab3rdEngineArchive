@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Editor/Selection/PickingTypes.h"
+#include "Editor/Selection/PickingPerf.h"
 #include "Collision/RayUtils.h"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
@@ -48,8 +49,8 @@ public:
 
 		if (Mode == EPickingMode::IDBuffer)
 		{
-			// TODO: ID Picking 경로 연결 전까지는 Ray 경로로 안전하게 폴백
-			return FRayUtils::RaycastComponent(Gizmo, Ray, OutHit);
+			if (OutPickingId) *OutPickingId = 0u;
+			return false;
 		}
 
 		return FRayUtils::RaycastComponent(Gizmo, Ray, OutHit);
@@ -57,6 +58,7 @@ public:
 
 	static AActor* PickActor(UWorld* World, const FRay& Ray, EPickingMode Mode, float& OutClosestDistance, uint32* OutPickingId = nullptr)
 	{
+		//	World 정보가 없을 시 Picking 실패로 간주 (0u 반환)
 		if (!World)
 		{
 			if (OutPickingId) *OutPickingId = 0u;
@@ -65,8 +67,9 @@ public:
 
 		if (Mode == EPickingMode::IDBuffer)
 		{
-			// TODO: ID Picking 경로 연결 전까지는 Ray 경로로 안전하게 폴백
-			return PickActorByRay(World, Ray, OutClosestDistance, OutPickingId);
+			OutClosestDistance = FLT_MAX;
+			if (OutPickingId) *OutPickingId = 0u;
+			return nullptr;
 		}
 
 		return PickActorByRay(World, Ray, OutClosestDistance, OutPickingId);
@@ -79,6 +82,8 @@ private:
 		OutClosestDistance = FLT_MAX;
 		if (OutPickingId) *OutPickingId = 0u;
 		FHitResult HitResult{};
+		uint64 BroadPhaseCycles = 0;
+		uint64 NarrowPhaseCycles = 0;
 
 		for (AActor* Actor : World->GetActors())
 		{
@@ -89,13 +94,26 @@ private:
 
 			for (UPrimitiveComponent* PrimitiveComp : Actor->GetPrimitiveComponents())
 			{
-				if (!PrimitiveComp)
+				if (!PrimitiveComp || !PrimitiveComp->IsVisible())
+				{
+					continue;
+				}
+
+				const uint64 BroadStart = FPickingPlatformTime::Cycles64();
+				PrimitiveComp->UpdateWorldAABB();
+				const FBoundingBox AABB = PrimitiveComp->GetWorldBoundingBox();
+				const bool bAABBHit = FRayUtils::CheckRayAABB(Ray, AABB.Min, AABB.Max);
+				BroadPhaseCycles += (FPickingPlatformTime::Cycles64() - BroadStart);
+				if (!bAABBHit)
 				{
 					continue;
 				}
 
 				HitResult = {};
-				if (FRayUtils::RaycastComponent(PrimitiveComp, Ray, HitResult) && HitResult.Distance < OutClosestDistance)
+				const uint64 NarrowStart = FPickingPlatformTime::Cycles64();
+				const bool bTriangleHit = PrimitiveComp->LineTraceComponent(Ray, HitResult);
+				NarrowPhaseCycles += (FPickingPlatformTime::Cycles64() - NarrowStart);
+				if (bTriangleHit && HitResult.Distance < OutClosestDistance)
 				{
 					OutClosestDistance = HitResult.Distance;
 					BestActor = Actor;
@@ -106,6 +124,9 @@ private:
 				}
 			}
 		}
+
+		FPickingPerf::RecordRayBroadPhase(BroadPhaseCycles);
+		FPickingPerf::RecordRayNarrowPhase(NarrowPhaseCycles);
 
 		return BestActor;
 	}
