@@ -27,21 +27,23 @@ FMatrix UCameraComponent::GetProjectionMatrix() const
 	float Denom = CameraState.FarZ - CameraState.NearZ;
 
 	if (!CameraState.bIsOrthogonal) {
+		// Reversed-Z: NearZ -> 1, FarZ -> 0
 		return FMatrix(
 			Cot / CameraState.AspectRatio, 0, 0, 0,
 			0, Cot, 0, 0,
-			0, 0, CameraState.FarZ / Denom, 1,
-			0, 0, -(CameraState.FarZ * CameraState.NearZ) / Denom, 0
+			0, 0, -CameraState.NearZ / Denom, 1,
+			0, 0, (CameraState.FarZ * CameraState.NearZ) / Denom, 0
 		);
 	}
 	else {
 		float HalfW = CameraState.OrthoWidth * 0.5f;
 		float HalfH = HalfW / CameraState.AspectRatio;
+		// Reversed-Z: NearZ -> 1, FarZ -> 0
 		return FMatrix(
 			1.0f / HalfW, 0, 0, 0,
 			0, 1.0f / HalfH, 0, 0,
-			0, 0, 1.0f / Denom, 0,
-			0, 0, -CameraState.NearZ / Denom, 1
+			0, 0, -1.0f / Denom, 0,
+			0, 0, CameraState.FarZ / Denom, 1
 		);
 	}
 }
@@ -77,8 +79,8 @@ FRay UCameraComponent::DeprojectScreenToWorld(float MouseX, float MouseY, float 
 	float NdcX = (2.0f * MouseX) / ScreenWidth - 1.0f;
 	float NdcY = 1.0f - (2.0f * MouseY) / ScreenHeight;
 
-	FVector NdcNear(NdcX, NdcY, 0.0f);
-	FVector NdcFar(NdcX, NdcY, 1.0f);
+	FVector NdcNear(NdcX, NdcY, 1.0f);
+	FVector NdcFar(NdcX, NdcY, 0.0f);
 
 	FMatrix ViewProj = GetViewMatrix() * GetProjectionMatrix();
 	FMatrix InverseViewProjection = ViewProj.GetInverse();

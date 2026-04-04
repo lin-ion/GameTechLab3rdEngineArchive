@@ -1,42 +1,15 @@
 {
-  "Actors" : [{
-      "ClassName" : "AStaticMeshActor",
-      "NonSceneComponents" : [],
-      "PrimitiveKey" : "7",
-      "RootComponent" : {
-        "Children" : [],
-        "ClassName" : "UStaticMeshComponent",
-        "Properties" : {
-          "Element 0" : {
-            "Path" : "Asset/MeshCache/Cube/BasicShapeMaterial.mbin"
-          },
-          "Location" : [0.000000, 0.000000, 0.000000],
-          "Rotation" : [-0.000000, 0.000000, 0.000000],
-          "Scale" : [1.000000, 1.000000, 1.000000],
-          "Visible" : true
-        }
-      },
-      "bVisible" : true
-    }],
+  "Actors" : [],
   "ClassName" : "UWorld",
   "ContextHandle" : "Default",
   "ContextName" : "Default",
   "Name" : "Default",
   "PerspectiveCamera" : {
-    "FOV" : 90.000000,
-    "FarClip" : 1000.000000,
-    "Location" : [-3.690943, -6.364208, 4.306822],
+    "FOV" : 60.000000,
+    "FarClip" : 100.000000,
+    "Location" : [-26.277996, -27.245430, 13.233532],
     "NearClip" : 0.100000,
-    "Rotation" : [0.000001, 25.904558, 54.928211]
-  },
-  "Primitives" : {
-    "7" : {
-      "Location" : [0.000000, 0.000000, 0.000000],
-      "ObjStaticMeshAsset" : "Data/BasicShape/Cube.OBJ",
-      "Rotation" : [0.000000, -0.000000, 0.000000],
-      "Scale" : [1.000000, 1.000000, 1.000000],
-      "Type" : "StaticMeshComp"
-    }
+    "Rotation" : [0.000000, -0.873862, 34.667591]
   },
   "Version" : 2,
   "WorldType" : "Editor"

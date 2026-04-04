@@ -86,4 +86,8 @@ private:
 	// Stats
 	uint32 NumTotalCandidates = 0;
 	uint32 NumOccluded = 0;
+
+	// Previous frame info for temporal stability
+	FMatrix PrevViewProjection;
+	bool bHasPrevViewProjection = false;
 };

@@ -66,7 +66,7 @@ void FViewport::BeginRender(ID3D11DeviceContext* Ctx, const float ClearColor[4])
 	D3D11_VIEWPORT VPRect = GetViewportRect();
 
 	Ctx->ClearRenderTargetView(RTV, Color);
-	Ctx->ClearDepthStencilView(DSV, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	Ctx->ClearDepthStencilView(DSV, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 0.0f, 0);
 	Ctx->OMSetRenderTargets(1, &RTV, DSV);
 	Ctx->RSSetViewports(1, &VPRect);
 }
@@ -79,7 +79,7 @@ void FViewport::BeginPickingRender(ID3D11DeviceContext* Ctx)
 	D3D11_VIEWPORT VPRect = GetViewportRect();
 
 	Ctx->ClearRenderTargetView(PickingRTV, ClearColor);
-	Ctx->ClearDepthStencilView(DSV, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	Ctx->ClearDepthStencilView(DSV, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 0.0f, 0);
 	Ctx->OMSetRenderTargets(1, &PickingRTV, DSV);
 	Ctx->RSSetViewports(1, &VPRect);
 }
