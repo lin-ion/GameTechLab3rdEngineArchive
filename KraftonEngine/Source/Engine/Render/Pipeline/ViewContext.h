@@ -5,6 +5,7 @@
 
 class UCameraComponent;
 class FViewport;
+class FPrimitiveProxy;
 
 // 각 View마다 독립적으로 가져야 하는 정보들을 관리
 // e.g. 시야 정보, 그리드, UUID 렌더링 정보 등
@@ -32,6 +33,11 @@ public:
 	const TArray<FSubUVEntry>& GetSubUVEntries() const { return SubUVEntries; }
 	const TArray<FAABBEntry>& GetAABBEntries() const { return AABBEntries; }
 	const TArray<FGridProxy>& GetGridProxies() const { return GridProxies; }
+
+	// 컬링 후보군 관리
+	void AddCandidateProxy(FPrimitiveProxy* Proxy);
+	const TArray<FPrimitiveProxy*>& GetCandidateProxies() const { return CandidateProxies; }
+	TArray<FPrimitiveProxy*>& GetCandidateProxiesMutable() { return CandidateProxies; }
 
 	// Getter,Setter
 	void SetCameraInfo(const UCameraComponent* Camera);
@@ -74,6 +80,7 @@ private:
 	TArray<FSubUVEntry> SubUVEntries;
 	TArray<FAABBEntry>  AABBEntries;
 	TArray<FGridProxy>  GridProxies;
+	TArray<FPrimitiveProxy*> CandidateProxies;
 
 	FMatrix View;
 	FMatrix Proj;

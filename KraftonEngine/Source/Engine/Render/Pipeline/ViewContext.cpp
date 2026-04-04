@@ -14,6 +14,7 @@ void FViewContext::Clear()
 	SubUVEntries.clear();
 	AABBEntries.clear();
 	GridProxies.clear();
+	CandidateProxies.clear();
 
 	ViewportRTV = nullptr;
 	ViewportDSV = nullptr;
@@ -32,6 +33,7 @@ void FViewContext::Reset()
 	TArray<FSubUVEntry>().swap(SubUVEntries);
 	TArray<FAABBEntry>().swap(AABBEntries);
 	TArray<FGridProxy>().swap(GridProxies);
+	TArray<FPrimitiveProxy*>().swap(CandidateProxies);
 }
 
 void FViewContext::AddCommand(ERenderPass Pass, const FRenderCommand& InCommand)
@@ -72,6 +74,11 @@ void FViewContext::AddAABBEntry(FAABBEntry&& Entry)
 void FViewContext::AddGridProxy(FGridProxy&& Proxy)
 {
 	GridProxies.push_back(std::move(Proxy));
+}
+
+void FViewContext::AddCandidateProxy(FPrimitiveProxy* Proxy)
+{
+	CandidateProxies.push_back(Proxy);
 }
 
 void FViewContext::SetCameraInfo(const UCameraComponent* Camera)

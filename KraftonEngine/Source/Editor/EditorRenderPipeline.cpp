@@ -4,6 +4,8 @@
 #include "Editor/Selection/PickingTypes.h"
 #include "Editor/Selection/PickingPerf.h"
 #include "Render/Pipeline/Renderer.h"
+#include "Render/Pipeline/FrustumCulling.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
 #include "Viewport/Viewport.h"
 #include "Component/CameraComponent.h"
 #include "GameFramework/World.h"
@@ -80,22 +82,34 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	// 2. RenderCommand(DefaultPass), Entry(Batcher)를 ERenderPass별로 수집
 	const TArray<AActor*>& SelectedActors = Editor->GetSelectionManager().GetSelectedActors();
-
 	if (UScene* Scene = World->GetPersistentScene())
 	{
-		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors, false);
+		Scene->GetRenderProxy().GatherCandidates(ViewContext, false);
 	}
 	if (UScene* Scene = World->GetActiveScene())
 	{
-		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors, true);
+		Scene->GetRenderProxy().GatherCandidates(ViewContext, true);
 	}
 
+	// 3. 컬링 적용 (Cull)
+	FFrustumCulling::ApplyFrustumCulling(ViewContext);
+
+	// 4. 컬링을 통과한 후보군만 RenderCommand를 ViewContext에 제출
+	if (UScene* Scene = World->GetPersistentScene())
+	{
+		Scene->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
+	}
+	if (UScene* Scene = World->GetActiveScene())
+	{
+		Scene->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
+	}
+	// 4-1. 에디터 오브젝트는 컬링 적용하지 않고 수집
 	ViewContext.CollectViewElements();
 
-	// 3. Bus에 담긴 커맨드와 엔트리를 기반으로 렌더러에 배치
+	// 5. Batcher 사용하는 렌더객체 처리
 	Renderer.PrepareBatchers(ViewContext);
 
-	// 4. Bus에 담긴 커맨드와 엔트리를 기반으로 GPU 드로우 콜 실행
+	// 6. ViewContext에 담긴 커맨드와 엔트리를 기반으로 GPU 드로우 콜 실행
 	Renderer.Render(ViewContext);
 
 	if (Editor->GetPickingMode() == EPickingMode::IDBuffer && VC->HasPendingIdPickRequest())

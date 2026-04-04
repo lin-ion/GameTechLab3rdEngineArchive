@@ -53,41 +53,41 @@ void FRenderer::Release()
 	Device.Release();
 }
 
-//	Bus → Batcher 데이터 수집 (CPU). BeginFrame 이전에 호출.
-void FRenderer::PrepareBatchers(const FViewContext& Bus)
+//	ViewContext에서 Batcher 데이터 수집 (CPU). BeginFrame 이전에 호출.
+void FRenderer::PrepareBatchers(const FViewContext& ViewContext)
 {
 	// --- Editor 패스: AABB 디버그 박스 → EditorLineBatcher ---
 	EditorLineBatcher.Clear();
-	for (const auto& Entry : Bus.GetAABBEntries())
+	for (const auto& Entry : ViewContext.GetAABBEntries())
 	{
 		EditorLineBatcher.AddAABB(FBoundingBox{ Entry.AABB.Min, Entry.AABB.Max }, Entry.AABB.Color);
 	}
 
 	// --- Grid 패스: 월드 그리드 + 축 → GridLineBatcher ---
 	GridLineBatcher.Clear();
-	for (const auto& Proxy : Bus.GetGridProxies())
+	for (const auto& Proxy : ViewContext.GetGridProxies())
 	{
-		const FVector CameraPos = Bus.GetView().GetInverseFast().GetLocation();
-		const FVector& CameraFwd = Bus.GetCameraForward();
+		const FVector CameraPos = ViewContext.GetView().GetInverseFast().GetLocation();
+		const FVector& CameraFwd = ViewContext.GetCameraForward();
 
 		GridLineBatcher.AddWorldHelpers(
-			Bus.GetShowFlags(),
+			ViewContext.GetShowFlags(),
 			Proxy.Grid.GridSpacing,
 			Proxy.Grid.GridHalfLineCount,
-			CameraPos, CameraFwd, Bus.IsFixedOrtho());
+			CameraPos, CameraFwd, ViewContext.IsFixedOrtho());
 	}
 
 	// --- Font 패스: 월드 공간 텍스트 → FontBatcher ---
 	FontBatcher.Clear();
-	for (const auto& Entry : Bus.GetFontEntries())
+	for (const auto& Entry : ViewContext.GetFontEntries())
 	{
 		if (!Entry.Font.Text.empty())
 		{
 			FontBatcher.AddText(
 				Entry.Font.Text,
 				Entry.PerObject.Model.GetLocation(),
-				Bus.GetCameraRight(),
-				Bus.GetCameraUp(),
+				ViewContext.GetCameraRight(),
+				ViewContext.GetCameraUp(),
 				Entry.PerObject.Model.GetScale(),
 				Entry.Font.Scale
 			);
@@ -96,7 +96,7 @@ void FRenderer::PrepareBatchers(const FViewContext& Bus)
 
 	// --- OverlayFont 패스: 스크린 공간 텍스트 → FontBatcher ---
 	FontBatcher.ClearScreen();
-	for (const auto& Entry : Bus.GetOverlayFontEntries())
+	for (const auto& Entry : ViewContext.GetOverlayFontEntries())
 	{
 		if (!Entry.Font.Text.empty())
 		{
@@ -104,8 +104,8 @@ void FRenderer::PrepareBatchers(const FViewContext& Bus)
 				Entry.Font.Text,
 				Entry.Font.ScreenPosition.X,
 				Entry.Font.ScreenPosition.Y,
-				Bus.GetViewportWidth(),
-				Bus.GetViewportHeight(),
+				ViewContext.GetViewportWidth(),
+				ViewContext.GetViewportHeight(),
 				Entry.Font.Scale
 			);
 		}
@@ -114,7 +114,7 @@ void FRenderer::PrepareBatchers(const FViewContext& Bus)
 	// --- SubUV 패스: 스프라이트 → SubUVBatcher (Particle SRV 기준 정렬) ---
 	SubUVBatcher.Clear();
 	{
-		const auto& Entries = Bus.GetSubUVEntries();
+		const auto& Entries = ViewContext.GetSubUVEntries();
 		SortedSubUVBuffer.assign(Entries.begin(), Entries.end());
 
 		if (SortedSubUVBuffer.size() > 1)
@@ -132,8 +132,8 @@ void FRenderer::PrepareBatchers(const FViewContext& Bus)
 				SubUVBatcher.AddSprite(
 					Entry.SubUV.Particle->SRV,
 					Entry.PerObject.Model.GetLocation(),
-					Bus.GetCameraRight(),
-					Bus.GetCameraUp(),
+					ViewContext.GetCameraRight(),
+					ViewContext.GetCameraUp(),
 					Entry.PerObject.Model.GetScale(),
 					Entry.SubUV.FrameIndex,
 					Entry.SubUV.Particle->Columns,

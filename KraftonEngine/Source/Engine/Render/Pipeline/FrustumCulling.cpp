@@ -1,5 +1,10 @@
 ﻿#include "Render/Pipeline/FrustumCulling.h"
-#include "Render/Pipeline/FrustumCulling.h"
+#include "Render/Pipeline/ViewContext.h"
+#include "Render/Pipeline/PrimitiveProxy.h"
+#include "Component/PrimitiveComponent.h"
+#include <algorithm>
+#include <cmath>
+
 void FPlane::Normalize()
 {
 	//	거리 계산 안정성을 위해 평면 법선을 단위 벡터로 정규화
@@ -87,4 +92,21 @@ bool FFrustumCulling::IntersectsAABB(const FFrustumPlanes& Frustum, const FBound
 	}
 
 	return true;
+}
+
+void FFrustumCulling::ApplyFrustumCulling(FViewContext& Context)
+{
+	const FFrustumPlanes Frustum = BuildFrustumPlanes(Context.GetView(), Context.GetProj());
+	TArray<FPrimitiveProxy*>& CandidateProxies = Context.GetCandidateProxiesMutable();
+
+	CandidateProxies.erase(
+		std::remove_if(CandidateProxies.begin(), CandidateProxies.end(),
+			[&Frustum](FPrimitiveProxy* Proxy) {
+				if (!Proxy) return true;
+				UPrimitiveComponent* Owner = Proxy->GetOwner();
+				if (!Owner) return true;
+				return !IntersectsAABB(Frustum, Owner->GetWorldBoundingBox());
+			}),
+		CandidateProxies.end()
+	);
 }

@@ -30,8 +30,15 @@ public:
 	void RemoveProxy(FPrimitiveProxy* Proxy);
 	void MarkSpatialIndexDirty() { bSpatialIndexDirty = true; }
 
-	// World의 정보들을 바탕으로 Proxies 업데이트
+	// Phase 1: 씬으로부터 잠재적 후보군 수집
+	void GatherCandidates(FViewContext& context, bool bUseSpatialIndex);
+
+	// Phase 2: 최종 생존한 후보들에 대해 렌더 커맨드 생성
+	void SubmitRenderCommands(FViewContext& context, const TArray<AActor*>& SelectedActors);
+
+	// 레거시 지원 (필요시)
 	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex);
+
 	const FWorldProxyCullingStats& GetLastCullingStats() const { return LastCullingStats; }
 
 private:

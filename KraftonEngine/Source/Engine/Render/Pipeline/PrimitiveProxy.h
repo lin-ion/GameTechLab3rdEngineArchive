@@ -3,6 +3,7 @@
 #include "Render/Pipeline/ViewContext.h"
 
 class UPrimitiveComponent;
+class FWorldRenderProxy;
 
 class FPrimitiveProxy
 {
@@ -19,8 +20,13 @@ public:
 	UPrimitiveComponent* GetOwner() const { return Owner; }
 	void SetSelected(bool bInSelected) { bSelected = bInSelected; }
 
+	// WorldRenderProxy 연동
+	void SetWorldRenderProxy(FWorldRenderProxy* InProxy) { WorldProxy = InProxy; }
+	FWorldRenderProxy* GetWorldRenderProxy() const { return WorldProxy; }
+
 protected:
 	UPrimitiveComponent* Owner;
+	FWorldRenderProxy* WorldProxy = nullptr;
 	FRenderCommand CachedCommand;
 	bool bIsDirty = true;
 	bool bSelected = false;

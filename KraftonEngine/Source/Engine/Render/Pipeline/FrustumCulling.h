@@ -20,6 +20,8 @@ struct FFrustumPlanes
 	FPlane Planes[6];
 };
 
+class FViewContext;
+
 class FFrustumCulling
 {
 public:
@@ -27,4 +29,7 @@ public:
 	static FFrustumPlanes BuildFrustumPlanes(const FMatrix& View, const FMatrix& Proj);
 	//	AABB가 프러스텀과 교차하면 true (완전 외부면 false)
 	static bool IntersectsAABB(const FFrustumPlanes& Frustum, const FBoundingBox& Box);
+
+	// 프러스텀 컬링 필터 적용 (ViewContext 내의 CandidateProxies 필터링)
+	static void ApplyFrustumCulling(FViewContext& Context);
 };
