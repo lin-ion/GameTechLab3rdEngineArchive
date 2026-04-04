@@ -53,4 +53,5 @@ protected:
 	mutable FVector WorldAABBMinLocation;
 	mutable FVector WorldAABBMaxLocation;
 	bool bIsVisible = true;
+
 };

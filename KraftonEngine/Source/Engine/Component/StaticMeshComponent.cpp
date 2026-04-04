@@ -44,6 +44,8 @@ void UStaticMeshComponent::SetStaticMesh(UStaticMesh* InMesh)
 		OverrideMaterialPaths.clear();
 	}
 	CacheLocalBounds();
+	UpdateWorldMatrix();
+	UpdateWorldAABB();
 	MarkRenderStateDirty();
 }
 

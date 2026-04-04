@@ -2,25 +2,13 @@
   "Actors" : [{
       "ClassName" : "AStaticMeshActor",
       "NonSceneComponents" : [],
-      "PrimitiveKey" : "150020",
+      "PrimitiveKey" : "7",
       "RootComponent" : {
-        "Children" : [{
-            "Children" : [],
-            "ClassName" : "UTextRenderComponent",
-            "Properties" : {
-              "Font" : "Default",
-              "Font Size" : 1.000000,
-              "Location" : [0.000000, 0.000000, 1.300000],
-              "Rotation" : [-0.000000, 0.000000, 0.000000],
-              "Scale" : [1.000000, 1.000000, 1.000000],
-              "Text" : "UUID : 5",
-              "Visible" : true
-            }
-          }],
+        "Children" : [],
         "ClassName" : "UStaticMeshComponent",
         "Properties" : {
           "Element 0" : {
-            "Path" : "Asset/MeshCache/Cube_BasicShapeMaterial.mbin"
+            "Path" : "Asset/MeshCache/Cube/BasicShapeMaterial.mbin"
           },
           "Location" : [0.000000, 0.000000, 0.000000],
           "Rotation" : [-0.000000, 0.000000, 0.000000],
@@ -35,14 +23,14 @@
   "ContextName" : "Default",
   "Name" : "Default",
   "PerspectiveCamera" : {
-    "FOV" : 1.570796,
+    "FOV" : 90.000000,
     "FarClip" : 1000.000000,
-    "Location" : [-4.983980, -2.887515, 3.507862],
+    "Location" : [-3.690943, -6.364208, 4.306822],
     "NearClip" : 0.100000,
-    "Rotation" : [0.000000, 27.405302, 47.129379]
+    "Rotation" : [0.000001, 25.904558, 54.928211]
   },
   "Primitives" : {
-    "150020" : {
+    "7" : {
       "Location" : [0.000000, 0.000000, 0.000000],
       "ObjStaticMeshAsset" : "Data/BasicShape/Cube.OBJ",
       "Rotation" : [0.000000, -0.000000, 0.000000],

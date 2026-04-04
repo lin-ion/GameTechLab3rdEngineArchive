@@ -11,6 +11,7 @@
 
 DEFINE_CLASS(UPrimitiveComponent, USceneComponent)
 
+
 UPrimitiveComponent::~UPrimitiveComponent()
 {
 	if (Proxy)
@@ -108,4 +109,9 @@ void UPrimitiveComponent::UpdateWorldMatrix() const
 	USceneComponent::UpdateWorldMatrix();
 	UpdateWorldAABB();
 	const_cast<UPrimitiveComponent*>(this)->MarkRenderStateDirty();
+
+	if (UScene* Scene = GetScene())
+	{
+		Scene->GetRenderProxy().MarkSpatialIndexDirty();
+	}
 }
