@@ -63,7 +63,13 @@ public:
 private:
 	void TickInput(float DeltaTime);
 	void TickInteraction(float DeltaTime);
-	void HandleDragStart(const FRay& Ray);
+	void HandleDragStart(const FRay& Ray, float LocalMouseX, float LocalMouseY);
+	void ProcessPendingIdPickResult();
+
+public:
+	bool HasPendingIdPickRequest() const { return bPendingIdPickRequest; }
+	void GetPendingIdPickCoord(uint32& OutX, uint32& OutY) const { OutX = PendingIdPickX; OutY = PendingIdPickY; }
+	void SetIdPickResult(uint32 InId) { PendingPickedObjectId = InId; bHasPendingIdPickResult = true; bPendingIdPickRequest = false; }
 
 private:
 	FViewport* Viewport = nullptr;
@@ -80,6 +86,12 @@ private:
 	float WindowHeight = 1080.f;
 
 	bool bIsActive = false;
+	bool bPendingIdPickRequest = false;
+	bool bHasPendingIdPickResult = false;
+	bool bPendingIdPickCtrlHeld = false;
+	uint32 PendingIdPickX = 0;
+	uint32 PendingIdPickY = 0;
+	uint32 PendingPickedObjectId = 0;
 	// 뷰포트 슬롯의 스크린 좌표 (ImGui screen space = 윈도우 클라이언트 좌표)
 	FRect ViewportScreenRect;
 };

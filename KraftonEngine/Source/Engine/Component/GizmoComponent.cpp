@@ -1,4 +1,4 @@
-#include "GizmoComponent.h"
+﻿#include "GizmoComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"
 #include "Math/Quat.h"
@@ -45,6 +45,7 @@ public:
 			Cmd.Shader = FShaderManager::Get().GetShader(EShaderType::Gizmo);
 			Cmd.MeshBuffer = GizmoMesh;
 			Cmd.PerObjectConstants = FPerObjectConstants{ WorldMatrix };
+			Cmd.PickingId = Gizmo->GetUUID();
 
 			auto& G = Cmd.ExtraCB.Bind<FGizmoConstants>(
 				FConstantBufferPool::Get().GetBuffer(ECBSlot::Gizmo, sizeof(FGizmoConstants)), ECBSlot::Gizmo);

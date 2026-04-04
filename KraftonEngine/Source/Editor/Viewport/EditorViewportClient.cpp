@@ -2,6 +2,8 @@
 
 #include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/EditorEngine.h"
+#include "Editor/Selection/PickingService.h"
+#include "Editor/Selection/PickingPerf.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/Engine.h"
@@ -225,6 +227,7 @@ void FEditorViewportClient::TickInput(float DeltaTime)
 void FEditorViewportClient::TickInteraction(float DeltaTime)
 {
 	(void)DeltaTime;
+	ProcessPendingIdPickResult();
 
 	if (!Camera || !Gizmo || !World)
 	{
@@ -279,7 +282,7 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 
 	if (InputSystem::Get().GetKeyDown(VK_LBUTTON))
 	{
-		HandleDragStart(Ray);
+		HandleDragStart(Ray, LocalMouseX, LocalMouseY);
 	}
 	else if (InputSystem::Get().GetLeftDragging())
 	{
@@ -305,7 +308,7 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	}
 }
 
-void FEditorViewportClient::HandleDragStart(const FRay& Ray)
+void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, float LocalMouseY)
 {
 	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 	if (UEditorEngine* Editor = Cast<UEditorEngine>(GEngine))
@@ -313,45 +316,36 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 		PickingMode = Editor->GetPickingMode();
 	}
 
+	const bool bMeasureRayPick = (PickingMode == EPickingMode::RayTriangleBVH);
+	const uint64 RayPickStartCycles = bMeasureRayPick ? FPickingPlatformTime::Cycles64() : 0;
+	auto RecordRayPickIfNeeded = [&]()
+	{
+		if (!bMeasureRayPick) return;
+		const uint64 EndCycles = FPickingPlatformTime::Cycles64();
+		FPickingPerf::Record(EPickingMode::RayTriangleBVH, EndCycles - RayPickStartCycles);
+	};
+
 	FHitResult HitResult{};
-	if (FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
+	if (FPickingService::PickGizmo(Gizmo, Ray, PickingMode, HitResult))
 	{
 		Gizmo->SetPressedOnHandle(true);
+		RecordRayPickIfNeeded();
 	}
 	else
 	{
-		AActor* BestActor = nullptr;
-		float ClosestDistance = FLT_MAX;
-
-		// 1단계: 토글 구조만 선반영. ID Picking 경로는 추후 구현 예정.
 		if (PickingMode == EPickingMode::IDBuffer)
 		{
-			// TODO: ID buffer 기반 픽킹으로 교체
+			bPendingIdPickRequest = true;
+			bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
+			const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
+			const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
+			PendingIdPickX = static_cast<uint32>(Clamp(LocalMouseX, 0.0f, MaxX));
+			PendingIdPickY = static_cast<uint32>(Clamp(LocalMouseY, 0.0f, MaxY));
+			return;
 		}
 
-		for (AActor* Actor : World->GetActors())
-		{
-			if (!Actor || !Actor->GetRootComponent()) {
-				continue;
-			}
-			//USceneComponent* RootComp = Actor->GetRootComponent();
-			//if (!RootComp->IsA<UPrimitiveComponent>()) continue;
-
-			for (auto* primitive : Actor->GetPrimitiveComponents())
-			{
-				UPrimitiveComponent* PrimitiveComp = static_cast<UPrimitiveComponent*>(primitive);
-
-				HitResult = {};
-				if (FRayUtils::RaycastComponent(PrimitiveComp, Ray, HitResult))
-				{
-					if (HitResult.Distance < ClosestDistance)
-					{
-						ClosestDistance = HitResult.Distance;
-						BestActor = Actor;
-					}
-				}
-			}
-		}
+		float ClosestDistance = FLT_MAX;
+		AActor* BestActor = FPickingService::PickActor(World, Ray, PickingMode, ClosestDistance);
 
 		bool bCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
 
@@ -373,9 +367,49 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 				SelectionManager->Select(BestActor);
 			}
 		}
+
+		RecordRayPickIfNeeded();
 	}
 }
 
+void FEditorViewportClient::ProcessPendingIdPickResult()
+{
+	if (!bHasPendingIdPickResult || !SelectionManager)
+	{
+		return;
+	}
+
+	bHasPendingIdPickResult = false;
+
+	UObject* PickedObject = FPickingService::ResolveObjectFromPickingId(PendingPickedObjectId);
+	AActor* PickedActor = Cast<AActor>(PickedObject);
+
+	if (!PickedActor)
+	{
+		if (UPrimitiveComponent* PickedComp = Cast<UPrimitiveComponent>(PickedObject))
+		{
+			PickedActor = PickedComp->GetOwner();
+		}
+	}
+
+	if (!PickedActor)
+	{
+		if (!bPendingIdPickCtrlHeld)
+		{
+			SelectionManager->ClearSelection();
+		}
+		return;
+	}
+
+	if (bPendingIdPickCtrlHeld)
+	{
+		SelectionManager->ToggleSelect(PickedActor);
+	}
+	else
+	{
+		SelectionManager->Select(PickedActor);
+	}
+}
 void FEditorViewportClient::UpdateLayoutRect()
 {
 	if (!LayoutWindow) return;

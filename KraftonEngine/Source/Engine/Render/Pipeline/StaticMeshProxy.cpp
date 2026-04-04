@@ -1,5 +1,6 @@
-#include "StaticMeshProxy.h"
+﻿#include "StaticMeshProxy.h"
 #include "Component/StaticMeshComponent.h"
+#include "GameFramework/AActor.h"
 #include "Mesh/StaticMeshAsset.h"
 #include "Mesh/StaticMesh.h"
 #include "Render/Resource/ShaderManager.h"
@@ -27,6 +28,14 @@ void FStaticMeshProxy::UpdateProxy()
 	CachedCommand.PerObjectConstants = FPerObjectConstants::FromWorldMatrix(SMC->GetWorldMatrix());
 	CachedCommand.Shader = FShaderManager::Get().GetShader(EShaderType::StaticMesh);
 	CachedCommand.MeshBuffer = Buffer;
+	if (AActor* ActorOwner = SMC->GetOwner())
+	{
+		CachedCommand.PickingId = ActorOwner->GetUUID();
+	}
+	else
+	{
+		CachedCommand.PickingId = SMC->GetUUID();
+	}
 
 	UStaticMesh* StaticMesh = SMC->GetStaticMesh();
 	if (StaticMesh && StaticMesh->GetStaticMeshAsset())

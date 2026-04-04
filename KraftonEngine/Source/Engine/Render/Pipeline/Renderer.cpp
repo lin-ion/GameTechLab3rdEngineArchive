@@ -1,4 +1,5 @@
 ﻿#include "Renderer.h"
+#include "Renderer.h"
 
 #include <iostream>
 #include <algorithm>
@@ -9,6 +10,7 @@
 #include "Profiling/GPUProfiler.h"
 #include "Engine/Runtime/Engine.h"
 #include "Profiling/Timer.h"
+#include "Viewport/Viewport.h"
 
 
 void FRenderer::Create(HWND hWindow)
@@ -140,6 +142,54 @@ void FRenderer::PrepareBatchers(const FViewContext& Bus)
 					Entry.SubUV.Height
 				);
 			}
+		}
+	}
+}
+
+void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InViewport)
+{
+	if (!InViewport) return;
+
+	ID3D11DeviceContext* Context = Device.GetDeviceContext();
+	if (!Context) return;
+
+	InViewport->BeginPickingRender(Context);
+	UpdateFrameBuffer(Context, InRenderBus);
+
+	FShader* PickingShader = FShaderManager::Get().GetShader(EShaderType::Picking);
+	if (!PickingShader) return;
+
+	const ERenderPass PickPasses[] = { ERenderPass::Opaque, ERenderPass::GizmoOuter, ERenderPass::GizmoInner };
+
+	for (ERenderPass Pass : PickPasses)
+	{
+		ApplyPassRenderState(Pass, Context, InRenderBus.GetViewMode());
+		const auto& Commands = InRenderBus.GetCommands(Pass);
+		for (const FRenderCommand& Cmd : Commands)
+		{
+			if (!Cmd.MeshBuffer || !Cmd.MeshBuffer->IsValid() || Cmd.PickingId == 0u)
+			{
+				continue;
+			}
+
+			PickingShader->Bind(Context);
+
+			Resources.PerObjectConstantBuffer.Update(Context, &Cmd.PerObjectConstants, sizeof(FPerObjectConstants));
+			{
+				ID3D11Buffer* CB = Resources.PerObjectConstantBuffer.GetBuffer();
+				Context->VSSetConstantBuffers(ECBSlot::PerObject, 1, &CB);
+			}
+
+			FPickingConstants PickingConstants = {};
+			PickingConstants.PickingId = Cmd.PickingId;
+			FConstantBuffer* PickingCB = FConstantBufferPool::Get().GetBuffer(ECBSlot::Picking, sizeof(FPickingConstants));
+			PickingCB->Update(Context, &PickingConstants, sizeof(FPickingConstants));
+			{
+				ID3D11Buffer* CB = PickingCB->GetBuffer();
+				Context->PSSetConstantBuffers(ECBSlot::Picking, 1, &CB);
+			}
+
+			DrawCommand(Context, Cmd);
 		}
 	}
 }

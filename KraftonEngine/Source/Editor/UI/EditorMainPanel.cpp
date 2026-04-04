@@ -2,6 +2,7 @@
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
+#include "Editor/Selection/PickingPerf.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Scene.h"
@@ -56,7 +57,7 @@ namespace
 		AccumulateScene(World->GetPersistentScene());
 		AccumulateScene(World->GetActiveScene());
 
-		ImGui::SetNextWindowPos(ImVec2(1300.0f, 30.0f), ImGuiCond_Always);
+		ImGui::SetNextWindowPos(ImVec2(1200.0f, 30.0f), ImGuiCond_Always);
 		ImGui::SetNextWindowBgAlpha(0.35f);
 
 		const ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration
@@ -68,6 +69,9 @@ namespace
 
 		if (ImGui::Begin("Culling Debug Overlay", nullptr, Flags))
 		{
+			const FPickingPerfBucket& RayPick = FPickingPerf::GetRay();
+			const FPickingPerfBucket& IdPick = FPickingPerf::GetIdBuffer();
+
 			ImGui::TextUnformatted("[Culling Debug]");
 			ImGui::Separator();
 			ImGui::Text("Registered: %d  Inserted: %d  Candidates: %d  Rendered: %d",
@@ -84,6 +88,19 @@ namespace
 				Total.OctreeTotalItems,
 				Total.OctreeOutsideItems,
 				Total.OctreeFrustumCandidateItems);
+
+			ImGui::Separator();
+			ImGui::Text("[Picking Perf - Ray] Last: %.3f ms  Avg: %.3f ms  Total: %.3f ms  Count: %llu",
+				RayPick.LastPickTimeMs,
+				RayPick.GetAverageMs(),
+				RayPick.TotalPickTimeMs,
+				static_cast<unsigned long long>(RayPick.TotalPickCount));
+
+			ImGui::Text("[Picking Perf - ID ] Last: %.3f ms  Avg: %.3f ms  Total: %.3f ms  Count: %llu",
+				IdPick.LastPickTimeMs,
+				IdPick.GetAverageMs(),
+				IdPick.TotalPickTimeMs,
+				static_cast<unsigned long long>(IdPick.TotalPickCount));
 		}
 		ImGui::End();
 	}

@@ -1,5 +1,6 @@
-#include "PrimitiveProxy.h"
+﻿#include "PrimitiveProxy.h"
 #include "Component/PrimitiveComponent.h"
+#include "GameFramework/AActor.h"
 #include "Render/Resource/ShaderManager.h"
 
 FPrimitiveProxy::FPrimitiveProxy(UPrimitiveComponent* InOwner)
@@ -14,6 +15,18 @@ void FPrimitiveProxy::OnDraw(FViewContext& View)
 	{
 		UpdateProxy();
 		bIsDirty = false;
+	}
+
+	if (Owner)
+	{
+		if (AActor* ActorOwner = Owner->GetOwner())
+		{
+			CachedCommand.PickingId = ActorOwner->GetUUID();
+		}
+		else
+		{
+			CachedCommand.PickingId = Owner->GetUUID();
+		}
 	}
 
 	View.AddCommand(ERenderPass::Opaque, CachedCommand);
@@ -56,4 +69,12 @@ void FDefaultPrimitiveProxy::UpdateProxy()
 	CachedCommand.PerObjectConstants = FPerObjectConstants::FromWorldMatrix(Owner->GetWorldMatrix());
 	CachedCommand.Shader = FShaderManager::Get().GetShader(EShaderType::Primitive);
 	CachedCommand.MeshBuffer = Buffer;
+	if (AActor* ActorOwner = Owner->GetOwner())
+	{
+		CachedCommand.PickingId = ActorOwner->GetUUID();
+	}
+	else
+	{
+		CachedCommand.PickingId = Owner->GetUUID();
+	}
 }

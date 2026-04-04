@@ -1,6 +1,8 @@
 ﻿#include "EditorRenderPipeline.h"
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
+#include "Editor/Selection/PickingTypes.h"
+#include "Editor/Selection/PickingPerf.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
 #include "Component/CameraComponent.h"
@@ -95,6 +97,29 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	// 4. Bus에 담긴 커맨드와 엔트리를 기반으로 GPU 드로우 콜 실행
 	Renderer.Render(ViewContext);
+
+	if (Editor->GetPickingMode() == EPickingMode::IDBuffer && VC->HasPendingIdPickRequest())
+	{
+		const uint64 IdPickStartCycles = FPickingPlatformTime::Cycles64();
+		Renderer.RenderPicking(ViewContext, VP);
+
+		uint32 PickX = 0;
+		uint32 PickY = 0;
+		VC->GetPendingIdPickCoord(PickX, PickY);
+
+		uint32 PickedId = 0;
+		if (VP->ReadPickingId(Ctx, PickX, PickY, PickedId))
+		{
+			VC->SetIdPickResult(PickedId);
+		}
+		else
+		{
+			VC->SetIdPickResult(0u);
+		}
+
+		const uint64 IdPickEndCycles = FPickingPlatformTime::Cycles64();
+		FPickingPerf::Record(EPickingMode::IDBuffer, IdPickEndCycles - IdPickStartCycles);
+	}
 }
 
 void FEditorRenderPipeline::Reset()

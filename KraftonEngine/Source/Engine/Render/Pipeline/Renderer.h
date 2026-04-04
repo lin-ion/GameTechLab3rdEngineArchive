@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /*
 	실제 렌더링을 담당하는 Class 입니다. (Rendering 최상위 클래스)
@@ -15,6 +15,8 @@
 #include "Render/Batcher/SubUVBatcher.h"
 
 #include <functional>
+
+class FViewport;
 
 // 패스별 Batcher DrawBatch 바인딩
 struct FPassBatcherBinding
@@ -43,6 +45,7 @@ public:
 	void PrepareBatchers(const FViewContext& InRenderBus);
 	void BeginFrame();
 	void Render(const FViewContext& InRenderBus);
+	void RenderPicking(const FViewContext& InRenderBus, FViewport* InViewport);
 	void EndFrame();
 
 	FD3DDevice& GetFD3DDevice() { return Device; }

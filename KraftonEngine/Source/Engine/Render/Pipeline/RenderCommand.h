@@ -23,6 +23,7 @@ namespace ECBSlot
 	constexpr uint32 PerObject = 1; // b1: Model/Color
 	constexpr uint32 Gizmo = 2;     // b2: Gizmo state
 	constexpr uint32 PostProcess = 3; // b3: PostProcess Outline params
+	constexpr uint32 Picking = 4; // b4: Picking ID
 }
 
 //PerObject
@@ -64,6 +65,12 @@ struct FOutlinePostProcessConstants
 {
 	FVector4 OutlineColor = FVector4(1.0f, 0.5f, 0.0f, 1.0f);
 	float OutlineThickness = 1.0f;
+	float Padding[3] = {};
+};
+
+struct FPickingConstants
+{
+	uint32 PickingId = 0;
 	float Padding[3] = {};
 };
 
@@ -188,6 +195,7 @@ struct FRenderCommand
 	FMeshBuffer* MeshBuffer = nullptr;
 	FShader* Shader = nullptr;
 	FPerObjectConstants PerObjectConstants = {};	// b1 (공통)
+	uint32 PickingId = 0;
 
 	// StaticMesh 섹션별 드로우 정보
 	TArray<FMeshSectionDraw> SectionDraws;

@@ -7,6 +7,7 @@
 #include "GameFramework/World.h"
 #include "GameFramework/Scene.h"
 #include "Editor/EditorRenderPipeline.h"
+#include "Editor/Selection/PickingPerf.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Object/ObjectFactory.h"
 #include "Mesh/ObjManager.h"
@@ -115,6 +116,8 @@ void UEditorEngine::NewScene()
 
 void UEditorEngine::ClearScene()
 {
+	FPickingPerf::Reset();
+
 	SelectionManager.ClearSelection();
 
 	for (FWorldContext& Ctx : WorldList)

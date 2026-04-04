@@ -48,6 +48,11 @@ inline D3D11_INPUT_ELEMENT_DESC FVertexInputLayout[] =
 	{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, static_cast<uint32>(offsetof(FVertex, Color)),    D3D11_INPUT_PER_VERTEX_DATA, 0 },
 };
 
+inline D3D11_INPUT_ELEMENT_DESC FPositionOnlyInputLayout[] =
+{
+	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+};
+
 inline D3D11_INPUT_ELEMENT_DESC FTextureVertexInputLayout[] =
 {
 	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<uint32>(offsetof(FTextureVertex, Position)), D3D11_INPUT_PER_VERTEX_DATA, 0 },

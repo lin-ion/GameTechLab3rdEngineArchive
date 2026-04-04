@@ -1,4 +1,4 @@
-#include "ShaderManager.h"
+﻿#include "ShaderManager.h"
 #include "Render/Types/VertexTypes.h"
 
 void FShaderManager::Initialize(ID3D11Device* InDevice)
@@ -30,6 +30,9 @@ void FShaderManager::Initialize(ID3D11Device* InDevice)
 
 	Shaders[(uint32)EShaderType::SubUV].Create(InDevice, L"Shaders/ShaderSubUV.hlsl",
 		"VS", "PS", FTextureVertexInputLayout, ARRAYSIZE(FTextureVertexInputLayout));
+
+	Shaders[(uint32)EShaderType::Picking].Create(InDevice, L"Shaders/Picking.hlsl",
+		"VS", "PS", FPositionOnlyInputLayout, ARRAYSIZE(FPositionOnlyInputLayout));
 
 	bIsInitialized = true;
 }

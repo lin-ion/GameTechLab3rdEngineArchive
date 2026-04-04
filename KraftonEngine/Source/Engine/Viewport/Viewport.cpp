@@ -1,4 +1,4 @@
-#include "Viewport/Viewport.h"
+﻿#include "Viewport/Viewport.h"
 
 FViewport::~FViewport()
 {
@@ -71,6 +71,45 @@ void FViewport::BeginRender(ID3D11DeviceContext* Ctx, const float ClearColor[4])
 	Ctx->RSSetViewports(1, &VPRect);
 }
 
+void FViewport::BeginPickingRender(ID3D11DeviceContext* Ctx)
+{
+	if (!PickingRTV || !DSV) return;
+
+	const float ClearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	D3D11_VIEWPORT VPRect = GetViewportRect();
+
+	Ctx->ClearRenderTargetView(PickingRTV, ClearColor);
+	Ctx->ClearDepthStencilView(DSV, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	Ctx->OMSetRenderTargets(1, &PickingRTV, DSV);
+	Ctx->RSSetViewports(1, &VPRect);
+}
+
+bool FViewport::ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutId) const
+{
+	OutId = 0u;
+	if (!Ctx || !PickingTexture || !PickingReadback) return false;
+	if (X >= Width || Y >= Height) return false;
+
+	// 현재 바인딩된 RTV/DSV와의 충돌을 피하기 위해 언바인딩 후 복사
+	Ctx->OMSetRenderTargets(0, nullptr, nullptr);
+	Ctx->Flush();
+
+	Ctx->CopyResource(PickingReadback, PickingTexture);
+
+	D3D11_MAPPED_SUBRESOURCE Mapped = {};
+	if (FAILED(Ctx->Map(PickingReadback, 0, D3D11_MAP_READ, 0, &Mapped)))
+	{
+		return false;
+	}
+
+	const uint8* Base = static_cast<const uint8*>(Mapped.pData);
+	const uint32* Pixel = reinterpret_cast<const uint32*>(Base + static_cast<size_t>(Y) * Mapped.RowPitch + static_cast<size_t>(X) * sizeof(uint32));
+	OutId = *Pixel;
+
+	Ctx->Unmap(PickingReadback, 0);
+	return true;
+}
+
 bool FViewport::CreateResources()
 {
 	if (!Device || Width == 0 || Height == 0) return false;
@@ -93,6 +132,36 @@ bool FViewport::CreateResources()
 	if (FAILED(hr)) return false;
 
 	hr = Device->CreateShaderResourceView(RTTexture, nullptr, &SRV);
+	if (FAILED(hr)) return false;
+
+	// ── Picking ID 렌더 타깃 (R32_UINT) ──
+	D3D11_TEXTURE2D_DESC PickingDesc = {};
+	PickingDesc.Width = Width;
+	PickingDesc.Height = Height;
+	PickingDesc.MipLevels = 1;
+	PickingDesc.ArraySize = 1;
+	PickingDesc.Format = DXGI_FORMAT_R32_UINT;
+	PickingDesc.SampleDesc.Count = 1;
+	PickingDesc.Usage = D3D11_USAGE_DEFAULT;
+	PickingDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
+
+	hr = Device->CreateTexture2D(&PickingDesc, nullptr, &PickingTexture);
+	if (FAILED(hr)) return false;
+
+	D3D11_RENDER_TARGET_VIEW_DESC PickingRTVDesc = {};
+	PickingRTVDesc.Format = DXGI_FORMAT_R32_UINT;
+	PickingRTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+	PickingRTVDesc.Texture2D.MipSlice = 0;
+
+	hr = Device->CreateRenderTargetView(PickingTexture, &PickingRTVDesc, &PickingRTV);
+	if (FAILED(hr)) return false;
+
+	D3D11_TEXTURE2D_DESC ReadbackDesc = PickingDesc;
+	ReadbackDesc.Usage = D3D11_USAGE_STAGING;
+	ReadbackDesc.BindFlags = 0;
+	ReadbackDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+	hr = Device->CreateTexture2D(&ReadbackDesc, nullptr, &PickingReadback);
 	if (FAILED(hr)) return false;
 
 	// ── 뎁스/스텐실 (TYPELESS → DSV + StencilSRV) ──
@@ -142,6 +211,9 @@ bool FViewport::CreateResources()
 void FViewport::ReleaseResources()
 {
 	if (StencilSRV) { StencilSRV->Release(); StencilSRV = nullptr; }
+	if (PickingReadback) { PickingReadback->Release(); PickingReadback = nullptr; }
+	if (PickingRTV) { PickingRTV->Release(); PickingRTV = nullptr; }
+	if (PickingTexture) { PickingTexture->Release(); PickingTexture = nullptr; }
 	if (DSV) { DSV->Release(); DSV = nullptr; }
 	if (DepthTexture) { DepthTexture->Release(); DepthTexture = nullptr; }
 	if (SRV) { SRV->Release(); SRV = nullptr; }

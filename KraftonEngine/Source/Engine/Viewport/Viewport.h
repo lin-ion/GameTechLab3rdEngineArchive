@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Render/Types/RenderTypes.h"
 
@@ -22,6 +22,8 @@ public:
 
 	// 오프스크린 RT 클리어 + 바인딩 (렌더 시작 시 호출)
 	void BeginRender(ID3D11DeviceContext* Ctx, const float ClearColor[4] = nullptr);
+	void BeginPickingRender(ID3D11DeviceContext* Ctx);
+	bool ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutId) const;
 
 	// ViewportClient 참조
 	void SetClient(FViewportClient* InClient) { ViewportClient = InClient; }
@@ -33,6 +35,7 @@ public:
 
 	// D3D 리소스 접근자
 	ID3D11RenderTargetView* GetRTV() const { return RTV; }
+	ID3D11RenderTargetView* GetPickingRTV() const { return PickingRTV; }
 	ID3D11ShaderResourceView* GetSRV() const { return SRV; }
 	ID3D11ShaderResourceView* GetStencilSRV() const { return StencilSRV; }
 	ID3D11DepthStencilView* GetDSV() const { return DSV; }
@@ -51,6 +54,9 @@ private:
 	ID3D11Texture2D* RTTexture = nullptr;
 	ID3D11RenderTargetView* RTV = nullptr;
 	ID3D11ShaderResourceView* SRV = nullptr;		// ImGui::Image() 출력용
+	ID3D11Texture2D* PickingTexture = nullptr;
+	ID3D11RenderTargetView* PickingRTV = nullptr;
+	ID3D11Texture2D* PickingReadback = nullptr;
 
 	// 뎁스/스텐실 (TYPELESS 텍스처 → DSV + StencilSRV 분리)
 	ID3D11Texture2D* DepthTexture = nullptr;
