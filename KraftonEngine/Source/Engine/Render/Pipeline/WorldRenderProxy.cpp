@@ -1,5 +1,4 @@
 ﻿#include "WorldRenderProxy.h"
-#include "WorldRenderProxy.h"
 #include "PrimitiveProxy.h"
 #include "Render/Pipeline/FrustumCulling.h"
 #include "Render/Pipeline/FixedWorldOctree.h"

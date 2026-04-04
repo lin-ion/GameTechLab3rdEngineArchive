@@ -293,6 +293,8 @@ json::JSON FSceneSaveManager::SerializePropertyValue(const FPropertyDescriptor& 
 
 json::JSON FSceneSaveManager::SerializeCamera(UCameraComponent* Cam)
 {
+	constexpr float Rad2Deg = 180.0f / 3.14159265358979f;
+
 	using namespace json;
 	JSON cam = json::Object();
 	if (!Cam) return cam;
@@ -302,7 +304,7 @@ json::JSON FSceneSaveManager::SerializeCamera(UCameraComponent* Cam)
 	WriteVec3(cam, "Rotation", M.GetEuler());
 
 	const FCameraState& S = Cam->GetCameraState();
-	cam["FOV"]      = static_cast<double>(S.FOV);
+	cam["FOV"]      = static_cast<double>(S.FOV * Rad2Deg);
 	cam["NearClip"] = static_cast<double>(S.NearZ);
 	cam["FarClip"]  = static_cast<double>(S.FarZ);
 
@@ -343,12 +345,14 @@ static float ReadScalarOrArray(json::JSON& Val)
 
 void FSceneSaveManager::DeserializeCamera(json::JSON& CameraJSON, FPerspectiveCameraData& OutCam)
 {
+	constexpr float Rad2Deg = 180.0f / 3.14159265358979f;
+
 	using namespace json;
 	if (CameraJSON.JSONType() == JSON::Class::Null) return;
 
 	if (CameraJSON.hasKey("Location")) OutCam.Location = ReadVec3(CameraJSON["Location"]);
 	if (CameraJSON.hasKey("Rotation")) OutCam.Rotation = ReadVec3(CameraJSON["Rotation"]);
-	if (CameraJSON.hasKey("FOV"))      OutCam.FOV      = ReadScalarOrArray(CameraJSON["FOV"]);
+	if (CameraJSON.hasKey("FOV"))      OutCam.FOV      = ReadScalarOrArray(CameraJSON["FOV"]) / Rad2Deg;
 	if (CameraJSON.hasKey("NearClip")) OutCam.NearClip = ReadScalarOrArray(CameraJSON["NearClip"]);
 	if (CameraJSON.hasKey("FarClip"))  OutCam.FarClip  = ReadScalarOrArray(CameraJSON["FarClip"]);
 	OutCam.bValid = true;
