@@ -15,6 +15,7 @@ public:
 
 private:
 	UStaticMeshComponent* StaticMeshComponent = nullptr;
-	//	UUID 삭제 - 양현석
-	// UTextRenderComponent* TextRenderComponent = nullptr;
+#ifdef FOR_COMPETITION
+	 UTextRenderComponent* TextRenderComponent = nullptr;
+#endif
 };

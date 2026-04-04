@@ -1,5 +1,4 @@
 ﻿#pragma once
-#pragma once
 #include "Core/CoreTypes.h"
 #include "Render/Pipeline/RenderBus.h"
 
@@ -31,7 +30,7 @@ public:
 	void RemoveProxy(FPrimitiveProxy* Proxy);
 	void MarkSpatialIndexDirty() { bSpatialIndexDirty = true; }
 
-	void CollectWorld(FRenderBus& Bus, const TArray<AActor*>& SelectedActors);
+	void CollectWorld(FRenderBus& Bus, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex = true);
 	const FWorldProxyCullingStats& GetLastCullingStats() const { return LastCullingStats; }
 
 private:

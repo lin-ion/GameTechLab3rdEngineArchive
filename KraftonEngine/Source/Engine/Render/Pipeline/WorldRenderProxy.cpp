@@ -43,7 +43,7 @@ void FWorldRenderProxy::RemoveProxy(FPrimitiveProxy* Proxy)
 	}
 }
 
-void FWorldRenderProxy::CollectWorld(FRenderBus& Bus, const TArray<AActor*>& SelectedActors)
+void FWorldRenderProxy::CollectWorld(FRenderBus& Bus, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex)
 {
 	if (!this) return;
 	if (!Bus.GetShowFlags().bPrimitives) return;
@@ -53,30 +53,30 @@ void FWorldRenderProxy::CollectWorld(FRenderBus& Bus, const TArray<AActor*>& Sel
 	const FFrustumPlanes Frustum = FFrustumCulling::BuildFrustumPlanes(Bus.GetView(), Bus.GetProj());
 	const TSet<AActor*> SelectedActorSet(SelectedActors.begin(), SelectedActors.end());
 
-	bool bNeedsRebuild = bSpatialIndexDirty;
-
-	if (SpatialIndex && bNeedsRebuild)
+	TArray<FPrimitiveProxy*> CandidateProxies;
+	if (bUseSpatialIndex && SpatialIndex)
 	{
-		SpatialIndex->Clear();
+		const bool bNeedsRebuild = bSpatialIndexDirty;
 
-		for (FPrimitiveProxy* Proxy : Proxies)
+		if (bNeedsRebuild)
 		{
-			if (!Proxy) continue;
+			SpatialIndex->Clear();
 
-			UPrimitiveComponent* Owner = Proxy->GetOwner();
-			if (!Owner) continue;
-			Owner->GetWorldMatrix();
+			for (FPrimitiveProxy* Proxy : Proxies)
+			{
+				if (!Proxy) continue;
 
-			SpatialIndex->Insert(Proxy, Owner->GetWorldBoundingBox());
-			++LastCullingStats.InsertedProxyCount;
+				UPrimitiveComponent* Owner = Proxy->GetOwner();
+				if (!Owner) continue;
+				Owner->GetWorldMatrix();
+
+				SpatialIndex->Insert(Proxy, Owner->GetWorldBoundingBox());
+				++LastCullingStats.InsertedProxyCount;
+			}
+
+			bSpatialIndexDirty = false;
 		}
 
-		bSpatialIndexDirty = false;
-	}
-
-	TArray<FPrimitiveProxy*> CandidateProxies;
-	if (SpatialIndex)
-	{
 		SpatialIndex->Query(Frustum, CandidateProxies);
 		const FOctreeDebugStats& OctreeStats = SpatialIndex->GetLastDebugStats();
 		if (!bNeedsRebuild)
@@ -88,6 +88,24 @@ void FWorldRenderProxy::CollectWorld(FRenderBus& Bus, const TArray<AActor*>& Sel
 		LastCullingStats.OctreeOutsideItems = OctreeStats.OutsideItems;
 		LastCullingStats.OctreeFrustumIntersectedNodes = OctreeStats.FrustumIntersectedNodes;
 		LastCullingStats.OctreeFrustumCandidateItems = OctreeStats.FrustumCandidateItems;
+	}
+	else
+	{
+		for (FPrimitiveProxy* Proxy : Proxies)
+		{
+			if (!Proxy) continue;
+
+			UPrimitiveComponent* Owner = Proxy->GetOwner();
+			if (!Owner || !Owner->IsVisible()) continue;
+
+			if (AActor* ActorOwner = Owner->GetOwner())
+			{
+				if (!ActorOwner->IsVisible()) continue;
+			}
+
+			if (!FFrustumCulling::IntersectsAABB(Frustum, Owner->GetWorldBoundingBox())) continue;
+			CandidateProxies.push_back(Proxy);
+		}
 	}
 	LastCullingStats.CandidateProxyCount = static_cast<int32>(CandidateProxies.size());
 

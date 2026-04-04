@@ -14,7 +14,7 @@
 #include "Render/Pipeline/Renderer.h"
 #include "Engine/Input/InputSystem.h"
 
-/* DEBUG */
+/* CULLING DEBUG */
 namespace
 {
 	void DrawCullingDebugOverlayImGui(UEditorEngine* Editor)

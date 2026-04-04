@@ -16,12 +16,12 @@ void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
 
 	StaticMeshComponent->SetStaticMesh(Asset);
 
-	//	UUID 삭제 - 양현석
+#ifdef FOR_COMPETITION
 	// UUID 텍스트 표시
-	// TextRenderComponent = AddComponent<UTextRenderComponent>();
-	// TextRenderComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 1.3f));
-	// TextRenderComponent->SetText("UUID : " + TextRenderComponent->GetOwnerUUIDToString());
-	// TextRenderComponent->AttachToComponent(StaticMeshComponent);
-	// TextRenderComponent->SetFont(FName("Default"));
-
+	 TextRenderComponent = AddComponent<UTextRenderComponent>();
+	 TextRenderComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 1.3f));
+	 TextRenderComponent->SetText("UUID : " + TextRenderComponent->GetOwnerUUIDToString());
+	 TextRenderComponent->AttachToComponent(StaticMeshComponent);
+	 TextRenderComponent->SetFont(FName("Default"));
+#endif
 }

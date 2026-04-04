@@ -13,12 +13,12 @@ void FRenderCollector::CollectWorld(UWorld* World, const TArray<AActor*>& Select
 
 	if (UScene* PersistentScene = World->GetPersistentScene())
 	{
-		PersistentScene->GetRenderProxy().CollectWorld(RenderBus, SelectedActors);
+		PersistentScene->GetRenderProxy().CollectWorld(RenderBus, SelectedActors, false);
 	}
 
 	if (UScene* ActiveScene = World->GetActiveScene())
 	{
-		ActiveScene->GetRenderProxy().CollectWorld(RenderBus, SelectedActors);
+		ActiveScene->GetRenderProxy().CollectWorld(RenderBus, SelectedActors, true);
 	}
 }
 

@@ -170,6 +170,7 @@ void FEditorSceneWidget::Render(float DeltaTime)
 
 	SEPARATOR();
 
+#ifdef FOR_COMPETITION
 	// Actor Outliner
 	UWorld* World = EditorEngine->GetWorld();
 	if (World)
@@ -211,6 +212,6 @@ void FEditorSceneWidget::Render(float DeltaTime)
 		}
 		ImGui::EndChild();
 	}
-
+#endif
 	ImGui::End();
 }
