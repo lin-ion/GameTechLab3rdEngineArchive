@@ -122,7 +122,8 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
     
     // 두 깊이가 너무 비슷하면(0.001 이내) "이전 프레임의 나"라고 판단하여 통과
     uint isVisible = 0;
-    if (abs(nearD - minH) < 0.002f) 
+    float dynamicEpsilon = 0.02f * (1.0f - nearD);
+    if (abs(nearD - minH) < dynamicEpsilon) 
     {
         isVisible = 1;
     }
