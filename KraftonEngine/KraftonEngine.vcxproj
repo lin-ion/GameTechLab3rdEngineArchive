@@ -266,7 +266,6 @@
     <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionCulling.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp" />
-    <ClCompile Include="Source\Engine\Render\Pipeline\RenderCollector.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\StaticMeshProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\ViewContext.cpp" />
