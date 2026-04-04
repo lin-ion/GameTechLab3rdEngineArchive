@@ -70,6 +70,8 @@ namespace
 		if (ImGui::Begin("Culling Debug Overlay", nullptr, Flags))
 		{
 			const FPickingPerfBucket& RayPick = FPickingPerf::GetRay();
+			const FPickingPerfBucket& RayBroadPick = FPickingPerf::GetRayBroadPhase();
+			const FPickingPerfBucket& RayNarrowPick = FPickingPerf::GetRayNarrowPhase();
 			const FPickingPerfBucket& IdPick = FPickingPerf::GetIdBuffer();
 
 			ImGui::TextUnformatted("[Culling Debug]");
@@ -95,6 +97,16 @@ namespace
 				RayPick.GetAverageMs(),
 				RayPick.TotalPickTimeMs,
 				static_cast<unsigned long long>(RayPick.TotalPickCount));
+
+			ImGui::Text("[Picking Perf - Ray Broad ] Last: %.3f ms  Avg: %.3f ms  Count: %llu",
+				RayBroadPick.LastPickTimeMs,
+				RayBroadPick.GetAverageMs(),
+				static_cast<unsigned long long>(RayBroadPick.TotalPickCount));
+
+			ImGui::Text("[Picking Perf - Ray Narrow] Last: %.3f ms  Avg: %.3f ms  Count: %llu",
+				RayNarrowPick.LastPickTimeMs,
+				RayNarrowPick.GetAverageMs(),
+				static_cast<unsigned long long>(RayNarrowPick.TotalPickCount));
 
 			ImGui::Text("[Picking Perf - ID ] Last: %.3f ms  Avg: %.3f ms  Total: %.3f ms  Count: %llu",
 				IdPick.LastPickTimeMs,

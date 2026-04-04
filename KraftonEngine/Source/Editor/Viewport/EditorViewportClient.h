@@ -68,8 +68,11 @@ private:
 
 public:
 	bool HasPendingIdPickRequest() const { return bPendingIdPickRequest; }
+	bool ShouldRenderPendingIdPick() const { return bPendingIdPickNeedsRender; }
 	void GetPendingIdPickCoord(uint32& OutX, uint32& OutY) const { OutX = PendingIdPickX; OutY = PendingIdPickY; }
 	void SetIdPickResult(uint32 InId) { PendingPickedObjectId = InId; bHasPendingIdPickResult = true; bPendingIdPickRequest = false; }
+	void UpdateIdBufferCacheCameraState();
+	void InvalidateIdBufferCache() { bHasCachedIdPickResult = false; }
 
 private:
 	FViewport* Viewport = nullptr;
@@ -87,11 +90,23 @@ private:
 
 	bool bIsActive = false;
 	bool bPendingIdPickRequest = false;
+	bool bPendingIdPickNeedsRender = true;
 	bool bHasPendingIdPickResult = false;
 	bool bPendingIdPickCtrlHeld = false;
 	uint32 PendingIdPickX = 0;
 	uint32 PendingIdPickY = 0;
 	uint32 PendingPickedObjectId = 0;
+
+	bool bHasCachedIdPickResult = false;
+	uint32 CachedIdPickX = 0;
+	uint32 CachedIdPickY = 0;
+	uint32 CachedPickedObjectId = 0;
+	FVector CachedIdPickCameraLocation = FVector(0.0f, 0.0f, 0.0f);
+	FVector CachedIdPickCameraForward = FVector(0.0f, 0.0f, 0.0f);
+	bool bCachedIdPickCameraOrtho = false;
+	float CachedIdPickCameraFOV = 0.0f;
+	float CachedIdPickCameraOrthoWidth = 0.0f;
+	bool IsIdBufferCacheValidForCurrentCamera() const;
 	// 뷰포트 슬롯의 스크린 좌표 (ImGui screen space = 윈도우 클라이언트 좌표)
 	FRect ViewportScreenRect;
 };
