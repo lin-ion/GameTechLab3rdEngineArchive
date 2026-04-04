@@ -48,8 +48,8 @@ public:
 
 		if (Mode == EPickingMode::IDBuffer)
 		{
-			// TODO: ID Picking 경로 연결 전까지는 Ray 경로로 안전하게 폴백
-			return FRayUtils::RaycastComponent(Gizmo, Ray, OutHit);
+			if (OutPickingId) *OutPickingId = 0u;
+			return false;
 		}
 
 		return FRayUtils::RaycastComponent(Gizmo, Ray, OutHit);
@@ -57,6 +57,7 @@ public:
 
 	static AActor* PickActor(UWorld* World, const FRay& Ray, EPickingMode Mode, float& OutClosestDistance, uint32* OutPickingId = nullptr)
 	{
+		//	World 정보가 없을 시 Picking 실패로 간주 (0u 반환)
 		if (!World)
 		{
 			if (OutPickingId) *OutPickingId = 0u;
@@ -65,8 +66,9 @@ public:
 
 		if (Mode == EPickingMode::IDBuffer)
 		{
-			// TODO: ID Picking 경로 연결 전까지는 Ray 경로로 안전하게 폴백
-			return PickActorByRay(World, Ray, OutClosestDistance, OutPickingId);
+			OutClosestDistance = FLT_MAX;
+			if (OutPickingId) *OutPickingId = 0u;
+			return nullptr;
 		}
 
 		return PickActorByRay(World, Ray, OutClosestDistance, OutPickingId);

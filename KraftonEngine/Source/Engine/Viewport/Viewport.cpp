@@ -90,10 +90,11 @@ bool FViewport::ReadPickingId(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint
 	if (!Ctx || !PickingTexture || !PickingReadback) return false;
 	if (X >= Width || Y >= Height) return false;
 
-	// 현재 바인딩된 RTV/DSV와의 충돌을 피하기 위해 언바인딩 후 복사
+	//	현재 바인딩된 RTV/DSV와의 충돌을 피하기 위해 언바인딩 후 복사
 	Ctx->OMSetRenderTargets(0, nullptr, nullptr);
 	Ctx->Flush();
 
+	//	렌더된 texture -> CPU 읽기용 texture로 복사
 	Ctx->CopyResource(PickingReadback, PickingTexture);
 
 	D3D11_MAPPED_SUBRESOURCE Mapped = {};
@@ -157,6 +158,8 @@ bool FViewport::CreateResources()
 	if (FAILED(hr)) return false;
 
 	D3D11_TEXTURE2D_DESC ReadbackDesc = PickingDesc;
+	ReadbackDesc.Width = 1;
+	ReadbackDesc.Height = 1;
 	ReadbackDesc.Usage = D3D11_USAGE_STAGING;
 	ReadbackDesc.BindFlags = 0;
 	ReadbackDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;

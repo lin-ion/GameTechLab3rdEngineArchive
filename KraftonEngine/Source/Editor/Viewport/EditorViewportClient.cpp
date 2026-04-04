@@ -316,8 +316,20 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		PickingMode = Editor->GetPickingMode();
 	}
 
+	if (PickingMode == EPickingMode::IDBuffer)
+	{
+		bPendingIdPickRequest = true;
+		bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
+		const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
+		const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
+		PendingIdPickX = static_cast<uint32>(Clamp(LocalMouseX, 0.0f, MaxX));
+		PendingIdPickY = static_cast<uint32>(Clamp(LocalMouseY, 0.0f, MaxY));
+		return;
+	}
+
 	const bool bMeasureRayPick = (PickingMode == EPickingMode::RayTriangleBVH);
 	const uint64 RayPickStartCycles = bMeasureRayPick ? FPickingPlatformTime::Cycles64() : 0;
+
 	auto RecordRayPickIfNeeded = [&]()
 	{
 		if (!bMeasureRayPick) return;
@@ -333,17 +345,6 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 	}
 	else
 	{
-		if (PickingMode == EPickingMode::IDBuffer)
-		{
-			bPendingIdPickRequest = true;
-			bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
-			const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
-			const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
-			PendingIdPickX = static_cast<uint32>(Clamp(LocalMouseX, 0.0f, MaxX));
-			PendingIdPickY = static_cast<uint32>(Clamp(LocalMouseY, 0.0f, MaxY));
-			return;
-		}
-
 		float ClosestDistance = FLT_MAX;
 		AActor* BestActor = FPickingService::PickActor(World, Ray, PickingMode, ClosestDistance);
 
@@ -382,6 +383,12 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 	bHasPendingIdPickResult = false;
 
 	UObject* PickedObject = FPickingService::ResolveObjectFromPickingId(PendingPickedObjectId);
+	if (PickedObject == Gizmo)
+	{
+		Gizmo->SetPressedOnHandle(true);
+		return;
+	}
+
 	AActor* PickedActor = Cast<AActor>(PickedObject);
 
 	if (!PickedActor)
