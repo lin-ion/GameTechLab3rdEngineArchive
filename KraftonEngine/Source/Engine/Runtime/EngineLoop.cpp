@@ -1,4 +1,5 @@
 ﻿#include "Engine/Runtime/EngineLoop.h"
+#include "Profiling/Stats.h"
 
 #if IS_OBJ_VIEWER
 #include "ObjViewer/ObjViewerEngine.h"
@@ -59,6 +60,7 @@ int FEngineLoop::Run()
 			break;
 		}
 
+		SCOPE_STAT("Frame.Total");
 		Timer.Tick();
 		GEngine->Tick(Timer.GetDeltaTime());
 	}

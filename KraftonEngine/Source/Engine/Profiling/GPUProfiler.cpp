@@ -132,6 +132,7 @@ void FGPUProfiler::CollectPreviousFrame()
 	}
 
 	double InvFrequency = 1000.0 / static_cast<double>(disjointData.Frequency); // ms 단위
+	bNewDataCollected = true;
 
 	for (uint32 i = 0; i < Read.UsedCount; ++i)
 	{
@@ -148,8 +149,6 @@ void FGPUProfiler::CollectPreviousFrame()
 		{
 			FStatEntry Entry;
 			Entry.Name = Name;
-			Entry.CallCount = 1;
-			Entry.TotalTime = ElapsedSec;
 			Entry.MaxTime = ElapsedSec;
 			Entry.MinTime = ElapsedSec;
 			Entry.LastTime = ElapsedSec;
@@ -158,8 +157,6 @@ void FGPUProfiler::CollectPreviousFrame()
 		else
 		{
 			FStatEntry& Entry = it->second;
-			Entry.CallCount++;
-			Entry.TotalTime += ElapsedSec;
 			Entry.MaxTime = (std::max)(Entry.MaxTime, ElapsedSec);
 			Entry.MinTime = (std::min)(Entry.MinTime, ElapsedSec);
 			Entry.LastTime = ElapsedSec;
@@ -169,6 +166,10 @@ void FGPUProfiler::CollectPreviousFrame()
 
 void FGPUProfiler::TakeSnapshot()
 {
+	// 새 데이터가 수집된 경우에만 스냅샷 갱신 (플리커 방지)
+	if (!bNewDataCollected) return;
+	bNewDataCollected = false;
+
 	Snapshot.clear();
 	Snapshot.reserve(GPUStats.size());
 
@@ -176,9 +177,7 @@ void FGPUProfiler::TakeSnapshot()
 	{
 		Snapshot.push_back(Entry);
 
-		// Reset for next frame
-		Entry.CallCount = 0;
-		Entry.TotalTime = 0.0;
+		// Reset for next collection
 		Entry.MaxTime = 0.0;
 		Entry.MinTime = DBL_MAX;
 		Entry.LastTime = 0.0;

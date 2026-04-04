@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Editor/UI/EditorWidget.h"
 #include "Profiling/Stats.h"
@@ -9,13 +9,17 @@ public:
 	void Render(float DeltaTime) override;
 
 private:
+	// 기존 Raw 테이블
 	void RenderStatTable(const char* TableID, const TArray<FStatEntry>& Source, int& OutSortColumn, bool& OutSortDescending);
 
-	int CPUSortColumn = 2;
+	// 통합 UI 섹션들
+	void RenderRenderStats();
+	void RenderCullingStats();
+	void RenderPickingDetail();
+
+	int CPUSortColumn = 1;
 	bool bCPUSortDescending = true;
-	int GPUSortColumn = 2;
-	bool bGPUSortDescending = true;
 	bool bPaused = false;
 	TArray<FStatEntry> FrozenCPUEntries;
-	TArray<FStatEntry> FrozenGPUEntries;
+
 };

@@ -248,8 +248,8 @@
     <ClCompile Include="Source\Engine\Object\UUIDGenerator.cpp" />
     <ClCompile Include="Source\Engine\Platform\CrashDump.cpp" />
     <ClCompile Include="Source\Engine\Platform\Paths.cpp" />
-    <ClCompile Include="Source\Engine\Profiling\GPUProfiler.cpp" />
     <ClCompile Include="Source\Engine\Profiling\MemoryStats.cpp" />
+    <ClCompile Include="Source\Engine\Profiling\PlatformTime.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Stats.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Timer.cpp" />
     <ClCompile Include="Source\Engine\Render\Batcher\BatcherBase.cpp" />
@@ -266,6 +266,7 @@
     <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionCulling.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\RenderStats.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\StaticMeshProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\ViewContext.cpp" />
@@ -368,8 +369,8 @@
     <ClInclude Include="Source\Engine\Platform\ConsoleHelper.h" />
     <ClInclude Include="Source\Engine\Platform\CrashDump.h" />
     <ClInclude Include="Source\Engine\Platform\Paths.h" />
-    <ClInclude Include="Source\Engine\Profiling\GPUProfiler.h" />
     <ClInclude Include="Source\Engine\Profiling\MemoryStats.h" />
+    <ClInclude Include="Source\Engine\Profiling\PlatformTime.h" />
     <ClInclude Include="Source\Engine\Profiling\Stats.h" />
     <ClInclude Include="Source\Engine\Profiling\Timer.h" />
     <ClInclude Include="Source\Engine\Render\Batcher\BatcherBase.h" />
@@ -390,6 +391,7 @@
     <ClInclude Include="Source\Engine\Render\Pipeline\PrimitiveProxy.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollectorContext.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCommand.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\RenderStats.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\StaticMeshProxy.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\ViewContext.h" />

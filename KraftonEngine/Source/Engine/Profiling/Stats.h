@@ -2,31 +2,32 @@
 
 #include "Core/CoreTypes.h"
 #include "Core/Singleton.h"
+#include "Profiling/PlatformTime.h"
 
-#define NOMINMAX
-#include <Windows.h>
 #include <cfloat>
 
 // --- 빌드 설정 ---
+// Release에서도 프로파일링 UI 및 SCOPE_STAT 활성화 (성능 대회용)
 #ifndef STATS
-#if defined(_DEBUG) || defined(DEBUG)
 #define STATS 1
-#else
-#define STATS 0
-#endif
 #endif
 
 // --- Stat Entry ---
 struct FStatEntry
 {
 	const char* Name = nullptr;
-	uint32 CallCount = 0;
-	double TotalTime = 0.0;		// seconds
 	double MaxTime   = 0.0;
 	double MinTime   = DBL_MAX;
 	double LastTime  = 0.0;
+};
 
-	double GetAvgTime() const { return CallCount > 0 ? TotalTime / CallCount : 0.0; }
+// --- Stat Accumulator (이름별 통계) ---
+struct FStatAccumulator
+{
+	const char* Name = nullptr;
+	double MaxTime  = 0.0;
+	double MinTime  = DBL_MAX;
+	double LastTime = 0.0;
 };
 
 // --- Stat Manager (싱글턴) ---
@@ -37,6 +38,7 @@ class FStatManager : public TSingleton<FStatManager>
 public:
 	void RecordTime(const char* Name, double ElapsedSeconds);
 	void TakeSnapshot();
+	void ResetStats();
 	const TArray<FStatEntry>& GetSnapshot() const { return Snapshot; }
 	LARGE_INTEGER GetFrequency() const { return Frequency; }
 
@@ -44,32 +46,27 @@ private:
 	FStatManager();
 	~FStatManager() = default;
 
-	TMap<const char*, FStatEntry> Stats;
+	TMap<const char*, FStatAccumulator> Stats;
 	TArray<FStatEntry> Snapshot;
 	LARGE_INTEGER Frequency;
 };
 
-// --- Scoped Timer (RAII) ---
+// --- Scoped Timer (RAII) — FPlatformTime 기반 ---
 class FScopedTimer
 {
 public:
-	FScopedTimer(const char* InName) : Name(InName)
-	{
-		QueryPerformanceCounter(&StartTime);
-	}
+	FScopedTimer(const char* InName) : Name(InName), StartCycles(FPlatformTime::Cycles64()) {}
 
 	~FScopedTimer()
 	{
-		LARGE_INTEGER EndTime;
-		QueryPerformanceCounter(&EndTime);
-		double Elapsed = static_cast<double>(EndTime.QuadPart - StartTime.QuadPart)
-			/ static_cast<double>(FStatManager::Get().GetFrequency().QuadPart);
+		const uint64 EndCycles = FPlatformTime::Cycles64();
+		double Elapsed = FPlatformTime::ToSeconds(EndCycles - StartCycles);
 		FStatManager::Get().RecordTime(Name, Elapsed);
 	}
 
 private:
 	const char* Name;
-	LARGE_INTEGER StartTime;
+	uint64 StartCycles;
 };
 
 // --- SCOPE_STAT 매크로 ---

@@ -84,4 +84,7 @@ private:
 
 	FPassRenderState    PassRenderStates[(uint32)ERenderPass::MAX];
 	FPassBatcherBinding PassBatchers[(uint32)ERenderPass::MAX];
+
+	// 중복 셰이더 바인딩 감지용
+	const void* LastBoundShader = nullptr;
 };

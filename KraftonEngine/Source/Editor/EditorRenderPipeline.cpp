@@ -12,7 +12,6 @@
 #include "Component/CameraComponent.h"
 #include "GameFramework/World.h"
 #include "Profiling/Stats.h"
-#include "Profiling/GPUProfiler.h"
 
 FEditorRenderPipeline::FEditorRenderPipeline(UEditorEngine* InEditor, FRenderer& InRenderer)
 	: Editor(InEditor)
@@ -27,8 +26,6 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 {
 #if STATS
 	FStatManager::Get().TakeSnapshot();
-	FGPUProfiler::Get().TakeSnapshot();
-	FGPUProfiler::Get().BeginFrame();
 #endif
 
 	// 뷰포트별 오프스크린 렌더 (각 VP의 RT에 3D 씬 렌더)
@@ -41,9 +38,6 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 	Renderer.BeginFrame();
 	Editor->RenderUI(DeltaTime);
 
-#if STATS
-	FGPUProfiler::Get().EndFrame();
-#endif
 	Renderer.EndFrame();
 }
 

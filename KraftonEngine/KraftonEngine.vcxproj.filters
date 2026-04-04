@@ -296,10 +296,10 @@
     <ClCompile Include="Source\Engine\Platform\Paths.cpp">
       <Filter>Source\Engine\Platform</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Profiling\GPUProfiler.cpp">
+    <ClCompile Include="Source\Engine\Profiling\MemoryStats.cpp">
       <Filter>Source\Engine\Profiling</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Profiling\MemoryStats.cpp">
+    <ClCompile Include="Source\Engine\Profiling\PlatformTime.cpp">
       <Filter>Source\Engine\Profiling</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\Stats.cpp">
@@ -348,6 +348,9 @@
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp">
+      <Filter>Source\Engine\Render\Pipeline</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Pipeline\RenderStats.cpp">
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp">
@@ -650,10 +653,10 @@
     <ClInclude Include="Source\Engine\Platform\Paths.h">
       <Filter>Source\Engine\Platform</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Profiling\GPUProfiler.h">
+    <ClInclude Include="Source\Engine\Profiling\MemoryStats.h">
       <Filter>Source\Engine\Profiling</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Profiling\MemoryStats.h">
+    <ClInclude Include="Source\Engine\Profiling\PlatformTime.h">
       <Filter>Source\Engine\Profiling</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\Stats.h">
@@ -714,6 +717,9 @@
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCommand.h">
+      <Filter>Source\Engine\Render\Pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Pipeline\RenderStats.h">
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Pipeline\Renderer.h">

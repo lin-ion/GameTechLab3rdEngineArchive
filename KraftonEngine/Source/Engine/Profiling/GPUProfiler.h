@@ -68,6 +68,7 @@ private:
 
 	TMap<const char*, FStatEntry> GPUStats;
 	TArray<FStatEntry> Snapshot;
+	bool bNewDataCollected = false;  // CollectPreviousFrame에서 실제 데이터를 수집했는지
 };
 
 // --- GPU Scoped Timer (RAII) ---

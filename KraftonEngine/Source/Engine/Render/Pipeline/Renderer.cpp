@@ -1,4 +1,5 @@
 ﻿#include "Renderer.h"
+#include "RenderStats.h"
 #include "OcclusionManager.h"
 #include <iostream>
 #include <algorithm>
@@ -6,7 +7,6 @@
 #include "Render/Types/RenderTypes.h"
 #include "Render/Resource/ConstantBufferPool.h"
 #include "Profiling/Stats.h"
-#include "Profiling/GPUProfiler.h"
 #include "Engine/Runtime/Engine.h"
 #include "Profiling/Timer.h"
 #include "Viewport/Viewport.h"
@@ -35,14 +35,10 @@ void FRenderer::Create(HWND hWindow)
 
 	FOcclusionManager::Get().Initialize(Device.GetDevice());
 
-	// GPU Profiler 초기화
-	FGPUProfiler::Get().Initialize(Device.GetDevice(), Device.GetDeviceContext());
 }
 
 void FRenderer::Release()
 {
-	FGPUProfiler::Get().Shutdown();
-
 	FOcclusionManager::Get().Release();
 
 	EditorLineBatcher.Release();
@@ -200,6 +196,10 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 //	스왑체인 백버퍼 복귀 — ImGui 합성 직전에 호출
 void FRenderer::BeginFrame()
 {
+	GRenderStatsSnapshot = GRenderStats;
+	GRenderStats.Reset();
+	LastBoundShader = nullptr;
+
 	ID3D11DeviceContext* Context = Device.GetDeviceContext();
 	ID3D11RenderTargetView* RTV = Device.GetFrameBufferRTV();
 	ID3D11DepthStencilView* DSV = Device.GetDepthStencilView();
@@ -215,6 +215,7 @@ void FRenderer::BeginFrame()
 //	RenderBus에 담긴 모든 RenderCommand에 대해서 Draw Call 수행 (GPU)
 void FRenderer::Render(const FViewContext& InRenderBus)
 {
+	SCOPE_STAT("Render.DrawCalls");
 	ID3D11DeviceContext* Context = Device.GetDeviceContext();
 	UpdateFrameBuffer(Context, InRenderBus);
 
@@ -222,7 +223,7 @@ void FRenderer::Render(const FViewContext& InRenderBus)
 	{
 		ERenderPass CurPass = static_cast<ERenderPass>(i);
 		ApplyPassRenderState(CurPass, Context, InRenderBus.GetViewMode());
-	
+
 		if (PassBatchers[i])
 		{
 			PassBatchers[i].DrawBatch(CurPass, InRenderBus, Context);
@@ -377,6 +378,12 @@ void FRenderer::BindCommand(const FRenderCommand& InCmd, ID3D11DeviceContext* Co
 	// 커맨드가 지정한 셰이더 바인딩
 	if (InCmd.Shader)
 	{
+		++GRenderStats.ShaderBinds;
+		if (InCmd.Shader == LastBoundShader)
+		{
+			++GRenderStats.RedundantShaderBinds;
+		}
+		LastBoundShader = InCmd.Shader;
 		InCmd.Shader->Bind(Context);
 	}
 
@@ -426,10 +433,16 @@ void FRenderer::DrawCommand(ID3D11DeviceContext* InDeviceContext, const FRenderC
 		uint32 indexCount = InCommand.MeshBuffer->GetIndexBuffer().GetIndexCount();
 		InDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 		InDeviceContext->DrawIndexed(indexCount, 0, 0);
+		++GRenderStats.DrawCalls;
+		++GRenderStats.DrawIndexedCalls;
+		GRenderStats.TrianglesRendered += indexCount / 3;
 	}
 	else
 	{
 		InDeviceContext->Draw(vertexCount, 0);
+		++GRenderStats.DrawCalls;
+		++GRenderStats.DrawVertexCalls;
+		GRenderStats.TrianglesRendered += vertexCount / 3;
 	}
 }
 
@@ -458,6 +471,7 @@ void FRenderer::DrawStaticMeshSections(ID3D11DeviceContext* Context, const FRend
 		// 섹션별 SRV 바인딩 (t0)
 		ID3D11ShaderResourceView* srv = Section.DiffuseSRV;
 		Context->PSSetShaderResources(0, 1, &srv);
+		++GRenderStats.SRVChanges;
 
 		// 섹션별 DiffuseColor를 PrimitiveColor(b1)에 반영
 		FPerObjectConstants SectionConstants = Cmd.PerObjectConstants;
@@ -465,6 +479,9 @@ void FRenderer::DrawStaticMeshSections(ID3D11DeviceContext* Context, const FRend
 		Resources.PerObjectConstantBuffer.Update(Context, &SectionConstants, sizeof(FPerObjectConstants));
 
 		Context->DrawIndexed(Section.IndexCount, Section.FirstIndex, 0);
+		++GRenderStats.DrawCalls;
+		++GRenderStats.DrawIndexedCalls;
+		GRenderStats.TrianglesRendered += Section.IndexCount / 3;
 	}
 
 	// SRV 언바인딩 (다음 드로우에 영향 방지)
@@ -508,6 +525,8 @@ void FRenderer::DrawPostProcessOutline(const FViewContext& Bus, ID3D11DeviceCont
 	Context->IASetInputLayout(nullptr);
 	Context->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
 	Context->Draw(3, 0);
+	++GRenderStats.DrawCalls;
+	++GRenderStats.DrawVertexCalls;
 
 	// 6) StencilSRV 언바인딩
 	ID3D11ShaderResourceView* nullSRV = nullptr;

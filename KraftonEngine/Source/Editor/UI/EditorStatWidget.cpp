@@ -1,19 +1,27 @@
-#include "Editor/UI/EditorStatWidget.h"
+﻿#include "Editor/UI/EditorStatWidget.h"
 
+#include "Editor/EditorEngine.h"
+#include "Editor/Selection/PickingPerf.h"
 #include "Profiling/Stats.h"
-#include "Profiling/GPUProfiler.h"
+#include "Render/Pipeline/RenderStats.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
+#include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
 #include "ImGui/imgui.h"
 
 #include <algorithm>
 #include <sstream>
 
+// ────────────────────────────────────────────────────────────
+// 메인 Render
+// ────────────────────────────────────────────────────────────
 void FEditorStatWidget::Render(float DeltaTime)
 {
 #if STATS
 	(void)DeltaTime;
 
 	ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(700.0f, 500.0f), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(700.0f, 600.0f), ImGuiCond_Once);
 	ImGui::Begin("Stat Profiler");
 
 	// Pause / Resume 버튼
@@ -30,15 +38,11 @@ void FEditorStatWidget::Render(float DeltaTime)
 			auto FormatTable = [&](const char* Title, const TArray<FStatEntry>& Entries)
 			{
 				oss << "=== " << Title << " ===\n";
-				oss << "Name\tCalls\tTotal(ms)\tAvg(ms)\tMax(ms)\tMin(ms)\tLast(ms)\n";
+				oss << "Name\tMax(ms)\tMin(ms)\tLast(ms)\n";
 				for (const FStatEntry& E : Entries)
 				{
-					if (E.CallCount == 0) continue;
 					double MinVal = E.MinTime == DBL_MAX ? 0.0 : E.MinTime;
 					oss << E.Name << "\t"
-						<< E.CallCount << "\t"
-						<< E.TotalTime * 1000.0 << "\t"
-						<< E.GetAvgTime() * 1000.0 << "\t"
 						<< E.MaxTime * 1000.0 << "\t"
 						<< MinVal * 1000.0 << "\t"
 						<< E.LastTime * 1000.0 << "\n";
@@ -46,7 +50,6 @@ void FEditorStatWidget::Render(float DeltaTime)
 				oss << "\n";
 			};
 			FormatTable("CPU Stats", FrozenCPUEntries);
-			FormatTable("GPU Stats", FrozenGPUEntries);
 			ImGui::SetClipboardText(oss.str().c_str());
 		}
 		ImGui::SameLine();
@@ -57,29 +60,130 @@ void FEditorStatWidget::Render(float DeltaTime)
 		if (ImGui::Button("Pause"))
 		{
 			FrozenCPUEntries = FStatManager::Get().GetSnapshot();
-			FrozenGPUEntries = FGPUProfiler::Get().GetGPUSnapshot();
 			bPaused = true;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reset Stats"))
+		{
+			FStatManager::Get().ResetStats();
 		}
 	}
 
-	// --- CPU Stats ---
+	ImGui::Separator();
+
+	// ── Render API Stats ──
+	RenderRenderStats();
+
+	// ── Culling Stats ──
+	RenderCullingStats();
+
+	// ── Picking Detail ──
+	RenderPickingDetail();
+
+	// ── Raw CPU Stats ──
 	const TArray<FStatEntry>& CPUSource = bPaused ? FrozenCPUEntries : FStatManager::Get().GetSnapshot();
-	if (ImGui::CollapsingHeader("CPU Stats", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("CPU Stats"))
 	{
 		RenderStatTable("CPUStatTable", CPUSource, CPUSortColumn, bCPUSortDescending);
-	}
-
-	// --- GPU Stats ---
-	const TArray<FStatEntry>& GPUSource = bPaused ? FrozenGPUEntries : FGPUProfiler::Get().GetGPUSnapshot();
-	if (ImGui::CollapsingHeader("GPU Stats", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		RenderStatTable("GPUStatTable", GPUSource, GPUSortColumn, bGPUSortDescending);
 	}
 
 	ImGui::End();
 #endif
 }
 
+// ────────────────────────────────────────────────────────────
+// Render API Stats: DrawCall / CB / State 카운터
+// ────────────────────────────────────────────────────────────
+void FEditorStatWidget::RenderRenderStats()
+{
+	if (!ImGui::CollapsingHeader("Render Stats"))
+		return;
+
+	const FRenderStats& S = GRenderStatsSnapshot;
+
+	ImGui::Text("Draw Calls: %u (Indexed: %u, Vertex: %u)",
+		S.DrawCalls, S.DrawIndexedCalls, S.DrawVertexCalls);
+	ImGui::Text("Triangles: %u", S.TrianglesRendered);
+
+	float MBUploaded = static_cast<float>(S.CBBytesUploaded) / (1024.0f * 1024.0f);
+	ImGui::Text("CB Updates: %u (%.2f MB uploaded)", S.CBMapCount, MBUploaded);
+
+	ImGui::Text("Shader Binds: %u (%u redundant)", S.ShaderBinds, S.RedundantShaderBinds);
+	ImGui::Text("SRV Changes: %u", S.SRVChanges);
+}
+
+// ────────────────────────────────────────────────────────────
+// Culling Stats: Proxy/Octree 통계 + Culling 효율
+// ────────────────────────────────────────────────────────────
+void FEditorStatWidget::RenderCullingStats()
+{
+	if (!ImGui::CollapsingHeader("Culling Stats"))
+		return;
+
+	if (!EditorEngine) return;
+
+	UWorld* World = EditorEngine->GetWorld();
+	if (!World) return;
+
+	FWorldProxyCullingStats Total = {};
+	auto AccumulateScene = [&Total](UScene* Scene)
+	{
+		if (!Scene) return;
+		const FWorldProxyCullingStats& S = Scene->GetRenderProxy().GetLastCullingStats();
+		Total.RegisteredProxyCount          += S.RegisteredProxyCount;
+		Total.InsertedProxyCount            += S.InsertedProxyCount;
+		Total.CandidateProxyCount           += S.CandidateProxyCount;
+		Total.RenderedProxyCount            += S.RenderedProxyCount;
+		Total.OctreeTotalNodes              += S.OctreeTotalNodes;
+		Total.OctreeTotalItems              += S.OctreeTotalItems;
+		Total.OctreeOutsideItems            += S.OctreeOutsideItems;
+		Total.OctreeFrustumIntersectedNodes += S.OctreeFrustumIntersectedNodes;
+		Total.OctreeFrustumCandidateItems   += S.OctreeFrustumCandidateItems;
+	};
+	AccumulateScene(World->GetPersistentScene());
+	AccumulateScene(World->GetActiveScene());
+
+	int32 Culled = Total.RegisteredProxyCount - Total.RenderedProxyCount;
+	float Efficiency = Total.RegisteredProxyCount > 0
+		? static_cast<float>(Culled) / static_cast<float>(Total.RegisteredProxyCount) : 0.0f;
+
+	ImGui::Text("Total: %d  Rendered: %d  Culled: %d",
+		Total.RegisteredProxyCount, Total.RenderedProxyCount, Culled);
+
+	// char EffBuf[64];
+	// snprintf(EffBuf, sizeof(EffBuf), "%.1f%%", Efficiency * 100.0f);
+	// ImGui::ProgressBar(Efficiency, ImVec2(-1, 0), EffBuf);
+
+	ImGui::Text("Octree: %d nodes, %d intersected",
+		Total.OctreeTotalNodes, Total.OctreeFrustumIntersectedNodes);
+	ImGui::Text("Octree Items: %d total, %d outside, %d in frustum",
+		Total.OctreeTotalItems, Total.OctreeOutsideItems, Total.OctreeFrustumCandidateItems);
+}
+
+// ────────────────────────────────────────────────────────────
+// Picking Detail: Ray / Broad / Narrow / ID 각각
+// ────────────────────────────────────────────────────────────
+void FEditorStatWidget::RenderPickingDetail()
+{
+	if (!ImGui::CollapsingHeader("Picking Detail"))
+		return;
+
+	auto ShowBucket = [](const char* Label, const FPickingPerfBucket& B)
+	{
+		ImGui::Text("[%s]  Last: %.3f ms  Avg: %.3f ms  Total: %.3f ms  Count: %llu",
+			Label, B.LastPickTimeMs, B.GetAverageMs(), B.TotalPickTimeMs,
+			static_cast<unsigned long long>(B.TotalPickCount));
+	};
+
+	ShowBucket("Ray",          FPickingPerf::GetRay());
+	ShowBucket("Ray Broad",    FPickingPerf::GetRayBroadPhase());
+	ShowBucket("Ray Narrow",   FPickingPerf::GetRayNarrowPhase());
+	ShowBucket("ID Buffer",    FPickingPerf::GetIdBuffer());
+}
+
+// ────────────────────────────────────────────────────────────
+// Raw Stat Table (기존 구현 유지)
+// ────────────────────────────────────────────────────────────
 void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatEntry>& Source,
 	int& OutSortColumn, bool& OutSortDescending)
 {
@@ -98,31 +202,29 @@ void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatE
 		switch (OutSortColumn)
 		{
 		case 0: return OutSortDescending ? (strcmp(A.Name, B.Name) > 0) : (strcmp(A.Name, B.Name) < 0);
-		case 1: ValA = (double)A.CallCount; ValB = (double)B.CallCount; break;
-		case 2: ValA = A.TotalTime;  ValB = B.TotalTime;  break;
-		case 3: ValA = A.GetAvgTime(); ValB = B.GetAvgTime(); break;
-		case 4: ValA = A.MaxTime;    ValB = B.MaxTime;    break;
-		case 5: ValA = A.MinTime == DBL_MAX ? 0.0 : A.MinTime;
+		case 1: ValA = A.MaxTime;    ValB = B.MaxTime;    break;
+		case 2: ValA = A.MinTime == DBL_MAX ? 0.0 : A.MinTime;
 				ValB = B.MinTime == DBL_MAX ? 0.0 : B.MinTime; break;
-		case 6: ValA = A.LastTime;   ValB = B.LastTime;   break;
+		case 3: ValA = A.LastTime;   ValB = B.LastTime;   break;
 		}
 		return OutSortDescending ? (ValA > ValB) : (ValA < ValB);
 	};
 	std::sort(Entries.begin(), Entries.end(), SortPredicate);
 
-	const char* Headers[] = { "Name", "Calls", "Total(ms)", "Avg(ms)", "Max(ms)", "Min(ms)", "Last(ms)" };
+	const char* Headers[] = { "Name", "Max(ms)", "Min(ms)", "Last(ms)" };
+	constexpr int NumColumns = 4;
 
-	if (ImGui::BeginTable(TableID, 7,
+	if (ImGui::BeginTable(TableID, NumColumns,
 		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY,
 		ImVec2(0.0f, 200.0f)))
 	{
-		for (int i = 0; i < 7; i++)
+		for (int i = 0; i < NumColumns; i++)
 		{
 			ImGui::TableSetupColumn(Headers[i]);
 		}
 		ImGui::TableHeadersRow();
 
-		for (int i = 0; i < 7; i++)
+		for (int i = 0; i < NumColumns; i++)
 		{
 			if (ImGui::TableGetColumnFlags(i) & ImGuiTableColumnFlags_IsHovered)
 			{
@@ -141,16 +243,11 @@ void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatE
 
 		for (const FStatEntry& E : Entries)
 		{
-			if (E.CallCount == 0) continue;
-
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0); ImGui::Text("%s", E.Name);
-			ImGui::TableSetColumnIndex(1); ImGui::Text("%u", E.CallCount);
-			ImGui::TableSetColumnIndex(2); ImGui::Text("%.3f", E.TotalTime * 1000.0);
-			ImGui::TableSetColumnIndex(3); ImGui::Text("%.3f", E.GetAvgTime() * 1000.0);
-			ImGui::TableSetColumnIndex(4); ImGui::Text("%.3f", E.MaxTime * 1000.0);
-			ImGui::TableSetColumnIndex(5); ImGui::Text("%.3f", E.MinTime == DBL_MAX ? 0.0 : E.MinTime * 1000.0);
-			ImGui::TableSetColumnIndex(6); ImGui::Text("%.3f", E.LastTime * 1000.0);
+			ImGui::TableSetColumnIndex(1); ImGui::Text("%.3f", E.MaxTime * 1000.0);
+			ImGui::TableSetColumnIndex(2); ImGui::Text("%.3f", E.MinTime == DBL_MAX ? 0.0 : E.MinTime * 1000.0);
+			ImGui::TableSetColumnIndex(3); ImGui::Text("%.3f", E.LastTime * 1000.0);
 		}
 
 		ImGui::EndTable();

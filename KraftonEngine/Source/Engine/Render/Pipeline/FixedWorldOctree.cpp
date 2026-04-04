@@ -45,6 +45,7 @@ void FFixedWorldOctree::QueryFrustum(const FFrustumPlanes& Frustum, TArray<FPrim
 	}
 
 	AccumulateNodeStats(*Root, LastDebugStats.TotalNodes, LastDebugStats.TotalItems);
+	LastDebugStats.TotalItems += LastDebugStats.OutsideItems;
 
 	QueryNodeByFrustum(*Root, Frustum, OutProxies);
 
@@ -56,7 +57,7 @@ void FFixedWorldOctree::QueryFrustum(const FFrustumPlanes& Frustum, TArray<FPrim
 			++LastDebugStats.FrustumCandidateItems;
 		}
 	}
-	
+
 }
 
 void FFixedWorldOctree::QueryRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutProxies) const
@@ -70,6 +71,7 @@ void FFixedWorldOctree::QueryRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutP
 	}
 
 	AccumulateNodeStats(*Root, LastDebugStats.TotalNodes, LastDebugStats.TotalItems);
+	LastDebugStats.TotalItems += LastDebugStats.OutsideItems;
 
 	QueryNodeByRay(*Root, Ray, OutProxies);
 

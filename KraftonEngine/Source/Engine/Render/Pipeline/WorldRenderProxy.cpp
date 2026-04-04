@@ -7,6 +7,7 @@
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/GizmoComponent.h"
+#include "Profiling/Stats.h"
 
 #include <algorithm>
 
@@ -50,15 +51,13 @@ void FWorldRenderProxy::RemoveProxy(FPrimitiveProxy* Proxy)
 
 void FWorldRenderProxy::GatherCandidates(FViewContext& Context, bool bUseSpatialIndex)
 {
+	SCOPE_STAT("Render.GatherCandidates");
 	if (!this) return;
 	if (!Context.GetShowFlags().bPrimitives) return;
 
-	// 인스턴스별 통계 초기화 (등록된 프록시 수는 유지)
-	LastCullingStats.CandidateProxyCount = 0;
-	LastCullingStats.RenderedProxyCount = 0;
-	LastCullingStats.InsertedProxyCount = 0;
-	LastCullingStats.OctreeFrustumIntersectedNodes = 0;
-	LastCullingStats.OctreeFrustumCandidateItems = 0;
+	// 통계 초기화
+	LastCullingStats = {};
+	LastCullingStats.RegisteredProxyCount = static_cast<int32>(Proxies.size());
 
 	const FFrustumPlanes Frustum = FFrustumCulling::BuildFrustumPlanes(Context.GetView(), Context.GetProj());
 
@@ -144,6 +143,7 @@ void FWorldRenderProxy::QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& Ou
 
 void FWorldRenderProxy::SubmitRenderCommands(FViewContext& Context, const TArray<AActor*>& SelectedActors)
 {
+	SCOPE_STAT("Render.SubmitCommands");
 	if (!this) return;
 
 	const TSet<AActor*> SelectedActorSet(SelectedActors.begin(), SelectedActors.end());
@@ -176,6 +176,7 @@ void FWorldRenderProxy::SubmitRenderCommands(FViewContext& Context, const TArray
 
 void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex)
 {
+	SCOPE_STAT("Render.CollectWorld");
 	if (!this) return;
 	LastCullingStats = {};
 	LastCullingStats.RegisteredProxyCount = static_cast<int32>(Proxies.size());
@@ -190,6 +191,7 @@ void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats)
 	{
 		return;
 	}
+	SCOPE_STAT("Render.OctreeBuild");
 
 	SpatialIndex->Clear();
 

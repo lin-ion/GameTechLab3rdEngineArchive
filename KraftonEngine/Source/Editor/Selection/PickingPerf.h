@@ -1,9 +1,7 @@
 ﻿#pragma once
 
 #include "Editor/Selection/PickingTypes.h"
-
-#define NOMINMAX
-#include <Windows.h>
+#include "Profiling/PlatformTime.h"
 
 struct FPickingPerfBucket
 {
@@ -17,33 +15,8 @@ struct FPickingPerfBucket
 	}
 };
 
-class FPickingPlatformTime
-{
-public:
-	static uint64 GetFrequency()
-	{
-		LARGE_INTEGER Frequency;
-		QueryPerformanceFrequency(&Frequency);
-		return static_cast<uint64>(Frequency.QuadPart);
-	}
-
-	static uint64 Cycles64()
-	{
-		LARGE_INTEGER Cycles;
-		QueryPerformanceCounter(&Cycles);
-		return static_cast<uint64>(Cycles.QuadPart);
-	}
-
-	static double ToMilliseconds(uint64 CycleDiff)
-	{
-		const double Frequency = static_cast<double>(GetFrequency());
-		if (Frequency <= 0.0)
-		{
-			return 0.0;
-		}
-		return (static_cast<double>(CycleDiff) / Frequency) * 1000.0;
-	}
-};
+// FPickingPlatformTime은 FPlatformTime으로 통일 — 하위 호환 typedef
+typedef FPlatformTime FPickingPlatformTime;
 
 class FPickingPerf
 {
@@ -58,7 +31,7 @@ public:
 
 	static void Record(EPickingMode Mode, uint64 CycleDiff)
 	{
-		double Ms = FPickingPlatformTime::ToMilliseconds(CycleDiff);
+		double Ms = FPlatformTime::ToMilliseconds(CycleDiff);
 		FPickingPerfBucket& Bucket = (Mode == EPickingMode::IDBuffer) ? IdBuffer : Ray;
 		Bucket.LastPickTimeMs = Ms;
 		Bucket.TotalPickTimeMs += Ms;
@@ -72,7 +45,7 @@ public:
 
 	static void RecordRayBroadPhase(uint64 CycleDiff)
 	{
-		double Ms = FPickingPlatformTime::ToMilliseconds(CycleDiff);
+		double Ms = FPlatformTime::ToMilliseconds(CycleDiff);
 		RayBroadPhase.LastPickTimeMs = Ms;
 		RayBroadPhase.TotalPickTimeMs += Ms;
 		++RayBroadPhase.TotalPickCount;
@@ -80,7 +53,7 @@ public:
 
 	static void RecordRayNarrowPhase(uint64 CycleDiff)
 	{
-		double Ms = FPickingPlatformTime::ToMilliseconds(CycleDiff);
+		double Ms = FPlatformTime::ToMilliseconds(CycleDiff);
 		RayNarrowPhase.LastPickTimeMs = Ms;
 		RayNarrowPhase.TotalPickTimeMs += Ms;
 		++RayNarrowPhase.TotalPickCount;

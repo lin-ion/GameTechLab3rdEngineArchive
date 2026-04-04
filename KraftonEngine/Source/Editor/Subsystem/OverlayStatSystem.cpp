@@ -1,6 +1,7 @@
 ﻿#include "Editor/Subsystem/OverlayStatSystem.h"
 
 #include "Editor/EditorEngine.h"
+#include "Editor/Selection/PickingPerf.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Profiling/MemoryStats.h"
 
@@ -14,15 +15,29 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 
 		const FTimer* Timer = Editor.GetTimer();
 		const float FPS = Timer ? Timer->GetDisplayFPS() : 0.0f;
-		const float MS = FPS > 0.0f ? 1000.0f / FPS : 0.0f;
+		const float MS = Timer ? Timer->GetFrameTimeMs() : 0.0f;
+
+		// 발제 필수 HUD 형식: FPS : <N> (<ms> ms)
 		{
 			char Buffer[128] = {};
-			snprintf(Buffer, sizeof(Buffer), "FPS : %.1f", FPS);
+			snprintf(Buffer, sizeof(Buffer), "FPS : %.1f (%.2f ms)", FPS, MS);
 			Group.Lines.push_back(FString(Buffer));
 		}
+
+		// 발제 필수 HUD 형식: Picking Time <ms> ms : Num Attempts <N> : Accumulated Time <ms> ms
+		// Ray + ID 합산
 		{
-			char Buffer[128] = {};
-			snprintf(Buffer, sizeof(Buffer), "Frame Time : %.2f ms", MS);
+			const FPickingPerfBucket& RayPick = FPickingPerf::GetRay();
+			const FPickingPerfBucket& IdPick  = FPickingPerf::GetIdBuffer();
+
+			const double LastMs  = RayPick.LastPickTimeMs + IdPick.LastPickTimeMs;
+			const uint64 Count   = RayPick.TotalPickCount + IdPick.TotalPickCount;
+			const double TotalMs = RayPick.TotalPickTimeMs + IdPick.TotalPickTimeMs;
+
+			char Buffer[256] = {};
+			snprintf(Buffer, sizeof(Buffer),
+				"Picking Time %.3f ms : Num Attempts %llu : Accumulated Time %.3f ms",
+				LastMs, static_cast<unsigned long long>(Count), TotalMs);
 			Group.Lines.push_back(FString(Buffer));
 		}
 

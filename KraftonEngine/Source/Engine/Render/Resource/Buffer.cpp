@@ -1,5 +1,6 @@
 ﻿#include "Buffer.h"
 #include "Engine/Profiling/MemoryStats.h"
+#include "Render/Pipeline/RenderStats.h"
 
 void FMeshBuffer::Release()
 {
@@ -136,6 +137,9 @@ void FConstantBuffer::Update(ID3D11DeviceContext* InDeviceContext, const void* I
 		std::memcpy(constantbufferMSR.pData, InData, InByteWidth);
 
 		InDeviceContext->Unmap(Buffer, 0);
+
+		++GRenderStats.CBMapCount;
+		GRenderStats.CBBytesUploaded += InByteWidth;
 	}
 }
 
