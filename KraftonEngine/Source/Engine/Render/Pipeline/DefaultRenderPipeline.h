@@ -1,7 +1,6 @@
 #pragma once
 #include "IRenderPipeline.h"
-#include "Render/Pipeline/RenderCollector.h"
-#include "Render/Pipeline/RenderBus.h"
+#include "Render/Pipeline/ViewContext.h"
 
 class UEngine;
 
@@ -12,9 +11,9 @@ public:
 	~FDefaultRenderPipeline() override;
 
 	void Execute(float DeltaTime, FRenderer& Renderer) override;
+	void Reset() override;
 
 private:
 	UEngine* Engine = nullptr;
-	FRenderCollector Collector;
-	FRenderBus Bus;
+	FViewContext Bus;
 };

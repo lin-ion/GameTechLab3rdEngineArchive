@@ -1,30 +1,60 @@
-﻿#include "BillboardComponent.h"
+#include "BillboardComponent.h"
 #include "GameFramework/World.h"
 #include "Component/CameraComponent.h"
 #include "Render/Resource/ShaderManager.h"
 
+#include "Render/Pipeline/PrimitiveProxy.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
+
+class FBillboardProxy : public FPrimitiveProxy
+{
+public:
+	FBillboardProxy(UBillboardComponent* InOwner) : FPrimitiveProxy(InOwner) {}
+
+	void UpdateProxy() override
+	{
+	}
+
+	void OnDraw(FViewContext& View) override
+	{
+		UBillboardComponent* Billboard = static_cast<UBillboardComponent*>(Owner);
+		FMeshBuffer* Buffer = Billboard->GetMeshBuffer();
+		if (!Buffer || !Buffer->IsValid()) return;
+
+		FMatrix PerViewMatrix = Billboard->ComputeBillboardMatrix(View.GetCameraForward());
+
+		// Draw Opaque
+		FRenderCommand Cmd = {};
+		Cmd.PerObjectConstants = FPerObjectConstants::FromWorldMatrix(PerViewMatrix);
+		Cmd.Shader = FShaderManager::Get().GetShader(EShaderType::Primitive);
+		Cmd.MeshBuffer = Buffer;
+		View.AddCommand(ERenderPass::Opaque, Cmd);
+
+		if (bSelected)
+		{
+			if (Owner->SupportsOutline())
+			{
+				View.AddCommand(ERenderPass::SelectionMask, Cmd);
+			}
+
+			if (View.GetShowFlags().bBoundingVolume)
+			{
+				FAABBEntry Entry = {};
+				FBoundingBox Box = Owner->GetWorldBoundingBox();
+				Entry.AABB.Min = Box.Min;
+				Entry.AABB.Max = Box.Max;
+				Entry.AABB.Color = FColor::White();
+				View.AddAABBEntry(std::move(Entry));
+			}
+		}
+	}
+};
+
 DEFINE_CLASS(UBillboardComponent, UPrimitiveComponent)
 
-void UBillboardComponent::CollectSelection(FRenderBus& Bus) const
+FPrimitiveProxy* UBillboardComponent::CreateProxy()
 {
-	FMeshBuffer* Buffer = GetMeshBuffer();
-	if (!Buffer || !Buffer->IsValid()) return;
-	if (!SupportsOutline()) return;
-
-	// Bus 카메라 벡터로 per-view 빌보드 행렬 계산 (다중 뷰포트 대응)
-	FVector BillboardForward = Bus.GetCameraForward() * -1.0f;
-	FMatrix RotMatrix;
-	RotMatrix.SetAxes(BillboardForward, Bus.GetCameraRight() * -1.0f, Bus.GetCameraUp());
-	FMatrix PerViewBillboard = FMatrix::MakeScaleMatrix(GetWorldScale())
-		* RotMatrix * FMatrix::MakeTranslationMatrix(GetWorldLocation());
-
-	// SelectionMask: 스텐실에 선택 오브젝트 마킹
-	FRenderCommand MaskCmd = {};
-	MaskCmd.MeshBuffer = Buffer;
-	MaskCmd.PerObjectConstants = FPerObjectConstants{ PerViewBillboard };
-	MaskCmd.Shader = FShaderManager::Get().GetShader(EShaderType::Primitive);
-	Bus.AddCommand(ERenderPass::SelectionMask, MaskCmd);
-	// Billboard 계열은 AABB 제외
+	return new FBillboardProxy(this);
 }
 
 void UBillboardComponent::TickComponent(float DeltaTime)

@@ -124,7 +124,7 @@ void FEditorPropertyWidget::Render(float DeltaTime)
 	{
 		ImGui::Text("Class: %s", PrimaryActor->GetTypeInfo()->name);
 
-		FString PrimaryName = PrimaryActor->GetFName().ToString();
+		FString PrimaryName = PrimaryActor->GetFName();
 		if (PrimaryName.empty()) PrimaryName = PrimaryActor->GetTypeInfo()->name;
 
 		bool bHighlight = bActorSelected;
@@ -162,7 +162,7 @@ void FEditorPropertyWidget::Render(float DeltaTime)
 		// Actor 이름: 클릭 가능, 선택 시 하이라이트
 		bool bHighlight = bActorSelected;
 		if (bHighlight) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
-		ImGui::Text("Name: %s", PrimaryActor->GetFName().ToString().c_str());
+		ImGui::Text("Name: %s", PrimaryActor->GetFName().c_str());
 		if (bHighlight) ImGui::PopStyleColor();
 		if (ImGui::IsItemClicked())
 		{
@@ -224,7 +224,7 @@ void FEditorPropertyWidget::RenderDetails(AActor* PrimaryActor, const TArray<AAc
 void FEditorPropertyWidget::RenderActorProperties(AActor* PrimaryActor, const TArray<AActor*>& SelectedActors)
 {
 	ImGui::Text("Actor: %s", PrimaryActor->GetTypeInfo()->name);
-	ImGui::Text("Name: %s", PrimaryActor->GetFName().ToString().c_str());
+	ImGui::Text("Name: %s", PrimaryActor->GetFName().c_str());
 
 	if (PrimaryActor->GetRootComponent())
 	{
@@ -313,7 +313,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 		if (!Comp) continue;
 		if (Comp->IsA<USceneComponent>()) continue;
 
-		FString Name = Comp->GetFName().ToString();
+		FString Name = Comp->GetFName();
 		if (Name.empty()) Name = Comp->GetTypeInfo()->name;
 
 		ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -333,7 +333,7 @@ void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent* Comp)
 {
 	if (!Comp) return;
 
-	FString Name = Comp->GetFName().ToString();
+	FString Name = Comp->GetFName();
 	if (Name.empty()) Name = Comp->GetTypeInfo()->name;
 
 	const auto& Children = Comp->GetChildren();
@@ -372,7 +372,7 @@ void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent* Comp)
 void FEditorPropertyWidget::RenderComponentProperties()
 {
 	ImGui::Text("Component: %s", SelectedComponent->GetTypeInfo()->name);
-	ImGui::Text("Name: %s", SelectedComponent->GetFName().ToString().c_str());
+	ImGui::Text("Name: %s", SelectedComponent->GetFName().c_str());
 	ImGui::Separator();
 
 	// PropertyDescriptor 기반 자동 위젯 렌더링

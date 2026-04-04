@@ -5,6 +5,13 @@
 #include "Component/GizmoComponent.h"
 #include <algorithm>
 
+FWorldRenderProxy::~FWorldRenderProxy()
+{
+	// Proxies are owned by UPrimitiveComponent and deleted there during OnUnregister.
+	// This clear is just for safety.
+	Proxies.clear();
+}
+
 void FWorldRenderProxy::AddProxy(FPrimitiveProxy* Proxy)
 {
 	if (!this || !Proxy) return;
@@ -27,10 +34,10 @@ void FWorldRenderProxy::RemoveProxy(FPrimitiveProxy* Proxy)
 	}
 }
 
-void FWorldRenderProxy::CollectWorld(FRenderBus& Bus, const TArray<AActor*>& SelectedActors)
+void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*>& SelectedActors)
 {
 	if (!this) return;
-	if (!Bus.GetShowFlags().bPrimitives) return;
+	if (!Context.GetShowFlags().bPrimitives) return;
 
 	for (FPrimitiveProxy* Proxy : Proxies)
 	{
@@ -44,6 +51,7 @@ void FWorldRenderProxy::CollectWorld(FRenderBus& Bus, const TArray<AActor*>& Sel
 			bSelected = std::find(SelectedActors.begin(), SelectedActors.end(), ActorOwner) != SelectedActors.end();
 		}
 		
-		Proxy->CollectRender(Bus, bSelected);
+		Proxy->SetSelected(bSelected);
+		Proxy->OnDraw(Context);
 	}
 }

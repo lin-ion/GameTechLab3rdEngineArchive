@@ -52,7 +52,7 @@ void FRenderer::Release()
 }
 
 //	Bus → Batcher 데이터 수집 (CPU). BeginFrame 이전에 호출.
-void FRenderer::PrepareBatchers(const FRenderBus& Bus)
+void FRenderer::PrepareBatchers(const FViewContext& Bus)
 {
 	// --- Editor 패스: AABB 디버그 박스 → EditorLineBatcher ---
 	EditorLineBatcher.Clear();
@@ -63,16 +63,15 @@ void FRenderer::PrepareBatchers(const FRenderBus& Bus)
 
 	// --- Grid 패스: 월드 그리드 + 축 → GridLineBatcher ---
 	GridLineBatcher.Clear();
-	for (const auto& Entry : Bus.GetGridEntries())
+	for (const auto& Proxy : Bus.GetGridProxies())
 	{
 		const FVector CameraPos = Bus.GetView().GetInverseFast().GetLocation();
-		FVector CameraFwd = Bus.GetCameraRight().Cross(Bus.GetCameraUp());
-		CameraFwd.Normalize();
+		const FVector& CameraFwd = Bus.GetCameraForward();
 
 		GridLineBatcher.AddWorldHelpers(
 			Bus.GetShowFlags(),
-			Entry.Grid.GridSpacing,
-			Entry.Grid.GridHalfLineCount,
+			Proxy.Grid.GridSpacing,
+			Proxy.Grid.GridHalfLineCount,
 			CameraPos, CameraFwd, Bus.IsFixedOrtho());
 	}
 
@@ -161,7 +160,7 @@ void FRenderer::BeginFrame()
 }
 
 //	RenderBus에 담긴 모든 RenderCommand에 대해서 Draw Call 수행 (GPU)
-void FRenderer::Render(const FRenderBus& InRenderBus)
+void FRenderer::Render(const FViewContext& InRenderBus)
 {
 	ID3D11DeviceContext* Context = Device.GetDeviceContext();
 	UpdateFrameBuffer(Context, InRenderBus);
@@ -214,39 +213,39 @@ void FRenderer::InitializePassRenderStates()
 void FRenderer::InitializePassBatchers()
 {
 	PassBatchers[(uint32)ERenderPass::Editor] = {
-		[this](ERenderPass, const FRenderBus&, ID3D11DeviceContext* Ctx) {
+		[this](ERenderPass, const FViewContext&, ID3D11DeviceContext* Ctx) {
 			DrawLineBatcher(EditorLineBatcher, Ctx);
 		}
 	};
 
 	PassBatchers[(uint32)ERenderPass::Grid] = {
-		[this](ERenderPass, const FRenderBus&, ID3D11DeviceContext* Ctx) {
+		[this](ERenderPass, const FViewContext&, ID3D11DeviceContext* Ctx) {
 			DrawLineBatcher(GridLineBatcher, Ctx);
 		}
 	};
 
 	PassBatchers[(uint32)ERenderPass::Font] = {
-		[this](ERenderPass, const FRenderBus&, ID3D11DeviceContext* Ctx) {
+		[this](ERenderPass, const FViewContext&, ID3D11DeviceContext* Ctx) {
 			const FFontResource* FontRes = FResourceManager::Get().FindFont(FName("Default"));
 			FontBatcher.DrawBatch(Ctx, FontRes);
 		}
 	};
 
 	PassBatchers[(uint32)ERenderPass::OverlayFont] = {
-		[this](ERenderPass, const FRenderBus&, ID3D11DeviceContext* Ctx) {
+		[this](ERenderPass, const FViewContext&, ID3D11DeviceContext* Ctx) {
 			const FFontResource* FontRes = FResourceManager::Get().FindFont(FName("Default"));
 			FontBatcher.DrawScreenBatch(Ctx, FontRes);
 		}
 	};
 
 	PassBatchers[(uint32)ERenderPass::SubUV] = {
-		[this](ERenderPass, const FRenderBus&, ID3D11DeviceContext* Ctx) {
+		[this](ERenderPass, const FViewContext&, ID3D11DeviceContext* Ctx) {
 			SubUVBatcher.DrawBatch(Ctx);
 		}
 	};
 
 	PassBatchers[(uint32)ERenderPass::PostProcess] = {
-		[this](ERenderPass Pass, const FRenderBus& Bus, ID3D11DeviceContext* Ctx) {
+		[this](ERenderPass Pass, const FViewContext& Bus, ID3D11DeviceContext* Ctx) {
 			DrawPostProcessOutline(Bus, Ctx);
 		}
 	};
@@ -268,7 +267,7 @@ void FRenderer::DrawLineBatcher(FLineBatcher& Batcher, ID3D11DeviceContext* Cont
 // ============================================================
 // 기본 패스 실행기
 // ============================================================
-void FRenderer::ExecuteDefaultPass(const TArray<FRenderCommand>& Commands, const FRenderBus& Bus, ID3D11DeviceContext* Context)
+void FRenderer::ExecuteDefaultPass(const TArray<FRenderCommand>& Commands, const FViewContext& Bus, ID3D11DeviceContext* Context)
 {
 	for (const auto& Cmd : Commands)
 	{
@@ -408,7 +407,7 @@ void FRenderer::DrawStaticMeshSections(ID3D11DeviceContext* Context, const FRend
 // ============================================================
 // PostProcess Outline — DSV unbind → StencilSRV bind → Fullscreen Draw
 // ============================================================
-void FRenderer::DrawPostProcessOutline(const FRenderBus& Bus, ID3D11DeviceContext* Context)
+void FRenderer::DrawPostProcessOutline(const FViewContext& Bus, ID3D11DeviceContext* Context)
 {
 	ID3D11ShaderResourceView* StencilSRV = Bus.GetViewportStencilSRV();
 	ID3D11DepthStencilView* DSV = Bus.GetViewportDSV();
@@ -456,7 +455,7 @@ void FRenderer::EndFrame()
 	Device.Present();
 }
 
-void FRenderer::UpdateFrameBuffer(ID3D11DeviceContext* Context, const FRenderBus& InRenderBus)
+void FRenderer::UpdateFrameBuffer(ID3D11DeviceContext* Context, const FViewContext& InRenderBus)
 {
 	FFrameConstants frameConstantData = {};
 	frameConstantData.View = InRenderBus.GetView();

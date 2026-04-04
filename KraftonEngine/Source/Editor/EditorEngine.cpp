@@ -126,5 +126,9 @@ void UEditorEngine::ClearScene()
 	WorldList.clear();
 	ActiveWorldHandle = FName::None;
 
+	// Reset rendering bus and name counters to free memory
+	ResetRenderPipeline();
+	UObjectManager::Get().ClearNameCounters();
+
 	ViewportLayout.DestroyAllCameras();
 }

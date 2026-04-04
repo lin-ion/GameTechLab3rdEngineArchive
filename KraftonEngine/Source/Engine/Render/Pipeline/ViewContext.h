@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/CoreTypes.h"
 #include "Render/Pipeline/RenderCommand.h"
 #include "Render/Types/ViewTypes.h"
@@ -6,11 +6,14 @@
 class UCameraComponent;
 class FViewport;
 
-
-class FRenderBus
+// 각 View마다 독립적으로 가져야 하는 정보들을 관리
+// e.g. 시야 정보, 그리드, UUID 렌더링 정보 등
+// 다만 현재는 SubUV, WorldText, AABB 등의 기능이 아직 WorldRenderProxy로 이관되지 못하고 남아있는 상태
+class FViewContext
 {
 public:
 	void Clear();
+	void Reset();
 
 	// Mesh 패스용 (Opaque, StencilMask, Outline, Gizmo, Translucent)
 	void AddCommand(ERenderPass Pass, const FRenderCommand& InCommand);
@@ -22,19 +25,19 @@ public:
 	void AddOverlayFontEntry(FFontEntry&& Entry);
 	void AddSubUVEntry(FSubUVEntry&& Entry);
 	void AddAABBEntry(FAABBEntry&& Entry);
-	void AddGridEntry(FGridEntry&& Entry);
+	void AddGridProxy(FGridProxy&& Proxy);
 
 	const TArray<FFontEntry>& GetFontEntries() const { return FontEntries; }
 	const TArray<FFontEntry>& GetOverlayFontEntries() const { return OverlayFontEntries; }
 	const TArray<FSubUVEntry>& GetSubUVEntries() const { return SubUVEntries; }
 	const TArray<FAABBEntry>& GetAABBEntries() const { return AABBEntries; }
-	const TArray<FGridEntry>& GetGridEntries() const { return GridEntries; }
+	const TArray<FGridProxy>& GetGridProxies() const { return GridProxies; }
 
 	// Getter,Setter
 	void SetCameraInfo(const UCameraComponent* Camera);
 	void SetViewportInfo(const FViewport* VP);
 	void SetViewportSize(float InWidth, float InHeight);
-	void SetRenderSettings(const EViewMode NewViewMode, const FShowFlags NewShowFlags);
+	void SetRenderOptions(const FViewportRenderOptions& InOptions);
 
 	const FMatrix& GetView() const { return View; }
 	const FMatrix& GetProj() const { return Proj; }
@@ -42,12 +45,13 @@ public:
 	const FVector& GetCameraUp() const { return CameraUp; }
 	const FVector& GetCameraRight() const { return CameraRight; }
 	bool  IsOrtho()        const { return bIsOrtho; }
-	bool  IsFixedOrtho()   const { return bIsOrtho && ViewportType != ELevelViewportType::Perspective && ViewportType != ELevelViewportType::FreeOrthographic; }
+	bool  IsFixedOrtho()   const { return bIsOrtho && Options.ViewportType != ELevelViewportType::Perspective && Options.ViewportType != ELevelViewportType::FreeOrthographic; }
 	float GetOrthoWidth()  const { return OrthoWidth; }
-	ELevelViewportType GetViewportType() const { return ViewportType; }
-	void SetViewportType(ELevelViewportType InType) { ViewportType = InType; }
-	EViewMode GetViewMode() const { return ViewMode; }
-	const FShowFlags& GetShowFlags() const { return ShowFlags; }
+	ELevelViewportType GetViewportType() const { return Options.ViewportType; }
+	void SetViewportType(ELevelViewportType InType) { Options.ViewportType = InType; }
+	EViewMode GetViewMode() const { return Options.ViewMode; }
+	const FShowFlags& GetShowFlags() const { return Options.ShowFlags; }
+	const FViewportRenderOptions& GetRenderOptions() const { return Options; }
 	const FVector& GetWireframeColor() const { return WireframeColor; }
 	void SetWireframeColor(const FVector& InColor) { WireframeColor = InColor; }
 
@@ -56,6 +60,9 @@ public:
 	ID3D11RenderTargetView*  GetViewportRTV()        const { return ViewportRTV; }
 	ID3D11DepthStencilView*  GetViewportDSV()        const { return ViewportDSV; }
 	ID3D11ShaderResourceView* GetViewportStencilSRV() const { return ViewportStencilSRV; }
+
+	// View별 로컬 요소 (그리드 등) 수집
+	void CollectViewElements();
 
 private:
 	// Mesh 패스 큐
@@ -66,7 +73,7 @@ private:
 	TArray<FFontEntry>  OverlayFontEntries;
 	TArray<FSubUVEntry> SubUVEntries;
 	TArray<FAABBEntry>  AABBEntries;
-	TArray<FGridEntry>  GridEntries;
+	TArray<FGridProxy>  GridProxies;
 
 	FMatrix View;
 	FMatrix Proj;
@@ -79,7 +86,6 @@ private:
 
 	bool  bIsOrtho = false;
 	float OrthoWidth = 10.0f;
-	ELevelViewportType ViewportType = ELevelViewportType::Perspective;
 
 	// PostProcess용 뷰포트 D3D 리소스 (프레임 내 유효)
 	ID3D11RenderTargetView*   ViewportRTV        = nullptr;
@@ -87,7 +93,7 @@ private:
 	ID3D11ShaderResourceView* ViewportStencilSRV = nullptr;
 
 	//Editor Settings
-	EViewMode ViewMode;
-	FShowFlags ShowFlags;
+	FViewportRenderOptions Options;
 	FVector WireframeColor = FVector(0.0f, 0.0f, 0.7f);
 };
+

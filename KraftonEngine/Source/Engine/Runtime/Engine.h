@@ -52,6 +52,7 @@ public:
 	FTimer* GetTimer() const { return Timer; }
 
 	FRenderer& GetRenderer() { return Renderer; }
+	void ResetRenderPipeline() { if (RenderPipeline) RenderPipeline->Reset(); }
 
 	// Game Viewport Client — PIE/Standalone 용
 	void SetGameViewportClient(UGameViewportClient* InClient) { GameViewportClient = InClient; }

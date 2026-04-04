@@ -12,10 +12,7 @@ UScene::UScene()
 
 UScene::~UScene()
 {
-	if (!Actors.empty())
-	{
-		EndPlay();
-	}
+	EndPlay();
 }
 
 void UScene::AddActor(AActor* Actor)

@@ -1,4 +1,4 @@
-﻿#include "SubUVComponent.h"
+#include "SubUVComponent.h"
 #include "Object/ObjectFactory.h"
 
 #include <cstring>
@@ -8,20 +8,44 @@
 #include "GameFramework/World.h"
 #include "Component/CameraComponent.h"
 
+#include "Render/Pipeline/PrimitiveProxy.h"
+
 IMPLEMENT_CLASS(USubUVComponent, UBillboardComponent)
 
-void USubUVComponent::CollectRender(FRenderBus& Bus) const
+class FSubUVProxy : public FPrimitiveProxy
 {
-	const FParticleResource* Particle = GetParticle();
-	if (!Particle || !Particle->IsLoaded()) return;
+public:
+	FSubUVProxy(USubUVComponent* InOwner)
+		: FPrimitiveProxy(InOwner)
+	{
+	}
 
-	FSubUVEntry Entry = {};
-	Entry.PerObject = FPerObjectConstants::FromWorldMatrix(GetWorldMatrix());
-	Entry.SubUV.Particle = Particle;
-	Entry.SubUV.FrameIndex = GetFrameIndex();
-	Entry.SubUV.Width = GetWidth();
-	Entry.SubUV.Height = GetHeight();
-	Bus.AddSubUVEntry(std::move(Entry));
+	void UpdateProxy() override
+	{
+	}
+
+	void OnDraw(FViewContext& Bus) override
+	{
+		USubUVComponent* SubUVComp = static_cast<USubUVComponent*>(Owner);
+		if (!SubUVComp || !SubUVComp->IsVisible()) return;
+
+		const FParticleResource* Particle = SubUVComp->GetParticle();
+		if (Particle && Particle->IsLoaded())
+		{
+			FSubUVEntry Entry = {};
+			Entry.PerObject = FPerObjectConstants::FromWorldMatrix(SubUVComp->GetWorldMatrix());
+			Entry.SubUV.Particle = Particle;
+			Entry.SubUV.FrameIndex = SubUVComp->GetFrameIndex();
+			Entry.SubUV.Width = SubUVComp->GetWidth();
+			Entry.SubUV.Height = SubUVComp->GetHeight();
+			Bus.AddSubUVEntry(std::move(Entry));
+		}
+	}
+};
+
+FPrimitiveProxy* USubUVComponent::CreateProxy()
+{
+	return new FSubUVProxy(this);
 }
 
 USubUVComponent::USubUVComponent()

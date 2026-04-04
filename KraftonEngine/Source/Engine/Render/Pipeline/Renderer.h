@@ -6,7 +6,7 @@
 
 #include "Render/Types/RenderTypes.h"
 
-#include "Render/Pipeline/RenderBus.h"
+#include "Render/Pipeline/ViewContext.h"
 #include "Render/Device/D3DDevice.h"
 #include "Render/Resource/RenderResources.h"
 #include "Render/Resource/ShaderManager.h"
@@ -19,7 +19,7 @@
 // 패스별 Batcher DrawBatch 바인딩
 struct FPassBatcherBinding
 {
-	std::function<void(ERenderPass, const FRenderBus&, ID3D11DeviceContext*)> DrawBatch;
+	std::function<void(ERenderPass, const FViewContext&, ID3D11DeviceContext*)> DrawBatch;
 
 	explicit operator bool() const { return DrawBatch != nullptr; }
 };
@@ -40,9 +40,9 @@ public:
 	void Create(HWND hWindow);
 	void Release();
 
-	void PrepareBatchers(const FRenderBus& InRenderBus);
+	void PrepareBatchers(const FViewContext& InRenderBus);
 	void BeginFrame();
-	void Render(const FRenderBus& InRenderBus);
+	void Render(const FViewContext& InRenderBus);
 	void EndFrame();
 
 	FD3DDevice& GetFD3DDevice() { return Device; }
@@ -57,16 +57,16 @@ private:
 
 	void DrawCommand(ID3D11DeviceContext* InDeviceContext, const FRenderCommand& InCommand);
 	void DrawStaticMeshSections(ID3D11DeviceContext* Context, const FRenderCommand& Cmd);
-	void UpdateFrameBuffer(ID3D11DeviceContext* Context, const FRenderBus& InRenderBus);
+	void UpdateFrameBuffer(ID3D11DeviceContext* Context, const FViewContext& InRenderBus);
 
 	// 기본 패스 실행기 — BindCommand + DrawCommand 루프
-	void ExecuteDefaultPass(const TArray<FRenderCommand>& Commands, const FRenderBus& Bus, ID3D11DeviceContext* Context);
+	void ExecuteDefaultPass(const TArray<FRenderCommand>& Commands, const FViewContext& Bus, ID3D11DeviceContext* Context);
 
 	// LineBatcher DrawBatch 공통 — EditorShader 바인딩 + DrawBatch
 	void DrawLineBatcher(FLineBatcher& Batcher, ID3D11DeviceContext* Context);
 
 	// PostProcess Outline — StencilSRV 읽어 edge detection 후 fullscreen draw
-	void DrawPostProcessOutline(const FRenderBus& Bus, ID3D11DeviceContext* Context);
+	void DrawPostProcessOutline(const FViewContext& Bus, ID3D11DeviceContext* Context);
 
 private:
 	FD3DDevice Device;

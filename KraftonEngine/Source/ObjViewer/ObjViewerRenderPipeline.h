@@ -1,8 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "Render/Pipeline/IRenderPipeline.h"
-#include "Render/Pipeline/RenderCollector.h"
-#include "Render/Pipeline/RenderBus.h"
+#include "Render/Pipeline/ViewContext.h"
 
 class UObjViewerEngine;
 class FViewport;
@@ -15,12 +14,12 @@ public:
 	~FObjViewerRenderPipeline() override;
 
 	void Execute(float DeltaTime, FRenderer& Renderer) override;
+	void Reset() override;
 
 private:
 	void RenderPreviewViewport(FRenderer& Renderer);
 
 private:
 	UObjViewerEngine* Engine = nullptr;
-	FRenderCollector Collector;
-	FRenderBus Bus;
+	FViewContext Bus;
 };

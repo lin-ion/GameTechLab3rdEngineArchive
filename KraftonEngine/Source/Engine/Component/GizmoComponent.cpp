@@ -19,7 +19,7 @@ public:
 	{
 	}
 
-	void CollectRender(FRenderBus& Bus, bool bSelected) override
+	void OnDraw(FViewContext& View) override
 	{
 		if (IsDirty())
 		{
@@ -28,13 +28,13 @@ public:
 		}
 
 		UGizmoComponent* Gizmo = static_cast<UGizmoComponent*>(Owner);
-		if (!Bus.GetShowFlags().bGizmo || !Gizmo->IsVisible()) return;
+		if (!View.GetShowFlags().bGizmo || !Gizmo->IsVisible()) return;
 
-		Gizmo->UpdateAxisMask(Bus.GetViewportType());
+		Gizmo->UpdateAxisMask(View.GetViewportType());
 
 		FMeshBuffer* GizmoMesh = Gizmo->GetMeshBuffer();
-		const FVector CameraPos = Bus.GetView().GetInverseFast().GetLocation();
-		float PerViewScale = Gizmo->ComputeScreenSpaceScale(CameraPos, Bus.IsOrtho(), Bus.GetOrthoWidth());
+		const FVector CameraPos = View.GetView().GetInverseFast().GetLocation();
+		float PerViewScale = Gizmo->ComputeScreenSpaceScale(CameraPos, View.IsOrtho(), View.GetOrthoWidth());
 
 		FMatrix WorldMatrix = FMatrix::MakeScaleMatrix(FVector(PerViewScale, PerViewScale, PerViewScale))
 			* Gizmo->GetRelativeQuat().ToMatrix()
@@ -58,8 +58,8 @@ public:
 			return Cmd;
 		};
 
-		Bus.AddCommand(ERenderPass::GizmoOuter, CreateGizmoCmd(false));
-		Bus.AddCommand(ERenderPass::GizmoInner, CreateGizmoCmd(true));
+		View.AddCommand(ERenderPass::GizmoOuter, CreateGizmoCmd(false));
+		View.AddCommand(ERenderPass::GizmoInner, CreateGizmoCmd(true));
 	}
 };
 
@@ -607,12 +607,4 @@ FMeshBuffer* UGizmoComponent::GetMeshBuffer() const
 		break;
 	}
 	return &FMeshBufferManager::Get().GetMeshBuffer(Shape);
-}
-
-void UGizmoComponent::CollectRender(FRenderBus& Bus) const
-{
-	if (Proxy)
-	{
-		Proxy->CollectRender(Bus, false);
-	}
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include "Render/Pipeline/RenderCommand.h"
-#include "Render/Pipeline/RenderBus.h"
+#include "Render/Pipeline/ViewContext.h"
 
 class UPrimitiveComponent;
 
@@ -11,17 +11,19 @@ public:
 	virtual ~FPrimitiveProxy() = default;
 
 	virtual void UpdateProxy() = 0;
-	virtual void CollectRender(FRenderBus& Bus, bool bSelected);
+	virtual void OnDraw(FViewContext& View);
 
 	void MarkDirty() { bIsDirty = true; }
 	bool IsDirty() const { return bIsDirty; }
 
 	UPrimitiveComponent* GetOwner() const { return Owner; }
+	void SetSelected(bool bInSelected) { bSelected = bInSelected; }
 
 protected:
 	UPrimitiveComponent* Owner;
 	FRenderCommand CachedCommand;
 	bool bIsDirty = true;
+	bool bSelected = false;
 };
 
 class FDefaultPrimitiveProxy : public FPrimitiveProxy

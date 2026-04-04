@@ -1,4 +1,4 @@
-﻿#include "TextRenderComponent.h"
+#include "TextRenderComponent.h"
 
 #include <cstring>
 #include "GameFramework/AActor.h"
@@ -6,58 +6,80 @@
 #include "Object/ObjectFactory.h"
 #include "Render/Resource/MeshBufferManager.h"
 #include "Render/Resource/ShaderManager.h"
+#include "Render/Pipeline/PrimitiveProxy.h"
 
 IMPLEMENT_CLASS(UTextRenderComponent, UBillboardComponent)
 
-void UTextRenderComponent::CollectRender(FRenderBus& Bus) const
+class FTextRenderProxy : public FPrimitiveProxy
 {
-	if (!Bus.GetShowFlags().bBillboardText) return;
+public:
+	FTextRenderProxy(UTextRenderComponent* InOwner)
+		: FPrimitiveProxy(InOwner)
+	{
+	}
 
-	const FFontResource* Font = GetFont();
-	if (!Font || !Font->IsLoaded()) return;
-	if (Text.empty()) return;
+	void UpdateProxy() override
+	{
+	}
 
-	// 현재 뷰포트 카메라 기준 빌보드 행렬
-	FVector BillboardForward = Bus.GetCameraForward() * -1.0f;
-	FMatrix RotMatrix;
-	RotMatrix.SetAxes(BillboardForward, Bus.GetCameraRight() * -1.0f, Bus.GetCameraUp());
-	FMatrix PerViewBillboard = FMatrix::MakeScaleMatrix(GetWorldScale())
-		* RotMatrix * FMatrix::MakeTranslationMatrix(GetWorldLocation());
+	void OnDraw(FViewContext& Bus) override
+	{
+		UTextRenderComponent* TextComp = static_cast<UTextRenderComponent*>(Owner);
+		if (!TextComp || !TextComp->IsVisible()) return;
 
-	FFontEntry Entry = {};
-	Entry.PerObject = FPerObjectConstants{ PerViewBillboard };
-	Entry.PerObject.Color = GetColor();
-	Entry.Font.Text = Text;
-	Entry.Font.Font = Font;
-	Entry.Font.Scale = GetFontSize();
-	Bus.AddFontEntry(std::move(Entry));
-}
+		const FFontResource* Font = TextComp->GetFont();
+		const FString& Text = TextComp->GetText();
 
-void UTextRenderComponent::CollectSelection(FRenderBus& Bus) const
+		// --- CollectRender Logic ---
+		if (Bus.GetShowFlags().bBillboardText)
+		{
+			if (Font && Font->IsLoaded() && !Text.empty())
+			{
+				FVector BillboardForward = Bus.GetCameraForward() * -1.0f;
+				FMatrix RotMatrix;
+				RotMatrix.SetAxes(BillboardForward, Bus.GetCameraRight() * -1.0f, Bus.GetCameraUp());
+				FMatrix PerViewBillboard = FMatrix::MakeScaleMatrix(TextComp->GetWorldScale())
+					* RotMatrix * FMatrix::MakeTranslationMatrix(TextComp->GetWorldLocation());
+
+				FFontEntry Entry = {};
+				Entry.PerObject = FPerObjectConstants{ PerViewBillboard };
+				Entry.PerObject.Color = TextComp->GetColor();
+				Entry.Font.Text = Text;
+				Entry.Font.Font = Font;
+				Entry.Font.Scale = TextComp->GetFontSize();
+				Bus.AddFontEntry(std::move(Entry));
+			}
+		}
+
+		// --- CollectSelection Logic ---
+		if (bSelected)
+		{
+			if (Font && Font->IsLoaded() && !Text.empty())
+			{
+				FMeshBuffer* Buffer = TextComp->GetMeshBuffer();
+				if (Buffer && Buffer->IsValid() && TextComp->SupportsOutline())
+				{
+					FVector BillboardForward = Bus.GetCameraForward() * -1.0f;
+					FMatrix RotMatrix;
+					RotMatrix.SetAxes(BillboardForward, Bus.GetCameraRight() * -1.0f, Bus.GetCameraUp());
+					FMatrix PerViewBillboard = FMatrix::MakeScaleMatrix(TextComp->GetWorldScale())
+						* RotMatrix * FMatrix::MakeTranslationMatrix(TextComp->GetWorldLocation());
+					FMatrix OutlineMatrix = TextComp->CalculateOutlineMatrix(PerViewBillboard);
+
+					FRenderCommand MaskCmd = {};
+					MaskCmd.MeshBuffer = Buffer;
+					MaskCmd.PerObjectConstants = FPerObjectConstants{ OutlineMatrix };
+					MaskCmd.Shader = FShaderManager::Get().GetShader(EShaderType::Primitive);
+					Bus.AddCommand(ERenderPass::SelectionMask, MaskCmd);
+				}
+			}
+		}
+	}
+};
+
+FPrimitiveProxy* UTextRenderComponent::CreateProxy()
 {
-	const FFontResource* Font = GetFont();
-	if (!Font || !Font->IsLoaded()) return;
-	if (Text.empty()) return;
-
-	FMeshBuffer* Buffer = GetMeshBuffer();
-	if (!Buffer || !Buffer->IsValid()) return;
-	if (!SupportsOutline()) return;
-
-	// 빌보드 아웃라인 행렬
-	FVector BillboardForward = Bus.GetCameraForward() * -1.0f;
-	FMatrix RotMatrix;
-	RotMatrix.SetAxes(BillboardForward, Bus.GetCameraRight() * -1.0f, Bus.GetCameraUp());
-	FMatrix PerViewBillboard = FMatrix::MakeScaleMatrix(GetWorldScale())
-		* RotMatrix * FMatrix::MakeTranslationMatrix(GetWorldLocation());
-	FMatrix OutlineMatrix = CalculateOutlineMatrix(PerViewBillboard);
-
-	// SelectionMask: 스텐실에 선택 오브젝트 마킹
-	FRenderCommand MaskCmd = {};
-	MaskCmd.MeshBuffer = Buffer;
-	MaskCmd.PerObjectConstants = FPerObjectConstants{ OutlineMatrix };
-	MaskCmd.Shader = FShaderManager::Get().GetShader(EShaderType::Primitive);
-	Bus.AddCommand(ERenderPass::SelectionMask, MaskCmd);
-	// Billboard 계열 — AABB 제외
+	return new FTextRenderProxy(this);
 }
 
 void UTextRenderComponent::SetFont(const FName& InFontName)

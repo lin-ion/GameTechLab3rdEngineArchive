@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "BillboardComponent.h"
 #include "Core/ResourceTypes.h"
@@ -34,11 +34,10 @@ public:
 	float GetWidth()  const { return Width; }
 	float GetHeight() const { return Height; }
 
-	// --- Property / Serialization ---
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 	void PostEditProperty(const char* PropertyName) override;
 
-	void CollectRender(FRenderBus& Bus) const override;
+	class FPrimitiveProxy* CreateProxy() override;
 	void UpdateWorldAABB() const override;
 
 protected:

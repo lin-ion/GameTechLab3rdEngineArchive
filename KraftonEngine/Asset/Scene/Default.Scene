@@ -2,7 +2,7 @@
   "Actors" : [{
       "ClassName" : "AStaticMeshActor",
       "NonSceneComponents" : [],
-      "PrimitiveKey" : "6",
+      "PrimitiveKey" : "150020",
       "RootComponent" : {
         "Children" : [{
             "Children" : [],
@@ -42,7 +42,7 @@
     "Rotation" : [0.000000, 27.405302, 47.129379]
   },
   "Primitives" : {
-    "6" : {
+    "150020" : {
       "Location" : [0.000000, 0.000000, 0.000000],
       "ObjStaticMeshAsset" : "Data/BasicShape/Cube.OBJ",
       "Rotation" : [0.000000, -0.000000, 0.000000],

@@ -124,7 +124,7 @@ struct FAABBEntry
 	FAABBConstants AABB;
 };
 
-struct FGridEntry
+struct FGridProxy
 {
 	FGridConstants Grid;
 };

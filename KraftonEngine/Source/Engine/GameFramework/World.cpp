@@ -17,6 +17,17 @@ UWorld::~UWorld()
 	{
 		EndPlay();
 	}
+
+	if (ActiveScene)
+	{
+		UObjectManager::Get().DestroyObject(ActiveScene);
+		ActiveScene = nullptr;
+	}
+	if (PersistentScene)
+	{
+		UObjectManager::Get().DestroyObject(PersistentScene);
+		PersistentScene = nullptr;
+	}
 }
 
 void UWorld::DestroyActor(AActor* Actor)

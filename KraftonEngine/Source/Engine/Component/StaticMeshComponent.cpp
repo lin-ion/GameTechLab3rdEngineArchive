@@ -1,4 +1,4 @@
-﻿#include "Component/StaticMeshComponent.h"
+#include "Component/StaticMeshComponent.h"
 #include <algorithm>
 #include "Object/ObjectFactory.h"
 #include "Core/PropertyTypes.h"
@@ -93,68 +93,9 @@ UMaterial* UStaticMeshComponent::GetMaterial(int32 ElementIndex) const
 		return OverrideMaterials[ElementIndex];
 	}
 	return nullptr;
-}
-
-void UStaticMeshComponent::CollectRender(FRenderBus& Bus) const
-{
-	if (!Bus.GetShowFlags().bPrimitives) return;
-	FMeshBuffer* Buffer = GetMeshBuffer();
-	if (!Buffer || !Buffer->IsValid()) return;
-
-	FRenderCommand Cmd = {};
-	Cmd.PerObjectConstants = FPerObjectConstants::FromWorldMatrix(GetWorldMatrix());
-	Cmd.Shader = FShaderManager::Get().GetShader(EShaderType::StaticMesh);
-	Cmd.MeshBuffer = Buffer;
-
-	if (StaticMesh && StaticMesh->GetStaticMeshAsset())
-	{
-		const auto& Sections = StaticMesh->GetStaticMeshAsset()->Sections;
-
-		for (const FStaticMeshSection& Section : Sections)
-		{
-			FMeshSectionDraw Draw;
-			Draw.FirstIndex = Section.FirstIndex;
-			Draw.IndexCount = Section.NumTriangles * 3;
-
-			const int32 MatIdx = Section.MaterialIndex;
-			if (MatIdx >= 0 && MatIdx < (int32)OverrideMaterials.size() && OverrideMaterials[MatIdx])
-			{
-				auto& Mat = OverrideMaterials[MatIdx];
-				if (Mat->DiffuseTexture)
-					Draw.DiffuseSRV = Mat->DiffuseTexture->GetSRV();
-				Draw.DiffuseColor = Mat->DiffuseColor;
-			}
-
-			Cmd.SectionDraws.push_back(Draw);
-		}
 	}
-	Bus.AddCommand(ERenderPass::Opaque, Cmd);
-}
 
-void UStaticMeshComponent::CollectSelection(FRenderBus& Bus) const
-{
-	FMeshBuffer* Buffer = GetMeshBuffer();
-	if (!Buffer || !Buffer->IsValid()) return;
-
-	// SelectionMask: 스텐실에 선택 오브젝트 마킹
-	FRenderCommand MaskCmd = {};
-	MaskCmd.MeshBuffer = Buffer;
-	MaskCmd.PerObjectConstants = FPerObjectConstants{ GetWorldMatrix() };
-	MaskCmd.Shader = FShaderManager::Get().GetShader(EShaderType::StaticMesh);
-	Bus.AddCommand(ERenderPass::SelectionMask, MaskCmd);
-
-	if (Bus.GetShowFlags().bBoundingVolume)
-	{
-		FAABBEntry Entry = {};
-		FBoundingBox Box = GetWorldBoundingBox();
-		Entry.AABB.Min = Box.Min;
-		Entry.AABB.Max = Box.Max;
-		Entry.AABB.Color = FColor::White();
-		Bus.AddAABBEntry(std::move(Entry));
-	}
-}
-
-FMeshBuffer* UStaticMeshComponent::GetMeshBuffer() const
+	FMeshBuffer* UStaticMeshComponent::GetMeshBuffer() const
 {
 	if (!StaticMesh) return nullptr;
 	FStaticMesh* Asset = StaticMesh->GetStaticMeshAsset();

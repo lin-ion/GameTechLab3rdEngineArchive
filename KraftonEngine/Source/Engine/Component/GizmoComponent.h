@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "PrimitiveComponent.h"
 #include "Core/CoreTypes.h"
@@ -69,8 +69,6 @@ public:
 	void Deactivate() override;
 
 	FMeshBuffer* GetMeshBuffer() const override;
-	void CollectRender(FRenderBus& Bus) const override;
-	void CollectSelection(FRenderBus& Bus) const override {}  // Gizmo는 선택 이펙트 없음
 
 	void SetExplicitWorld(UWorld* InWorld) { ExplicitWorld = InWorld; }
 	UWorld* GetWorld() const;

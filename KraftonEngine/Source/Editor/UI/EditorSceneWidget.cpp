@@ -186,7 +186,7 @@ void FEditorSceneWidget::Render(float DeltaTime)
 		{
 			if (!Actor) continue;
 
-			FString ActorName = Actor->GetFName().ToString();
+			FString ActorName = Actor->GetFName();
 			if (ActorName.empty())
 			{
 				ActorName = Actor->GetTypeInfo()->name;

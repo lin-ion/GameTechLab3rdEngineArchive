@@ -69,23 +69,35 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	// 렌더 시작 (RT 클리어 + DSV 바인딩)
 	VP->BeginRender(Ctx);
 
-	// 1. Bus 수집
-	Bus.Clear();
+	// 1. ViewContext 수집
+	ViewContext.Clear();
 
-	Bus.SetCameraInfo(Camera);
-	Bus.SetRenderSettings(ViewMode, ShowFlags);
-	Bus.SetViewportInfo(VP);
-	Bus.SetViewportType(Opts.ViewportType);
+	ViewContext.SetCameraInfo(Camera);
+	ViewContext.SetRenderOptions(Opts);
+	ViewContext.SetViewportInfo(VP);
 
 	// 2. RenderCommand(DefaultPass), Entry(Batcher)를 ERenderPass별로 수집
 	const TArray<AActor*>& SelectedActors = Editor->GetSelectionManager().GetSelectedActors();
 
-	Collector.CollectWorld(World, SelectedActors, Bus);
-	Collector.CollectGrid(Opts.GridSpacing, Opts.GridHalfLineCount, Bus);
+	if (UScene* Scene = World->GetPersistentScene())
+	{
+		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors);
+	}
+	if (UScene* Scene = World->GetActiveScene())
+	{
+		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors);
+	}
+
+	ViewContext.CollectViewElements();
 
 	// 3. Bus에 담긴 커맨드와 엔트리를 기반으로 렌더러에 배치
-	Renderer.PrepareBatchers(Bus);
+	Renderer.PrepareBatchers(ViewContext);
 
 	// 4. Bus에 담긴 커맨드와 엔트리를 기반으로 GPU 드로우 콜 실행
-	Renderer.Render(Bus);
+	Renderer.Render(ViewContext);
+}
+
+void FEditorRenderPipeline::Reset()
+{
+	ViewContext.Reset();
 }

@@ -54,19 +54,34 @@ void FObjViewerRenderPipeline::RenderPreviewViewport(FRenderer& Renderer)
 
 	Bus.SetCameraInfo(Camera);
 
-	FShowFlags ShowFlags;
-	ShowFlags.bGrid = false;
-	ShowFlags.bGizmo = false;
-	ShowFlags.bBillboardText = false;
-	ShowFlags.bBoundingVolume = false;
-	Bus.SetRenderSettings(EViewMode::Lit, ShowFlags);
+	FViewportRenderOptions Opts;
+	Opts.ViewMode = EViewMode::Lit;
+	Opts.ShowFlags.bGrid = false;
+	Opts.ShowFlags.bGizmo = false;
+	Opts.ShowFlags.bBillboardText = false;
+	Opts.ShowFlags.bBoundingVolume = false;
+
+	Bus.SetRenderOptions(Opts);
 	Bus.SetViewportInfo(VP);
 
 	// 월드 수집 (선택 액터 없음)
 	TArray<AActor*> EmptySelection;
-	Collector.CollectWorld(World, EmptySelection, Bus);
+	if (UScene* Scene = World->GetPersistentScene())
+	{
+		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection);
+	}
+	if (UScene* Scene = World->GetActiveScene())
+	{
+		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection);
+	}
+	Bus.CollectViewElements();
 
 	// GPU 렌더
 	Renderer.PrepareBatchers(Bus);
 	Renderer.Render(Bus);
+}
+
+void FObjViewerRenderPipeline::Reset()
+{
+	Bus.Reset();
 }

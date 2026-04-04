@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "PrimitiveComponent.h"
 #include "Render/Resource/MeshBufferManager.h"
 
@@ -16,7 +16,8 @@ public:
 
 	FMeshBuffer* GetMeshBuffer() const override { return &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::Quad); }
 	const FMeshData* GetMeshData() const override { return &FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad); }
-	void CollectSelection(FRenderBus& Bus) const override;
+	
+	FPrimitiveProxy* CreateProxy() override;
 
 protected:
 	bool bIsBillboard = true;

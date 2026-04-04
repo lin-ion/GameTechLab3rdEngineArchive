@@ -73,8 +73,8 @@ public:
 	}
 
 	// FName
-	FName GetFName() const { return ObjectName; }
-	void SetFName(const FName& InName) { ObjectName = InName; }
+	FString GetFName() const { return ObjectName; }
+	void SetFName(const FString& InName) { ObjectName = InName; }
 
 	// RTTI stuffs
 	virtual const FTypeInfo* GetTypeInfo() const { return &s_TypeInfo; }
@@ -86,7 +86,7 @@ public:
 	static const FTypeInfo s_TypeInfo;
 
 protected:
-	FName ObjectName;
+	FString ObjectName;
 
 private:
 	uint32 UUID;
@@ -109,7 +109,7 @@ public:
 		const char* ClassName = T::s_TypeInfo.name;
 		uint32& Counter = NameCounters[ClassName];
 		FString Name = FString(ClassName) + "_" + std::to_string(Counter++);
-		Obj->SetFName(FName(Name));
+		Obj->SetFName(Name);
 
 		return Obj;
 	}
@@ -123,7 +123,13 @@ public:
 		delete Obj;
 	}
 
+	void ClearNameCounters()
+	{
+		NameCounters.clear();
+	}
+
 private:
+	// UObject 인스턴스에 AActor_1, AActor_2 처럼 이름 붙여주는 용도
 	TMap<FString, uint32> NameCounters;
 
 public:

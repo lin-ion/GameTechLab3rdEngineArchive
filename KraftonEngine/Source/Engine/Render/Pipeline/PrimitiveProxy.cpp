@@ -8,7 +8,7 @@ FPrimitiveProxy::FPrimitiveProxy(UPrimitiveComponent* InOwner)
 {
 }
 
-void FPrimitiveProxy::CollectRender(FRenderBus& Bus, bool bSelected)
+void FPrimitiveProxy::OnDraw(FViewContext& View)
 {
 	if (IsDirty())
 	{
@@ -16,24 +16,24 @@ void FPrimitiveProxy::CollectRender(FRenderBus& Bus, bool bSelected)
 		bIsDirty = false;
 	}
 
-	Bus.AddCommand(ERenderPass::Opaque, CachedCommand);
+	View.AddCommand(ERenderPass::Opaque, CachedCommand);
 
 	if (bSelected)
 	{
 		if (Owner->SupportsOutline())
 		{
 			// Selection Mask
-			Bus.AddCommand(ERenderPass::SelectionMask, CachedCommand);
+			View.AddCommand(ERenderPass::SelectionMask, CachedCommand);
 		}
 
-		if (Bus.GetShowFlags().bBoundingVolume)
+		if (View.GetShowFlags().bBoundingVolume)
 		{
 			FAABBEntry Entry = {};
 			FBoundingBox Box = Owner->GetWorldBoundingBox();
 			Entry.AABB.Min = Box.Min;
 			Entry.AABB.Max = Box.Max;
 			Entry.AABB.Color = FColor::White();
-			Bus.AddAABBEntry(std::move(Entry));
+			View.AddAABBEntry(std::move(Entry));
 		}
 	}
 }

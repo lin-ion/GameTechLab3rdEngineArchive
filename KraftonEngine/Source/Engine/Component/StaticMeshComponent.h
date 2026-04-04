@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Component/MeshComponent.h"
 #include "Core/PropertyTypes.h"
@@ -21,8 +21,6 @@ public:
 	~UStaticMeshComponent() override = default;
 
 	FMeshBuffer* GetMeshBuffer() const override;
-	void CollectRender(FRenderBus& Bus) const override;
-	void CollectSelection(FRenderBus& Bus) const override;
 	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult) override;
 	void UpdateWorldAABB() const override;
 

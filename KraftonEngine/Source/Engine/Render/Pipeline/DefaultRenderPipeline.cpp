@@ -22,17 +22,32 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 	UCameraComponent* Camera = World ? World->GetActiveCamera() : nullptr;
 	if (Camera)
 	{
-		FShowFlags ShowFlags;
-		EViewMode ViewMode = EViewMode::Lit;
+		FViewportRenderOptions Opts;
+		Opts.ViewMode = EViewMode::Lit;
+		Opts.ShowFlags = FShowFlags(); // Default show flags
 
 		Bus.SetCameraInfo(Camera);
-		Bus.SetRenderSettings(ViewMode, ShowFlags);
+		Bus.SetRenderOptions(Opts);
 
-		Collector.CollectWorld(World, {}, Bus);
+		if (UScene* Scene = World->GetPersistentScene())
+		{
+			Scene->GetRenderProxy().CollectWorld(Bus, {});
+		}
+		if (UScene* Scene = World->GetActiveScene())
+		{
+			Scene->GetRenderProxy().CollectWorld(Bus, {});
+		}
+
+		Bus.CollectViewElements();
 	}
 
 	Renderer.PrepareBatchers(Bus);
 	Renderer.BeginFrame();
 	Renderer.Render(Bus);
 	Renderer.EndFrame();
+}
+
+void FDefaultRenderPipeline::Reset()
+{
+	Bus.Reset();
 }
