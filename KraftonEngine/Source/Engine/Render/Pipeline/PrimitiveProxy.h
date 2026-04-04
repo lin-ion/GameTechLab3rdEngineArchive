@@ -24,6 +24,9 @@ public:
 	void SetWorldRenderProxy(FWorldRenderProxy* InProxy) { WorldProxy = InProxy; }
 	FWorldRenderProxy* GetWorldRenderProxy() const { return WorldProxy; }
 
+	uint32 GetId() const;
+	struct FBoundingBox GetAABB() const;
+
 protected:
 	UPrimitiveComponent* Owner;
 	FWorldRenderProxy* WorldProxy = nullptr;

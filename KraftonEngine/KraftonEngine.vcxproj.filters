@@ -120,6 +120,12 @@
     <FxCompile Include="Shaders\Gizmo.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\HZBBuild.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\OcclusionTest.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\OutlinePostProcess.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
@@ -335,6 +341,12 @@
     <ClCompile Include="Source\Engine\Render\Pipeline\FrustumCulling.cpp">
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionCulling.cpp">
+      <Filter>Source\Engine\Render\Pipeline</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionManager.cpp">
+      <Filter>Source\Engine\Render\Pipeline</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp">
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClCompile>
@@ -354,6 +366,9 @@
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Resource\Buffer.cpp">
+      <Filter>Source\Engine\Render\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Resource\ComputeShader.cpp">
       <Filter>Source\Engine\Render\Resource</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Resource\ConstantBufferPool.cpp">
@@ -683,6 +698,12 @@
     <ClInclude Include="Source\Engine\Render\Pipeline\IRenderPipeline.h">
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Pipeline\OcclusionCulling.h">
+      <Filter>Source\Engine\Render\Pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Pipeline\OcclusionManager.h">
+      <Filter>Source\Engine\Render\Pipeline</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Render\Pipeline\PrimitiveProxy.h">
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
@@ -705,6 +726,9 @@
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Resource\Buffer.h">
+      <Filter>Source\Engine\Render\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Resource\ComputeShader.h">
       <Filter>Source\Engine\Render\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Resource\ConstantBufferPool.h">

@@ -2,6 +2,7 @@
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
+#include "Render/Pipeline/OcclusionManager.h"
 #include "Viewport/Viewport.h"
 #include "ImGui/imgui.h"
 
@@ -81,6 +82,20 @@ void FEditorViewportWidget::Render(float DeltaTime)
 				(ImTextureID)VP->GetSRV(),
 				Size
 			);
+
+			// HZB 디버그 출력
+			if (ViewportClient->GetRenderOptions().ShowFlags.bShowHZB)
+			{
+				ID3D11ShaderResourceView* HZBSRV = FOcclusionManager::Get().GetHZBSRV();
+				if (HZBSRV)
+				{
+					// 우하단에 작게 표시
+					ImVec2 DebugSize = ImVec2(Size.x * 0.25f, Size.y * 0.25f);
+					ImGui::SetCursorPos(ImVec2(Size.x - DebugSize.x, Size.y - DebugSize.y));
+					ImGui::Image((ImTextureID)HZBSRV, DebugSize);
+					ImGui::TextColored(ImVec4(1, 1, 0, 1), "HZB Debug View");
+				}
+			}
 		}
 	}
 

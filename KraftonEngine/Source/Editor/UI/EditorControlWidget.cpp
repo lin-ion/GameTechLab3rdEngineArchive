@@ -1,5 +1,7 @@
 ﻿#include "Editor/UI/EditorControlWidget.h"
 #include "Editor/EditorEngine.h"
+#include "Editor/Viewport/LevelEditorViewportClient.h"
+#include "Render/Pipeline/OcclusionManager.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Profiling/MemoryStats.h"
 #include "ImGui/imgui.h"
@@ -66,6 +68,25 @@ void FEditorControlWidget::Render(float DeltaTime)
 	if (ImGui::Combo("Picking Mode", &SelectedPickingMode, PickingModeTypes, IM_ARRAYSIZE(PickingModeTypes)))
 	{
 		EditorEngine->SetPickingMode(static_cast<EPickingMode>(SelectedPickingMode));
+	}
+
+	SEPARATOR();
+
+	// Occlusion Culling
+	if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetActiveViewport())
+	{
+		auto& ShowFlags = ActiveVC->GetRenderOptions().ShowFlags;
+		ImGui::Checkbox("Occlusion Culling", &ShowFlags.bOcclusionCulling);
+		ImGui::Checkbox("Show HZB Debug", &ShowFlags.bShowHZB);
+
+		if (ShowFlags.bOcclusionCulling)
+		{
+			uint32 Total = FOcclusionManager::Get().GetTotalCandidates();
+			uint32 Culled = FOcclusionManager::Get().GetOccludedCount();
+			ImGui::Text("Total Proxies: %u", Total);
+			ImGui::Text("Culled Proxies: %u", Culled);
+			ImGui::Text("Rendered Proxies: %u", Total - Culled);
+		}
 	}
 
 	SEPARATOR();

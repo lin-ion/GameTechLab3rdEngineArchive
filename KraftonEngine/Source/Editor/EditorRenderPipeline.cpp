@@ -5,6 +5,8 @@
 #include "Editor/Selection/PickingPerf.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Render/Pipeline/FrustumCulling.h"
+#include "Render/Pipeline/OcclusionCulling.h"
+#include "Render/Pipeline/OcclusionManager.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 #include "Viewport/Viewport.h"
 #include "Component/CameraComponent.h"
@@ -74,6 +76,8 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	// 렌더 시작 (RT 클리어 + DSV 바인딩)
 	VP->BeginRender(Ctx);
 
+	FOcclusionManager::Get().ResetStats();
+
 	// 1. ViewContext 수집
 	ViewContext.Clear();
 
@@ -95,6 +99,11 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	// 3. 컬링 적용 (Cull)
 	FFrustumCulling::ApplyFrustumCulling(ViewContext);
 
+	// 오클루전 테스트를 위해 프러스텀 컬링만 통과한 전체 후보군을 따로 보관 (컬링 전 상태)
+	TArray<FPrimitiveProxy*> AllFrustumVisible = ViewContext.GetCandidateProxies();
+
+	OcclusionCulling::ApplyOcclusionCulling(ViewContext);
+
 	// 4. 컬링을 통과한 후보군만 RenderCommand를 ViewContext에 제출
 	if (UScene* Scene = World->GetPersistentScene())
 	{
@@ -112,6 +121,12 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	// 6. ViewContext에 담긴 커맨드와 엔트리를 기반으로 GPU 드로우 콜 실행
 	Renderer.Render(ViewContext);
+
+	// 7. 차기 프레임용 오클루전 테스트 실행 (N-1 HZB 사용)
+	if (ShowFlags.bOcclusionCulling)
+	{
+		FOcclusionManager::Get().ExecuteOcclusionTest(Ctx, ViewContext, AllFrustumVisible);
+	}
 
 	if (Editor->GetPickingMode() == EPickingMode::IDBuffer && VC->HasPendingIdPickRequest())
 	{

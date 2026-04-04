@@ -263,6 +263,8 @@
     <ClCompile Include="Source\Engine\Render\Pipeline\DefaultRenderPipeline.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\FixedWorldOctree.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\FrustumCulling.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionCulling.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\OcclusionManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\RenderCollector.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp" />
@@ -270,6 +272,7 @@
     <ClCompile Include="Source\Engine\Render\Pipeline\ViewContext.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\WorldRenderProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Resource\Buffer.cpp" />
+    <ClCompile Include="Source\Engine\Render\Resource\ComputeShader.cpp" />
     <ClCompile Include="Source\Engine\Render\Resource\ConstantBufferPool.cpp" />
     <ClCompile Include="Source\Engine\Render\Resource\MeshBufferManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Resource\RenderResources.cpp" />
@@ -383,6 +386,8 @@
     <ClInclude Include="Source\Engine\Render\Pipeline\FrustumCulling.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\IPrimitiveSpatialQuery.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\IRenderPipeline.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\OcclusionCulling.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\OcclusionManager.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\PrimitiveProxy.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollectorContext.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCommand.h" />
@@ -391,6 +396,7 @@
     <ClInclude Include="Source\Engine\Render\Pipeline\ViewContext.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\WorldRenderProxy.h" />
     <ClInclude Include="Source\Engine\Render\Resource\Buffer.h" />
+    <ClInclude Include="Source\Engine\Render\Resource\ComputeShader.h" />
     <ClInclude Include="Source\Engine\Render\Resource\ConstantBufferPool.h" />
     <ClInclude Include="Source\Engine\Render\Resource\MeshBufferManager.h" />
     <ClInclude Include="Source\Engine\Render\Resource\RenderResources.h" />
@@ -438,6 +444,16 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Shaders\Gizmo.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Shaders\HZBBuild.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Shaders\OcclusionTest.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
