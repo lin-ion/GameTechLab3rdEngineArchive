@@ -1,6 +1,5 @@
 ﻿#include "Renderer.h"
-#include "Renderer.h"
-
+#include "OcclusionManager.h"
 #include <iostream>
 #include <algorithm>
 #include "Resource/ResourceManager.h"
@@ -34,6 +33,8 @@ void FRenderer::Create(HWND hWindow)
 	InitializePassRenderStates();
 	InitializePassBatchers();
 
+	FOcclusionManager::Get().Initialize(Device.GetDevice());
+
 	// GPU Profiler 초기화
 	FGPUProfiler::Get().Initialize(Device.GetDevice(), Device.GetDeviceContext());
 }
@@ -41,6 +42,8 @@ void FRenderer::Create(HWND hWindow)
 void FRenderer::Release()
 {
 	FGPUProfiler::Get().Shutdown();
+
+	FOcclusionManager::Get().Release();
 
 	EditorLineBatcher.Release();
 	GridLineBatcher.Release();
@@ -219,7 +222,7 @@ void FRenderer::Render(const FViewContext& InRenderBus)
 	{
 		ERenderPass CurPass = static_cast<ERenderPass>(i);
 		ApplyPassRenderState(CurPass, Context, InRenderBus.GetViewMode());
-
+	
 		if (PassBatchers[i])
 		{
 			PassBatchers[i].DrawBatch(CurPass, InRenderBus, Context);
@@ -231,6 +234,21 @@ void FRenderer::Render(const FViewContext& InRenderBus)
 			{
 				ExecuteDefaultPass(Commands, InRenderBus, Context);
 			}
+		}
+
+		if (CurPass == ERenderPass::Opaque)
+		{
+			// DX11 Conflict: Depth buffer cannot be bound as both DSV and SRV.
+			// Unbind all RTVs and DSV before building HZB.
+			ID3D11RenderTargetView* nullRTV = nullptr;
+			Context->OMSetRenderTargets(1, &nullRTV, nullptr);
+
+			FOcclusionManager::Get().BuildHZB(Context, InRenderBus.GetViewportDepthSRV(), static_cast<uint32>(InRenderBus.GetViewportWidth()), static_cast<uint32>(InRenderBus.GetViewportHeight()));
+
+			// Rebind the viewport RTV and DSV for subsequent passes (Translucent, etc.)
+			ID3D11RenderTargetView* RTV = InRenderBus.GetViewportRTV();
+			ID3D11DepthStencilView* DSV = InRenderBus.GetViewportDSV();
+			Context->OMSetRenderTargets(1, &RTV, DSV);
 		}
 	}
 }

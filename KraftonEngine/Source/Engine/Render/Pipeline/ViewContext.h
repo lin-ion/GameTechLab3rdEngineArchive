@@ -65,6 +65,7 @@ public:
 	const float GetViewportHeight() const { return viewportHeight; }
 	ID3D11RenderTargetView*  GetViewportRTV()        const { return ViewportRTV; }
 	ID3D11DepthStencilView*  GetViewportDSV()        const { return ViewportDSV; }
+	ID3D11ShaderResourceView* GetViewportDepthSRV()   const { return ViewportDepthSRV; }
 	ID3D11ShaderResourceView* GetViewportStencilSRV() const { return ViewportStencilSRV; }
 
 	// View별 로컬 요소 (그리드 등) 수집
@@ -97,6 +98,7 @@ private:
 	// PostProcess용 뷰포트 D3D 리소스 (프레임 내 유효)
 	ID3D11RenderTargetView*   ViewportRTV        = nullptr;
 	ID3D11DepthStencilView*   ViewportDSV        = nullptr;
+	ID3D11ShaderResourceView* ViewportDepthSRV   = nullptr;
 	ID3D11ShaderResourceView* ViewportStencilSRV = nullptr;
 
 	//Editor Settings

@@ -18,6 +18,7 @@ void FViewContext::Clear()
 
 	ViewportRTV = nullptr;
 	ViewportDSV = nullptr;
+	ViewportDepthSRV = nullptr;
 	ViewportStencilSRV = nullptr;
 }
 
@@ -98,6 +99,7 @@ void FViewContext::SetViewportInfo(const FViewport* VP)
 	viewportHeight = static_cast<float>(VP->GetHeight());
 	ViewportRTV = VP->GetRTV();
 	ViewportDSV = VP->GetDSV();
+	ViewportDepthSRV = VP->GetDepthSRV();
 	ViewportStencilSRV = VP->GetStencilSRV();
 }
 

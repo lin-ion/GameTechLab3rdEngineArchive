@@ -51,6 +51,16 @@ void FPrimitiveProxy::SubmitRenderCommand(FViewContext& View)
 	}
 }
 
+uint32 FPrimitiveProxy::GetId() const
+{
+	return Owner ? Owner->GetUUID() : 0;
+}
+
+FBoundingBox FPrimitiveProxy::GetAABB() const
+{
+	return Owner ? Owner->GetWorldBoundingBox() : FBoundingBox();
+}
+
 FDefaultPrimitiveProxy::FDefaultPrimitiveProxy(UPrimitiveComponent* InOwner)
 	: FPrimitiveProxy(InOwner)
 {
