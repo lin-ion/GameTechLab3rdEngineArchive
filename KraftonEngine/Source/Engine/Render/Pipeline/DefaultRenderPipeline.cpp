@@ -1,4 +1,4 @@
-#include "DefaultRenderPipeline.h"
+﻿#include "DefaultRenderPipeline.h"
 
 #include "Renderer.h"
 #include "Engine/Runtime/Engine.h"
@@ -31,11 +31,11 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 
 		if (UScene* Scene = World->GetPersistentScene())
 		{
-			Scene->GetRenderProxy().CollectWorld(Bus, {});
+			Scene->GetRenderProxy().CollectWorld(Bus, {}, false);
 		}
 		if (UScene* Scene = World->GetActiveScene())
 		{
-			Scene->GetRenderProxy().CollectWorld(Bus, {});
+			Scene->GetRenderProxy().CollectWorld(Bus, {}, true);
 		}
 
 		Bus.CollectViewElements();

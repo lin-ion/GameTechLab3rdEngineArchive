@@ -81,11 +81,11 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	if (UScene* Scene = World->GetPersistentScene())
 	{
-		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors);
+		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors, false);
 	}
 	if (UScene* Scene = World->GetActiveScene())
 	{
-		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors);
+		Scene->GetRenderProxy().CollectWorld(ViewContext, SelectedActors, true);
 	}
 
 	ViewContext.CollectViewElements();

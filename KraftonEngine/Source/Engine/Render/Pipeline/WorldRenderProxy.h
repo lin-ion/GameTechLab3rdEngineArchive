@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Core/CoreTypes.h"
 #include "Render/Pipeline/ViewContext.h"
 
@@ -23,7 +23,7 @@ struct FWorldProxyCullingStats
 class FWorldRenderProxy
 {
 public:
-	FWorldRenderProxy() = default;
+	FWorldRenderProxy();
 	~FWorldRenderProxy();
 
 	void AddProxy(FPrimitiveProxy* Proxy);
@@ -31,7 +31,7 @@ public:
 	void MarkSpatialIndexDirty() { bSpatialIndexDirty = true; }
 
 	// World의 정보들을 바탕으로 Proxies 업데이트
-	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors);
+	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex);
 	const FWorldProxyCullingStats& GetLastCullingStats() const { return LastCullingStats; }
 
 private:

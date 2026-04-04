@@ -68,11 +68,11 @@ void FObjViewerRenderPipeline::RenderPreviewViewport(FRenderer& Renderer)
 	TArray<AActor*> EmptySelection;
 	if (UScene* Scene = World->GetPersistentScene())
 	{
-		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection);
+		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection, false);
 	}
 	if (UScene* Scene = World->GetActiveScene())
 	{
-		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection);
+		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection, true);
 	}
 	Bus.CollectViewElements();
 

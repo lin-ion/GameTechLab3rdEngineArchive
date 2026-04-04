@@ -44,14 +44,14 @@ void FWorldRenderProxy::RemoveProxy(FPrimitiveProxy* Proxy)
 	}
 }
 
-void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*>& SelectedActors)
+void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex)
 {
 	if (!this) return;
-	if (!Bus.GetShowFlags().bPrimitives) return;
+	if (!Context.GetShowFlags().bPrimitives) return;
 	LastCullingStats = {};
 	LastCullingStats.RegisteredProxyCount = static_cast<int32>(Proxies.size());
 
-	const FFrustumPlanes Frustum = FFrustumCulling::BuildFrustumPlanes(Bus.GetView(), Bus.GetProj());
+	const FFrustumPlanes Frustum = FFrustumCulling::BuildFrustumPlanes(Context.GetView(), Context.GetProj());
 	const TSet<AActor*> SelectedActorSet(SelectedActors.begin(), SelectedActors.end());
 
 	TArray<FPrimitiveProxy*> CandidateProxies;
