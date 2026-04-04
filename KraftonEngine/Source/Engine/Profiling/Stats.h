@@ -77,3 +77,17 @@ private:
 #else
 #define SCOPE_STAT(Name) ((void)0)
 #endif
+
+/*
+void AMyActor::HeavyUpdate()
+{
+    // 이 함수의 전체 실행 시간을 재고 싶을 때
+    SCOPE_STAT("Actor.HeavyUpdate");
+
+    // 특정 구간만 재고 싶을 때는 중괄호 { } 로 스코프를 만들어줍니다.
+    {
+        SCOPE_STAT("Actor.PhysicsMath");
+        DoComplexMath(); // 이 함수 실행 시간만 따로 측정됨
+    }
+}
+*/

@@ -199,6 +199,8 @@ void FRenderer::BeginFrame()
 	GRenderStatsSnapshot = GRenderStats;
 	GRenderStats.Reset();
 	LastBoundShader = nullptr;
+	LastBoundMeshBuffer = nullptr;
+	LastBoundDiffuseSRV = nullptr;
 
 	ID3D11DeviceContext* Context = Device.GetDeviceContext();
 	ID3D11RenderTargetView* RTV = Device.GetFrameBufferRTV();
@@ -216,12 +218,21 @@ void FRenderer::BeginFrame()
 void FRenderer::Render(const FViewContext& InRenderBus)
 {
 	SCOPE_STAT("Render.DrawCalls");
+	// 정렬을 위해 const 캐스트 (가장 저렴한 위치)
+	FViewContext& MutableBus = const_cast<FViewContext&>(InRenderBus);
+
 	ID3D11DeviceContext* Context = Device.GetDeviceContext();
 	UpdateFrameBuffer(Context, InRenderBus);
 
 	for (uint32 i = 0; i < (uint32)ERenderPass::MAX; ++i)
 	{
 		ERenderPass CurPass = static_cast<ERenderPass>(i);
+		// Opaque 등 주요 패스 정렬 수행
+		if (CurPass == ERenderPass::Opaque || CurPass == ERenderPass::Translucent || CurPass == ERenderPass::SelectionMask)
+		{
+			MutableBus.SortPass(CurPass);
+		}
+
 		ApplyPassRenderState(CurPass, Context, InRenderBus.GetViewMode());
 
 		if (PassBatchers[i])
@@ -349,6 +360,8 @@ void FRenderer::ExecuteDefaultPass(const TArray<FRenderCommand>& Commands, const
 		}
 		else
 		{
+			// 섹션이 없는 단일 메쉬 드로우인 경우
+			// BindCommand에서 PerObjectCB가 업데이트 되었으므로 그냥 그리면 됨
 			DrawCommand(Context, Cmd);
 		}
 	}
@@ -378,18 +391,24 @@ void FRenderer::BindCommand(const FRenderCommand& InCmd, ID3D11DeviceContext* Co
 	// 커맨드가 지정한 셰이더 바인딩
 	if (InCmd.Shader)
 	{
-		++GRenderStats.ShaderBinds;
-		if (InCmd.Shader == LastBoundShader)
+		if (InCmd.Shader != LastBoundShader)
+		{
+			++GRenderStats.ShaderBinds;
+			InCmd.Shader->Bind(Context);
+			LastBoundShader = InCmd.Shader;
+		}
+		else
 		{
 			++GRenderStats.RedundantShaderBinds;
 		}
-		LastBoundShader = InCmd.Shader;
-		InCmd.Shader->Bind(Context);
 	}
 
-	// 공통 PerObject CB
-	Resources.PerObjectConstantBuffer.Update(Context, &InCmd.PerObjectConstants, sizeof(FPerObjectConstants));
+	// [CB 최적화] SectionDraws가 있는 메쉬는 DrawStaticMeshSections 내부에서 
+	// 각 Section별로 Color가 적용된 PerObjectCB를 업로드합니다.
+	// 따라서 여기서 공통 PerObjectCB를 성급히 업로드하면 프레임당 50000번의 완벽한 낭비(Redundant)가 발생합니다.
+	if (InCmd.SectionDraws.empty())
 	{
+		Resources.PerObjectConstantBuffer.Update(Context, &InCmd.PerObjectConstants, sizeof(FPerObjectConstants));
 		ID3D11Buffer* cb = Resources.PerObjectConstantBuffer.GetBuffer();
 		Context->VSSetConstantBuffers(ECBSlot::PerObject, 1, &cb);
 	}
@@ -411,27 +430,43 @@ void FRenderer::DrawCommand(ID3D11DeviceContext* InDeviceContext, const FRenderC
 		return;
 	}
 
-	uint32 offset = 0;
-	ID3D11Buffer* vertexBuffer = InCommand.MeshBuffer->GetVertexBuffer().GetBuffer();
-	if (vertexBuffer == nullptr)
+	// 버텍스 버퍼 바인딩 (캐싱 적용)
+	if (InCommand.MeshBuffer != LastBoundMeshBuffer)
 	{
-		return;
+		++GRenderStats.MeshBinds;
+		uint32 offset = 0;
+		ID3D11Buffer* vertexBuffer = InCommand.MeshBuffer->GetVertexBuffer().GetBuffer();
+		if (vertexBuffer == nullptr)
+		{
+			return;
+		}
+
+		uint32 stride = InCommand.MeshBuffer->GetVertexBuffer().GetStride();
+		if (stride == 0)
+		{
+			return;
+		}
+
+		InDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+
+		ID3D11Buffer* indexBuffer = InCommand.MeshBuffer->GetIndexBuffer().GetBuffer();
+		if (indexBuffer != nullptr)
+		{
+			InDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+		}
+
+		LastBoundMeshBuffer = InCommand.MeshBuffer;
+	}
+	else
+	{
+		++GRenderStats.RedundantMeshBinds;
 	}
 
 	uint32 vertexCount = InCommand.MeshBuffer->GetVertexBuffer().GetVertexCount();
-	uint32 stride = InCommand.MeshBuffer->GetVertexBuffer().GetStride();
-	if (vertexCount == 0 || stride == 0)
-	{
-		return;
-	}
-
-	InDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-
 	ID3D11Buffer* indexBuffer = InCommand.MeshBuffer->GetIndexBuffer().GetBuffer();
 	if (indexBuffer != nullptr)
 	{
 		uint32 indexCount = InCommand.MeshBuffer->GetIndexBuffer().GetIndexCount();
-		InDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 		InDeviceContext->DrawIndexed(indexCount, 0, 0);
 		++GRenderStats.DrawCalls;
 		++GRenderStats.DrawIndexedCalls;
@@ -450,43 +485,59 @@ void FRenderer::DrawStaticMeshSections(ID3D11DeviceContext* Context, const FRend
 {
 	if (!Cmd.MeshBuffer || !Cmd.MeshBuffer->IsValid()) return;
 
-	// 버텍스 버퍼 바인딩 (한 번만)
-	uint32 offset = 0;
-	ID3D11Buffer* vertexBuffer = Cmd.MeshBuffer->GetVertexBuffer().GetBuffer();
-	if (!vertexBuffer) return;
-	uint32 stride = Cmd.MeshBuffer->GetVertexBuffer().GetStride();
-	Context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+	// 버텍스 버퍼 바인딩 (캐싱 적용)
+	if (Cmd.MeshBuffer != LastBoundMeshBuffer)
+	{
+		++GRenderStats.MeshBinds;
+		uint32 offset = 0;
+		ID3D11Buffer* vertexBuffer = Cmd.MeshBuffer->GetVertexBuffer().GetBuffer();
+		if (!vertexBuffer) return;
+		uint32 stride = Cmd.MeshBuffer->GetVertexBuffer().GetStride();
+		Context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 
-	ID3D11Buffer* indexBuffer = Cmd.MeshBuffer->GetIndexBuffer().GetBuffer();
-	if (!indexBuffer) return;
-	Context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+		ID3D11Buffer* indexBuffer = Cmd.MeshBuffer->GetIndexBuffer().GetBuffer();
+		if (!indexBuffer) return;
+		Context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-	// StaticMeshShader가 s0에 SamplerState를 요구
+		LastBoundMeshBuffer = Cmd.MeshBuffer;
+	}
+	else
+	{
+		++GRenderStats.RedundantMeshBinds;
+	}
+
+	// StaticMeshShader가 s0에 SamplerState를 요구 (캐싱 가능하나 일단 유지)
 	Context->PSSetSamplers(0, 1, &Resources.DefaultSampler);
 
 	for (const FMeshSectionDraw& Section : Cmd.SectionDraws)
 	{
 		if (Section.IndexCount == 0) continue;
 
-		// 섹션별 SRV 바인딩 (t0)
-		ID3D11ShaderResourceView* srv = Section.DiffuseSRV;
-		Context->PSSetShaderResources(0, 1, &srv);
-		++GRenderStats.SRVChanges;
+		// 섹션별 SRV 바인딩 (캐싱 적용)
+		if (Section.DiffuseSRV != LastBoundDiffuseSRV)
+		{
+			++GRenderStats.SRVChanges;
+			ID3D11ShaderResourceView* srv = Section.DiffuseSRV;
+			Context->PSSetShaderResources(0, 1, &srv);
+			LastBoundDiffuseSRV = Section.DiffuseSRV;
+		}
+		else
+		{
+			++GRenderStats.RedundantSRVChanges;
+		}
 
 		// 섹션별 DiffuseColor를 PrimitiveColor(b1)에 반영
 		FPerObjectConstants SectionConstants = Cmd.PerObjectConstants;
 		SectionConstants.Color = Section.DiffuseColor;
 		Resources.PerObjectConstantBuffer.Update(Context, &SectionConstants, sizeof(FPerObjectConstants));
+		ID3D11Buffer* cb = Resources.PerObjectConstantBuffer.GetBuffer();
+		Context->VSSetConstantBuffers(ECBSlot::PerObject, 1, &cb);
 
 		Context->DrawIndexed(Section.IndexCount, Section.FirstIndex, 0);
 		++GRenderStats.DrawCalls;
 		++GRenderStats.DrawIndexedCalls;
 		GRenderStats.TrianglesRendered += Section.IndexCount / 3;
 	}
-
-	// SRV 언바인딩 (다음 드로우에 영향 방지)
-	ID3D11ShaderResourceView* nullSRV = nullptr;
-	Context->PSSetShaderResources(0, 1, &nullSRV);
 }
 
 // ============================================================

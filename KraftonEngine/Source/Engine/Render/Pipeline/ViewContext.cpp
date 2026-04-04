@@ -1,6 +1,7 @@
 #include "ViewContext.h"
 #include "Component/CameraComponent.h"
 #include "Viewport/Viewport.h"
+#include "Render/Pipeline/RenderSorting.h"
 
 void FViewContext::Clear()
 {
@@ -45,6 +46,11 @@ void FViewContext::AddCommand(ERenderPass Pass, const FRenderCommand& InCommand)
 void FViewContext::AddCommand(ERenderPass Pass, FRenderCommand&& InCommand)
 {
 	PassQueues[(uint32)Pass].push_back(std::move(InCommand));
+}
+
+void FViewContext::SortPass(ERenderPass Pass)
+{
+	FRenderSorting::SortCommands(PassQueues[(uint32)Pass]);
 }
 
 const TArray<FRenderCommand>& FViewContext::GetCommands(ERenderPass Pass) const

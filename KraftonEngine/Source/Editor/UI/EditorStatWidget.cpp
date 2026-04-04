@@ -84,7 +84,7 @@ void FEditorStatWidget::Render(float DeltaTime)
 	const TArray<FStatEntry>& CPUSource = bPaused ? FrozenCPUEntries : FStatManager::Get().GetSnapshot();
 	if (ImGui::CollapsingHeader("CPU Stats"))
 	{
-		RenderStatTable("CPUStatTable", CPUSource, CPUSortColumn, bCPUSortDescending);
+		RenderStatTable("CPUStatTable", CPUSource);
 	}
 
 	ImGui::End();
@@ -108,8 +108,9 @@ void FEditorStatWidget::RenderRenderStats()
 	float MBUploaded = static_cast<float>(S.CBBytesUploaded) / (1024.0f * 1024.0f);
 	ImGui::Text("CB Updates: %u (%.2f MB uploaded)", S.CBMapCount, MBUploaded);
 
+	ImGui::Text("VB/IB Binds: %u (%u redundant)", S.MeshBinds, S.RedundantMeshBinds);
 	ImGui::Text("Shader Binds: %u (%u redundant)", S.ShaderBinds, S.RedundantShaderBinds);
-	ImGui::Text("SRV Changes: %u", S.SRVChanges);
+	ImGui::Text("SRV Changes: %u (%u redundant)", S.SRVChanges, S.RedundantSRVChanges);
 }
 
 // ────────────────────────────────────────────────────────────
@@ -184,8 +185,7 @@ void FEditorStatWidget::RenderPickingDetail()
 // ────────────────────────────────────────────────────────────
 // Raw Stat Table (기존 구현 유지)
 // ────────────────────────────────────────────────────────────
-void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatEntry>& Source,
-	int& OutSortColumn, bool& OutSortDescending)
+void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatEntry>& Source)
 {
 #if STATS
 	if (Source.empty())
@@ -193,23 +193,6 @@ void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatE
 		ImGui::Text("No stats recorded.");
 		return;
 	}
-
-	TArray<FStatEntry> Entries = Source;
-
-	auto SortPredicate = [&](const FStatEntry& A, const FStatEntry& B) -> bool
-	{
-		double ValA = 0.0, ValB = 0.0;
-		switch (OutSortColumn)
-		{
-		case 0: return OutSortDescending ? (strcmp(A.Name, B.Name) > 0) : (strcmp(A.Name, B.Name) < 0);
-		case 1: ValA = A.MaxTime;    ValB = B.MaxTime;    break;
-		case 2: ValA = A.MinTime == DBL_MAX ? 0.0 : A.MinTime;
-				ValB = B.MinTime == DBL_MAX ? 0.0 : B.MinTime; break;
-		case 3: ValA = A.LastTime;   ValB = B.LastTime;   break;
-		}
-		return OutSortDescending ? (ValA > ValB) : (ValA < ValB);
-	};
-	std::sort(Entries.begin(), Entries.end(), SortPredicate);
 
 	const char* Headers[] = { "Name", "Max(ms)", "Min(ms)", "Last(ms)" };
 	constexpr int NumColumns = 4;
@@ -224,24 +207,7 @@ void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatE
 		}
 		ImGui::TableHeadersRow();
 
-		for (int i = 0; i < NumColumns; i++)
-		{
-			if (ImGui::TableGetColumnFlags(i) & ImGuiTableColumnFlags_IsHovered)
-			{
-				if (ImGui::IsMouseClicked(0))
-				{
-					if (OutSortColumn == i)
-						OutSortDescending = !OutSortDescending;
-					else
-					{
-						OutSortColumn = i;
-						OutSortDescending = true;
-					}
-				}
-			}
-		}
-
-		for (const FStatEntry& E : Entries)
+		for (const FStatEntry& E : Source)
 		{
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0); ImGui::Text("%s", E.Name);

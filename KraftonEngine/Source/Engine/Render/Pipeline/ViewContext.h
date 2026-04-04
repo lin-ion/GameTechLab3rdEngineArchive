@@ -19,6 +19,7 @@ public:
 	// Mesh 패스용 (Opaque, StencilMask, Outline, Gizmo, Translucent)
 	void AddCommand(ERenderPass Pass, const FRenderCommand& InCommand);
 	void AddCommand(ERenderPass Pass, FRenderCommand&& InCommand);
+	void SortPass(ERenderPass Pass);
 	const TArray<FRenderCommand>& GetCommands(ERenderPass Pass) const;
 
 	// Batcher 패스용 — 타입 안전한 전용 큐

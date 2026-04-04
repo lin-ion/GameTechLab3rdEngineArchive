@@ -20,10 +20,13 @@ struct FRenderStats
 
 	// State Changes
 	uint32 ShaderBinds       = 0;
+	uint32 MeshBinds         = 0;
 	uint32 SRVChanges        = 0;
 
 	// Redundancy detection
 	uint32 RedundantShaderBinds = 0;
+	uint32 RedundantMeshBinds   = 0;
+	uint32 RedundantSRVChanges  = 0;
 
 	void Reset() { *this = {}; }
 };
