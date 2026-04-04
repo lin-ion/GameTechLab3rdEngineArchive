@@ -1,4 +1,4 @@
-#include "Component/StaticMeshComponent.h"
+﻿#include "Component/StaticMeshComponent.h"
 #include <algorithm>
 #include "Object/ObjectFactory.h"
 #include "Core/PropertyTypes.h"
@@ -134,13 +134,32 @@ bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHi
 	if (!StaticMesh) return false;
 	FStaticMesh* Asset = StaticMesh->GetStaticMeshAsset();
 	if (!Asset || Asset->Vertices.empty() || Asset->Indices.empty()) return false;
+	if (!Asset->GetBVH())
+	{
+		Asset->BuildBVH();
+	}
 
-	bool bHit = FRayUtils::RaycastTriangles(
-		Ray, CachedWorldMatrix,
-		&Asset->Vertices[0].pos,
-		sizeof(FNormalVertex),
-		Asset->Indices,
-		OutHitResult);
+	bool bHit = false;
+	if (const FStaticMeshBVH* BVH = Asset->GetBVH())
+	{
+		bHit = FRayUtils::RaycastTrianglesBVH(
+			Ray,
+			CachedWorldMatrix,
+			&Asset->Vertices[0].pos,
+			sizeof(FNormalVertex),
+			*BVH,
+			OutHitResult);
+	}
+	else
+	{
+		bHit = FRayUtils::RaycastTriangles(
+			Ray,
+			CachedWorldMatrix,
+			&Asset->Vertices[0].pos,
+			sizeof(FNormalVertex),
+			Asset->Indices,
+			OutHitResult);
+	}
 
 	if (bHit)
 	{

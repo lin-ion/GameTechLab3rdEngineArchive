@@ -1,4 +1,5 @@
 ﻿#include "Collision/RayUtils.h"
+#include "Collision/StaticMeshBVH.h"
 #include "Component/PrimitiveComponent.h"
 #include <cmath>
 #include <cfloat>
@@ -120,4 +121,41 @@ bool FRayUtils::RaycastComponent(UPrimitiveComponent* Component, const FRay& Ray
 		return false;
 
 	return Component->LineTraceComponent(Ray, OutHitResult);
+}
+
+bool FRayUtils::RaycastTrianglesBVH(
+	const FRay& WorldRay,
+	const FMatrix& WorldMatrix,
+	const void* PositionData,
+	uint32 PositionStride,
+	const FStaticMeshBVH& BVH,
+	FHitResult& OutHitResult)
+{
+	if (!PositionData || !BVH.IsBuilt())
+	{
+		return false;
+	}
+
+	const FMatrix InvWorld = WorldMatrix.GetInverse();
+	const FVector LocalOrigin = InvWorld.TransformPositionWithW(WorldRay.Origin);
+	FVector LocalDir = InvWorld.TransformVector(WorldRay.Direction);
+	LocalDir.Normalize();
+
+	FRay LocalRay;
+	LocalRay.Origin = LocalOrigin;
+	LocalRay.Direction = LocalDir;
+
+	FHitResult LocalHit;
+	if (!BVH.IntersectLocalRay(LocalRay, PositionData, PositionStride, LocalHit))
+	{
+		return false;
+	}
+
+	OutHitResult = LocalHit;
+	const FVector LocalHitPoint = LocalOrigin + LocalDir * LocalHit.Distance;
+	const FVector WorldHitPoint = WorldMatrix.TransformPositionWithW(LocalHitPoint);
+	OutHitResult.WorldHitLocation = WorldHitPoint;
+	OutHitResult.Distance = FVector::Distance(WorldRay.Origin, WorldHitPoint);
+	OutHitResult.bHit = true;
+	return true;
 }

@@ -1,5 +1,6 @@
 ﻿#include "Render/Pipeline/FixedWorldOctree.h"
 #include "Render/Pipeline/FixedWorldOctree.h"
+#include "Collision/RayUtils.h"
 FFixedWorldOctree::FFixedWorldOctree(const FBoundingBox& InWorldBounds, int32 InMaxDepth, int32 InMaxItemsPerNode)
 	: WorldBounds(InWorldBounds)
 	, MaxDepth(InMaxDepth)
@@ -33,7 +34,7 @@ void FFixedWorldOctree::Insert(FPrimitiveProxy* Proxy, const FBoundingBox& Bound
 	InsertNode(*Root, Item);
 }
 
-void FFixedWorldOctree::Query(const FFrustumPlanes& Frustum, TArray<FPrimitiveProxy*>& OutProxies) const
+void FFixedWorldOctree::QueryFrustum(const FFrustumPlanes& Frustum, TArray<FPrimitiveProxy*>& OutProxies) const
 {
 	LastDebugStats = {};
 	LastDebugStats.OutsideItems = static_cast<int32>(OutsideItems.size());
@@ -45,7 +46,7 @@ void FFixedWorldOctree::Query(const FFrustumPlanes& Frustum, TArray<FPrimitivePr
 
 	AccumulateNodeStats(*Root, LastDebugStats.TotalNodes, LastDebugStats.TotalItems);
 
-	QueryNode(*Root, Frustum, OutProxies);
+	QueryNodeByFrustum(*Root, Frustum, OutProxies);
 
 	for (const FOctreeItem& Item : OutsideItems)
 	{
@@ -53,6 +54,31 @@ void FFixedWorldOctree::Query(const FFrustumPlanes& Frustum, TArray<FPrimitivePr
 		{
 			OutProxies.push_back(Item.Proxy);
 			++LastDebugStats.FrustumCandidateItems;
+		}
+	}
+	
+}
+
+void FFixedWorldOctree::QueryRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutProxies) const
+{
+	LastDebugStats = {};
+	LastDebugStats.OutsideItems = static_cast<int32>(OutsideItems.size());
+
+	if (!Root)
+	{
+		return;
+	}
+
+	AccumulateNodeStats(*Root, LastDebugStats.TotalNodes, LastDebugStats.TotalItems);
+
+	QueryNodeByRay(*Root, Ray, OutProxies);
+
+	for (const FOctreeItem& Item : OutsideItems)
+	{
+		if (FRayUtils::CheckRayAABB(Ray, Item.Bounds.Min, Item.Bounds.Max))
+		{
+			OutProxies.push_back(Item.Proxy);
+			++LastDebugStats.RayCandidateItems;
 		}
 	}
 }
@@ -183,7 +209,7 @@ void FFixedWorldOctree::InsertNode(FNode& Node, const FOctreeItem& Item)
 	}
 }
 
-void FFixedWorldOctree::QueryNode(const FNode& Node, const FFrustumPlanes& Frustum, TArray<FPrimitiveProxy*>& OutProxies) const
+void FFixedWorldOctree::QueryNodeByFrustum(const FNode& Node, const FFrustumPlanes& Frustum, TArray<FPrimitiveProxy*>& OutProxies) const
 {
 	//	노드 단위 early-out으로 하위 순회 비용 절감
 	if (!FFrustumCulling::IntersectsAABB(Frustum, Node.Bounds))
@@ -206,7 +232,34 @@ void FFixedWorldOctree::QueryNode(const FNode& Node, const FFrustumPlanes& Frust
 	{
 		if (Child)
 		{
-			QueryNode(*Child, Frustum, OutProxies);
+			QueryNodeByFrustum(*Child, Frustum, OutProxies);
+		}
+	}
+}
+
+void FFixedWorldOctree::QueryNodeByRay(const FNode& Node, const FRay& Ray, TArray<FPrimitiveProxy*>& OutProxies) const
+{
+	if (!FRayUtils::CheckRayAABB(Ray, Node.Bounds.Min, Node.Bounds.Max))
+	{
+		return;
+	}
+
+	++LastDebugStats.RayIntersectedNodes;
+
+	for (const FOctreeItem& Item : Node.Items)
+	{
+		if (FRayUtils::CheckRayAABB(Ray, Item.Bounds.Min, Item.Bounds.Max))
+		{
+			OutProxies.push_back(Item.Proxy);
+			++LastDebugStats.RayCandidateItems;
+		}
+	}
+
+	for (const std::unique_ptr<FNode>& Child : Node.Children)
+	{
+		if (Child)
+		{
+			QueryNodeByRay(*Child, Ray, OutProxies);
 		}
 	}
 }

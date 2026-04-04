@@ -7,6 +7,7 @@
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
+#include "Render/Pipeline/PrimitiveProxy.h"
 #include "Object/Object.h"
 
 #include <cfloat>
@@ -84,43 +85,45 @@ private:
 		FHitResult HitResult{};
 		uint64 BroadPhaseCycles = 0;
 		uint64 NarrowPhaseCycles = 0;
+		TArray<FPrimitiveProxy*> BroadCandidates;
 
-		for (AActor* Actor : World->GetActors())
+		const uint64 BroadStart = FPickingPlatformTime::Cycles64();
+		if (UScene* Scene = World->GetActiveScene())
 		{
-			if (!Actor || !Actor->GetRootComponent())
+			Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, true);
+		}
+		BroadPhaseCycles += (FPickingPlatformTime::Cycles64() - BroadStart);
+
+		for (FPrimitiveProxy* Proxy : BroadCandidates)
+		{
+			if (!Proxy)
 			{
 				continue;
 			}
 
-			for (UPrimitiveComponent* PrimitiveComp : Actor->GetPrimitiveComponents())
+			UPrimitiveComponent* PrimitiveComp = Proxy->GetOwner();
+			if (!PrimitiveComp || !PrimitiveComp->IsVisible())
 			{
-				if (!PrimitiveComp || !PrimitiveComp->IsVisible())
-				{
-					continue;
-				}
+				continue;
+			}
 
-				const uint64 BroadStart = FPickingPlatformTime::Cycles64();
-				PrimitiveComp->UpdateWorldAABB();
-				const FBoundingBox AABB = PrimitiveComp->GetWorldBoundingBox();
-				const bool bAABBHit = FRayUtils::CheckRayAABB(Ray, AABB.Min, AABB.Max);
-				BroadPhaseCycles += (FPickingPlatformTime::Cycles64() - BroadStart);
-				if (!bAABBHit)
-				{
-					continue;
-				}
+			AActor* Actor = PrimitiveComp->GetOwner();
+			if (!Actor || !Actor->GetRootComponent() || !Actor->IsVisible())
+			{
+				continue;
+			}
 
-				HitResult = {};
-				const uint64 NarrowStart = FPickingPlatformTime::Cycles64();
-				const bool bTriangleHit = PrimitiveComp->LineTraceComponent(Ray, HitResult);
-				NarrowPhaseCycles += (FPickingPlatformTime::Cycles64() - NarrowStart);
-				if (bTriangleHit && HitResult.Distance < OutClosestDistance)
+			HitResult = {};
+			const uint64 NarrowStart = FPickingPlatformTime::Cycles64();
+			const bool bTriangleHit = PrimitiveComp->LineTraceComponent(Ray, HitResult);
+			NarrowPhaseCycles += (FPickingPlatformTime::Cycles64() - NarrowStart);
+			if (bTriangleHit && HitResult.Distance < OutClosestDistance)
+			{
+				OutClosestDistance = HitResult.Distance;
+				BestActor = Actor;
+				if (OutPickingId)
 				{
-					OutClosestDistance = HitResult.Distance;
-					BestActor = Actor;
-					if (OutPickingId)
-					{
-						*OutPickingId = MakeObjectPickingId(Actor);
-					}
+					*OutPickingId = MakeObjectPickingId(Actor);
 				}
 			}
 		}

@@ -322,6 +322,7 @@
     <ClInclude Include="Source\Editor\Viewport\FLevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\Viewport\LevelEditorViewportClient.h" />
     <ClInclude Include="Source\Engine\Collision\RayUtils.h" />
+    <ClInclude Include="Source\Engine\Collision\StaticMeshBVH.h" />
     <ClInclude Include="Source\Engine\Component\ActorComponent.h" />
     <ClInclude Include="Source\Engine\Component\BillboardComponent.h" />
     <ClInclude Include="Source\Engine\Component\CameraComponent.h" />
@@ -380,6 +381,7 @@
     <ClInclude Include="Source\Engine\Render\Pipeline\DefaultRenderPipeline.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\FixedWorldOctree.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\FrustumCulling.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\IPrimitiveSpatialQuery.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\IRenderPipeline.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\PrimitiveProxy.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollectorContext.h" />

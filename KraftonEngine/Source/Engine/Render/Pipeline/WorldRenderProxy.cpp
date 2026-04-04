@@ -1,7 +1,9 @@
 ﻿#include "WorldRenderProxy.h"
 #include "PrimitiveProxy.h"
+#include "Collision/RayUtils.h"
 #include "Render/Pipeline/FrustumCulling.h"
 #include "Render/Pipeline/FixedWorldOctree.h"
+#include "Render/Pipeline/IPrimitiveSpatialQuery.h"
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/GizmoComponent.h"
@@ -64,28 +66,10 @@ void FWorldRenderProxy::GatherCandidates(FViewContext& Context, bool bUseSpatial
 	if (bUseSpatialIndex && SpatialIndex)
 	{
 		const bool bNeedsRebuild = bSpatialIndexDirty;
+		RebuildSpatialIndexIfDirty(true);
 
-		if (bNeedsRebuild)
-		{
-			SpatialIndex->Clear();
-
-			for (FPrimitiveProxy* Proxy : Proxies)
-			{
-				if (!Proxy) continue;
-
-				UPrimitiveComponent* Owner = Proxy->GetOwner();
-				if (!Owner) continue;
-				Owner->GetWorldMatrix();
-
-				SpatialIndex->Insert(Proxy, Owner->GetWorldBoundingBox());
-				++LastCullingStats.InsertedProxyCount;
-			}
-
-			bSpatialIndexDirty = false;
-		}
-
-		SpatialIndex->Query(Frustum, LocalCandidates);
-		const FOctreeDebugStats& OctreeStats = SpatialIndex->GetLastDebugStats();
+		SpatialIndex->QueryFrustum(Frustum, LocalCandidates);
+		const FSpatialQueryDebugStats& OctreeStats = SpatialIndex->GetLastDebugStats();
 		if (!bNeedsRebuild)
 		{
 			LastCullingStats.InsertedProxyCount = 0;
@@ -121,6 +105,41 @@ void FWorldRenderProxy::GatherCandidates(FViewContext& Context, bool bUseSpatial
 	}
 
 	LastCullingStats.CandidateProxyCount = static_cast<int32>(LocalCandidates.size());
+}
+
+void FWorldRenderProxy::QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates, bool bUseSpatialIndex)
+{
+	OutCandidates.clear();
+
+	if (bUseSpatialIndex && SpatialIndex)
+	{
+		RebuildSpatialIndexIfDirty(false);
+		SpatialIndex->QueryRay(Ray, OutCandidates);
+		return;
+	}
+
+	for (FPrimitiveProxy* Proxy : Proxies)
+	{
+		if (!Proxy)
+		{
+			continue;
+		}
+
+		UPrimitiveComponent* Owner = Proxy->GetOwner();
+		if (!Owner)
+		{
+			continue;
+		}
+
+		Owner->UpdateWorldAABB();
+		const FBoundingBox Bounds = Owner->GetWorldBoundingBox();
+		if (!FRayUtils::CheckRayAABB(Ray, Bounds.Min, Bounds.Max))
+		{
+			continue;
+		}
+
+		OutCandidates.push_back(Proxy);
+	}
 }
 
 void FWorldRenderProxy::SubmitRenderCommands(FViewContext& Context, const TArray<AActor*>& SelectedActors)
@@ -163,4 +182,37 @@ void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*
 
 	GatherCandidates(Context, bUseSpatialIndex);
 	SubmitRenderCommands(Context, SelectedActors);
+}
+
+void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats)
+{
+	if (!SpatialIndex || !bSpatialIndexDirty)
+	{
+		return;
+	}
+
+	SpatialIndex->Clear();
+
+	for (FPrimitiveProxy* Proxy : Proxies)
+	{
+		if (!Proxy)
+		{
+			continue;
+		}
+
+		UPrimitiveComponent* Owner = Proxy->GetOwner();
+		if (!Owner)
+		{
+			continue;
+		}
+
+		Owner->GetWorldMatrix();
+		SpatialIndex->Insert(Proxy, Owner->GetWorldBoundingBox());
+		if (bTrackInsertedStats)
+		{
+			++LastCullingStats.InsertedProxyCount;
+		}
+	}
+
+	bSpatialIndexDirty = false;
 }

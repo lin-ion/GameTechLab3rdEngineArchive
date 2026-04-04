@@ -1,10 +1,11 @@
 ﻿#pragma once
 #include "Core/CoreTypes.h"
+#include "Core/RayTypes.h"
 #include "Render/Pipeline/ViewContext.h"
 
 class FPrimitiveProxy;
 class AActor;
-class FFixedWorldOctree;
+class IPrimitiveSpatialQuery;
 
 struct FWorldProxyCullingStats
 {
@@ -38,12 +39,15 @@ public:
 
 	// 레거시 지원 (필요시)
 	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex);
+	void QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates, bool bUseSpatialIndex = true);
 
 	const FWorldProxyCullingStats& GetLastCullingStats() const { return LastCullingStats; }
 
 private:
+	void RebuildSpatialIndexIfDirty(bool bTrackInsertedStats);
+
 	TArray<FPrimitiveProxy*> Proxies;
-	FFixedWorldOctree* SpatialIndex = nullptr;
+	IPrimitiveSpatialQuery* SpatialIndex = nullptr;
 	bool bSpatialIndexDirty = true;
 	FWorldProxyCullingStats LastCullingStats;
 };

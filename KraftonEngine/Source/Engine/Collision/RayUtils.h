@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Core/RayTypes.h"
@@ -6,6 +6,7 @@
 #include "Math/Matrix.h"
 
 class UPrimitiveComponent;
+struct FStaticMeshBVH;
 
 // 레이캐스트 관련 정적 유틸리티
 // 컴포넌트에 종속되지 않는 순수 수학 연산
@@ -26,6 +27,14 @@ struct FRayUtils
 		const void* PositionData,
 		uint32 PositionStride,
 		const TArray<uint32>& Indices,
+		FHitResult& OutHitResult);
+
+	static bool RaycastTrianglesBVH(
+		const FRay& WorldRay,
+		const FMatrix& WorldMatrix,
+		const void* PositionData,
+		uint32 PositionStride,
+		const FStaticMeshBVH& BVH,
 		FHitResult& OutHitResult);
 
 	// 컴포넌트 단위 레이캐스트 (AABB 필터링 + LineTraceComponent)

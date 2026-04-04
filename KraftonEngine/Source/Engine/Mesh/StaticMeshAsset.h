@@ -7,6 +7,7 @@
 #include "Serialization/Archive.h"
 #include "Engine/Object/FName.h"
 #include "Engine/Mesh/ObjManager.h"
+#include "Collision/StaticMeshBVH.h"
 #include "Materials/Material.h"
 #include "Editor/UI/EditorConsoleWidget.h"
 #include <memory>
@@ -87,6 +88,28 @@ struct FStaticMesh
 	TArray<FStaticMeshSection> Sections;
 
 	std::unique_ptr<FMeshBuffer> RenderBuffer;
+	std::unique_ptr<FStaticMeshBVH> BVH;
+
+	void BuildBVH()
+	{
+		if (Vertices.empty() || Indices.size() < 3)
+		{
+			BVH.reset();
+			return;
+		}
+
+		if (!BVH)
+		{
+			BVH = std::make_unique<FStaticMeshBVH>();
+		}
+
+		BVH->Build(&Vertices[0].pos, sizeof(FNormalVertex), Indices);
+	}
+
+	const FStaticMeshBVH* GetBVH() const
+	{
+		return BVH.get();
+	}
 
 	void Serialize(FArchive& Ar)
 	{

@@ -37,6 +37,11 @@ void UStaticMesh::Serialize(FArchive& Ar)
 
 	// 2. 머티리얼 데이터 직렬화 (필수!)
 	Ar << StaticMaterials;
+
+	if (Ar.IsLoading() && StaticMeshAsset)
+	{
+		StaticMeshAsset->BuildBVH();
+	}
 }
 
 void UStaticMesh::InitResources(ID3D11Device* InDevice)
@@ -94,6 +99,10 @@ const FString& UStaticMesh::GetAssetPathFileName() const
 void UStaticMesh::SetStaticMeshAsset(FStaticMesh* InMesh)
 {
 	StaticMeshAsset = InMesh;
+	if (StaticMeshAsset)
+	{
+		StaticMeshAsset->BuildBVH();
+	}
 }
 
 FStaticMesh* UStaticMesh::GetStaticMeshAsset() const
