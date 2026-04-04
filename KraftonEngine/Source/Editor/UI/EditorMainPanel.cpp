@@ -1,7 +1,11 @@
 ﻿#include "Editor/UI/EditorMainPanel.h"
 
 #include "Editor/EditorEngine.h"
+#include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Runtime/WindowsWindow.h"
+#include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -9,6 +13,81 @@
 
 #include "Render/Pipeline/Renderer.h"
 #include "Engine/Input/InputSystem.h"
+
+/* DEBUG */
+namespace
+{
+	void DrawCullingDebugOverlayImGui(UEditorEngine* Editor)
+	{
+		static bool bShowCullingDebug = true;
+
+		if (!Editor)
+		{
+			return;
+		}
+
+		UWorld* World = Editor->GetWorld();
+		if (!World)
+		{
+			return;
+		}
+
+		FWorldProxyCullingStats Total = {};
+
+		auto AccumulateScene = [&Total](UScene* Scene)
+		{
+			if (!Scene)
+			{
+				return;
+			}
+
+			const FWorldProxyCullingStats& Stats = Scene->GetRenderProxy().GetLastCullingStats();
+			Total.RegisteredProxyCount += Stats.RegisteredProxyCount;
+			Total.InsertedProxyCount += Stats.InsertedProxyCount;
+			Total.CandidateProxyCount += Stats.CandidateProxyCount;
+			Total.RenderedProxyCount += Stats.RenderedProxyCount;
+			Total.OctreeTotalNodes += Stats.OctreeTotalNodes;
+			Total.OctreeTotalItems += Stats.OctreeTotalItems;
+			Total.OctreeOutsideItems += Stats.OctreeOutsideItems;
+			Total.OctreeFrustumIntersectedNodes += Stats.OctreeFrustumIntersectedNodes;
+			Total.OctreeFrustumCandidateItems += Stats.OctreeFrustumCandidateItems;
+		};
+
+		AccumulateScene(World->GetPersistentScene());
+		AccumulateScene(World->GetActiveScene());
+
+		ImGui::SetNextWindowPos(ImVec2(1300.0f, 30.0f), ImGuiCond_Always);
+		ImGui::SetNextWindowBgAlpha(0.35f);
+
+		const ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration
+			| ImGuiWindowFlags_AlwaysAutoResize
+			| ImGuiWindowFlags_NoSavedSettings
+			| ImGuiWindowFlags_NoFocusOnAppearing
+			| ImGuiWindowFlags_NoNav
+			| ImGuiWindowFlags_NoMove;
+
+		if (ImGui::Begin("Culling Debug Overlay", nullptr, Flags))
+		{
+			ImGui::TextUnformatted("[Culling Debug]");
+			ImGui::Separator();
+			ImGui::Text("Registered: %d  Inserted: %d  Candidates: %d  Rendered: %d",
+				Total.RegisteredProxyCount,
+				Total.InsertedProxyCount,
+				Total.CandidateProxyCount,
+				Total.RenderedProxyCount);
+
+			ImGui::Text("Octree Nodes (Total/InFrustum): %d / %d",
+				Total.OctreeTotalNodes,
+				Total.OctreeFrustumIntersectedNodes);
+
+			ImGui::Text("Octree Items (Total/Outside/InFrustum): %d / %d / %d",
+				Total.OctreeTotalItems,
+				Total.OctreeOutsideItems,
+				Total.OctreeFrustumCandidateItems);
+		}
+		ImGui::End();
+	}
+}
 
 void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, UEditorEngine* InEditorEngine)
 {
@@ -62,6 +141,7 @@ void FEditorMainPanel::Render(float DeltaTime)
 	SceneWidget.Render(DeltaTime);
 	PropertyWidget.Render(DeltaTime);
 	StatWidget.Render(DeltaTime);
+	DrawCullingDebugOverlayImGui(EditorEngine);
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
 
 

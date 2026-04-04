@@ -261,6 +261,8 @@
     <ClCompile Include="Source\Engine\Render\Device\DepthStencilStateManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Device\RasterizerStateManager.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\DefaultRenderPipeline.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\FixedWorldOctree.cpp" />
+    <ClCompile Include="Source\Engine\Render\Pipeline\FrustumCulling.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\PrimitiveProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\RenderBus.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\RenderCollector.cpp" />
@@ -373,6 +375,8 @@
     <ClInclude Include="Source\Engine\Render\Device\DepthStencilStateManager.h" />
     <ClInclude Include="Source\Engine\Render\Device\RasterizerStateManager.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\DefaultRenderPipeline.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\FixedWorldOctree.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\FrustumCulling.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\IRenderPipeline.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\PrimitiveProxy.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderBus.h" />

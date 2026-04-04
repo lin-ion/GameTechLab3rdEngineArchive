@@ -147,4 +147,9 @@ void UPrimitiveComponent::UpdateWorldMatrix() const
 	USceneComponent::UpdateWorldMatrix();
 	UpdateWorldAABB();
 	const_cast<UPrimitiveComponent*>(this)->MarkRenderStateDirty();
+
+	if (UScene* Scene = GetScene())
+	{
+		Scene->GetRenderProxy().MarkSpatialIndexDirty();
+	}
 }
