@@ -199,7 +199,7 @@ void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatE
 
 	if (ImGui::BeginTable(TableID, NumColumns,
 		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY,
-		ImVec2(0.0f, 200.0f)))
+		ImVec2(0.0f, 400.0f)))
 	{
 		for (int i = 0; i < NumColumns; i++)
 		{

@@ -68,6 +68,13 @@ ID3D11DeviceContext* FD3DDevice::GetDeviceContext() const
 	return DeviceContext;
 }
 
+#ifdef FOR_COMPETITION
+ID3D11DeviceContext1* FD3DDevice::GetDeviceContext1() const
+{
+	return DeviceContext1;
+}
+#endif
+
 void FD3DDevice::SetDepthStencilState(EDepthStencilState InState)
 {
 	DepthStencilStateManager.Set(DeviceContext, InState);
@@ -129,6 +136,11 @@ void FD3DDevice::CreateDeviceAndSwapChain(HWND InHWindow)
 		CreateDeviceFlags, featureLevels, ARRAYSIZE(featureLevels), D3D11_SDK_VERSION,
 		&swapChainDesc, &SwapChain, &Device, nullptr, &DeviceContext);
 
+#ifdef FOR_COMPETITION
+	// ID3D11DeviceContext1 확보 (D3D11.1 — VSSetConstantBuffers1 사용)
+	DeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&DeviceContext1);
+#endif
+
 	if (Factory5) Factory5->Release();
 
 	SwapChain->GetDesc(&swapChainDesc);
@@ -146,6 +158,9 @@ void FD3DDevice::ReleaseDeviceAndSwapChain()
 
 	SAFE_RELEASE(SwapChain);
 	SAFE_RELEASE(Device);
+#ifdef FOR_COMPETITION
+	SAFE_RELEASE(DeviceContext1);
+#endif
 	SAFE_RELEASE(DeviceContext);
 }
 

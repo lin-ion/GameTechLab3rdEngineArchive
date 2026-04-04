@@ -65,6 +65,14 @@ private:
 	// 기본 패스 실행기 — BindCommand + DrawCommand 루프
 	void ExecuteDefaultPass(const TArray<FRenderCommand>& Commands, const FViewContext& Bus, ID3D11DeviceContext* Context);
 
+#ifdef FOR_COMPETITION
+	// Large CB 기반 Opaque 패스 실행기
+	void CollectPerObjectData(FViewContext& ViewContext);
+	void ExecuteOpaquePassWithLargeCB(const TArray<FRenderCommand>& Commands, const FViewContext& Bus, ID3D11DeviceContext* Context);
+	void BindCommandShaderOnly(const FRenderCommand& InCmd, ID3D11DeviceContext* Context);
+	void DrawStaticMeshSectionsWithLargeCB(ID3D11DeviceContext1* Context1, const FRenderCommand& Cmd);
+#endif
+
 	// LineBatcher DrawBatch 공통 — EditorShader 바인딩 + DrawBatch
 	void DrawLineBatcher(FLineBatcher& Batcher, ID3D11DeviceContext* Context);
 
@@ -81,6 +89,11 @@ private:
 
 	// SubUV 정렬용 멤버 버퍼 (재할당 방지)
 	TArray<FSubUVEntry> SortedSubUVBuffer;
+
+#ifdef FOR_COMPETITION
+	// Large CB: PerObject 배열 수집용 CPU 버퍼 (프레임마다 재사용)
+	TArray<FPerObjectAligned> PerObjectDataArray;
+#endif
 
 	FPassRenderState    PassRenderStates[(uint32)ERenderPass::MAX];
 	FPassBatcherBinding PassBatchers[(uint32)ERenderPass::MAX];

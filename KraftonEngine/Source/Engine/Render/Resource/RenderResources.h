@@ -11,8 +11,19 @@
 struct FRenderResources
 {
 	FConstantBuffer FrameBuffer;				// b0 — ECBSlot::Frame
-	FConstantBuffer PerObjectConstantBuffer;	// b1 — ECBSlot::PerObject
+	FConstantBuffer PerObjectConstantBuffer;	// b1 — ECBSlot::PerObject (비-Opaque 패스용 유지)
 	ID3D11SamplerState* DefaultSampler = nullptr;	// s0 — Linear/Wrap
+
+#ifdef FOR_COMPETITION
+	// Large Constant Buffer (전체 오브젝트의 PerObject 데이터, Opaque 패스용)
+	ID3D11Buffer* PerObjectLargeCB = nullptr;
+	uint32 LargeCBCapacity = 0;  // 현재 할당된 최대 오브젝트 수
+
+	void CreatePerObjectLargeCB(ID3D11Device* Device, uint32 MaxObjects);
+	void UpdatePerObjectLargeCB(ID3D11DeviceContext* Context,
+	                            const FPerObjectAligned* Data, uint32 Count);
+	void ReleasePerObjectLargeCB();
+#endif
 
 	void Create(ID3D11Device* InDevice);
 	void Release();

@@ -51,7 +51,6 @@ void FWorldRenderProxy::RemoveProxy(FPrimitiveProxy* Proxy)
 
 void FWorldRenderProxy::GatherCandidates(FViewContext& Context, bool bUseSpatialIndex)
 {
-	SCOPE_STAT("Render.GatherCandidates");
 	if (!this) return;
 	if (!Context.GetShowFlags().bPrimitives) return;
 
@@ -157,7 +156,7 @@ void FWorldRenderProxy::SubmitRenderCommands(FViewContext& Context, const TArray
 
 		// 현재 WorldRenderProxy에 속한 프록시만 처리 (Stats 관리 및 중복 제출 방지)
 		if (Proxy->GetWorldRenderProxy() != this) continue;
-		
+
 		UPrimitiveComponent* Owner = Proxy->GetOwner();
 		if (!Owner || !Owner->IsVisible()) continue;
 

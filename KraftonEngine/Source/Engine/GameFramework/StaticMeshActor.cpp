@@ -16,7 +16,7 @@ void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
 
 	StaticMeshComponent->SetStaticMesh(Asset);
 
-#ifdef FOR_COMPETITION
+#ifndef FOR_COMPETITION
 	// UUID 텍스트 표시
 	 TextRenderComponent = AddComponent<UTextRenderComponent>();
 	 TextRenderComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 1.3f));

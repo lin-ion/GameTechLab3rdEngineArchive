@@ -54,17 +54,21 @@ void UEngine::BeginPlay()
 
 void UEngine::Tick(float DeltaTime)
 {
-	SCOPE_STAT("Frame.Tick");
 	InputSystem::Get().Tick();
-	WorldTick(DeltaTime);
-	Render(DeltaTime);
+	{
+		SCOPE_STAT("Frame.WorldTick");
+		WorldTick(DeltaTime);
+	}
+	{
+		SCOPE_STAT("Frame.Render");
+		Render(DeltaTime);
+	}
 }
 
 void UEngine::Render(float DeltaTime)
 {
 	if (RenderPipeline)
 	{
-		SCOPE_STAT("UEngine::Render");
 		RenderPipeline->Execute(DeltaTime, Renderer);
 	}
 }

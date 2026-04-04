@@ -10,7 +10,6 @@ namespace FRenderSorting
 	{
 		if (Commands.size() < 2) return;
 
-		SCOPE_STAT("Render.Sort");
 		std::sort(Commands.begin(), Commands.end(), [](const FRenderCommand& A, const FRenderCommand& B) {
 			// 1. Shader 우선 정렬
 			if (A.Shader != B.Shader)

@@ -21,6 +21,9 @@ public:
 	void AddCommand(ERenderPass Pass, FRenderCommand&& InCommand);
 	void SortPass(ERenderPass Pass);
 	const TArray<FRenderCommand>& GetCommands(ERenderPass Pass) const;
+#ifdef FOR_COMPETITION
+	TArray<FRenderCommand>& GetCommandsMutable(ERenderPass Pass) { return PassQueues[(uint32)Pass]; }
+#endif
 
 	// Batcher 패스용 — 타입 안전한 전용 큐
 	void AddFontEntry(FFontEntry&& Entry);
