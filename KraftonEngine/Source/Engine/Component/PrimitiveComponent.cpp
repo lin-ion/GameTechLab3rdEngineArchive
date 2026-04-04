@@ -11,6 +11,7 @@
 
 DEFINE_CLASS(UPrimitiveComponent, USceneComponent)
 
+
 UPrimitiveComponent::~UPrimitiveComponent()
 {
 	if (Proxy)
