@@ -54,6 +54,7 @@ void UEngine::BeginPlay()
 
 void UEngine::Tick(float DeltaTime)
 {
+	SCOPE_STAT("Frame");
 	InputSystem::Get().Tick();
 	{
 		SCOPE_STAT("Frame.WorldTick");
