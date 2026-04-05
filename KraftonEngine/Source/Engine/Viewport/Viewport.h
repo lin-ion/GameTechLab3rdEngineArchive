@@ -25,6 +25,7 @@ public:
 	void BeginPickingRender(ID3D11DeviceContext* Ctx);
 	bool EnqueuePickingIdReadback(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutRequestId);
 	bool TryReadPickingIdReadback(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId, bool& bOutReady);
+	bool TryReadPickingIdReadbackBlocking(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId);
 	bool CancelPickingIdReadback(uint32 RequestId);
 
 	// ViewportClient 참조

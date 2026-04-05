@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Core/Singleton.h"
@@ -19,6 +19,13 @@ struct FStatEntry
 	double MaxTime   = 0.0;
 	double MinTime   = DBL_MAX;
 	double LastTime  = 0.0;
+	double TotalTime = 0.0;
+	uint64 Count = 0;
+
+	double GetAverageTime() const
+	{
+		return Count > 0 ? (TotalTime / static_cast<double>(Count)) : 0.0;
+	}
 };
 
 // --- Stat Accumulator (이름별 통계) ---
@@ -28,6 +35,8 @@ struct FStatAccumulator
 	double MaxTime  = 0.0;
 	double MinTime  = DBL_MAX;
 	double LastTime = 0.0;
+	double TotalTime = 0.0;
+	uint64 Count = 0;
 };
 
 // --- Stat Manager (싱글턴) ---
@@ -39,6 +48,7 @@ public:
 	void RecordTime(const char* Name, double ElapsedSeconds);
 	void TakeSnapshot();
 	void ResetStats();
+	bool GetStat(const char* Name, FStatEntry& OutEntry) const;
 	const TArray<FStatEntry>& GetSnapshot() const { return Snapshot; }
 	LARGE_INTEGER GetFrequency() const { return Frequency; }
 

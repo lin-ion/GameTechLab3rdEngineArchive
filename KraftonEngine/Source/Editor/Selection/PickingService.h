@@ -1,14 +1,13 @@
 ﻿#pragma once
-#pragma once
 
 #include "Editor/Selection/PickingTypes.h"
-#include "Editor/Selection/PickingPerf.h"
 #include "Collision/RayUtils.h"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Render/Pipeline/PrimitiveProxy.h"
 #include "Object/Object.h"
+#include "Profiling/Stats.h"
 
 #include <cfloat>
 
@@ -83,68 +82,65 @@ private:
 		OutClosestDistance = FLT_MAX;
 		if (OutPickingId) *OutPickingId = 0u;
 		FHitResult HitResult{};
-		uint64 BroadPhaseCycles = 0;
-		uint64 NarrowPhaseCycles = 0;
 		TArray<FPrimitiveProxy*> BroadCandidates;
 
-		const uint64 BroadStart = FPickingPlatformTime::Cycles64();
-		if (UScene* Scene = World->GetActiveScene())
 		{
-			Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, true);
-			if (BroadCandidates.empty())
+			SCOPE_STAT("Picking.Ray.Broad");
+			if (UScene* Scene = World->GetActiveScene())
 			{
-				Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, false);
-			}
-		}
-		BroadPhaseCycles += (FPickingPlatformTime::Cycles64() - BroadStart);
-
-		for (FPrimitiveProxy* Proxy : BroadCandidates)
-		{
-			if (!Proxy)
-			{
-				continue;
-			}
-
-			UPrimitiveComponent* PrimitiveComp = Proxy->GetOwner();
-			if (!PrimitiveComp || !PrimitiveComp->IsVisible())
-			{
-				continue;
-			}
-
-			AActor* Actor = PrimitiveComp->GetOwner();
-			if (!Actor || !Actor->GetRootComponent() || !Actor->IsVisible())
-			{
-				continue;
-			}
-
-			float NearT = 0.0f;
-			const FBoundingBox Bounds = PrimitiveComp->GetWorldBoundingBox();
-			if (!FRayUtils::CheckRayAABBNearT(Ray, Bounds.Min, Bounds.Max, NearT))
-			{
-				continue;
-			}
-			if (NearT >= OutClosestDistance)
-			{
-				continue;
-			}
-
-			HitResult = {};
-			const uint64 NarrowStart = FPickingPlatformTime::Cycles64();
-			const bool bTriangleHit = PrimitiveComp->LineTraceComponent(Ray, HitResult);
-			NarrowPhaseCycles += (FPickingPlatformTime::Cycles64() - NarrowStart);
-			if (bTriangleHit && HitResult.Distance < OutClosestDistance)
-			{
-				OutClosestDistance = HitResult.Distance;
-				BestActor = Actor;
-				if (OutPickingId)
+				Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, true);
+				if (BroadCandidates.empty())
 				{
-					*OutPickingId = MakeObjectPickingId(Actor);
+					Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, false);
 				}
 			}
 		}
 
-		FPickingPerf::RecordRayBroadPhase(BroadPhaseCycles);
-		FPickingPerf::RecordRayNarrowPhase(NarrowPhaseCycles);
+		{
+			SCOPE_STAT("Picking.Ray.Narrow");
+			for (FPrimitiveProxy* Proxy : BroadCandidates)
+			{
+				if (!Proxy)
+				{
+					continue;
+				}
+
+				UPrimitiveComponent* PrimitiveComp = Proxy->GetOwner();
+				if (!PrimitiveComp || !PrimitiveComp->IsVisible())
+				{
+					continue;
+				}
+
+				AActor* Actor = PrimitiveComp->GetOwner();
+				if (!Actor || !Actor->GetRootComponent() || !Actor->IsVisible())
+				{
+					continue;
+				}
+
+				float NearT = 0.0f;
+				const FBoundingBox Bounds = PrimitiveComp->GetWorldBoundingBox();
+				if (!FRayUtils::CheckRayAABBNearT(Ray, Bounds.Min, Bounds.Max, NearT))
+				{
+					continue;
+				}
+				if (NearT >= OutClosestDistance)
+				{
+					continue;
+				}
+
+				HitResult = {};
+				const bool bTriangleHit = PrimitiveComp->LineTraceComponent(Ray, HitResult);
+				if (bTriangleHit && HitResult.Distance < OutClosestDistance)
+				{
+					OutClosestDistance = HitResult.Distance;
+					BestActor = Actor;
+					if (OutPickingId)
+					{
+						*OutPickingId = MakeObjectPickingId(Actor);
+					}
+				}
+			}
+		}
 
 		return BestActor;
 	}

@@ -1,7 +1,9 @@
 ﻿#include "Editor/Subsystem/OverlayStatSystem.h"
 
+#include "Editor/Subsystem/OverlayStatSystem.h"
+
 #include "Editor/EditorEngine.h"
-#include "Editor/Selection/PickingPerf.h"
+#include "Profiling/Stats.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Profiling/MemoryStats.h"
 
@@ -25,19 +27,42 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 		}
 
 		// 발제 필수 HUD 형식: Picking Time <ms> ms : Num Attempts <N> : Accumulated Time <ms> ms
-		// Ray + ID 합산
+		// UX(E2E) 기준 Ray + ID 합산
 		{
-			const FPickingPerfBucket& RayPick = FPickingPerf::GetRay();
-			const FPickingPerfBucket& IdPick  = FPickingPerf::GetIdBuffer();
+			FStatEntry RayPick = {};
+			FStatEntry IdPick = {};
+			FStatManager::Get().GetStat("Picking.Ray.E2E", RayPick);
+			FStatManager::Get().GetStat("Picking.ID.Total", IdPick);
 
-			const double LastMs  = RayPick.LastPickTimeMs + IdPick.LastPickTimeMs;
-			const uint64 Count   = RayPick.TotalPickCount + IdPick.TotalPickCount;
-			const double TotalMs = RayPick.TotalPickTimeMs + IdPick.TotalPickTimeMs;
+			const double LastMs  = (RayPick.LastTime + IdPick.LastTime) * 1000.0;
+			const uint64 Count   = RayPick.Count + IdPick.Count;
+			const double TotalMs = (RayPick.TotalTime + IdPick.TotalTime) * 1000.0;
 
 			char Buffer[256] = {};
 			snprintf(Buffer, sizeof(Buffer),
 				"Picking Time %.5f ms : Num Attempts %llu : Accumulated Time %.5f ms",
 				LastMs, static_cast<unsigned long long>(Count), TotalMs);
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		// Algorithm(Core) 기준: Ray(Broad+Narrow) vs ID(Fetch)
+		{
+			FStatEntry RayBroad = {};
+			FStatEntry RayNarrow = {};
+			FStatEntry IdFetch = {};
+			FStatEntry IdWait = {};
+			FStatManager::Get().GetStat("Picking.Ray.Broad", RayBroad);
+			FStatManager::Get().GetStat("Picking.Ray.Narrow", RayNarrow);
+			FStatManager::Get().GetStat("Picking.ID.Fetch", IdFetch);
+			FStatManager::Get().GetStat("Picking.ID.Wait", IdWait);
+
+			const double RayCoreLastMs = (RayBroad.LastTime + RayNarrow.LastTime) * 1000.0;
+			const double IdFetchLastMs = IdFetch.LastTime * 1000.0;
+
+			char Buffer[256] = {};
+			snprintf(Buffer, sizeof(Buffer),
+				"Picking Core Last(ms) : Ray %.5f / ID Fetch %.5f / ID Wait %.5f",
+				RayCoreLastMs, IdFetchLastMs, IdWait.LastTime * 1000.0);
 			Group.Lines.push_back(FString(Buffer));
 		}
 

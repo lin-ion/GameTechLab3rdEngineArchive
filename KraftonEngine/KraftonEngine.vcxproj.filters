@@ -470,9 +470,6 @@
     <ClInclude Include="Source\Editor\EditorRenderPipeline.h">
       <Filter>Source\Editor</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Selection\PickingPerf.h">
-      <Filter>Source\Editor\Selection</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Editor\Selection\PickingService.h">
       <Filter>Source\Editor\Selection</Filter>
     </ClInclude>

@@ -1,4 +1,5 @@
 ﻿#include "Viewport/Viewport.h"
+#include "Profiling/Stats.h"
 
 FViewport::~FViewport()
 {
@@ -157,13 +158,64 @@ bool FViewport::TryReadPickingIdReadback(ID3D11DeviceContext* Ctx, uint32 Reques
 			return false;
 		}
 
-		const uint32* Pixel = static_cast<const uint32*>(Mapped.pData);
-		OutId = *Pixel;
-		Ctx->Unmap(SlotTexture, 0);
+		{
+			SCOPE_STAT("Picking.ID.Fetch");
+			const uint32* Pixel = static_cast<const uint32*>(Mapped.pData);
+			OutId = *Pixel;
+			Ctx->Unmap(SlotTexture, 0);
+		}
 
 		bPickingReadbackInFlight[Slot] = false;
 		PickingReadbackRequestIds[Slot] = 0u;
 		bOutReady = true;
+		return true;
+	}
+
+	return false;
+}
+
+bool FViewport::TryReadPickingIdReadbackBlocking(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId)
+{
+	OutId = 0u;
+	if (!Ctx || RequestId == 0u)
+	{
+		return false;
+	}
+
+	for (uint32 Slot = 0; Slot < PickingReadbackRingSize; ++Slot)
+	{
+		if (!bPickingReadbackInFlight[Slot] || PickingReadbackRequestIds[Slot] != RequestId)
+		{
+			continue;
+		}
+
+		ID3D11Texture2D* SlotTexture = PickingReadbackRing[Slot];
+		if (!SlotTexture)
+		{
+			return false;
+		}
+
+		D3D11_MAPPED_SUBRESOURCE Mapped = {};
+		const uint64 WaitStartCycles = FPlatformTime::Cycles64();
+		HRESULT hr = Ctx->Map(SlotTexture, 0, D3D11_MAP_READ, 0, &Mapped);
+		const uint64 WaitEndCycles = FPlatformTime::Cycles64();
+		FStatManager::Get().RecordTime("Picking.ID.Wait", FPlatformTime::ToSeconds(WaitEndCycles - WaitStartCycles));
+		if (FAILED(hr))
+		{
+			bPickingReadbackInFlight[Slot] = false;
+			PickingReadbackRequestIds[Slot] = 0u;
+			return false;
+		}
+
+		{
+			SCOPE_STAT("Picking.ID.Fetch");
+			const uint32* Pixel = static_cast<const uint32*>(Mapped.pData);
+			OutId = *Pixel;
+			Ctx->Unmap(SlotTexture, 0);
+		}
+
+		bPickingReadbackInFlight[Slot] = false;
+		PickingReadbackRequestIds[Slot] = 0u;
 		return true;
 	}
 

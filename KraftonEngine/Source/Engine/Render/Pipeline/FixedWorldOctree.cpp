@@ -1,6 +1,7 @@
 ﻿#include "Render/Pipeline/FixedWorldOctree.h"
-#include "Render/Pipeline/FixedWorldOctree.h"
 #include "Collision/RayUtils.h"
+
+
 FFixedWorldOctree::FFixedWorldOctree(const FBoundingBox& InWorldBounds, int32 InMaxDepth, int32 InMaxItemsPerNode)
 	: WorldBounds(InWorldBounds)
 	, MaxDepth(InMaxDepth)

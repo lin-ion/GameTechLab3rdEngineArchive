@@ -1,7 +1,6 @@
 ﻿#include "Editor/UI/EditorStatWidget.h"
 
 #include "Editor/EditorEngine.h"
-#include "Editor/Selection/PickingPerf.h"
 #include "Profiling/Stats.h"
 #include "Render/Pipeline/RenderStats.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
@@ -169,17 +168,50 @@ void FEditorStatWidget::RenderPickingDetail()
 	if (!ImGui::CollapsingHeader("Picking Detail"))
 		return;
 
-	auto ShowBucket = [](const char* Label, const FPickingPerfBucket& B)
+	auto ShowStat = [](const char* Label, const char* StatName)
 	{
+		FStatEntry Entry = {};
+		if (!FStatManager::Get().GetStat(StatName, Entry))
+		{
+			ImGui::Text("[%s]  Last: %.5f ms  Avg: %.5f ms  Total: %.5f ms  Count: %llu",
+				Label, 0.0, 0.0, 0.0, 0ull);
+			return;
+		}
+
+		const double LastMs = Entry.LastTime * 1000.0;
+		const double AvgMs = Entry.GetAverageTime() * 1000.0;
+		const double TotalMs = Entry.TotalTime * 1000.0;
 		ImGui::Text("[%s]  Last: %.5f ms  Avg: %.5f ms  Total: %.5f ms  Count: %llu",
-			Label, B.LastPickTimeMs, B.GetAverageMs(), B.TotalPickTimeMs,
-			static_cast<unsigned long long>(B.TotalPickCount));
+			Label, LastMs, AvgMs, TotalMs,
+			static_cast<unsigned long long>(Entry.Count));
 	};
 
-	ShowBucket("Ray",          FPickingPerf::GetRay());
-	ShowBucket("Ray Broad",    FPickingPerf::GetRayBroadPhase());
-	ShowBucket("Ray Narrow",   FPickingPerf::GetRayNarrowPhase());
-	ShowBucket("ID Buffer",    FPickingPerf::GetIdBuffer());
+	auto ShowSumStat = [](const char* Label, const char* StatA, const char* StatB)
+	{
+		FStatEntry A = {};
+		FStatEntry B = {};
+		FStatManager::Get().GetStat(StatA, A);
+		FStatManager::Get().GetStat(StatB, B);
+
+		const double LastMs = (A.LastTime + B.LastTime) * 1000.0;
+		const double AvgMs = (A.GetAverageTime() + B.GetAverageTime()) * 1000.0;
+		const double TotalMs = (A.TotalTime + B.TotalTime) * 1000.0;
+		const uint64 Count = (A.Count > B.Count) ? A.Count : B.Count;
+
+		ImGui::Text("[%s]  Last: %.5f ms  Avg: %.5f ms  Total: %.5f ms  Count: %llu",
+			Label, LastMs, AvgMs, TotalMs, static_cast<unsigned long long>(Count));
+	};
+
+	ImGui::SeparatorText("UX Metric (Click -> Final Selection)");
+	ShowStat("Ray E2E", "Picking.Ray.E2E");
+	ShowStat("ID E2E", "Picking.ID.Total");
+
+	ImGui::SeparatorText("Algorithm Metric (Core)");
+	ShowSumStat("Ray Core (Broad+Narrow)", "Picking.Ray.Broad", "Picking.Ray.Narrow");
+	ShowStat("Ray Broad", "Picking.Ray.Broad");
+	ShowStat("Ray Narrow", "Picking.Ray.Narrow");
+	ShowStat("ID Fetch", "Picking.ID.Fetch");
+	ShowStat("ID Wait (Blocking Map)", "Picking.ID.Wait");
 }
 
 // ────────────────────────────────────────────────────────────

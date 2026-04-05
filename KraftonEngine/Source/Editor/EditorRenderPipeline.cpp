@@ -2,7 +2,6 @@
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Editor/Selection/PickingTypes.h"
-#include "Editor/Selection/PickingPerf.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Render/Pipeline/FrustumCulling.h"
 #include "Render/Pipeline/OcclusionCulling.h"
@@ -143,7 +142,6 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 		if (VC->HasPendingIdPickReadback())
 		{
-			const uint64 IdPickStartCycles = FPickingPlatformTime::Cycles64();
 			uint32 PickedId = 0u;
 			bool bReady = false;
 			const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, VC->GetPendingIdPickReadbackRequestId(), PickedId, bReady);
@@ -151,12 +149,12 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 			{
 				VC->CancelPendingIdPickReadback();
 				VC->SetIdPickResult(0u);
+				VC->ApplyIdPickResultNow();
 			}
 			else if (bReady)
 			{
 				VC->SetIdPickResult(PickedId);
-				const uint64 IdPickEndCycles = FPickingPlatformTime::Cycles64();
-				FPickingPerf::Record(EPickingMode::IDBuffer, IdPickEndCycles - IdPickStartCycles);
+				VC->ApplyIdPickResultNow();
 			}
 			return;
 		}
@@ -171,7 +169,31 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 			const bool bEnqueueOk = VP->EnqueuePickingIdReadback(Ctx, PickX, PickY, RequestId);
 			if (bEnqueueOk)
 			{
-				VC->BeginPendingIdPickReadback(RequestId);
+				uint32 PickedId = 0u;
+				if (VP->TryReadPickingIdReadbackBlocking(Ctx, RequestId, PickedId))
+				{
+					VC->SetIdPickResult(PickedId);
+					VC->ApplyIdPickResultNow();
+				}
+				else
+				{
+					bool bReady = false;
+					const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, RequestId, PickedId, bReady);
+					if (!bPollOk)
+					{
+						VC->SetIdPickResult(0u);
+						VC->ApplyIdPickResultNow();
+					}
+					else if (bReady)
+					{
+						VC->SetIdPickResult(PickedId);
+						VC->ApplyIdPickResultNow();
+					}
+					else
+					{
+						VC->BeginPendingIdPickReadback(RequestId);
+					}
+				}
 			}
 		}
 	}

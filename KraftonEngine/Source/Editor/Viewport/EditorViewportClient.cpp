@@ -3,8 +3,9 @@
 #include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/EditorEngine.h"
 #include "Editor/Selection/PickingService.h"
-#include "Editor/Selection/PickingPerf.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Profiling/PlatformTime.h"
+#include "Profiling/Stats.h"
 #include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
@@ -339,6 +340,7 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 
 	if (PickingMode == EPickingMode::IDBuffer)
 	{
+		BeginPendingIdPickTiming();
 		CancelPendingIdPickReadback();
 		PendingIdPickRetryCount = 0;
 		bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
@@ -351,6 +353,7 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		if (FRayUtils::RaycastComponent(Gizmo, Ray, GizmoHitResult))
 		{
 			Gizmo->SetPressedOnHandle(true);
+			EndPendingIdPickTiming();
 			return;
 		}
 
@@ -359,20 +362,11 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 	}
 
 	const bool bCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
+	SCOPE_STAT("Picking.Ray.E2E");
 	const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
 	const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
 	const uint32 ClickX = static_cast<uint32>(Clamp(LocalMouseX, 0.0f, MaxX));
 	const uint32 ClickY = static_cast<uint32>(Clamp(LocalMouseY, 0.0f, MaxY));
-
-	const bool bMeasureRayPick = (PickingMode == EPickingMode::RayTriangleBVH);
-	const uint64 RayPickStartCycles = bMeasureRayPick ? FPickingPlatformTime::Cycles64() : 0;
-
-	auto RecordRayPickIfNeeded = [&]()
-	{
-		if (!bMeasureRayPick) return;
-		const uint64 EndCycles = FPickingPlatformTime::Cycles64();
-		FPickingPerf::Record(EPickingMode::RayTriangleBVH, EndCycles - RayPickStartCycles);
-	};
 
 	if (!bCtrlHeld
 		&& IsRayPickCacheValidForCurrentCamera()
@@ -383,13 +377,11 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		if (CachedActor && CachedActor->IsVisible())
 		{
 			SelectionManager->Select(CachedActor);
-			RecordRayPickIfNeeded();
 			return;
 		}
 		if (CachedRayPickedActorId == 0u)
 		{
 			SelectionManager->ClearSelection();
-			RecordRayPickIfNeeded();
 			return;
 		}
 	}
@@ -398,7 +390,6 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 	if (FPickingService::PickGizmo(Gizmo, Ray, PickingMode, HitResult))
 	{
 		Gizmo->SetPressedOnHandle(true);
-		RecordRayPickIfNeeded();
 	}
 	else
 	{
@@ -425,8 +416,6 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		}
 
 		UpdateRayPickCache(ClickX, ClickY, BestActor);
-
-		RecordRayPickIfNeeded();
 	}
 }
 
@@ -482,6 +471,7 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 		{
 			SelectionManager->ClearSelection();
 		}
+		EndPendingIdPickTiming();
 		return;
 	}
 
@@ -489,6 +479,7 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 	{
 		PendingIdPickRetryCount = 0;
 		Gizmo->SetPressedOnHandle(true);
+		EndPendingIdPickTiming();
 		return;
 	}
 
@@ -525,6 +516,7 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 		{
 			SelectionManager->ClearSelection();
 		}
+		EndPendingIdPickTiming();
 		return;
 	}
 
@@ -538,6 +530,31 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 	}
 
 	PendingIdPickRetryCount = 0;
+	EndPendingIdPickTiming();
+}
+
+void FEditorViewportClient::ApplyIdPickResultNow()
+{
+	ProcessPendingIdPickResult();
+}
+
+void FEditorViewportClient::BeginPendingIdPickTiming()
+{
+	bPendingIdPickTiming = true;
+	PendingIdPickStartCycles = FPlatformTime::Cycles64();
+}
+
+void FEditorViewportClient::EndPendingIdPickTiming()
+{
+	if (!bPendingIdPickTiming)
+	{
+		return;
+	}
+
+	const uint64 EndCycles = FPlatformTime::Cycles64();
+	FStatManager::Get().RecordTime("Picking.ID.Total", FPlatformTime::ToSeconds(EndCycles - PendingIdPickStartCycles));
+	bPendingIdPickTiming = false;
+	PendingIdPickStartCycles = 0;
 }
 
 void FEditorViewportClient::CancelPendingIdPickReadback()
@@ -555,10 +572,13 @@ void FEditorViewportClient::ResetIdPickingState()
 {
 	EndDeferredSpatialIndexInvalidation();
 	CancelPendingIdPickReadback();
+	bForceIdBufferPrewarm = true;
 	bPendingIdPickRequest = false;
 	bHasPendingIdPickResult = false;
 	PendingPickedObjectId = 0u;
 	PendingIdPickRetryCount = 0;
+	bPendingIdPickTiming = false;
+	PendingIdPickStartCycles = 0;
 	bPendingIdPickCtrlHeld = false;
 	PendingIdPickX = 0u;
 	PendingIdPickY = 0u;
@@ -670,7 +690,7 @@ bool FEditorViewportClient::ShouldRenderPendingIdPick() const
 		return false;
 	}
 
-	if (bPendingIdPickRequest)
+	if (bForceIdBufferPrewarm)
 	{
 		return true;
 	}
@@ -685,8 +705,8 @@ bool FEditorViewportClient::ShouldRenderPendingIdPick() const
 		return true;
 	}
 
-	const uint64 NowCycles = FPickingPlatformTime::Cycles64();
-	const double ElapsedMs = FPickingPlatformTime::ToMilliseconds(NowCycles - LastIdBufferRenderCycles);
+	const uint64 NowCycles = FPlatformTime::Cycles64();
+	const double ElapsedMs = FPlatformTime::ToMilliseconds(NowCycles - LastIdBufferRenderCycles);
 	return ElapsedMs >= static_cast<double>(IdBufferUpdateIntervalMs);
 }
 
@@ -721,7 +741,8 @@ void FEditorViewportClient::UpdateIdBufferCacheCameraState()
 	bCachedIdPickCameraOrtho = Camera->IsOrthogonal();
 	CachedIdPickCameraFOV = Camera->GetFOV();
 	CachedIdPickCameraOrthoWidth = Camera->GetOrthoWidth();
-	LastIdBufferRenderCycles = FPickingPlatformTime::Cycles64();
+	LastIdBufferRenderCycles = FPlatformTime::Cycles64();
+	bForceIdBufferPrewarm = false;
 	bIdBufferDirty = false;
 }
 

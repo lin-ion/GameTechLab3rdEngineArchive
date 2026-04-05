@@ -66,6 +66,8 @@ private:
 	void TickInteraction(float DeltaTime);
 	void HandleDragStart(const FRay& Ray, float LocalMouseX, float LocalMouseY);
 	void ProcessPendingIdPickResult();
+	void BeginPendingIdPickTiming();
+	void EndPendingIdPickTiming();
 	void BeginDeferredSpatialIndexInvalidation();
 	void EndDeferredSpatialIndexInvalidation();
 	void UpdateIdBufferDirtyFromCamera();
@@ -74,7 +76,9 @@ private:
 	void InvalidateRayPickCache() { bHasCachedRayPickResult = false; CachedRayPickedActorId = 0u; }
 
 public:
+	void ApplyIdPickResultNow();
 	bool HasPendingIdPickRequest() const { return bPendingIdPickRequest; }
+	bool HasPendingIdPickReadbackOrRequest() const { return bPendingIdPickRequest || bPendingIdPickReadback; }
 	bool ShouldRenderPendingIdPick() const;
 	void GetPendingIdPickCoord(uint32& OutX, uint32& OutY) const { OutX = PendingIdPickX; OutY = PendingIdPickY; }
 	void SetIdPickResult(uint32 InId) { PendingPickedObjectId = InId; bHasPendingIdPickResult = true; bPendingIdPickRequest = false; bPendingIdPickReadback = false; PendingIdPickReadbackRequestId = 0u; }
@@ -105,6 +109,7 @@ private:
 	bool bPendingIdPickRequest = false;
 	bool bPendingIdPickReadback = false;
 	bool bIdBufferDirty = true;
+	bool bForceIdBufferPrewarm = true;
 	bool bDeferredSpatialIndexInvalidation = false;
 	bool bHasPendingIdPickResult = false;
 	bool bPendingIdPickCtrlHeld = false;
@@ -113,6 +118,8 @@ private:
 	uint32 PendingIdPickReadbackRequestId = 0;
 	uint32 PendingPickedObjectId = 0;
 	uint8 PendingIdPickRetryCount = 0;
+	bool bPendingIdPickTiming = false;
+	uint64 PendingIdPickStartCycles = 0;
 
 	bool bHasCachedIdPickResult = false;
 	FVector CachedIdPickCameraLocation = FVector(0.0f, 0.0f, 0.0f);
