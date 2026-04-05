@@ -253,9 +253,13 @@ void FEditorPropertyWidget::RenderActorProperties(AActor* PrimaryActor, const TA
 			// Rotation: CachedEditRotator 메모리를 DragFloat3가 직접 수정 (짐벌락 방지)
 			FRotator& CachedRot = RootComp->GetCachedEditRotator();
 			FRotator PrevRot = CachedRot;	// delta 계산용 복사본
-
-			if (ImGui::DragFloat3("Rotation", &CachedRot.Pitch, 0.1f))
+			float RotXYZ[3] = { CachedRot.Roll, CachedRot.Pitch, CachedRot.Yaw };
+			if (ImGui::DragFloat3("Rotation", RotXYZ, 0.1f))
 			{
+				CachedRot.Roll = RotXYZ[0];
+				CachedRot.Pitch = RotXYZ[1];
+				CachedRot.Yaw = RotXYZ[2];
+
 				if (SelectedActors.size() > 1)
 				{
 					FRotator Delta = CachedRot - PrevRot;
@@ -473,8 +477,15 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor>& Pr
 	}
 	case EPropertyType::Rotator:
 	{
-		float* Val = static_cast<float*>(Prop.ValuePtr);
-		bChanged = ImGui::DragFloat3(Prop.Name.c_str(), Val, Prop.Speed);
+		FRotator* Rot = static_cast<FRotator*>(Prop.ValuePtr);
+		float RotXYZ[3] = { Rot->Roll, Rot->Pitch, Rot->Yaw };
+		bChanged = ImGui::DragFloat3(Prop.Name.c_str(), RotXYZ, Prop.Speed);
+		if (bChanged)
+		{
+			Rot->Roll = RotXYZ[0];
+			Rot->Pitch = RotXYZ[1];
+			Rot->Yaw = RotXYZ[2];
+		}
 		if (bChanged && SelectedComponent && SelectedComponent->IsA<USceneComponent>())
 		{
 			static_cast<USceneComponent*>(SelectedComponent)->ApplyCachedEditRotator();

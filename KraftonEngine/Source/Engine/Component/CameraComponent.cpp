@@ -61,6 +61,7 @@ void UCameraComponent::LookAt(const FVector& Target)
 	if (fabsf(Diff.Z) < 0.999f) {
 		LookRotation.Yaw = atan2f(Diff.Y, Diff.X) * Rad2Deg;
 	}
+	LookRotation.Roll = 0.0f;
 
 	SetRelativeRotation(LookRotation);
 }
