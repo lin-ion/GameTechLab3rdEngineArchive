@@ -2,11 +2,13 @@
 #include "Component/PrimitiveComponent.h"
 #include "GameFramework/AActor.h"
 #include "Render/Resource/ShaderManager.h"
+#include "Engine/Profiling/Stats.h"
 
 FPrimitiveProxy::FPrimitiveProxy(UPrimitiveComponent* InOwner)
 	: Owner(InOwner)
 	, bIsDirty(true)
 {
+	RefreshOcclusionCache();
 }
 
 void FPrimitiveProxy::SubmitRenderCommand(FViewContext& View)
@@ -14,6 +16,7 @@ void FPrimitiveProxy::SubmitRenderCommand(FViewContext& View)
 	if (IsDirty())
 	{
 		UpdateProxy();
+		RefreshOcclusionCache();
 		bIsDirty = false;
 	}
 
@@ -59,6 +62,18 @@ uint32 FPrimitiveProxy::GetId() const
 FBoundingBox FPrimitiveProxy::GetAABB() const
 {
 	return Owner ? Owner->GetWorldBoundingBox() : FBoundingBox();
+}
+
+void FPrimitiveProxy::RefreshOcclusionCache()
+{
+	if (Owner)
+	{
+		SCOPE_STAT_ACCUM("Proxy.RefreshOcclusionCache");
+		FBoundingBox Box = Owner->GetWorldBoundingBox();
+		CachedAABBMin = Box.Min;
+		CachedAABBMax = Box.Max;
+		CachedProxyId = Owner->GetUUID();
+	}
 }
 
 FDefaultPrimitiveProxy::FDefaultPrimitiveProxy(UPrimitiveComponent* InOwner)

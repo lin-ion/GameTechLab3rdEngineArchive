@@ -286,26 +286,34 @@ void FOcclusionManager::UpdateGPUProxies(ID3D11DeviceContext* InContext, const T
 
 	if (device) device->Release();
 
-	TArray<FProxyAABB> gpuData;
-	gpuData.reserve(InProxies.size());
-	ReadbackProxyIds[ReadbackIndex].clear();
-	for (auto proxy : InProxies)
+	const uint32 ProxyCount = static_cast<uint32>(InProxies.size());
+
+	D3D11_MAPPED_SUBRESOURCE MappedResource = {};
+	if (FAILED(InContext->Map(ProxyBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource)))
+		return;
+
+	// __restrict를 사용하여 컴파일러에게 MappedResource.pData가 이 함수 내에서 다른 포인터로 변경되지 않는다고 알려줌
+	FProxyAABB* __restrict MappedProxyBuffer = static_cast<FProxyAABB*>(MappedResource.pData);
+
+	TArray<uint32>& CurrentFrameProxyIds = ReadbackProxyIds[ReadbackIndex];
+	CurrentFrameProxyIds.resize(ProxyCount);
+
+	constexpr uint32 PrefetchDistance = 8;
+	for (uint32 Index = 0; Index < ProxyCount; ++Index)
 	{
-		FProxyAABB data;
-		FBoundingBox box = proxy->GetAABB();
-		data.Min = box.Min;
-		data.Max = box.Max;
-		data.Id = proxy->GetId();
-		gpuData.push_back(data);
-		ReadbackProxyIds[ReadbackIndex].push_back(data.Id);
+		if (Index + PrefetchDistance < ProxyCount)
+		{
+			_mm_prefetch((const char*)InProxies[Index + PrefetchDistance], _MM_HINT_T0);
+		}
+
+		FPrimitiveProxy* Proxy = InProxies[Index];
+		MappedProxyBuffer[Index].Min = Proxy->CachedAABBMin;
+		MappedProxyBuffer[Index].Id  = Proxy->CachedProxyId;
+		MappedProxyBuffer[Index].Max = Proxy->CachedAABBMax;
+		CurrentFrameProxyIds[Index]  = Proxy->CachedProxyId;
 	}
 
-	D3D11_MAPPED_SUBRESOURCE mapped = {};
-	if (SUCCEEDED(InContext->Map(ProxyBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
-	{
-		memcpy(mapped.pData, gpuData.data(), sizeof(FProxyAABB) * gpuData.size());
-		InContext->Unmap(ProxyBuffer, 0);
-	}
+	InContext->Unmap(ProxyBuffer, 0);
 }
 
 void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, const FViewContext& InView, const TArray<FPrimitiveProxy*>& InProxies)

@@ -13,13 +13,13 @@ void OcclusionCulling::ApplyOcclusionCulling(FViewContext& Context)
 
 	auto& Proxies = Context.GetCandidateProxiesMutable();
 	FOcclusionManager::Get().AddTotalCandidates((uint32)Proxies.size());
-	
+
 	uint32 initialSize = (uint32)Proxies.size();
 
 	// Remove occluded proxies based on last known results from FOcclusionManager
 	Proxies.erase(std::remove_if(Proxies.begin(), Proxies.end(),
 		[](FPrimitiveProxy* Proxy) {
-			return !FOcclusionManager::Get().IsVisible(Proxy->GetId());
+			return !FOcclusionManager::Get().IsVisible(Proxy->CachedProxyId);
 		}), Proxies.end());
 
 	uint32 finalSize = (uint32)Proxies.size();
