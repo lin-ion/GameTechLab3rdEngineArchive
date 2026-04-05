@@ -14,27 +14,18 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
     if (DTid.x >= DstResolution.x || DTid.y >= DstResolution.y)
         return;
 
-    uint2 srcCoord = DTid.xy * 2;
+    uint2 srcCoord0 = DTid.xy * 2;
+    uint2 srcCoord1 = min(srcCoord0 + uint2(1, 0), SrcResolution - 1);
+    uint2 srcCoord2 = min(srcCoord0 + uint2(0, 1), SrcResolution - 1);
+    uint2 srcCoord3 = min(srcCoord0 + uint2(1, 1), SrcResolution - 1);
     
-    float4 depths;
-    depths.x = InTexture.Load(uint3(srcCoord, 0)).r;
-    depths.y = InTexture.Load(uint3(srcCoord + uint2(1, 0), 0)).r;
-    depths.z = InTexture.Load(uint3(srcCoord + uint2(0, 1), 0)).r;
-    depths.w = InTexture.Load(uint3(srcCoord + uint2(1, 1), 0)).r;
+    float d0 = InTexture.Load(uint3(srcCoord0, 0)).r;
+    float d1 = InTexture.Load(uint3(srcCoord1, 0)).r;
+    float d2 = InTexture.Load(uint3(srcCoord2, 0)).r;
+    float d3 = InTexture.Load(uint3(srcCoord3, 0)).r;
     
-    // Boundary check for non-power-of-two textures
-    if (srcCoord.x + 1 >= SrcResolution.x)
-    {
-        depths.y = depths.x;
-        depths.w = depths.z;
-    }
-    if (srcCoord.y + 1 >= SrcResolution.y)
-    {
-        depths.z = depths.x;
-        depths.w = depths.y;
-    }
-
-    float minDepth = min(min(depths.x, depths.y), min(depths.z, depths.w));
+    // In Reverse-Z, min is furthest. We want the furthest point of the 4 samples.
+    float minDepth = min(min(d0, d1), min(d2, d3));
     
     OutTexture[DTid.xy] = minDepth;
 }

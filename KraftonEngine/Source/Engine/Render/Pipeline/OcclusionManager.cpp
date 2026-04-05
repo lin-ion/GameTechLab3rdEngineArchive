@@ -84,8 +84,20 @@ void FOcclusionManager::Release()
 
 void FOcclusionManager::CreateHZBTexture(ID3D11Device* InDevice, uint32 Width, uint32 Height)
 {
-	uint32 targetWidth = std::max(1u, Width / 2);
-	uint32 targetHeight = std::max(1u, Height / 2);
+	auto NextPowerOfTwo = [](uint32 v) -> uint32 {
+		if (v == 0) return 1;
+		v--;
+		v |= v >> 1;
+		v |= v >> 2;
+		v |= v >> 4;
+		v |= v >> 8;
+		v |= v >> 16;
+		v++;
+		return v;
+	};
+
+	uint32 targetWidth = std::max(1u, NextPowerOfTwo(Width / 2));
+	uint32 targetHeight = std::max(1u, NextPowerOfTwo(Height / 2));
 
 	if (HZBWidth == targetWidth && HZBHeight == targetHeight && HZBTexture)
 		return;
@@ -324,6 +336,7 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 		uint32 ProxyCount;
 		uint32 HZBMipCount;
 		float HZBSize[2];
+		float ViewportSize[2];
 	};
 
 	PassConstants consts;
@@ -342,6 +355,8 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 	consts.HZBMipCount = HZBMipCount;
 	consts.HZBSize[0] = (float)HZBWidth;
 	consts.HZBSize[1] = (float)HZBHeight;
+	consts.ViewportSize[0] = (float)InView.GetViewportWidth();
+	consts.ViewportSize[1] = (float)InView.GetViewportHeight();
 
 	D3D11_MAPPED_SUBRESOURCE mapped = {};
 	if (SUCCEEDED(InContext->Map(OcclusionTestCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))

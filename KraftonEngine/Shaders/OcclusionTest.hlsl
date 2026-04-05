@@ -19,6 +19,7 @@ cbuffer PassConstants : register(b0)
     uint ProxyCount;
     uint HZBMipCount;
     float2 HZBSize;
+    float2 ViewportSize;
 };
 
 [numthreads(64, 1, 1)]
@@ -69,7 +70,6 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
     }
 
     // Clipping check - if it's completely outside the view, we can cull it
-    // But frustum culling already does this. Let's be conservative.
     if (maxNDC.x < -1.0 || minNDC.x > 1.0 || maxNDC.y < -1.0 || minNDC.y > 1.0 || maxNDC.z < 0.0)
     {
         OutVisibility[DTid.x] = 0;
@@ -88,24 +88,23 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
     if (minUV.x > maxUV.x) { float t = minUV.x; minUV.x = maxUV.x; maxUV.x = t; }
     if (minUV.y > maxUV.y) { float t = minUV.y; minUV.y = maxUV.y; maxUV.y = t; }
     
-    // UV inset trick
-    float2 invSize = 1.0f / HZBSize;
-    float2 inset = invSize * 1.5f; // 1.5픽셀 정도만 안쪽으로
-    minUV = min(minUV + inset, maxUV);
-    maxUV = max(maxUV - inset, minUV);
+    // Scale UV to fit the sub-region of the POT(Power of Two) HZB texture
+    // HZB Mip 0 is half of viewport resolution.
+    float2 uvScale = (ViewportSize * 0.5f) / HZBSize;
+    minUV *= uvScale;
+    maxUV *= uvScale;
 
     // Calculate footprint size in pixels (mip 0 resolution)
     float2 size = (maxUV - minUV) * HZBSize;
     float maxSide = max(size.x, size.y);
     
     // floor(log2) covers the footprint with 4 samples in that mip
-    float mip = floor(log2(maxSide + 0.01f));   // 0.01 더해서 Mip 경계에서 튀는 거 방지
-    mip = clamp(mip + 1.0, 0, (float)HZBMipCount - 1.0);
+    float mip = floor(log2(maxSide + 0.01f));
+    mip = clamp(mip, 0, (float)HZBMipCount - 1.0);
     
     float2 midUV = (minUV + maxUV) * 0.5f;
 
     // 9-tap HZB test
-    // Samples the min depth (furthest point) in the HZB region.
     float d0 = HZB.SampleLevel(PointClampSampler, float2(minUV.x, minUV.y), mip).r;
     float d1 = HZB.SampleLevel(PointClampSampler, float2(midUV.x, minUV.y), mip).r;
     float d2 = HZB.SampleLevel(PointClampSampler, float2(maxUV.x, minUV.y), mip).r;
@@ -116,23 +115,14 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
     float d7 = HZB.SampleLevel(PointClampSampler, float2(midUV.x, maxUV.y), mip).r;
     float d8 = HZB.SampleLevel(PointClampSampler, float2(maxUV.x, maxUV.y), mip).r;
 
+    // Reverse-Z: min is furthest. minH is the furthest point in the 3x3 region.
     float minH = min(min(min(min(d0, d1), min(d2, d3)), min(min(d4, d5), min(d6, d7))), d8);
     
     float nearD = maxNDC.z;
     
-    // 두 깊이가 너무 비슷하면(0.001 이내) "이전 프레임의 나"라고 판단하여 통과
-    uint isVisible = 0;
-    float dynamicEpsilon = 0.02f * (1.0f - nearD);
-    if (abs(nearD - minH) < dynamicEpsilon) 
-    {
-        isVisible = 1;
-    }
-    else 
-    {
-        // 일반적인 Reverse-Z 판정
-        const float EPSILON = 0.0001f; 
-        isVisible = (nearD >= minH - EPSILON) ? 1 : 0;
-    }
+    // Conservative test: If the object's closest point (nearD) is further than 
+    // the furthest point in the HZB region (minH), it's definitely occluded.
+    uint isVisible = (nearD >= minH - 0.0001f) ? 1 : 0;
     
     OutVisibility[DTid.x] = isVisible;
 }
