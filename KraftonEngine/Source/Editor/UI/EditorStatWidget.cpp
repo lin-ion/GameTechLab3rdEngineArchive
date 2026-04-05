@@ -18,11 +18,18 @@
 void FEditorStatWidget::Render(float DeltaTime)
 {
 #if STATS
-	(void)DeltaTime;
-
 	ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(700.0f, 600.0f), ImGuiCond_Once);
 	ImGui::Begin("Stat Profiler");
+
+	if (!bPaused)
+	{
+		FrozenDeltaTime = DeltaTime;
+	}
+
+	float FPS = FrozenDeltaTime > 0.0f ? 1.0f / FrozenDeltaTime : 0.0f;
+	ImGui::Text("FPS: %.1f  (%.2f ms)", FPS, FrozenDeltaTime * 1000.0f);
+	ImGui::Separator();
 
 	// Pause / Resume 버튼
 	if (bPaused)

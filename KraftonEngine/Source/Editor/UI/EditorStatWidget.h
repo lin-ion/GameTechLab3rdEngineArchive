@@ -18,5 +18,5 @@ private:
 	void RenderPickingDetail();
 	bool bPaused = false;
 	TArray<FStatEntry> FrozenCPUEntries;
-
+	float FrozenDeltaTime = 0.0f;
 };
