@@ -32,13 +32,37 @@ void FStatManager::RecordTime(const char* Name, double ElapsedSeconds)
 	++Acc.Count;
 }
 
+void FStatManager::RecordTimeAccum(const char* Name, double ElapsedSeconds)
+{
+	auto it = Stats.find(Name);
+	if (it == Stats.end())
+	{
+		FStatAccumulator Acc;
+		Acc.Name = Name;
+		Acc.FrameAccum = ElapsedSeconds;
+		Acc.bAccumMode = true;
+		Stats[Name] = std::move(Acc);
+		return;
+	}
+
+	it->second.FrameAccum += ElapsedSeconds;
+}
+
 void FStatManager::TakeSnapshot()
 {
 	Snapshot.clear();
 	Snapshot.reserve(Stats.size());
 
-	for (const auto& [Key, Acc] : Stats)
+	for (auto& [Key, Acc] : Stats)
 	{
+		if (Acc.bAccumMode)
+		{
+			Acc.LastTime = Acc.FrameAccum;
+			Acc.MaxTime = (std::max)(Acc.MaxTime, Acc.FrameAccum);
+			Acc.MinTime = (std::min)(Acc.MinTime, Acc.FrameAccum);
+			Acc.FrameAccum = 0.0;
+		}
+
 		FStatEntry Entry;
 		Entry.Name    = Acc.Name;
 		Entry.MaxTime = Acc.MaxTime;

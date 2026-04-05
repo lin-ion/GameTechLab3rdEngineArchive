@@ -37,6 +37,10 @@ struct FStatAccumulator
 	double LastTime = 0.0;
 	double TotalTime = 0.0;
 	uint64 Count = 0;
+
+	// SCOPE_STAT_ACCUM용 누적 시간과 모드
+	double FrameAccum = 0.0;  // 프레임 내 누적용
+	bool bAccumMode = false;
 };
 
 // --- Stat Manager (싱글턴) ---
@@ -46,6 +50,7 @@ class FStatManager : public TSingleton<FStatManager>
 
 public:
 	void RecordTime(const char* Name, double ElapsedSeconds);
+	void RecordTimeAccum(const char* Name, double ElapsedSeconds);
 	void TakeSnapshot();
 	void ResetStats();
 	bool GetStat(const char* Name, FStatEntry& OutEntry) const;
@@ -79,13 +84,33 @@ private:
 	uint64 StartCycles;
 };
 
+// --- Scoped Timer (누적 모드) — 프레임 내 여러 번 호출 시 합산 ---
+class FScopedTimerAccum
+{
+public:
+	FScopedTimerAccum(const char* InName) : Name(InName), StartCycles(FPlatformTime::Cycles64()) {}
+
+	~FScopedTimerAccum()
+	{
+		const uint64 EndCycles = FPlatformTime::Cycles64();
+		double Elapsed = FPlatformTime::ToSeconds(EndCycles - StartCycles);
+		FStatManager::Get().RecordTimeAccum(Name, Elapsed);
+	}
+
+private:
+	const char* Name;
+	uint64 StartCycles;
+};
+
 // --- SCOPE_STAT 매크로 ---
 #if STATS
 #define SCOPE_STAT_CONCAT2(a, b) a##b
 #define SCOPE_STAT_CONCAT(a, b)  SCOPE_STAT_CONCAT2(a, b)
 #define SCOPE_STAT(Name) FScopedTimer SCOPE_STAT_CONCAT(_ScopedTimer_, __COUNTER__)(Name)
+#define SCOPE_STAT_ACCUM(Name) FScopedTimerAccum SCOPE_STAT_CONCAT(_ScopedTimerAccum_, __COUNTER__)(Name)
 #else
 #define SCOPE_STAT(Name) ((void)0)
+#define SCOPE_STAT_ACCUM(Name) ((void)0)
 #endif
 
 /*

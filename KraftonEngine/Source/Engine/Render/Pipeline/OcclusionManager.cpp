@@ -1,4 +1,4 @@
-#include "OcclusionManager.h"
+﻿#include "OcclusionManager.h"
 #include <algorithm>
 #include <iostream>
 #include <cmath>
@@ -8,6 +8,7 @@
 #include "Component/PrimitiveComponent.h"
 #include "Core/EngineTypes.h"
 #include "Object/Object.h"
+#include "Engine/Profiling/Stats.h"
 
 FOcclusionManager& FOcclusionManager::Get()
 {
@@ -23,7 +24,7 @@ void FOcclusionManager::Initialize(ID3D11Device* InDevice)
 	}
 
 	D3D11_BUFFER_DESC cbDesc = {};
-	cbDesc.ByteWidth = (sizeof(uint32) * 4 + 15) & ~15; 
+	cbDesc.ByteWidth = (sizeof(uint32) * 4 + 15) & ~15;
 	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -57,7 +58,7 @@ void FOcclusionManager::Release()
 {
 	HZBBuildCS.Release();
 	if (HZBConstantBuffer) { HZBConstantBuffer->Release(); HZBConstantBuffer = nullptr; }
-	
+
 	if (HZBSRV) { HZBSRV->Release(); HZBSRV = nullptr; }
 	for (auto UAV : HZBMipsUAV) { if (UAV) UAV->Release(); }
 	HZBMipsUAV.clear();
@@ -65,7 +66,7 @@ void FOcclusionManager::Release()
 	HZBMipsSRV.clear();
 	if (HZBTexture) { HZBTexture->Release(); HZBTexture = nullptr; }
 	if (PointClampSampler) { PointClampSampler->Release(); PointClampSampler = nullptr; }
-	
+
 	HZBWidth = 0;
 	HZBHeight = 0;
 	HZBMipCount = 0;
@@ -157,12 +158,13 @@ void FOcclusionManager::CreateHZBTexture(ID3D11Device* InDevice, uint32 Width, u
 
 void FOcclusionManager::BuildHZB(ID3D11DeviceContext* InContext, ID3D11ShaderResourceView* InDepthSRV, uint32 Width, uint32 Height)
 {
+	SCOPE_STAT("Render.BuildHZB");
 	if (!InDepthSRV) return;
 
 	ID3D11Device* device = nullptr;
 	InContext->GetDevice(&device);
 	if (!device) return;
-	
+
 	CreateHZBTexture(device, Width, Height);
 	device->Release();
 
@@ -198,7 +200,7 @@ void FOcclusionManager::BuildHZB(ID3D11DeviceContext* InContext, ID3D11ShaderRes
 		}
 
 		InContext->CSSetConstantBuffers(0, 1, &HZBConstantBuffer);
-		
+
 		ID3D11ShaderResourceView* srcSRV = (i == 0) ? InDepthSRV : HZBMipsSRV[i - 1];
 		InContext->CSSetShaderResources(0, 1, &srcSRV);
 		InContext->CSSetUnorderedAccessViews(0, 1, &HZBMipsUAV[i], nullptr);
@@ -214,8 +216,8 @@ void FOcclusionManager::BuildHZB(ID3D11DeviceContext* InContext, ID3D11ShaderRes
 
 		currWidth = nextWidth;
 		currHeight = nextHeight;
-		
-		if (currWidth == 1 && currHeight == 1 && i > 0) break; 
+
+		if (currWidth == 1 && currHeight == 1 && i > 0) break;
 	}
 
 	HZBBuildCS.Unbind(InContext);
@@ -223,8 +225,9 @@ void FOcclusionManager::BuildHZB(ID3D11DeviceContext* InContext, ID3D11ShaderRes
 
 void FOcclusionManager::UpdateGPUProxies(ID3D11DeviceContext* InContext, const TArray<FPrimitiveProxy*>& InProxies)
 {
+	SCOPE_STAT("Occlusion.UpdateGPUProxies");
 	if (InProxies.empty()) return;
-    
+
 	ID3D11Device* device = nullptr;
 	InContext->GetDevice(&device);
 
@@ -276,43 +279,53 @@ void FOcclusionManager::UpdateGPUProxies(ID3D11DeviceContext* InContext, const T
 		rbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 		device->CreateBuffer(&rbDesc, nullptr, &ReadbackBuffers[0]);
 		device->CreateBuffer(&rbDesc, nullptr, &ReadbackBuffers[1]);
-		
+
 		bReadbackReady[0] = false;
 		bReadbackReady[1] = false;
 	}
 
 	if (device) device->Release();
 
-	TArray<FProxyAABB> gpuData;
-	gpuData.reserve(InProxies.size());
-	ReadbackProxyIds[ReadbackIndex].clear();
-	for (auto proxy : InProxies)
+	const uint32 ProxyCount = static_cast<uint32>(InProxies.size());
+
+	D3D11_MAPPED_SUBRESOURCE MappedResource = {};
+	if (FAILED(InContext->Map(ProxyBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource)))
+		return;
+
+	// __restrict를 사용하여 컴파일러에게 MappedResource.pData가 이 함수 내에서 다른 포인터로 변경되지 않는다고 알려줌
+	FProxyAABB* __restrict MappedProxyBuffer = static_cast<FProxyAABB*>(MappedResource.pData);
+
+	TArray<uint32>& CurrentFrameProxyIds = ReadbackProxyIds[ReadbackIndex];
+	CurrentFrameProxyIds.resize(ProxyCount);
+
+	constexpr uint32 PrefetchDistance = 8;
+	for (uint32 Index = 0; Index < ProxyCount; ++Index)
 	{
-		FProxyAABB data;
-		FBoundingBox box = proxy->GetAABB();
-		data.Min = box.Min;
-		data.Max = box.Max;
-		data.Id = proxy->GetId();
-		gpuData.push_back(data);
-		ReadbackProxyIds[ReadbackIndex].push_back(data.Id);
+		if (Index + PrefetchDistance < ProxyCount)
+		{
+			_mm_prefetch((const char*)InProxies[Index + PrefetchDistance], _MM_HINT_T0);
+		}
+
+		FPrimitiveProxy* Proxy = InProxies[Index];
+		MappedProxyBuffer[Index].Min = Proxy->CachedAABBMin;
+		MappedProxyBuffer[Index].Id  = Proxy->CachedProxyId;
+		MappedProxyBuffer[Index].Max = Proxy->CachedAABBMax;
+		CurrentFrameProxyIds[Index]  = Proxy->CachedProxyId;
 	}
 
-	D3D11_MAPPED_SUBRESOURCE mapped = {};
-	if (SUCCEEDED(InContext->Map(ProxyBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
-	{
-		memcpy(mapped.pData, gpuData.data(), sizeof(FProxyAABB) * gpuData.size());
-		InContext->Unmap(ProxyBuffer, 0);
-	}
+	InContext->Unmap(ProxyBuffer, 0);
 }
 
 void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, const FViewContext& InView, const TArray<FPrimitiveProxy*>& InProxies)
 {
+	SCOPE_STAT("Occlusion");
 	if (InProxies.empty() || !HZBTexture) return;
 
 	// Process readback from PREVIOUS frame (N-1 or N-2)
 	uint32 prevIndex = (ReadbackIndex + 1) % 2;
 	if (bReadbackReady[prevIndex])
 	{
+		SCOPE_STAT("Occlusion.ReadbackMap");
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
 		if (SUCCEEDED(InContext->Map(ReadbackBuffers[prevIndex], 0, D3D11_MAP_READ, 0, &mapped)))
 		{
@@ -350,7 +363,7 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 	{
 		consts.ViewProjection = currentVP.GetTransposed();
 	}
-	
+
 	consts.ProxyCount = (uint32)InProxies.size();
 	consts.HZBMipCount = HZBMipCount;
 	consts.HZBSize[0] = (float)HZBWidth;

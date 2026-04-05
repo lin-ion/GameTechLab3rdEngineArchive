@@ -27,6 +27,12 @@ public:
 	uint32 GetId() const;
 	struct FBoundingBox GetAABB() const;
 
+	// Occlusion용 캐시 — Owner 포인터 체이싱 제거 (L2 캐시 미스 방지)
+	FVector CachedAABBMin;
+	FVector CachedAABBMax;
+	uint32 CachedProxyId = 0;
+	void RefreshOcclusionCache();
+
 protected:
 	UPrimitiveComponent* Owner;
 	FWorldRenderProxy* WorldProxy = nullptr;

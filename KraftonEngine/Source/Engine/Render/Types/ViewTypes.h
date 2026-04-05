@@ -17,7 +17,7 @@ struct FShowFlags
 	bool bGizmo = true;
 	bool bBillboardText = true;
 	bool bBoundingVolume = false;
-	bool bOcclusionCulling = false;
+	bool bOcclusionCulling = true;
 	bool bShowHZB = false;
 };
 

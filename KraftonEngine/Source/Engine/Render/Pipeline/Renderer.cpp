@@ -1,8 +1,7 @@
 ﻿#include "Renderer.h"
+#include <algorithm>
 #include "RenderStats.h"
 #include "OcclusionManager.h"
-#include <iostream>
-#include <algorithm>
 #include "Resource/ResourceManager.h"
 #include "Render/Types/RenderTypes.h"
 #include "Render/Resource/ConstantBufferPool.h"
@@ -18,7 +17,7 @@ void FRenderer::Create(HWND hWindow)
 
 	if (Device.GetDevice() == nullptr)
 	{
-		std::cout << "Failed to create D3D Device." << std::endl;
+		OutputDebugStringA("Failed to create D3D Device.\n");
 	}
 
 	FShaderManager::Get().Initialize(Device.GetDevice());
@@ -264,6 +263,7 @@ void FRenderer::Render(const FViewContext& InRenderBus)
 	uint32 largeCBCount = static_cast<uint32>(PerObjectDataArray.size());
 	if (largeCBCount > 0)
 	{
+		SCOPE_STAT("Render.UpdateLargeCB");
 		if (largeCBCount > Resources.LargeCBCapacity)
 		{
 			uint32 newCap = largeCBCount + (largeCBCount / 2);  // 1.5배 여유
