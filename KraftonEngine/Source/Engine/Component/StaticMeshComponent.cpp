@@ -134,6 +134,16 @@ bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHi
 	if (!StaticMesh) return false;
 	FStaticMesh* Asset = StaticMesh->GetStaticMeshAsset();
 	if (!Asset || Asset->Vertices.empty() || Asset->Indices.empty()) return false;
+
+	const size_t VertexCount = Asset->Vertices.size();
+	for (uint32 Index : Asset->Indices)
+	{
+		if (Index >= VertexCount)
+		{
+			return false;
+		}
+	}
+
 	if (!Asset->GetBVH())
 	{
 		Asset->BuildBVH();

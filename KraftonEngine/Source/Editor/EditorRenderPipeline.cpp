@@ -98,6 +98,16 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	OcclusionCulling::ApplyOcclusionCulling(ViewContext);
 
+	// Gizmo / Selected Actor는 컬링 결과와 무관하게 항상 렌더 후보로 유지한다.
+	if (UScene* Scene = World->GetPersistentScene())
+	{
+		Scene->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, true);
+	}
+	if (UScene* Scene = World->GetActiveScene())
+	{
+		Scene->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, false);
+	}
+
 	// 4. 컬링을 통과한 후보군만 RenderCommand를 ViewContext에 제출
 	if (UScene* Scene = World->GetPersistentScene())
 	{

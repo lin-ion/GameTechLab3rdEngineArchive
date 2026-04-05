@@ -148,6 +148,7 @@ void FEditorSceneWidget::Render(float DeltaTime)
 							CS.NearZ = CamData.NearClip;
 							CS.FarZ  = CamData.FarClip;
 							Cam->SetCameraState(CS);
+							VC->InvalidateIdBufferCache();
 						}
 						break;
 					}

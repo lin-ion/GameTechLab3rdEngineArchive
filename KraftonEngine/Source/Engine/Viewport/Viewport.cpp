@@ -170,6 +170,28 @@ bool FViewport::TryReadPickingIdReadback(ID3D11DeviceContext* Ctx, uint32 Reques
 	return false;
 }
 
+bool FViewport::CancelPickingIdReadback(uint32 RequestId)
+{
+	if (RequestId == 0u)
+	{
+		return false;
+	}
+
+	for (uint32 Slot = 0; Slot < PickingReadbackRingSize; ++Slot)
+	{
+		if (!bPickingReadbackInFlight[Slot] || PickingReadbackRequestIds[Slot] != RequestId)
+		{
+			continue;
+		}
+
+		bPickingReadbackInFlight[Slot] = false;
+		PickingReadbackRequestIds[Slot] = 0u;
+		return true;
+	}
+
+	return false;
+}
+
 bool FViewport::CreateResources()
 {
 	if (!Device || Width == 0 || Height == 0) return false;

@@ -185,6 +185,9 @@ void FLevelViewportLayout::ResetViewport(UWorld* InWorld)
 	{
 		VC->CreateCamera();
 		VC->SetWorld(InWorld);
+		VC->ResetIdPickingState();
+		VC->SetGizmo(SelectionManager ? SelectionManager->GetGizmo() : nullptr);
+		VC->GetRenderOptions().ShowFlags.bGizmo = true;
 		VC->ResetCamera();
 
 		// 카메라 재생성 후 현재 뷰포트 크기로 AspectRatio 동기화

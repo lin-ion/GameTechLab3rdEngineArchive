@@ -2,6 +2,7 @@
 #include "Component/CameraComponent.h"
 #include "Viewport/Viewport.h"
 #include "Render/Pipeline/RenderSorting.h"
+#include <algorithm>
 
 void FViewContext::Clear()
 {
@@ -86,6 +87,19 @@ void FViewContext::AddGridProxy(FGridProxy&& Proxy)
 void FViewContext::AddCandidateProxy(FPrimitiveProxy* Proxy)
 {
 	CandidateProxies.push_back(Proxy);
+}
+
+void FViewContext::AddCandidateProxyUnique(FPrimitiveProxy* Proxy)
+{
+	if (!Proxy)
+	{
+		return;
+	}
+
+	if (std::find(CandidateProxies.begin(), CandidateProxies.end(), Proxy) == CandidateProxies.end())
+	{
+		CandidateProxies.push_back(Proxy);
+	}
 }
 
 void FViewContext::SetCameraInfo(const UCameraComponent* Camera)

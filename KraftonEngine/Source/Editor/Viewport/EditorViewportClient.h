@@ -20,7 +20,7 @@ class FEditorViewportClient : public FViewportClient
 {
 public:
 	void Initialize(FWindowsWindow* InWindow);
-	void SetWorld(UWorld* InWorld) { World = InWorld; }
+	void SetWorld(UWorld* InWorld);
 	void SetGizmo(UGizmoComponent* InGizmo) { Gizmo = InGizmo; }
 	void SetSettings(const FEditorSettings* InSettings) { Settings = InSettings; }
 	void SetSelectionManager(FSelectionManager* InSelectionManager) { SelectionManager = InSelectionManager; }
@@ -75,7 +75,8 @@ public:
 	bool HasPendingIdPickReadback() const { return bPendingIdPickReadback; }
 	uint32 GetPendingIdPickReadbackRequestId() const { return PendingIdPickReadbackRequestId; }
 	void BeginPendingIdPickReadback(uint32 InRequestId) { bPendingIdPickRequest = false; bPendingIdPickReadback = true; PendingIdPickReadbackRequestId = InRequestId; }
-	void CancelPendingIdPickReadback() { bPendingIdPickReadback = false; PendingIdPickReadbackRequestId = 0u; }
+	void CancelPendingIdPickReadback();
+	void ResetIdPickingState();
 	void RefreshIdBufferDirtyStateFromCamera();
 	void UpdateIdBufferCacheCameraState();
 	void InvalidateIdBufferCache() { bHasCachedIdPickResult = false; bIdBufferDirty = true; }

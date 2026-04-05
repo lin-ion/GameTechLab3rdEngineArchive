@@ -37,6 +37,33 @@ void FSelectionManager::Shutdown()
 	}
 }
 
+void FSelectionManager::SetWorld(UWorld* InWorld)
+{
+	if (!Gizmo)
+	{
+		return;
+	}
+
+	SelectedActors.clear();
+	Gizmo->Deactivate();
+	Gizmo->SetExplicitWorld(InWorld);
+
+	if (!InWorld)
+	{
+		return;
+	}
+
+	if (!Gizmo->GetProxy())
+	{
+		Gizmo->OnRegister();
+	}
+
+	if (UScene* PersistentScene = InWorld->GetPersistentScene())
+	{
+		PersistentScene->GetRenderProxy().AddProxy(Gizmo->GetProxy());
+	}
+}
+
 void FSelectionManager::Select(AActor* Actor)
 {
 	SelectedActors.clear();
@@ -129,6 +156,19 @@ void FSelectionManager::ClearSelection()
 void FSelectionManager::SyncGizmo()
 {
 	if (!Gizmo) return;
+
+	// Scene Load/World 전환 이후에도 Gizmo 프록시가 현재 월드에 확실히 연결되도록 보장한다.
+	if (UWorld* World = Gizmo->GetWorld())
+	{
+		if (!Gizmo->GetProxy())
+		{
+			Gizmo->OnRegister();
+		}
+		if (UScene* PersistentScene = World->GetPersistentScene())
+		{
+			PersistentScene->GetRenderProxy().AddProxy(Gizmo->GetProxy());
+		}
+	}
 
 	AActor* Primary = GetPrimarySelection();
 	if (Primary)

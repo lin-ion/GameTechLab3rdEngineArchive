@@ -26,6 +26,17 @@ void FEditorViewportClient::Initialize(FWindowsWindow* InWindow)
 	Window = InWindow;
 }
 
+void FEditorViewportClient::SetWorld(UWorld* InWorld)
+{
+	if (World == InWorld)
+	{
+		return;
+	}
+
+	World = InWorld;
+	ResetIdPickingState();
+}
+
 void FEditorViewportClient::CreateCamera()
 {
 	DestroyCamera();
@@ -430,6 +441,30 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 	}
 }
 
+void FEditorViewportClient::CancelPendingIdPickReadback()
+{
+	if (Viewport && PendingIdPickReadbackRequestId != 0u)
+	{
+		Viewport->CancelPickingIdReadback(PendingIdPickReadbackRequestId);
+	}
+
+	bPendingIdPickReadback = false;
+	PendingIdPickReadbackRequestId = 0u;
+}
+
+void FEditorViewportClient::ResetIdPickingState()
+{
+	CancelPendingIdPickReadback();
+	bPendingIdPickRequest = false;
+	bHasPendingIdPickResult = false;
+	PendingPickedObjectId = 0u;
+	bPendingIdPickCtrlHeld = false;
+	PendingIdPickX = 0u;
+	PendingIdPickY = 0u;
+	LastIdBufferRenderCycles = 0u;
+	InvalidateIdBufferCache();
+}
+
 bool FEditorViewportClient::IsIdBufferCacheValidForCurrentCamera() const
 {
 	if (!bHasCachedIdPickResult || !Camera)
@@ -448,14 +483,14 @@ bool FEditorViewportClient::IsIdBufferCacheValidForCurrentCamera() const
 
 bool FEditorViewportClient::ShouldRenderPendingIdPick() const
 {
-	if (!bIdBufferDirty)
-	{
-		return false;
-	}
-
 	if (bPendingIdPickRequest)
 	{
 		return true;
+	}
+
+	if (!bIdBufferDirty)
+	{
+		return false;
 	}
 
 	if (LastIdBufferRenderCycles == 0)

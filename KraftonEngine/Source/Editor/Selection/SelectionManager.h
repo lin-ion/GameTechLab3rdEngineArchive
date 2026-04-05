@@ -10,6 +10,7 @@ class FSelectionManager
 public:
 	void Init(class UWorld* InWorld);
 	void Shutdown();
+	void SetWorld(class UWorld* InWorld);
 
 	void Select(AActor* Actor);
 	void SelectRange(AActor* ClickedActor, const TArray<AActor*>& ActorList);

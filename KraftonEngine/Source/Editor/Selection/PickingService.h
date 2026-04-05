@@ -90,7 +90,8 @@ private:
 		const uint64 BroadStart = FPickingPlatformTime::Cycles64();
 		if (UScene* Scene = World->GetActiveScene())
 		{
-			Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, true);
+			// Scene Load 직후 SpatialIndex 재구성 타이밍 이슈를 피하기 위해 선형 후보 수집을 사용한다.
+			Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, false);
 		}
 		BroadPhaseCycles += (FPickingPlatformTime::Cycles64() - BroadStart);
 

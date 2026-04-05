@@ -93,10 +93,28 @@ void UEditorEngine::RenderUI(float DeltaTime)
 	MainPanel.Render(DeltaTime);
 }
 
+void UEditorEngine::SetPickingMode(EPickingMode InMode)
+{
+	if (PickingMode == InMode)
+	{
+		return;
+	}
+
+	PickingMode = InMode;
+	for (FEditorViewportClient* VC : ViewportLayout.GetAllViewportClients())
+	{
+		if (VC)
+		{
+			VC->ResetIdPickingState();
+		}
+	}
+}
+
 // ─── 기존 메서드 ──────────────────────────────────────────
 
 void UEditorEngine::ResetViewport()
 {
+	SelectionManager.SetWorld(GetWorld());
 	ViewportLayout.ResetViewport(GetWorld());
 }
 
@@ -119,6 +137,7 @@ void UEditorEngine::ClearScene()
 	FPickingPerf::Reset();
 
 	SelectionManager.ClearSelection();
+	SelectionManager.SetWorld(nullptr);
 
 	for (FWorldContext& Ctx : WorldList)
 	{

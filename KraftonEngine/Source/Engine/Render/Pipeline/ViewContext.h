@@ -40,6 +40,7 @@ public:
 
 	// 컬링 후보군 관리
 	void AddCandidateProxy(FPrimitiveProxy* Proxy);
+	void AddCandidateProxyUnique(FPrimitiveProxy* Proxy);
 	const TArray<FPrimitiveProxy*>& GetCandidateProxies() const { return CandidateProxies; }
 	TArray<FPrimitiveProxy*>& GetCandidateProxiesMutable() { return CandidateProxies; }
 

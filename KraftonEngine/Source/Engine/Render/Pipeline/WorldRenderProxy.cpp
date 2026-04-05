@@ -173,6 +173,47 @@ void FWorldRenderProxy::SubmitRenderCommands(FViewContext& Context, const TArray
 	}
 }
 
+void FWorldRenderProxy::InjectAlwaysVisibleCandidates(FViewContext& Context, const TArray<AActor*>& SelectedActors, bool bIncludeGizmo)
+{
+	if (!this)
+	{
+		return;
+	}
+
+	const TSet<AActor*> SelectedActorSet(SelectedActors.begin(), SelectedActors.end());
+
+	for (FPrimitiveProxy* Proxy : Proxies)
+	{
+		if (!Proxy)
+		{
+			continue;
+		}
+
+		UPrimitiveComponent* Owner = Proxy->GetOwner();
+		if (!Owner || !Owner->IsVisible())
+		{
+			continue;
+		}
+
+		if (bIncludeGizmo && Owner->IsA<UGizmoComponent>())
+		{
+			Context.AddCandidateProxyUnique(Proxy);
+			continue;
+		}
+
+		AActor* ActorOwner = Owner->GetOwner();
+		if (!ActorOwner || !ActorOwner->IsVisible())
+		{
+			continue;
+		}
+
+		if (SelectedActorSet.find(ActorOwner) != SelectedActorSet.end())
+		{
+			Context.AddCandidateProxyUnique(Proxy);
+		}
+	}
+}
+
 void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex)
 {
 	SCOPE_STAT("Render.CollectWorld");

@@ -61,7 +61,7 @@ public:
 	FOverlayStatSystem& GetOverlayStatSystem() { return OverlayStatSystem; }
 	const FOverlayStatSystem& GetOverlayStatSystem() const { return OverlayStatSystem; }
 
-	void SetPickingMode(EPickingMode InMode) { PickingMode = InMode; }
+	void SetPickingMode(EPickingMode InMode);
 	EPickingMode GetPickingMode() const { return PickingMode; }
 
 private:

@@ -36,6 +36,7 @@ public:
 
 	// Phase 2: 최종 생존한 후보들에 대해 렌더 커맨드 생성
 	void SubmitRenderCommands(FViewContext& context, const TArray<AActor*>& SelectedActors);
+	void InjectAlwaysVisibleCandidates(FViewContext& context, const TArray<AActor*>& SelectedActors, bool bIncludeGizmo);
 
 	// 레거시 지원 (필요시)
 	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex);
