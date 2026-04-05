@@ -198,16 +198,53 @@ void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatE
 	constexpr int NumColumns = 4;
 
 	if (ImGui::BeginTable(TableID, NumColumns,
-		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Sortable,
 		ImVec2(0.0f, 400.0f)))
 	{
 		for (int i = 0; i < NumColumns; i++)
 		{
-			ImGui::TableSetupColumn(Headers[i]);
+			ImGui::TableSetupColumn(Headers[i], ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthStretch);
 		}
 		ImGui::TableHeadersRow();
 
-		for (const FStatEntry& E : Source)
+		TArray<FStatEntry> SortedSource = Source;
+		if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
+		{
+			if (sorts_specs->SpecsCount > 0)
+			{
+				const ImGuiTableColumnSortSpecs* sort_spec = &sorts_specs->Specs[0];
+				std::sort(SortedSource.begin(), SortedSource.end(), [sort_spec](const FStatEntry& A, const FStatEntry& B)
+				{
+					int delta = 0;
+					if (sort_spec->ColumnIndex == 0)
+					{
+						delta = strcmp(A.Name, B.Name);
+					}
+					else if (sort_spec->ColumnIndex == 1)
+					{
+						delta = (A.MaxTime > B.MaxTime) ? 1 : ((A.MaxTime < B.MaxTime) ? -1 : 0);
+					}
+					else if (sort_spec->ColumnIndex == 2)
+					{
+						double MinA = A.MinTime == DBL_MAX ? 0.0 : A.MinTime;
+						double MinB = B.MinTime == DBL_MAX ? 0.0 : B.MinTime;
+						delta = (MinA > MinB) ? 1 : ((MinA < MinB) ? -1 : 0);
+					}
+					else if (sort_spec->ColumnIndex == 3)
+					{
+						delta = (A.LastTime > B.LastTime) ? 1 : ((A.LastTime < B.LastTime) ? -1 : 0);
+					}
+
+					if (delta > 0)
+						return sort_spec->SortDirection == ImGuiSortDirection_Descending;
+					if (delta < 0)
+						return sort_spec->SortDirection == ImGuiSortDirection_Ascending;
+					return strcmp(A.Name, B.Name) < 0;
+				});
+			}
+		}
+
+		for (const FStatEntry& E : SortedSource)
 		{
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0); ImGui::Text("%s", E.Name);
