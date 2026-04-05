@@ -15,6 +15,7 @@ class FEditorSettings;
 class FWindowsWindow;
 class FSelectionManager;
 class FViewport;
+class AActor;
 
 class FEditorViewportClient : public FViewportClient
 {
@@ -65,7 +66,12 @@ private:
 	void TickInteraction(float DeltaTime);
 	void HandleDragStart(const FRay& Ray, float LocalMouseX, float LocalMouseY);
 	void ProcessPendingIdPickResult();
+	void BeginDeferredSpatialIndexInvalidation();
+	void EndDeferredSpatialIndexInvalidation();
 	void UpdateIdBufferDirtyFromCamera();
+	bool IsRayPickCacheValidForCurrentCamera() const;
+	void UpdateRayPickCache(uint32 InX, uint32 InY, AActor* InActor);
+	void InvalidateRayPickCache() { bHasCachedRayPickResult = false; CachedRayPickedActorId = 0u; }
 
 public:
 	bool HasPendingIdPickRequest() const { return bPendingIdPickRequest; }
@@ -99,12 +105,14 @@ private:
 	bool bPendingIdPickRequest = false;
 	bool bPendingIdPickReadback = false;
 	bool bIdBufferDirty = true;
+	bool bDeferredSpatialIndexInvalidation = false;
 	bool bHasPendingIdPickResult = false;
 	bool bPendingIdPickCtrlHeld = false;
 	uint32 PendingIdPickX = 0;
 	uint32 PendingIdPickY = 0;
 	uint32 PendingIdPickReadbackRequestId = 0;
 	uint32 PendingPickedObjectId = 0;
+	uint8 PendingIdPickRetryCount = 0;
 
 	bool bHasCachedIdPickResult = false;
 	FVector CachedIdPickCameraLocation = FVector(0.0f, 0.0f, 0.0f);
@@ -115,6 +123,17 @@ private:
 	float IdBufferUpdateIntervalMs = 33.0f;	//	ID 버퍼 렌더 주기 (자주 렌더링 하지 않도록 방지)
 	uint64 LastIdBufferRenderCycles = 0;
 	bool IsIdBufferCacheValidForCurrentCamera() const;
+
+	bool bHasCachedRayPickResult = false;
+	uint32 CachedRayPickX = 0;
+	uint32 CachedRayPickY = 0;
+	uint32 CachedRayPickedActorId = 0;
+	FVector CachedRayPickCameraLocation = FVector(0.0f, 0.0f, 0.0f);
+	FVector CachedRayPickCameraForward = FVector(0.0f, 0.0f, 0.0f);
+	bool bCachedRayPickCameraOrtho = false;
+	float CachedRayPickCameraFOV = 0.0f;
+	float CachedRayPickCameraOrthoWidth = 0.0f;
+
 	// 뷰포트 슬롯의 스크린 좌표 (ImGui screen space = 윈도우 클라이언트 좌표)
 	FRect ViewportScreenRect;
 };

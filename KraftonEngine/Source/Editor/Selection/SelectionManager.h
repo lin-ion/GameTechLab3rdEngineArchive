@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 
@@ -23,10 +23,7 @@ public:
 		return std::find(SelectedActors.begin(), SelectedActors.end(), Actor) != SelectedActors.end();
 	}
 
-	AActor* GetPrimarySelection() const
-	{
-		return SelectedActors.empty() ? nullptr : SelectedActors.front();
-	}
+	AActor* GetPrimarySelection() const;
 
 	const TArray<AActor*>& GetSelectedActors() const { return SelectedActors; }
 	bool IsEmpty() const { return SelectedActors.empty(); }
@@ -37,5 +34,6 @@ private:
 	void SyncGizmo();
 
 	TArray<AActor*> SelectedActors;
+	AActor* PrimarySelection = nullptr;
 	UGizmoComponent* Gizmo = nullptr;
 };

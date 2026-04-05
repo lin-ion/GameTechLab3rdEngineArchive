@@ -14,6 +14,7 @@ struct FRayUtils
 {
 	// Ray vs AABB 교차 판정
 	static bool CheckRayAABB(const FRay& Ray, const FVector& AABBMin, const FVector& AABBMax);
+	static bool CheckRayAABBNearT(const FRay& Ray, const FVector& AABBMin, const FVector& AABBMax, float& OutNearT);
 
 	// Ray vs Triangle 교차 (Möller–Trumbore)
 	static bool IntersectTriangle(const FVector& RayOrigin, const FVector& RayDir,

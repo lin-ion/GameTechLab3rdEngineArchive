@@ -153,7 +153,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;WITH_EDITOR=1;FOR_COMPETITION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;WITH_EDITOR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
@@ -248,6 +248,7 @@
     <ClCompile Include="Source\Engine\Object\UUIDGenerator.cpp" />
     <ClCompile Include="Source\Engine\Platform\CrashDump.cpp" />
     <ClCompile Include="Source\Engine\Platform\Paths.cpp" />
+    <ClCompile Include="Source\Engine\Profiling\GPUProfiler.cpp" />
     <ClCompile Include="Source\Engine\Profiling\MemoryStats.cpp" />
     <ClCompile Include="Source\Engine\Profiling\PlatformTime.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Stats.cpp" />
@@ -369,6 +370,7 @@
     <ClInclude Include="Source\Engine\Platform\ConsoleHelper.h" />
     <ClInclude Include="Source\Engine\Platform\CrashDump.h" />
     <ClInclude Include="Source\Engine\Platform\Paths.h" />
+    <ClInclude Include="Source\Engine\Profiling\GPUProfiler.h" />
     <ClInclude Include="Source\Engine\Profiling\MemoryStats.h" />
     <ClInclude Include="Source\Engine\Profiling\PlatformTime.h" />
     <ClInclude Include="Source\Engine\Profiling\Stats.h" />
@@ -391,6 +393,7 @@
     <ClInclude Include="Source\Engine\Render\Pipeline\PrimitiveProxy.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollectorContext.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCommand.h" />
+    <ClInclude Include="Source\Engine\Render\Pipeline\RenderSorting.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderStats.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\StaticMeshProxy.h" />

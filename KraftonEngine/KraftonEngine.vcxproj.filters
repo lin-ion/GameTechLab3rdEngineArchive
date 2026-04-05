@@ -296,6 +296,9 @@
     <ClCompile Include="Source\Engine\Platform\Paths.cpp">
       <Filter>Source\Engine\Platform</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Profiling\GPUProfiler.cpp">
+      <Filter>Source\Engine\Profiling</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\MemoryStats.cpp">
       <Filter>Source\Engine\Profiling</Filter>
     </ClCompile>
@@ -653,6 +656,9 @@
     <ClInclude Include="Source\Engine\Platform\Paths.h">
       <Filter>Source\Engine\Platform</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Profiling\GPUProfiler.h">
+      <Filter>Source\Engine\Profiling</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\MemoryStats.h">
       <Filter>Source\Engine\Profiling</Filter>
     </ClInclude>
@@ -717,6 +723,9 @@
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCommand.h">
+      <Filter>Source\Engine\Render\Pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Pipeline\RenderSorting.h">
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderStats.h">

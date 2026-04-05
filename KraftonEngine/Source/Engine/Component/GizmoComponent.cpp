@@ -171,12 +171,19 @@ void UGizmoComponent::TranslateTarget(float DragAmount)
 	{
 		for (AActor* Actor : *AllSelectedActors)
 		{
-			if (Actor) Actor->AddActorWorldOffset(ConstrainedDelta);
+			if (!Actor || !Actor->GetRootComponent())
+			{
+				continue;
+			}
+
+			Actor->AddActorWorldOffset(ConstrainedDelta);
+			Actor->GetRootComponent()->UpdateWorldMatrix();
 		}
 	}
 	else
 	{
 		TargetActor->AddActorWorldOffset(ConstrainedDelta);
+		TargetActor->GetRootComponent()->UpdateWorldMatrix();
 	}
 }
 
@@ -216,6 +223,13 @@ void UGizmoComponent::RotateTarget(float DragAmount)
 				}
 			}
 			Root->SetRelativeRotationWithEulerHint(NewQuat, EulerHint);
+
+			// 다중 선택 회전 시에는 각 액터를 개별 로컬 원점이 아니라
+			// 현재 Gizmo(PrimarySelection) 피벗을 기준으로 함께 공전시킨다.
+			const FVector Pivot = GetWorldLocation();
+			const FVector Offset = Root->GetWorldLocation() - Pivot;
+			Root->SetWorldLocation(Pivot + DeltaQuat.RotateVector(Offset));
+			Root->UpdateWorldMatrix();
 		};
 
 	if (AllSelectedActors)
@@ -239,7 +253,7 @@ void UGizmoComponent::ScaleTarget(float DragAmount)
 
 	auto ApplyScale = [&](AActor* Actor)
 		{
-			if (!Actor) return;
+			if (!Actor || !Actor->GetRootComponent()) return;
 			FVector NewScale = Actor->GetActorScale();
 			switch (SelectedAxis)
 			{
@@ -248,6 +262,7 @@ void UGizmoComponent::ScaleTarget(float DragAmount)
 			case 2: NewScale.Z += ScaleDelta; break;
 			}
 			Actor->SetActorScale(NewScale);
+			Actor->GetRootComponent()->UpdateWorldMatrix();
 		};
 
 	if (AllSelectedActors)

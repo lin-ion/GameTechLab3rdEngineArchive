@@ -29,7 +29,9 @@ public:
 
 	void AddProxy(FPrimitiveProxy* Proxy);
 	void RemoveProxy(FPrimitiveProxy* Proxy);
-	void MarkSpatialIndexDirty() { bSpatialIndexDirty = true; }
+	void MarkSpatialIndexDirty();
+	void BeginDeferSpatialIndexInvalidation();
+	void EndDeferSpatialIndexInvalidation();
 
 	// Phase 1: 씬으로부터 잠재적 후보군 수집
 	void GatherCandidates(FViewContext& context, bool bUseSpatialIndex);
@@ -50,5 +52,7 @@ private:
 	TArray<FPrimitiveProxy*> Proxies;
 	IPrimitiveSpatialQuery* SpatialIndex = nullptr;
 	bool bSpatialIndexDirty = true;
+	int32 SpatialIndexDeferDepth = 0;
+	bool bDeferredSpatialIndexDirtyPending = false;
 	FWorldProxyCullingStats LastCullingStats;
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Render/Types/RenderTypes.h"
 #include "Render/Types/RenderStateTypes.h"
 #include "Core/CoreTypes.h"
@@ -33,6 +33,8 @@ public:
 	void SetBlendState(EBlendState InState);
 	void SetRasterizerState(ERasterizerState InState);
 
+	void ResetDepthStencilCache() { DepthStencilStateManager.ResetCache(); }
+
 private:
 	void CreateDeviceAndSwapChain(HWND InHWindow);
 	void ReleaseDeviceAndSwapChain();
@@ -42,6 +44,8 @@ private:
 
 	void CreateDepthStencilBuffer();
 	void ReleaseDepthStencilBuffer();
+
+
 
 private:
 	ID3D11Device* Device = nullptr;

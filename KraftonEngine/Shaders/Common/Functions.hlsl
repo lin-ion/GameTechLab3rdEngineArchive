@@ -1,7 +1,7 @@
 #ifndef FUNCTIONS_HLSL
 #define FUNCTIONS_HLSL
 
-#include "Common/ConstantBuffers.hlsl"
+#include "Shaders/Common/ConstantBuffers.hlsl"
 
 // Model -> View -> Projection 변환
 float4 ApplyMVP(float3 pos)

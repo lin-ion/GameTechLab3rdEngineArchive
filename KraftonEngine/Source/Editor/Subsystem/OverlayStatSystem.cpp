@@ -36,7 +36,7 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 
 			char Buffer[256] = {};
 			snprintf(Buffer, sizeof(Buffer),
-				"Picking Time %.3f ms : Num Attempts %llu : Accumulated Time %.3f ms",
+				"Picking Time %.5f ms : Num Attempts %llu : Accumulated Time %.5f ms",
 				LastMs, static_cast<unsigned long long>(Count), TotalMs);
 			Group.Lines.push_back(FString(Buffer));
 		}

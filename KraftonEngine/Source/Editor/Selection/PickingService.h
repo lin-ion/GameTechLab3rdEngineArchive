@@ -90,8 +90,11 @@ private:
 		const uint64 BroadStart = FPickingPlatformTime::Cycles64();
 		if (UScene* Scene = World->GetActiveScene())
 		{
-			// Scene Load 직후 SpatialIndex 재구성 타이밍 이슈를 피하기 위해 선형 후보 수집을 사용한다.
-			Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, false);
+			Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, true);
+			if (BroadCandidates.empty())
+			{
+				Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, false);
+			}
 		}
 		BroadPhaseCycles += (FPickingPlatformTime::Cycles64() - BroadStart);
 
@@ -110,6 +113,17 @@ private:
 
 			AActor* Actor = PrimitiveComp->GetOwner();
 			if (!Actor || !Actor->GetRootComponent() || !Actor->IsVisible())
+			{
+				continue;
+			}
+
+			float NearT = 0.0f;
+			const FBoundingBox Bounds = PrimitiveComp->GetWorldBoundingBox();
+			if (!FRayUtils::CheckRayAABBNearT(Ray, Bounds.Min, Bounds.Max, NearT))
+			{
+				continue;
+			}
+			if (NearT >= OutClosestDistance)
 			{
 				continue;
 			}

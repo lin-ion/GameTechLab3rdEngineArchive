@@ -152,6 +152,13 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 	ID3D11DeviceContext* Context = Device.GetDeviceContext();
 	if (!Context) return;
 
+	// ── Fix: 메인 렌더/HZB/OcclusionTest 이후 잔여 GPU 상태 초기화 ──
+	//	NOTE : Depth 관련 정보 등을 초기화하지 않으면 픽킹 렌더링이 실패할 수 있음
+	LastBoundMeshBuffer = nullptr;
+	LastBoundShader = nullptr;
+	LastBoundDiffuseSRV = nullptr;
+	Device.ResetDepthStencilCache();
+
 	InViewport->BeginPickingRender(Context);
 	UpdateFrameBuffer(Context, InRenderBus);
 
@@ -159,10 +166,26 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 	if (!PickingShader) return;
 
 	const ERenderPass PickPasses[] = { ERenderPass::Opaque, ERenderPass::GizmoOuter, ERenderPass::GizmoInner };
+	Device.SetDepthStencilState(EDepthStencilState::Default);
+	Device.SetBlendState(EBlendState::Opaque);
+	Device.SetRasterizerState(ERasterizerState::SolidBackCull);
+	Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	for (ERenderPass Pass : PickPasses)
 	{
-		ApplyPassRenderState(Pass, Context, InRenderBus.GetViewMode());
+		if (Pass == ERenderPass::GizmoInner)
+		{
+			Device.SetDepthStencilState(EDepthStencilState::GizmoInside);
+		}
+		else if (Pass == ERenderPass::GizmoOuter)
+		{
+			Device.SetDepthStencilState(EDepthStencilState::GizmoOutside);
+		}
+		else
+		{
+			Device.SetDepthStencilState(EDepthStencilState::Default);
+		}
+
 		const auto& Commands = InRenderBus.GetCommands(Pass);
 		for (const FRenderCommand& Cmd : Commands)
 		{

@@ -106,7 +106,13 @@ struct FStaticMeshBVH
 			}
 
 			const FNode& Node = Nodes[NodeIndex];
-			if (!IntersectRayAABB(LocalRay, Node.Bounds))
+			float NodeNearT = 0.0f;
+			float NodeFarT = 0.0f;
+			if (!IntersectRayAABB(LocalRay, Node.Bounds, NodeNearT, NodeFarT))
+			{
+				continue;
+			}
+			if (NodeNearT >= ClosestT)
 			{
 				continue;
 			}
@@ -132,11 +138,31 @@ struct FStaticMeshBVH
 			}
 			else
 			{
-				if (Node.Left >= 0)
+				float LeftNearT = FLT_MAX;
+				float LeftFarT = FLT_MAX;
+				float RightNearT = FLT_MAX;
+				float RightFarT = FLT_MAX;
+				const bool bHitLeft = (Node.Left >= 0) && IntersectRayAABB(LocalRay, Nodes[Node.Left].Bounds, LeftNearT, LeftFarT);
+				const bool bHitRight = (Node.Right >= 0) && IntersectRayAABB(LocalRay, Nodes[Node.Right].Bounds, RightNearT, RightFarT);
+
+				if (bHitLeft && LeftNearT < ClosestT && bHitRight && RightNearT < ClosestT)
+				{
+					if (LeftNearT <= RightNearT)
+					{
+						Stack.push_back(Node.Right);
+						Stack.push_back(Node.Left);
+					}
+					else
+					{
+						Stack.push_back(Node.Left);
+						Stack.push_back(Node.Right);
+					}
+				}
+				else if (bHitLeft && LeftNearT < ClosestT)
 				{
 					Stack.push_back(Node.Left);
 				}
-				if (Node.Right >= 0)
+				else if (bHitRight && RightNearT < ClosestT)
 				{
 					Stack.push_back(Node.Right);
 				}
@@ -230,7 +256,7 @@ private:
 		return NodeIndex;
 	}
 
-	static bool IntersectRayAABB(const FRay& Ray, const FBoundingBox& AABB)
+	static bool IntersectRayAABB(const FRay& Ray, const FBoundingBox& AABB, float& OutNearT, float& OutFarT)
 	{
 		float TMin = -FLT_MAX;
 		float TMax = FLT_MAX;
@@ -267,7 +293,14 @@ private:
 			}
 		}
 
-		return TMax >= 0.0f;
+		if (TMax < 0.0f)
+		{
+			return false;
+		}
+
+		OutNearT = (TMin > 0.0f) ? TMin : 0.0f;
+		OutFarT = TMax;
+		return true;
 	}
 
 	static bool IntersectTriangle(const FVector& RayOrigin, const FVector& RayDir,
@@ -277,7 +310,7 @@ private:
 		const FVector Edge2 = V2 - V0;
 		const FVector PVec = RayDir.Cross(Edge2);
 		const float Det = Edge1.Dot(PVec);
-		if (std::abs(Det) < 0.0001f)
+		if (Det <= 0.0001f)
 		{
 			return false;
 		}

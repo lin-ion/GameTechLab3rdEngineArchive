@@ -1,4 +1,4 @@
-#include "Editor/Selection/SelectionManager.h"
+﻿#include "Editor/Selection/SelectionManager.h"
 #include "Object/Object.h"
 #include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
@@ -45,6 +45,7 @@ void FSelectionManager::SetWorld(UWorld* InWorld)
 	}
 
 	SelectedActors.clear();
+	PrimarySelection = nullptr;
 	Gizmo->Deactivate();
 	Gizmo->SetExplicitWorld(InWorld);
 
@@ -67,9 +68,11 @@ void FSelectionManager::SetWorld(UWorld* InWorld)
 void FSelectionManager::Select(AActor* Actor)
 {
 	SelectedActors.clear();
+	PrimarySelection = nullptr;
 	if (Actor)
 	{
 		SelectedActors.push_back(Actor);
+		PrimarySelection = Actor;
 	}
 	SyncGizmo();
 }
@@ -118,6 +121,7 @@ void FSelectionManager::SelectRange(AActor* ClickedActor, const TArray<AActor*>&
 			SelectedActors.push_back(ActorList[i]);
 		}
 	}
+	PrimarySelection = ClickedActor;
 	SyncGizmo();
 }
 
@@ -129,10 +133,15 @@ void FSelectionManager::ToggleSelect(AActor* Actor)
 	if (It != SelectedActors.end())
 	{
 		SelectedActors.erase(It);
+		if (PrimarySelection == Actor)
+		{
+			PrimarySelection = SelectedActors.empty() ? nullptr : SelectedActors.back();
+		}
 	}
 	else
 	{
 		SelectedActors.push_back(Actor);
+		PrimarySelection = Actor;
 	}
 	SyncGizmo();
 }
@@ -143,6 +152,10 @@ void FSelectionManager::Deselect(AActor* Actor)
 	if (It != SelectedActors.end())
 	{
 		SelectedActors.erase(It);
+		if (PrimarySelection == Actor)
+		{
+			PrimarySelection = SelectedActors.empty() ? nullptr : SelectedActors.back();
+		}
 	}
 	SyncGizmo();
 }
@@ -150,7 +163,18 @@ void FSelectionManager::Deselect(AActor* Actor)
 void FSelectionManager::ClearSelection()
 {
 	SelectedActors.clear();
+	PrimarySelection = nullptr;
 	SyncGizmo();
+}
+
+AActor* FSelectionManager::GetPrimarySelection() const
+{
+	if (PrimarySelection && IsSelected(PrimarySelection))
+	{
+		return PrimarySelection;
+	}
+
+	return SelectedActors.empty() ? nullptr : SelectedActors.back();
 }
 
 void FSelectionManager::SyncGizmo()

@@ -171,7 +171,7 @@ void FEditorStatWidget::RenderPickingDetail()
 
 	auto ShowBucket = [](const char* Label, const FPickingPerfBucket& B)
 	{
-		ImGui::Text("[%s]  Last: %.3f ms  Avg: %.3f ms  Total: %.3f ms  Count: %llu",
+		ImGui::Text("[%s]  Last: %.5f ms  Avg: %.5f ms  Total: %.5f ms  Count: %llu",
 			Label, B.LastPickTimeMs, B.GetAverageMs(), B.TotalPickTimeMs,
 			static_cast<unsigned long long>(B.TotalPickCount));
 	};

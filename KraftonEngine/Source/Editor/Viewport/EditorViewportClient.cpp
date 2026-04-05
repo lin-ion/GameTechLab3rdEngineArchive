@@ -19,6 +19,7 @@
 #include "Editor/Selection/SelectionManager.h"
 #include "ImGui/imgui.h"
 
+
 #include <cmath>
 
 void FEditorViewportClient::Initialize(FWindowsWindow* InWindow)
@@ -32,6 +33,8 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 	{
 		return;
 	}
+
+	EndDeferredSpatialIndexInvalidation();
 
 	World = InWorld;
 	ResetIdPickingState();
@@ -302,6 +305,8 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 		//	눌려있고, Holding되지 않았다면 다음 Loop부터 드래그 업데이트 시작
 		if (Gizmo->IsPressedOnHandle() && !Gizmo->IsHolding())
 		{
+			// 트랜스폼 드래그 중에는 Octree dirty를 모아서 드래그 종료 시점에 1회만 반영한다.
+			BeginDeferredSpatialIndexInvalidation();
 			Gizmo->SetHolding(true);
 		}
 
@@ -313,10 +318,12 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	}
 	else if (InputSystem::Get().GetLeftDragEnd())
 	{
+		EndDeferredSpatialIndexInvalidation();
 		Gizmo->DragEnd();
 	}
 	else if (InputSystem::Get().GetKeyUp(VK_LBUTTON))
 	{
+		EndDeferredSpatialIndexInvalidation();
 		// 드래그 threshold 미달로 DragEnd가 호출되지 않는 경우 처리
 		Gizmo->SetPressedOnHandle(false);
 	}
@@ -333,6 +340,7 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 	if (PickingMode == EPickingMode::IDBuffer)
 	{
 		CancelPendingIdPickReadback();
+		PendingIdPickRetryCount = 0;
 		bPendingIdPickCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
 		const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
 		const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
@@ -350,6 +358,12 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		return;
 	}
 
+	const bool bCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
+	const float MaxX = (Viewport && Viewport->GetWidth() > 0) ? static_cast<float>(Viewport->GetWidth() - 1) : 0.0f;
+	const float MaxY = (Viewport && Viewport->GetHeight() > 0) ? static_cast<float>(Viewport->GetHeight() - 1) : 0.0f;
+	const uint32 ClickX = static_cast<uint32>(Clamp(LocalMouseX, 0.0f, MaxX));
+	const uint32 ClickY = static_cast<uint32>(Clamp(LocalMouseY, 0.0f, MaxY));
+
 	const bool bMeasureRayPick = (PickingMode == EPickingMode::RayTriangleBVH);
 	const uint64 RayPickStartCycles = bMeasureRayPick ? FPickingPlatformTime::Cycles64() : 0;
 
@@ -359,6 +373,26 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		const uint64 EndCycles = FPickingPlatformTime::Cycles64();
 		FPickingPerf::Record(EPickingMode::RayTriangleBVH, EndCycles - RayPickStartCycles);
 	};
+
+	if (!bCtrlHeld
+		&& IsRayPickCacheValidForCurrentCamera()
+		&& ClickX == CachedRayPickX
+		&& ClickY == CachedRayPickY)
+	{
+		AActor* CachedActor = Cast<AActor>(FPickingService::ResolveObjectFromPickingId(CachedRayPickedActorId));
+		if (CachedActor && CachedActor->IsVisible())
+		{
+			SelectionManager->Select(CachedActor);
+			RecordRayPickIfNeeded();
+			return;
+		}
+		if (CachedRayPickedActorId == 0u)
+		{
+			SelectionManager->ClearSelection();
+			RecordRayPickIfNeeded();
+			return;
+		}
+	}
 
 	FHitResult HitResult{};
 	if (FPickingService::PickGizmo(Gizmo, Ray, PickingMode, HitResult))
@@ -370,8 +404,6 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 	{
 		float ClosestDistance = FLT_MAX;
 		AActor* BestActor = FPickingService::PickActor(World, Ray, PickingMode, ClosestDistance);
-
-		bool bCtrlHeld = InputSystem::Get().GetKey(VK_CONTROL);
 
 		if (BestActor == nullptr)
 		{
@@ -392,6 +424,8 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 			}
 		}
 
+		UpdateRayPickCache(ClickX, ClickY, BestActor);
+
 		RecordRayPickIfNeeded();
 	}
 }
@@ -405,14 +439,77 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 
 	bHasPendingIdPickResult = false;
 
-	UObject* PickedObject = FPickingService::ResolveObjectFromPickingId(PendingPickedObjectId);
-	if (PickedObject == Gizmo)
+	if (PendingPickedObjectId == 0u)
 	{
+		if (PendingIdPickRetryCount < 1)
+		{
+			++PendingIdPickRetryCount;
+			bPendingIdPickRequest = true;
+			return;
+		}
+
+		//UE_LOG("ID Buffer picking returned 0 (no hit) at (%u, %u)", PendingIdPickX, PendingIdPickY);
+
+		//	NOTE : 함부로 지우시면 안됩니다.
+		//	ID 패스 전용 동작을 유지하기 위해 Ray fallback은 비활성화한다.
+		//	필요 시 아래 블록 주석만 해제하면 즉시 복구 가능.
+		/*
+		float ClosestDistance = FLT_MAX;
+		const float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
+		const float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
+		const FRay FallbackRay = Camera
+			? Camera->DeprojectScreenToWorld(static_cast<float>(PendingIdPickX), static_cast<float>(PendingIdPickY), VPWidth, VPHeight)
+			: FRay{};
+		AActor* FallbackActor = (World && Camera)
+			? FPickingService::PickActor(World, FallbackRay, EPickingMode::RayTriangleBVH, ClosestDistance)
+			: nullptr;
+
+		if (FallbackActor)
+		{
+			if (bPendingIdPickCtrlHeld)
+			{
+				SelectionManager->ToggleSelect(FallbackActor);
+			}
+			else
+			{
+				SelectionManager->Select(FallbackActor);
+			}
+			return;
+		}
+		*/
+
+		if (!bPendingIdPickCtrlHeld)
+		{
+			SelectionManager->ClearSelection();
+		}
+		return;
+	}
+
+	if (Gizmo && PendingPickedObjectId == Gizmo->GetUUID())
+	{
+		PendingIdPickRetryCount = 0;
 		Gizmo->SetPressedOnHandle(true);
 		return;
 	}
 
-	AActor* PickedActor = Cast<AActor>(PickedObject);
+	AActor* PickedActor = nullptr;
+	if (World)
+	{
+		for (AActor* Actor : World->GetActors())
+		{
+			if (Actor && Actor->GetUUID() == PendingPickedObjectId)
+			{
+				PickedActor = Actor;
+				break;
+			}
+		}
+	}
+
+	UObject* PickedObject = FPickingService::ResolveObjectFromPickingId(PendingPickedObjectId);
+	if (!PickedActor)
+	{
+		PickedActor = Cast<AActor>(PickedObject);
+	}
 
 	if (!PickedActor)
 	{
@@ -439,6 +536,8 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 	{
 		SelectionManager->Select(PickedActor);
 	}
+
+	PendingIdPickRetryCount = 0;
 }
 
 void FEditorViewportClient::CancelPendingIdPickReadback()
@@ -454,15 +553,63 @@ void FEditorViewportClient::CancelPendingIdPickReadback()
 
 void FEditorViewportClient::ResetIdPickingState()
 {
+	EndDeferredSpatialIndexInvalidation();
 	CancelPendingIdPickReadback();
 	bPendingIdPickRequest = false;
 	bHasPendingIdPickResult = false;
 	PendingPickedObjectId = 0u;
+	PendingIdPickRetryCount = 0;
 	bPendingIdPickCtrlHeld = false;
 	PendingIdPickX = 0u;
 	PendingIdPickY = 0u;
 	LastIdBufferRenderCycles = 0u;
 	InvalidateIdBufferCache();
+}
+
+void FEditorViewportClient::BeginDeferredSpatialIndexInvalidation()
+{
+	if (bDeferredSpatialIndexInvalidation || !World)
+	{
+		return;
+	}
+
+	if (UScene* ActiveScene = World->GetActiveScene())
+	{
+		ActiveScene->GetRenderProxy().BeginDeferSpatialIndexInvalidation();
+	}
+
+	if (UScene* PersistentScene = World->GetPersistentScene())
+	{
+		if (PersistentScene != World->GetActiveScene())
+		{
+			PersistentScene->GetRenderProxy().BeginDeferSpatialIndexInvalidation();
+		}
+	}
+
+	bDeferredSpatialIndexInvalidation = true;
+}
+
+void FEditorViewportClient::EndDeferredSpatialIndexInvalidation()
+{
+	if (!bDeferredSpatialIndexInvalidation || !World)
+	{
+		return;
+	}
+
+	if (UScene* ActiveScene = World->GetActiveScene())
+	{
+		ActiveScene->GetRenderProxy().EndDeferSpatialIndexInvalidation();
+	}
+
+	if (UScene* PersistentScene = World->GetPersistentScene())
+	{
+		if (PersistentScene != World->GetActiveScene())
+		{
+			PersistentScene->GetRenderProxy().EndDeferSpatialIndexInvalidation();
+		}
+	}
+
+	bDeferredSpatialIndexInvalidation = false;
 }
 
 bool FEditorViewportClient::IsIdBufferCacheValidForCurrentCamera() const
@@ -481,8 +628,48 @@ bool FEditorViewportClient::IsIdBufferCacheValidForCurrentCamera() const
 	return bSameProjection && bSameView;
 }
 
+bool FEditorViewportClient::IsRayPickCacheValidForCurrentCamera() const
+{
+	if (!bHasCachedRayPickResult || !Camera)
+	{
+		return false;
+	}
+
+	const bool bSameProjection = (Camera->IsOrthogonal() == bCachedRayPickCameraOrtho)
+		&& (std::abs(Camera->GetFOV() - CachedRayPickCameraFOV) <= 1e-4f)
+		&& (std::abs(Camera->GetOrthoWidth() - CachedRayPickCameraOrthoWidth) <= 1e-4f);
+	const bool bSameView = FVector::Distance(Camera->GetWorldLocation(), CachedRayPickCameraLocation) <= 1e-4f
+		&& FVector::Distance(Camera->GetForwardVector(), CachedRayPickCameraForward) <= 1e-4f;
+
+	return bSameProjection && bSameView;
+}
+
+void FEditorViewportClient::UpdateRayPickCache(uint32 InX, uint32 InY, AActor* InActor)
+{
+	if (!Camera)
+	{
+		InvalidateRayPickCache();
+		return;
+	}
+
+	bHasCachedRayPickResult = true;
+	CachedRayPickX = InX;
+	CachedRayPickY = InY;
+	CachedRayPickedActorId = InActor ? InActor->GetUUID() : 0u;
+	CachedRayPickCameraLocation = Camera->GetWorldLocation();
+	CachedRayPickCameraForward = Camera->GetForwardVector();
+	bCachedRayPickCameraOrtho = Camera->IsOrthogonal();
+	CachedRayPickCameraFOV = Camera->GetFOV();
+	CachedRayPickCameraOrthoWidth = Camera->GetOrthoWidth();
+}
+
 bool FEditorViewportClient::ShouldRenderPendingIdPick() const
 {
+	if (bPendingIdPickReadback)
+	{
+		return false;
+	}
+
 	if (bPendingIdPickRequest)
 	{
 		return true;

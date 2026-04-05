@@ -15,7 +15,6 @@ void FEditorControlWidget::Initialize(UEditorEngine* InEditorEngine)
 {
 	FEditorWidget::Initialize(InEditorEngine);
 	SelectedPrimitiveType = 0;
-	SelectedPickingMode = static_cast<int32>(EditorEngine ? EditorEngine->GetPickingMode() : EPickingMode::RayTriangleBVH);
 }
 
 void FEditorControlWidget::Render(float DeltaTime)
@@ -63,12 +62,7 @@ void FEditorControlWidget::Render(float DeltaTime)
 
 	SEPARATOR();
 
-	// Picking
-	SelectedPickingMode = static_cast<int32>(EditorEngine->GetPickingMode());
-	if (ImGui::Combo("Picking Mode", &SelectedPickingMode, PickingModeTypes, IM_ARRAYSIZE(PickingModeTypes)))
-	{
-		EditorEngine->SetPickingMode(static_cast<EPickingMode>(SelectedPickingMode));
-	}
+	ImGui::TextUnformatted("Picking Mode: ID Buffer");
 
 	SEPARATOR();
 

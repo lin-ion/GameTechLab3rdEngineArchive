@@ -33,6 +33,50 @@ bool FRayUtils::CheckRayAABB(const FRay& Ray, const FVector& AABBMin, const FVec
 	return tMax >= 0;
 }
 
+bool FRayUtils::CheckRayAABBNearT(const FRay& Ray, const FVector& AABBMin, const FVector& AABBMax, float& OutNearT)
+{
+	OutNearT = FLT_MAX;
+
+	float tMin = -INFINITY;
+	float tMax = INFINITY;
+
+	const float* origin = &Ray.Origin.X;
+	const float* dir = &Ray.Direction.X;
+	const float* minB = &AABBMin.X;
+	const float* maxB = &AABBMax.X;
+
+	for (int i = 0; i < 3; ++i)
+	{
+		if (std::abs(dir[i]) < 1e-8f)
+		{
+			if (origin[i] < minB[i] || origin[i] > maxB[i])
+			{
+				return false;
+			}
+			continue;
+		}
+
+		const float invDir = 1.0f / dir[i];
+		float t1 = (minB[i] - origin[i]) * invDir;
+		float t2 = (maxB[i] - origin[i]) * invDir;
+
+		if (t1 > t2) std::swap(t1, t2);
+
+		tMin = std::max(tMin, t1);
+		tMax = std::min(tMax, t2);
+
+		if (tMin > tMax) return false;
+	}
+
+	if (tMax < 0.0f)
+	{
+		return false;
+	}
+
+	OutNearT = (tMin > 0.0f) ? tMin : 0.0f;
+	return true;
+}
+
 bool FRayUtils::IntersectTriangle(const FVector& RayOrigin, const FVector& RayDir,
 	const FVector& V0, const FVector& V1, const FVector& V2, float& OutT)
 {
@@ -41,7 +85,7 @@ bool FRayUtils::IntersectTriangle(const FVector& RayOrigin, const FVector& RayDi
 	FVector pvec = RayDir.Cross(edge2);
 	float det = edge1.Dot(pvec);
 
-	if (std::abs(det) < 0.0001f) return false;
+	if (det <= 0.0001f) return false;
 
 	float invDet = 1.0f / det;
 	FVector tvec = RayOrigin - V0;

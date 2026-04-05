@@ -168,13 +168,10 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 			VC->GetPendingIdPickCoord(PickX, PickY);
 
 			uint32 RequestId = 0u;
-			if (VP->EnqueuePickingIdReadback(Ctx, PickX, PickY, RequestId))
+			const bool bEnqueueOk = VP->EnqueuePickingIdReadback(Ctx, PickX, PickY, RequestId);
+			if (bEnqueueOk)
 			{
 				VC->BeginPendingIdPickReadback(RequestId);
-			}
-			else
-			{
-				VC->SetIdPickResult(0u);
 			}
 		}
 	}

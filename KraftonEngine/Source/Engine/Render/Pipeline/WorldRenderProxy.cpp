@@ -7,6 +7,7 @@
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/GizmoComponent.h"
+#include "Component/TextRenderComponent.h"
 #include "Profiling/Stats.h"
 
 #include <algorithm>
@@ -33,6 +34,38 @@ void FWorldRenderProxy::AddProxy(FPrimitiveProxy* Proxy)
 		Proxies.push_back(Proxy);
 		Proxy->SetWorldRenderProxy(this);
 		bSpatialIndexDirty = true;
+	}
+}
+
+void FWorldRenderProxy::MarkSpatialIndexDirty()
+{
+	if (SpatialIndexDeferDepth > 0)
+	{
+		bDeferredSpatialIndexDirtyPending = true;
+		return;
+	}
+
+	bSpatialIndexDirty = true;
+}
+
+void FWorldRenderProxy::BeginDeferSpatialIndexInvalidation()
+{
+	++SpatialIndexDeferDepth;
+}
+
+void FWorldRenderProxy::EndDeferSpatialIndexInvalidation()
+{
+	if (SpatialIndexDeferDepth <= 0)
+	{
+		SpatialIndexDeferDepth = 0;
+		return;
+	}
+
+	--SpatialIndexDeferDepth;
+	if (SpatialIndexDeferDepth == 0 && bDeferredSpatialIndexDirtyPending)
+	{
+		bSpatialIndexDirty = true;
+		bDeferredSpatialIndexDirtyPending = false;
 	}
 }
 
@@ -125,6 +158,11 @@ void FWorldRenderProxy::QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& Ou
 
 		UPrimitiveComponent* Owner = Proxy->GetOwner();
 		if (!Owner)
+		{
+			continue;
+		}
+
+		if (Owner->IsA<UTextRenderComponent>())
 		{
 			continue;
 		}
