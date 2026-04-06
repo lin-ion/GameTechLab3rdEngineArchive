@@ -7,6 +7,7 @@
 #include <fstream>
 #include <filesystem>
 #include <charconv>
+#include <cmath>
 
 const FVector FallbackColor3 = FVector(1.0f, 0.0f, 1.0f);
 const FVector4 FallbackColor4 = FVector4(FallbackColor3, 1.0f);
@@ -453,26 +454,49 @@ FVector FObjImporter::RemapPosition(const FVector& ObjPos, EForwardAxis Axis)
 	switch (Axis)
 	{
 	case EForwardAxis::X:    // OBJ +X → Engine Forward(+X)
-		return FVector(ObjPos.X, ObjPos.Z, ObjPos.Y);
+		return FVector(ObjPos.X, -ObjPos.Z, ObjPos.Y);
 	case EForwardAxis::NegX: // OBJ -X → Engine Forward(+X)
-		return FVector(-ObjPos.X, -ObjPos.Z, ObjPos.Y);
+		return FVector(-ObjPos.X, ObjPos.Z, ObjPos.Y);
 	case EForwardAxis::Y:    // OBJ +Y → Engine Forward(+X)
-		return FVector(ObjPos.Y, ObjPos.X, ObjPos.Z);
+		return FVector(ObjPos.Y, -ObjPos.X, ObjPos.Z);
 	case EForwardAxis::NegY: // OBJ -Y → Engine Forward(+X) — 블렌더 기본
-		return FVector(-ObjPos.Y, -ObjPos.X, ObjPos.Z);
+		return FVector(-ObjPos.Y, ObjPos.X, ObjPos.Z);
 	case EForwardAxis::Z:    // OBJ +Z → Engine Forward(+X)
 		return FVector(ObjPos.Z, ObjPos.X, ObjPos.Y);
 	case EForwardAxis::NegZ: // OBJ -Z → Engine Forward(+X) — OBJ 기본 (Y-up, -Z forward)
-		return FVector(-ObjPos.Z, ObjPos.X, ObjPos.Y);
+		return FVector(-ObjPos.Z, -ObjPos.X, ObjPos.Y);
 	default:
-		return FVector(ObjPos.X, ObjPos.Z, ObjPos.Y);
+		return FVector(ObjPos.X, -ObjPos.Z, ObjPos.Y);
 	}
+}
+
+static FVector ApplyYawOffsetZ(const FVector& InVector, float YawOffsetDegrees)
+{
+	if (YawOffsetDegrees == 0.0f)
+	{
+		return InVector;
+	}
+
+	constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
+	const float YawRad = YawOffsetDegrees * DegToRad;
+	const float CosYaw = std::cos(YawRad);
+	const float SinYaw = std::sin(YawRad);
+
+	// Z축 회전: X' = Xc - Ys, Y' = Xs + Yc
+	return FVector(
+		InVector.X * CosYaw - InVector.Y * SinYaw,
+		InVector.X * SinYaw + InVector.Y * CosYaw,
+		InVector.Z
+	);
 }
 
 bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInfo>& MtlInfos, const FImportOptions& Options, FStaticMesh& OutMesh, TArray<FStaticMaterial>& OutMaterials)
 {
 	OutMesh = FStaticMesh();
 	OutMaterials.clear();
+
+	const bool bRequestCCWToCW = (Options.WindingOrder == EWindingOrder::CCW_to_CW);
+	const bool bShouldFlipIndices = bRequestCCWToCW;
 
 	// Phase 1: usemtl 등장 순서를 기반으로 FStaticMaterial 배열 및 인덱스 맵 생성
 	TArray<FString> OrderedMaterialSlots;
@@ -640,16 +664,16 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 					FNormalVertex NewVertex;
 
 					// 축 리맵 + 스케일 적용
-					NewVertex.pos = RemapPosition(ObjInfo.Positions[Key.p], Options.ForwardAxis) * Options.Scale;
+					NewVertex.pos = ApplyYawOffsetZ(RemapPosition(ObjInfo.Positions[Key.p], Options.ForwardAxis), Options.YawOffsetDegrees) * Options.Scale;
 
 					// Normal 리맵
 					if (Key.n == -1)
 					{
-						NewVertex.normal = RemapPosition(FaceNormal, Options.ForwardAxis).Normalized();
+						NewVertex.normal = ApplyYawOffsetZ(RemapPosition(FaceNormal, Options.ForwardAxis), Options.YawOffsetDegrees).Normalized();
 					}
 					else
 					{
-						NewVertex.normal = RemapPosition(ObjInfo.Normals[Key.n], Options.ForwardAxis).Normalized();
+						NewVertex.normal = ApplyYawOffsetZ(RemapPosition(ObjInfo.Normals[Key.n], Options.ForwardAxis), Options.YawOffsetDegrees).Normalized();
 					}
 
 					// UV 예외 처리
@@ -676,7 +700,7 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 
 			// 와인딩 오더 처리
 			OutMesh.Indices.push_back(TriangleIndices[0]);
-			if (Options.WindingOrder == EWindingOrder::CCW_to_CW)
+			if (bShouldFlipIndices)
 			{
 				OutMesh.Indices.push_back(TriangleIndices[2]);
 				OutMesh.Indices.push_back(TriangleIndices[1]);
