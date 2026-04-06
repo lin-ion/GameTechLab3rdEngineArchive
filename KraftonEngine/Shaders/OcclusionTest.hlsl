@@ -89,7 +89,7 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
     // Calculate mip level for 4-tap sampling
     float2 size = (maxUV - minUV) * HZBSize;
     float maxSide = max(size.x, size.y);
-    float mip = floor(log2(maxSide));
+    float mip = ceil(log2(maxSide));
     mip = clamp(mip, 0, (float)HZBMipCount - 1.0);
     
     // 4-tap HZB test at the calculated mip level
