@@ -26,11 +26,14 @@ public:
 
 	uint32 GetId() const;
 	struct FBoundingBox GetAABB() const;
+	void MarkFrustumVisibleForPick(uint32 FrameTag) { LastFrustumVisiblePickFrameTag = FrameTag; }
+	bool IsFrustumVisibleForPick(uint32 FrameTag) const { return LastFrustumVisiblePickFrameTag == FrameTag; }
 
 	// Occlusion용 캐시 — Owner 포인터 체이싱 제거 (L2 캐시 미스 방지)
 	FVector CachedAABBMin;
 	FVector CachedAABBMax;
 	uint32 CachedProxyId = 0;
+	uint32 LastFrustumVisiblePickFrameTag = 0;
 	void RefreshOcclusionCache();
 
 protected:

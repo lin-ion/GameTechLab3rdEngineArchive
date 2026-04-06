@@ -1,15 +1,19 @@
 ﻿#pragma once
 
 #include "Editor/Selection/PickingTypes.h"
+#include "Collision/PickingTuning.h"
 #include "Collision/RayUtils.h"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Render/Pipeline/PrimitiveProxy.h"
+#include "Render/Pipeline/IPrimitiveSpatialQuery.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
 #include "Object/Object.h"
 #include "Profiling/Stats.h"
 
 #include <cfloat>
+#include <algorithm>
 
 class UWorld;
 class AActor;
@@ -18,7 +22,6 @@ class UPrimitiveComponent;
 class FPickingService
 {
 public:
-	//	UUID 기반으로 픽킹 ID 생성. Object가 nullptr이면 0 반환 (픽킹 실패 시 ID)
 	static uint32 MakeObjectPickingId(const UObject* Object)
 	{
 		return Object ? Object->GetUUID() : 0u;
@@ -58,7 +61,6 @@ public:
 
 	static AActor* PickActor(UWorld* World, const FRay& Ray, EPickingMode Mode, float& OutClosestDistance, uint32* OutPickingId = nullptr)
 	{
-		//	World 정보가 없을 시 Picking 실패로 간주 (0u 반환)
 		if (!World)
 		{
 			if (OutPickingId) *OutPickingId = 0u;
@@ -76,71 +78,231 @@ public:
 	}
 
 private:
+	struct FTemporalRayNearTHint
+	{
+		bool bValid = false;
+		FRay Ray = {};
+		float ClosestDistance = FLT_MAX;
+		uint32 LastHitComponentId = 0u;
+	};
+
 	static AActor* PickActorByRay(UWorld* World, const FRay& Ray, float& OutClosestDistance, uint32* OutPickingId)
 	{
+		thread_local FTemporalRayNearTHint TemporalHint;
+
 		AActor* BestActor = nullptr;
 		OutClosestDistance = FLT_MAX;
 		if (OutPickingId) *OutPickingId = 0u;
 		FHitResult HitResult{};
-		TArray<FPrimitiveProxy*> BroadCandidates;
+		thread_local TArray<FRayQueryCandidate> RayCandidates;
+		thread_local int32 RayCandidateReserveHint = 0;
+		RayCandidates.clear();
+		if (RayCandidateReserveHint > 0)
+		{
+			RayCandidates.reserve(static_cast<size_t>(RayCandidateReserveHint));
+		}
 
+		auto ExecuteBroadQuery = [&](float MaxNearT)
 		{
 			SCOPE_STAT("Picking.Ray.Broad");
+			RayCandidates.clear();
 			if (UScene* Scene = World->GetActiveScene())
 			{
-				Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, true);
-				if (BroadCandidates.empty())
+				Scene->GetRenderProxy().QueryByRayWithNearT(Ray, RayCandidates, MaxNearT);
+				if (static_cast<int32>(RayCandidates.size()) > RayCandidateReserveHint)
 				{
-					Scene->GetRenderProxy().QueryByRay(Ray, BroadCandidates, false);
+					RayCandidateReserveHint = static_cast<int32>(RayCandidates.size());
+				}
+			}
+		};
+
+		bool bUsedNearTHint = false;
+		{
+			SCOPE_STAT("Picking.Ray.Narrow.DirectProbe");
+			if (TemporalHint.bValid && TemporalHint.LastHitComponentId != 0u)
+			{
+				const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
+				const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
+				const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
+				if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
+				{
+					if (UPrimitiveComponent* LastComp = Cast<UPrimitiveComponent>(ResolveObjectFromPickingId(TemporalHint.LastHitComponentId)))
+					{
+						if (AActor* LastActor = LastComp->GetOwner())
+						{
+							if (LastActor->GetRootComponent())
+							{
+								const float DirectProbeMaxT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
+								HitResult = {};
+								if (LastComp->LineTraceComponent(Ray, HitResult, DirectProbeMaxT) &&
+									HitResult.Distance < OutClosestDistance)
+								{
+									OutClosestDistance = HitResult.Distance;
+									BestActor = LastActor;
+									if (OutPickingId) *OutPickingId = MakeObjectPickingId(BestActor);
+									TemporalHint.Ray = Ray;
+									TemporalHint.ClosestDistance = OutClosestDistance;
+									TemporalHint.bValid = true;
+									TemporalHint.LastHitComponentId = MakeObjectPickingId(LastComp);
+									return BestActor;
+								}
+							}
+						}
+					}
 				}
 			}
 		}
 
+		bool bFastProbeHit = false;
+		{
+			SCOPE_STAT("Picking.Ray.Broad.FastProbe");
+			if (UScene* Scene = World->GetActiveScene())
+			{
+				FRayQueryCandidate FastCandidate{};
+				float ProbeMaxNearT = FLT_MAX;
+				if (TemporalHint.bValid)
+				{
+					const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
+					const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
+					const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
+					if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
+					{
+						ProbeMaxNearT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
+						bUsedNearTHint = true;
+					}
+				}
+
+				if (Scene->GetRenderProxy().QueryClosestByRayWithNearT(Ray, FastCandidate, ProbeMaxNearT))
+				{
+					FPrimitiveProxy* ProbeProxy = FastCandidate.Proxy;
+					if (ProbeProxy)
+					{
+						if (UPrimitiveComponent* ProbeComp = ProbeProxy->GetOwner())
+						{
+							if (AActor* ProbeActor = ProbeComp->GetOwner())
+							{
+								if (ProbeActor->GetRootComponent())
+								{
+									HitResult = {};
+									if (ProbeComp->LineTraceComponent(Ray, HitResult, OutClosestDistance) && HitResult.Distance < OutClosestDistance)
+									{
+										OutClosestDistance = HitResult.Distance;
+										BestActor = ProbeActor;
+										bFastProbeHit = true;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (bFastProbeHit)
+		{
+			if (OutPickingId && BestActor)
+			{
+				*OutPickingId = MakeObjectPickingId(BestActor);
+			}
+			TemporalHint.Ray = Ray;
+			TemporalHint.ClosestDistance = OutClosestDistance;
+			TemporalHint.bValid = (BestActor != nullptr) && (OutClosestDistance < FLT_MAX);
+			TemporalHint.LastHitComponentId = (HitResult.HitComponent != nullptr) ? MakeObjectPickingId(HitResult.HitComponent) : 0u;
+			return BestActor;
+		}
+
+		if (TemporalHint.bValid)
+		{
+			const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
+			const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
+			const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
+			if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
+			{
+				const float HintNearT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
+				ExecuteBroadQuery(HintNearT);
+				bUsedNearTHint = true;
+			}
+		}
+
+		if (!bUsedNearTHint)
+		{
+			ExecuteBroadQuery(FLT_MAX);
+		}
+
+		auto ExecuteNarrowQuery = [&]()
 		{
 			SCOPE_STAT("Picking.Ray.Narrow");
-			for (FPrimitiveProxy* Proxy : BroadCandidates)
+
+			const float NearTEpsilon = FPickingTuning::NearTEpsilon();
+			const auto NearTMinHeapCompare = [](const FRayQueryCandidate& L, const FRayQueryCandidate& R)
 			{
+				return L.NearT > R.NearT;
+			};
+
+			if (RayCandidates.size() > 1)
+			{
+				std::make_heap(RayCandidates.begin(), RayCandidates.end(), NearTMinHeapCompare);
+			}
+
+			while (!RayCandidates.empty())
+			{
+				if (RayCandidates.size() > 1)
+				{
+					std::pop_heap(RayCandidates.begin(), RayCandidates.end(), NearTMinHeapCompare);
+				}
+
+				const FRayQueryCandidate Candidate = RayCandidates.back();
+				RayCandidates.pop_back();
+
+				if (Candidate.NearT >= OutClosestDistance - NearTEpsilon)
+				{
+					break;
+				}
+
+				FPrimitiveProxy* Proxy = Candidate.Proxy;
 				if (!Proxy)
 				{
 					continue;
 				}
 
 				UPrimitiveComponent* PrimitiveComp = Proxy->GetOwner();
-				if (!PrimitiveComp || !PrimitiveComp->IsVisible())
+				if (!PrimitiveComp)
 				{
 					continue;
 				}
 
 				AActor* Actor = PrimitiveComp->GetOwner();
-				if (!Actor || !Actor->GetRootComponent() || !Actor->IsVisible())
-				{
-					continue;
-				}
-
-				float NearT = 0.0f;
-				const FBoundingBox Bounds = PrimitiveComp->GetWorldBoundingBox();
-				if (!FRayUtils::CheckRayAABBNearT(Ray, Bounds.Min, Bounds.Max, NearT))
-				{
-					continue;
-				}
-				if (NearT >= OutClosestDistance)
+				if (!Actor || !Actor->GetRootComponent())
 				{
 					continue;
 				}
 
 				HitResult = {};
-				const bool bTriangleHit = PrimitiveComp->LineTraceComponent(Ray, HitResult);
+				const bool bTriangleHit = PrimitiveComp->LineTraceComponent(Ray, HitResult, OutClosestDistance);
 				if (bTriangleHit && HitResult.Distance < OutClosestDistance)
 				{
 					OutClosestDistance = HitResult.Distance;
 					BestActor = Actor;
-					if (OutPickingId)
-					{
-						*OutPickingId = MakeObjectPickingId(Actor);
-					}
 				}
 			}
+		};
+
+		ExecuteNarrowQuery();
+		if (!BestActor && bUsedNearTHint)
+		{
+			ExecuteBroadQuery(FLT_MAX);
+			ExecuteNarrowQuery();
 		}
+
+		if (OutPickingId && BestActor)
+		{
+			*OutPickingId = MakeObjectPickingId(BestActor);
+		}
+
+		TemporalHint.Ray = Ray;
+		TemporalHint.ClosestDistance = OutClosestDistance;
+		TemporalHint.bValid = (BestActor != nullptr) && (OutClosestDistance < FLT_MAX);
+		TemporalHint.LastHitComponentId = (HitResult.HitComponent != nullptr) ? MakeObjectPickingId(HitResult.HitComponent) : 0u;
 
 		return BestActor;
 	}

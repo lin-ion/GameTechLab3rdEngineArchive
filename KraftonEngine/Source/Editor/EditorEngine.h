@@ -69,5 +69,5 @@ private:
 	FEditorMainPanel MainPanel;
 	FLevelViewportLayout ViewportLayout;
 	FOverlayStatSystem OverlayStatSystem;
-	EPickingMode PickingMode = EPickingMode::IDBuffer;
+	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 };

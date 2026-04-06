@@ -129,20 +129,11 @@ void UStaticMeshComponent::UpdateWorldAABB() const
 	WorldAABBMaxLocation = WorldCenter + FVector(Ex, Ey, Ez);
 }
 
-bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult)
+bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT)
 {
 	if (!StaticMesh) return false;
 	FStaticMesh* Asset = StaticMesh->GetStaticMeshAsset();
 	if (!Asset || Asset->Vertices.empty() || Asset->Indices.empty()) return false;
-
-	const size_t VertexCount = Asset->Vertices.size();
-	for (uint32 Index : Asset->Indices)
-	{
-		if (Index >= VertexCount)
-		{
-			return false;
-		}
-	}
 
 	if (!Asset->GetBVH())
 	{
@@ -158,7 +149,8 @@ bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHi
 			&Asset->Vertices[0].pos,
 			sizeof(FNormalVertex),
 			*BVH,
-			OutHitResult);
+			OutHitResult,
+			InClosestT);
 	}
 	else
 	{
@@ -168,7 +160,8 @@ bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHi
 			&Asset->Vertices[0].pos,
 			sizeof(FNormalVertex),
 			Asset->Indices,
-			OutHitResult);
+			OutHitResult,
+			InClosestT);
 	}
 
 	if (bHit)

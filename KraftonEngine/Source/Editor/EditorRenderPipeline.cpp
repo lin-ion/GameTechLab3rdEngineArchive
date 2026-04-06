@@ -82,11 +82,11 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	const TArray<AActor*>& SelectedActors = Editor->GetSelectionManager().GetSelectedActors();
 	if (UScene* Scene = World->GetPersistentScene())
 	{
-		Scene->GetRenderProxy().GatherCandidates(ViewContext, false);
+		Scene->GetRenderProxy().GatherCandidates(ViewContext);
 	}
 	if (UScene* Scene = World->GetActiveScene())
 	{
-		Scene->GetRenderProxy().GatherCandidates(ViewContext, true);
+		Scene->GetRenderProxy().GatherCandidates(ViewContext);
 	}
 
 	// 3. 오클루전 테스트를 위해 프러스텀 컬링만 통과한 전체 후보군을 따로 보관
@@ -129,7 +129,7 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	Renderer.Render(ViewContext);
 
 	// 8. IDBuffer 방식의 picking 지원
-	if (Editor->GetPickingMode() == EPickingMode::IDBuffer)
+	if (Editor->GetPickingMode() == EPickingMode::IDBuffer && VC->IsActive())
 	{
 		VC->RefreshIdBufferDirtyStateFromCamera();
 		if (VC->ShouldRenderPendingIdPick())
@@ -142,7 +142,12 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 		{
 			uint32 PickedId = 0u;
 			bool bReady = false;
-			const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, VC->GetPendingIdPickReadbackRequestId(), PickedId, bReady);
+			uint64 FetchCycles = 0u;
+			const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, VC->GetPendingIdPickReadbackRequestId(), PickedId, bReady, &FetchCycles);
+			if (FetchCycles > 0u)
+			{
+				VC->AddPendingIdPickFetchCycles(FetchCycles);
+			}
 			if (!bPollOk)
 			{
 				VC->CancelPendingIdPickReadback();
@@ -163,34 +168,97 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 			uint32 PickY = 0;
 			VC->GetPendingIdPickCoord(PickX, PickY);
 
-			uint32 RequestId = 0u;
-			const bool bEnqueueOk = VP->EnqueuePickingIdReadback(Ctx, PickX, PickY, RequestId);
-			if (bEnqueueOk)
+			uint32 PromotedRequestId = 0u;
+			if (VC->TryPromotePendingIdProbeToPick(PickX, PickY, PromotedRequestId))
 			{
 				uint32 PickedId = 0u;
-				if (VP->TryReadPickingIdReadbackBlocking(Ctx, RequestId, PickedId))
+				bool bReady = false;
+				uint64 FetchCycles = 0u;
+				const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, PromotedRequestId, PickedId, bReady, &FetchCycles);
+				if (FetchCycles > 0u)
+				{
+					VC->AddPendingIdPickFetchCycles(FetchCycles);
+				}
+				if (!bPollOk)
+				{
+					VC->SetIdPickResult(0u);
+					VC->ApplyIdPickResultNow();
+				}
+				else if (bReady)
 				{
 					VC->SetIdPickResult(PickedId);
 					VC->ApplyIdPickResultNow();
 				}
 				else
 				{
-					bool bReady = false;
-					const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, RequestId, PickedId, bReady);
-					if (!bPollOk)
-					{
-						VC->SetIdPickResult(0u);
-						VC->ApplyIdPickResultNow();
-					}
-					else if (bReady)
-					{
-						VC->SetIdPickResult(PickedId);
-						VC->ApplyIdPickResultNow();
-					}
-					else
-					{
-						VC->BeginPendingIdPickReadback(RequestId);
-					}
+					VC->BeginPendingIdPickReadback(PromotedRequestId);
+				}
+				return;
+			}
+
+			uint32 RequestId = 0u;
+			const bool bEnqueueOk = VP->EnqueuePickingIdReadback(Ctx, PickX, PickY, RequestId);
+			if (bEnqueueOk)
+			{
+				uint32 PickedId = 0u;
+				bool bReady = false;
+				uint64 FetchCycles = 0u;
+				const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, RequestId, PickedId, bReady, &FetchCycles);
+				if (FetchCycles > 0u)
+				{
+					VC->AddPendingIdPickFetchCycles(FetchCycles);
+				}
+				if (!bPollOk)
+				{
+					VC->SetIdPickResult(0u);
+					VC->ApplyIdPickResultNow();
+				}
+				else if (bReady)
+				{
+					VC->SetIdPickResult(PickedId);
+					VC->ApplyIdPickResultNow();
+				}
+				else
+				{
+					VC->BeginPendingIdPickReadback(RequestId);
+				}
+			}
+			return;
+		}
+
+		if (VC->HasPendingIdProbeReadback())
+		{
+			uint32 ProbeId = 0u;
+			bool bReady = false;
+			const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, VC->GetPendingIdProbeReadbackRequestId(), ProbeId, bReady, nullptr);
+			if (!bPollOk)
+			{
+				VC->CancelPendingIdProbeReadback();
+			}
+			else if (bReady)
+			{
+				VC->OnIdProbeSampleReady(ProbeId);
+			}
+			return;
+		}
+
+		uint32 ProbeX = 0u;
+		uint32 ProbeY = 0u;
+		if (VC->GetIdProbeCoordForPrefetch(ProbeX, ProbeY))
+		{
+			uint32 ProbeRequestId = 0u;
+			if (VP->EnqueuePickingIdReadback(Ctx, ProbeX, ProbeY, ProbeRequestId))
+			{
+				uint32 ProbeId = 0u;
+				bool bReady = false;
+				const bool bPollOk = VP->TryReadPickingIdReadback(Ctx, ProbeRequestId, ProbeId, bReady, nullptr);
+				if (bPollOk && bReady)
+				{
+					VC->OnIdProbeSampleReady(ProbeId);
+				}
+				else if (bPollOk)
+				{
+					VC->BeginPendingIdProbeReadback(ProbeRequestId, ProbeX, ProbeY);
 				}
 			}
 		}

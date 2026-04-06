@@ -84,7 +84,7 @@ public:
 
 	//Collision
 	void UpdateWorldAABB() const override;
-	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult) override;
+	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT = FLT_MAX) override;
 
 	FMatrix CalculateOutlineMatrix() const;
 	FMatrix CalculateOutlineMatrix(const FMatrix& BillboardWorldMatrix) const;

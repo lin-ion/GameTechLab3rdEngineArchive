@@ -1,20 +1,33 @@
 ﻿#include "Render/Pipeline/FixedWorldOctree.h"
-#include "Collision/RayUtils.h"
-
+#include <algorithm>
 
 FFixedWorldOctree::FFixedWorldOctree(const FBoundingBox& InWorldBounds, int32 InMaxDepth, int32 InMaxItemsPerNode)
 	: WorldBounds(InWorldBounds)
 	, MaxDepth(InMaxDepth)
 	, MaxItemsPerNode(InMaxItemsPerNode)
 {
-	Root = std::make_unique<FNode>(WorldBounds, 0);
+	NodePool.reserve(1024);
+	RootIdx = AllocateNode(WorldBounds, 0);
 }
 
 void FFixedWorldOctree::Clear()
 {
-	Root = std::make_unique<FNode>(WorldBounds, 0);
+	NodePool.clear();
 	OutsideItems.clear();
 	LastDebugStats = {};
+	bTopologyStatsDirty = true;
+	CachedTotalNodes = 0;
+	CachedIndexedItems = 0;
+	RootIdx = AllocateNode(WorldBounds, 0);
+}
+
+int32 FFixedWorldOctree::AllocateNode(const FBoundingBox& InBounds, int32 InDepth)
+{
+	int32 Idx = (int32)NodePool.size();
+	NodePool.emplace_back();
+	NodePool[Idx].Bounds = InBounds;
+	NodePool[Idx].Depth = InDepth;
+	return Idx;
 }
 
 void FFixedWorldOctree::Insert(FPrimitiveProxy* Proxy, const FBoundingBox& Bounds)
@@ -25,30 +38,36 @@ void FFixedWorldOctree::Insert(FPrimitiveProxy* Proxy, const FBoundingBox& Bound
 	}
 
 	FOctreeItem Item = { Proxy, Bounds };
-	//	루트 바운드 밖은 별도 리스트로 보관 (누락 방지)
 	if (!ContainsAABB(WorldBounds, Bounds))
 	{
 		OutsideItems.push_back(Item);
+		bTopologyStatsDirty = true;
 		return;
 	}
 
-	InsertNode(*Root, Item);
+	InsertNode(RootIdx, Item);
+	bTopologyStatsDirty = true;
+}
+
+void FFixedWorldOctree::Warmup()
+{
+	RefreshTopologyStatsCacheIfNeeded();
 }
 
 void FFixedWorldOctree::QueryFrustum(const FFrustumPlanes& Frustum, TArray<FPrimitiveProxy*>& OutProxies) const
 {
 	LastDebugStats = {};
 	LastDebugStats.OutsideItems = static_cast<int32>(OutsideItems.size());
-
-	if (!Root)
+	if (RootIdx < 0 || NodePool.empty())
 	{
 		return;
 	}
 
-	AccumulateNodeStats(*Root, LastDebugStats.TotalNodes, LastDebugStats.TotalItems);
-	LastDebugStats.TotalItems += LastDebugStats.OutsideItems;
+	RefreshTopologyStatsCacheIfNeeded();
+	LastDebugStats.TotalNodes = CachedTotalNodes;
+	LastDebugStats.TotalItems = CachedIndexedItems + LastDebugStats.OutsideItems;
 
-	QueryNodeByFrustum(*Root, Frustum, OutProxies);
+	QueryNodeByFrustum(RootIdx, Frustum, OutProxies);
 
 	for (const FOctreeItem& Item : OutsideItems)
 	{
@@ -58,58 +77,51 @@ void FFixedWorldOctree::QueryFrustum(const FFrustumPlanes& Frustum, TArray<FPrim
 			++LastDebugStats.FrustumCandidateItems;
 		}
 	}
-
 }
 
 void FFixedWorldOctree::QueryRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutProxies) const
 {
-	LastDebugStats = {};
-	LastDebugStats.OutsideItems = static_cast<int32>(OutsideItems.size());
+	OutProxies.clear();
+	(void)Ray;
+}
 
-	if (!Root)
+void FFixedWorldOctree::QueryRayWithNearT(const FRay& Ray, TArray<FRayQueryCandidate>& OutCandidates, float MaxNearT) const
+{
+	OutCandidates.clear();
+	(void)Ray;
+	(void)MaxNearT;
+}
+
+void FFixedWorldOctree::AccumulateNodeStats(int32 NodeIdx, int32& OutNodeCount, int32& OutItemCount) const
+{
+	const FNode& Node = NodePool[NodeIdx];
+	++OutNodeCount;
+	OutItemCount += Node.GetTotalItemCount();
+
+	for (int32 ChildIdx : Node.Children)
+	{
+		if (ChildIdx != -1)
+		{
+			AccumulateNodeStats(ChildIdx, OutNodeCount, OutItemCount);
+		}
+	}
+}
+
+void FFixedWorldOctree::RefreshTopologyStatsCacheIfNeeded() const
+{
+	if (!bTopologyStatsDirty)
 	{
 		return;
 	}
 
-	AccumulateNodeStats(*Root, LastDebugStats.TotalNodes, LastDebugStats.TotalItems);
-	LastDebugStats.TotalItems += LastDebugStats.OutsideItems;
-
-	QueryNodeByRay(*Root, Ray, OutProxies);
-
-	for (const FOctreeItem& Item : OutsideItems)
+	CachedTotalNodes = 0;
+	CachedIndexedItems = 0;
+	if (RootIdx != -1)
 	{
-		if (FRayUtils::CheckRayAABB(Ray, Item.Bounds.Min, Item.Bounds.Max))
-		{
-			OutProxies.push_back(Item.Proxy);
-			++LastDebugStats.RayCandidateItems;
-		}
+		AccumulateNodeStats(RootIdx, CachedTotalNodes, CachedIndexedItems);
 	}
-}
 
-bool FFixedWorldOctree::FNode::HasChildren() const
-{
-	for (const std::unique_ptr<FNode>& Child : Children)
-	{
-		if (Child)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-void FFixedWorldOctree::AccumulateNodeStats(const FNode& Node, int32& OutNodeCount, int32& OutItemCount) const
-{
-	++OutNodeCount;
-	OutItemCount += static_cast<int32>(Node.Items.size());
-
-	for (const std::unique_ptr<FNode>& Child : Node.Children)
-	{
-		if (Child)
-		{
-			AccumulateNodeStats(*Child, OutNodeCount, OutItemCount);
-		}
-	}
+	bTopologyStatsDirty = false;
 }
 
 bool FFixedWorldOctree::ContainsAABB(const FBoundingBox& Outer, const FBoundingBox& Inner)
@@ -142,79 +154,112 @@ FBoundingBox FFixedWorldOctree::BuildChildBounds(const FBoundingBox& Parent, int
 
 int32 FFixedWorldOctree::GetContainingChildIndex(const FBoundingBox& ParentBounds, const FBoundingBox& ItemBounds) const
 {
-	//	완전히 포함되는 단일 자식만 선택, 걸치면 부모에 남김
-	for (int32 ChildIndex = 0; ChildIndex < 8; ++ChildIndex)
+	const FVector Center = ParentBounds.GetCenter();
+	int32 ChildIndex = 0;
+
+	// Must be fully on one side of each split plane; straddling stays in parent.
+	if (ItemBounds.Max.X <= Center.X)
 	{
-		const FBoundingBox ChildBounds = BuildChildBounds(ParentBounds, ChildIndex);
-		if (ContainsAABB(ChildBounds, ItemBounds))
-		{
-			return ChildIndex;
-		}
+		ChildIndex |= 0;
+	}
+	else if (ItemBounds.Min.X >= Center.X)
+	{
+		ChildIndex |= 1;
+	}
+	else
+	{
+		return -1;
 	}
 
-	return -1;
+	if (ItemBounds.Max.Y <= Center.Y)
+	{
+		ChildIndex |= 0;
+	}
+	else if (ItemBounds.Min.Y >= Center.Y)
+	{
+		ChildIndex |= 2;
+	}
+	else
+	{
+		return -1;
+	}
+
+	if (ItemBounds.Max.Z <= Center.Z)
+	{
+		ChildIndex |= 0;
+	}
+	else if (ItemBounds.Min.Z >= Center.Z)
+	{
+		ChildIndex |= 4;
+	}
+	else
+	{
+		return -1;
+	}
+
+	return ChildIndex;
 }
 
-void FFixedWorldOctree::EnsureChildren(FNode& Node)
+void FFixedWorldOctree::InsertNode(int32 NodeIdx, const FOctreeItem& Item)
 {
-	if (Node.HasChildren())
+	if (NodePool[NodeIdx].Depth >= MaxDepth)
 	{
+		NodePool[NodeIdx].RemainderItems.push_back(Item);
+		if (NodePool[NodeIdx].RemainderItems.size() == 8)
+		{
+			FOctreeItemSoA8 Batch;
+			for (int i = 0; i < 8; ++i)
+			{
+				Batch.MinX[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Min.X;
+				Batch.MinY[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Min.Y;
+				Batch.MinZ[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Min.Z;
+				Batch.MaxX[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Max.X;
+				Batch.MaxY[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Max.Y;
+				Batch.MaxZ[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Max.Z;
+				Batch.Proxies[i] = NodePool[NodeIdx].RemainderItems[i].Proxy;
+			}
+			NodePool[NodeIdx].ItemBatches8.push_back(Batch);
+			NodePool[NodeIdx].RemainderItems.clear();
+		}
 		return;
 	}
 
-	for (int32 ChildIndex = 0; ChildIndex < 8; ++ChildIndex)
+	const int32 ChildIndex = GetContainingChildIndex(NodePool[NodeIdx].Bounds, Item.Bounds);
+	if (ChildIndex >= 0)
 	{
-		Node.Children[ChildIndex] = std::make_unique<FNode>(BuildChildBounds(Node.Bounds, ChildIndex), Node.Depth + 1);
-	}
-}
-
-void FFixedWorldOctree::InsertNode(FNode& Node, const FOctreeItem& Item)
-{
-	if (Node.Depth >= MaxDepth)
-	{
-		Node.Items.push_back(Item);
-		return;
-	}
-
-	if (Node.HasChildren())
-	{
-		const int32 ChildIndex = GetContainingChildIndex(Node.Bounds, Item.Bounds);
-		if (ChildIndex >= 0)
+		if (NodePool[NodeIdx].Children[ChildIndex] == -1)
 		{
-			InsertNode(*Node.Children[ChildIndex], Item);
-			return;
+			FBoundingBox CBounds = BuildChildBounds(NodePool[NodeIdx].Bounds, ChildIndex);
+			int32 NewIdx = AllocateNode(CBounds, NodePool[NodeIdx].Depth + 1);
+			NodePool[NodeIdx].Children[ChildIndex] = NewIdx;
 		}
+		InsertNode(NodePool[NodeIdx].Children[ChildIndex], Item);
 	}
-
-	Node.Items.push_back(Item);
-
-	if (Node.Items.size() <= static_cast<size_t>(MaxItemsPerNode) || Node.Depth >= MaxDepth)
+	else
 	{
-		return;
-	}
-
-	//	Capacity를 넘으면 분할 후, 완전 포함되는 항목만 하위로 재배치
-	EnsureChildren(Node);
-
-	auto It = Node.Items.begin();
-	while (It != Node.Items.end())
-	{
-		const int32 ChildIndex = GetContainingChildIndex(Node.Bounds, It->Bounds);
-		if (ChildIndex >= 0)
+		NodePool[NodeIdx].RemainderItems.push_back(Item);
+		if (NodePool[NodeIdx].RemainderItems.size() == 8)
 		{
-			InsertNode(*Node.Children[ChildIndex], *It);
-			It = Node.Items.erase(It);
-		}
-		else
-		{
-			++It;
+			FOctreeItemSoA8 Batch;
+			for (int i = 0; i < 8; ++i)
+			{
+				Batch.MinX[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Min.X;
+				Batch.MinY[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Min.Y;
+				Batch.MinZ[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Min.Z;
+				Batch.MaxX[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Max.X;
+				Batch.MaxY[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Max.Y;
+				Batch.MaxZ[i] = NodePool[NodeIdx].RemainderItems[i].Bounds.Max.Z;
+				Batch.Proxies[i] = NodePool[NodeIdx].RemainderItems[i].Proxy;
+			}
+			NodePool[NodeIdx].ItemBatches8.push_back(Batch);
+			NodePool[NodeIdx].RemainderItems.clear();
 		}
 	}
 }
 
-void FFixedWorldOctree::QueryNodeByFrustum(const FNode& Node, const FFrustumPlanes& Frustum, TArray<FPrimitiveProxy*>& OutProxies) const
+void FFixedWorldOctree::QueryNodeByFrustum(int32 NodeIdx, const FFrustumPlanes& Frustum, TArray<FPrimitiveProxy*>& OutProxies) const
 {
-	//	노드 단위 early-out으로 하위 순회 비용 절감
+	const FNode& Node = NodePool[NodeIdx];
 	if (!FFrustumCulling::IntersectsAABB(Frustum, Node.Bounds))
 	{
 		return;
@@ -222,7 +267,20 @@ void FFixedWorldOctree::QueryNodeByFrustum(const FNode& Node, const FFrustumPlan
 
 	++LastDebugStats.FrustumIntersectedNodes;
 
-	for (const FOctreeItem& Item : Node.Items)
+	for (const auto& Batch : Node.ItemBatches8)
+	{
+		for (int i = 0; i < 8; ++i)
+		{
+			FBoundingBox Bounds(FVector(Batch.MinX[i], Batch.MinY[i], Batch.MinZ[i]), FVector(Batch.MaxX[i], Batch.MaxY[i], Batch.MaxZ[i]));
+			if (FFrustumCulling::IntersectsAABB(Frustum, Bounds))
+			{
+				OutProxies.push_back(Batch.Proxies[i]);
+				++LastDebugStats.FrustumCandidateItems;
+			}
+		}
+	}
+
+	for (const FOctreeItem& Item : Node.RemainderItems)
 	{
 		if (FFrustumCulling::IntersectsAABB(Frustum, Item.Bounds))
 		{
@@ -231,38 +289,11 @@ void FFixedWorldOctree::QueryNodeByFrustum(const FNode& Node, const FFrustumPlan
 		}
 	}
 
-	for (const std::unique_ptr<FNode>& Child : Node.Children)
+	for (int32 ChildIdx : Node.Children)
 	{
-		if (Child)
+		if (ChildIdx != -1)
 		{
-			QueryNodeByFrustum(*Child, Frustum, OutProxies);
-		}
-	}
-}
-
-void FFixedWorldOctree::QueryNodeByRay(const FNode& Node, const FRay& Ray, TArray<FPrimitiveProxy*>& OutProxies) const
-{
-	if (!FRayUtils::CheckRayAABB(Ray, Node.Bounds.Min, Node.Bounds.Max))
-	{
-		return;
-	}
-
-	++LastDebugStats.RayIntersectedNodes;
-
-	for (const FOctreeItem& Item : Node.Items)
-	{
-		if (FRayUtils::CheckRayAABB(Ray, Item.Bounds.Min, Item.Bounds.Max))
-		{
-			OutProxies.push_back(Item.Proxy);
-			++LastDebugStats.RayCandidateItems;
-		}
-	}
-
-	for (const std::unique_ptr<FNode>& Child : Node.Children)
-	{
-		if (Child)
-		{
-			QueryNodeByRay(*Child, Ray, OutProxies);
+			QueryNodeByFrustum(ChildIdx, Frustum, OutProxies);
 		}
 	}
 }

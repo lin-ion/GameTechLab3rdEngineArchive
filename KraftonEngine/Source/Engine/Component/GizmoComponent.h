@@ -25,7 +25,7 @@ public:
 
 	FPrimitiveProxy* CreateProxy() override;
 
-	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult) override;
+	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT = FLT_MAX) override;
 
 	FVector GetVectorForAxis(int32 Axis);
 	void RenderGizmo() {}

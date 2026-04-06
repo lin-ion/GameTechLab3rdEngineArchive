@@ -1,26 +1,118 @@
 ﻿#include "WorldRenderProxy.h"
 #include "PrimitiveProxy.h"
-#include "Collision/RayUtils.h"
+#include "Collision/PickingTuning.h"
 #include "Render/Pipeline/FrustumCulling.h"
 #include "Render/Pipeline/FixedWorldOctree.h"
+#include "Render/Pipeline/WorldBVH.h"
 #include "Render/Pipeline/IPrimitiveSpatialQuery.h"
+#include "Render/Pipeline/OcclusionManager.h"
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
+#include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/TextRenderComponent.h"
+#include "Mesh/StaticMesh.h"
 #include "Profiling/Stats.h"
 
 #include <algorithm>
+#include <cmath>
+
+namespace
+{
+	inline void GatherRayCandidatesFromSoA(
+		const FRay& Ray,
+		const FRayAABBKernel& Kernel,
+		const FRayPickableSoA& SoA,
+		bool bUseOcclusionGate,
+		float MaxNearT,
+		TArray<FRayQueryCandidate>& OutCandidates,
+		uint64* OutAABBTests = nullptr,
+		uint64* OutAABBHits = nullptr)
+	{
+		const size_t Count = SoA.Size();
+		OutCandidates.reserve(OutCandidates.size() + Count);
+		const bool bUsePacketSIMD = FPickingTuning::EnableRayAABBPacketSIMD() && (Count >= static_cast<size_t>(FPickingTuning::RayAABBPacketMinCount()));
+
+		size_t i = 0;
+		if (bUsePacketSIMD)
+		{
+			for (; i + 4 <= Count; i += 4)
+			{
+				float NearT4[4] = {};
+				if (OutAABBTests) { *OutAABBTests += 4u; }
+				const uint32 HitMask = IntersectRayAABBNearTMinMax4(
+					Ray,
+					Kernel,
+					&SoA.MinX[i], &SoA.MinY[i], &SoA.MinZ[i],
+					&SoA.MaxX[i], &SoA.MaxY[i], &SoA.MaxZ[i],
+					MaxNearT,
+					NearT4);
+
+				for (uint32 Lane = 0; Lane < 4u; ++Lane)
+				{
+					if ((HitMask & (1u << Lane)) == 0u)
+					{
+						continue;
+					}
+					if (OutAABBHits) { ++(*OutAABBHits); }
+					FPrimitiveProxy* Proxy = SoA.Proxies[i + Lane];
+					if (!Proxy)
+					{
+						continue;
+					}
+					if (bUseOcclusionGate && !FOcclusionManager::Get().IsVisible(Proxy->CachedProxyId))
+					{
+						continue;
+					}
+					OutCandidates.push_back({ Proxy, NearT4[Lane] });
+				}
+			}
+		}
+
+		for (; i < Count; ++i)
+		{
+			float NearT = 0.0f;
+			float FarT = 0.0f;
+			if (OutAABBTests) { ++(*OutAABBTests); }
+			if (!IntersectRayAABBNearTMinMax(
+				Ray,
+				Kernel,
+				SoA.MinX[i], SoA.MinY[i], SoA.MinZ[i],
+				SoA.MaxX[i], SoA.MaxY[i], SoA.MaxZ[i],
+				NearT, FarT) || NearT > MaxNearT)
+			{
+				continue;
+			}
+			if (OutAABBHits) { ++(*OutAABBHits); }
+			FPrimitiveProxy* Proxy = SoA.Proxies[i];
+			if (!Proxy)
+			{
+				continue;
+			}
+			if (bUseOcclusionGate && !FOcclusionManager::Get().IsVisible(Proxy->CachedProxyId))
+			{
+				continue;
+			}
+			OutCandidates.push_back({ Proxy, NearT });
+		}
+	}
+}
 
 FWorldRenderProxy::FWorldRenderProxy()
 {
-	SpatialIndex = new FFixedWorldOctree();
+	FrustumSpatialIndex = new FFixedWorldOctree();
+	RaySpatialIndex = new FWorldBVH();
+	VisibleRaySpatialIndex = new FWorldBVH();
 }
 
 FWorldRenderProxy::~FWorldRenderProxy()
 {
-	delete SpatialIndex;
-	SpatialIndex = nullptr;
+	delete FrustumSpatialIndex;
+	FrustumSpatialIndex = nullptr;
+	delete RaySpatialIndex;
+	RaySpatialIndex = nullptr;
+	delete VisibleRaySpatialIndex;
+	VisibleRaySpatialIndex = nullptr;
 	Proxies.clear();
 }
 
@@ -33,7 +125,15 @@ void FWorldRenderProxy::AddProxy(FPrimitiveProxy* Proxy)
 	{
 		Proxies.push_back(Proxy);
 		Proxy->SetWorldRenderProxy(this);
+		++SpatialChangeSerial;
 		bSpatialIndexDirty = true;
+		FrustumVisiblePickFrameTag = 0u;
+		FrustumVisiblePickableCache.clear();
+		FrustumVisiblePickableSoA.Clear();
+		RayPickableSoA.Clear();
+		bVisibleRaySpatialIndexDirty = true;
+		bVisibleRaySpatialIndexBuiltWithOcclusion = false;
+		VisibleRaySpatialIndexFrameTag = 0u;
 	}
 }
 
@@ -41,11 +141,31 @@ void FWorldRenderProxy::MarkSpatialIndexDirty()
 {
 	if (SpatialIndexDeferDepth > 0)
 	{
+		if (!bDeferredSpatialIndexDirtyPending)
+		{
+			++SpatialChangeSerial;
+		}
 		bDeferredSpatialIndexDirtyPending = true;
+		FrustumVisiblePickFrameTag = 0u;
+		FrustumVisiblePickableCache.clear();
+		FrustumVisiblePickableSoA.Clear();
+		bVisibleRaySpatialIndexDirty = true;
+		bVisibleRaySpatialIndexBuiltWithOcclusion = false;
+		VisibleRaySpatialIndexFrameTag = 0u;
 		return;
 	}
 
+	if (!bSpatialIndexDirty)
+	{
+		++SpatialChangeSerial;
+	}
 	bSpatialIndexDirty = true;
+	FrustumVisiblePickFrameTag = 0u;
+	FrustumVisiblePickableCache.clear();
+	FrustumVisiblePickableSoA.Clear();
+	bVisibleRaySpatialIndexDirty = true;
+	bVisibleRaySpatialIndexBuiltWithOcclusion = false;
+	VisibleRaySpatialIndexFrameTag = 0u;
 }
 
 void FWorldRenderProxy::BeginDeferSpatialIndexInvalidation()
@@ -66,6 +186,25 @@ void FWorldRenderProxy::EndDeferSpatialIndexInvalidation()
 	{
 		bSpatialIndexDirty = true;
 		bDeferredSpatialIndexDirtyPending = false;
+		FrustumVisiblePickFrameTag = 0u;
+		FrustumVisiblePickableCache.clear();
+		FrustumVisiblePickableSoA.Clear();
+		bVisibleRaySpatialIndexDirty = true;
+		bVisibleRaySpatialIndexBuiltWithOcclusion = false;
+		VisibleRaySpatialIndexFrameTag = 0u;
+	}
+}
+
+void FWorldRenderProxy::WarmupSpatialIndices()
+{
+	RebuildSpatialIndexIfDirty(false, true);
+	if (FrustumSpatialIndex)
+	{
+		FrustumSpatialIndex->Warmup();
+	}
+	if (RaySpatialIndex)
+	{
+		RaySpatialIndex->Warmup();
 	}
 }
 
@@ -78,11 +217,19 @@ void FWorldRenderProxy::RemoveProxy(FPrimitiveProxy* Proxy)
 	{
 		Proxies.erase(it);
 		Proxy->SetWorldRenderProxy(nullptr);
+		++SpatialChangeSerial;
 		bSpatialIndexDirty = true;
+		FrustumVisiblePickFrameTag = 0u;
+		FrustumVisiblePickableCache.clear();
+		FrustumVisiblePickableSoA.Clear();
+		RayPickableSoA.Clear();
+		bVisibleRaySpatialIndexDirty = true;
+		bVisibleRaySpatialIndexBuiltWithOcclusion = false;
+		VisibleRaySpatialIndexFrameTag = 0u;
 	}
 }
 
-void FWorldRenderProxy::GatherCandidates(FViewContext& Context, bool bUseSpatialIndex)
+void FWorldRenderProxy::GatherCandidates(FViewContext& Context)
 {
 	if (!this) return;
 	if (!Context.GetShowFlags().bPrimitives) return;
@@ -93,135 +240,382 @@ void FWorldRenderProxy::GatherCandidates(FViewContext& Context, bool bUseSpatial
 
 	const FFrustumPlanes Frustum = FFrustumCulling::BuildFrustumPlanes(Context.GetView(), Context.GetProj());
 
-	TArray<FPrimitiveProxy*> LocalCandidates;
-	if (bUseSpatialIndex && SpatialIndex)
+	RebuildSpatialIndexIfDirty(true, true);
+	if (FrustumSpatialIndex)
 	{
-		const bool bNeedsRebuild = bSpatialIndexDirty;
-		RebuildSpatialIndexIfDirty(true);
-
-		SpatialIndex->QueryFrustum(Frustum, LocalCandidates);
-		const FSpatialQueryDebugStats& OctreeStats = SpatialIndex->GetLastDebugStats();
-		if (!bNeedsRebuild)
-		{
-			LastCullingStats.InsertedProxyCount = 0;
-		}
-		LastCullingStats.OctreeTotalNodes = OctreeStats.TotalNodes;
-		LastCullingStats.OctreeTotalItems = OctreeStats.TotalItems;
-		LastCullingStats.OctreeOutsideItems = OctreeStats.OutsideItems;
-		LastCullingStats.OctreeFrustumIntersectedNodes = OctreeStats.FrustumIntersectedNodes;
-		LastCullingStats.OctreeFrustumCandidateItems = OctreeStats.FrustumCandidateItems;
+		FrustumSpatialIndex->Warmup();
 	}
-	else
+	if (RaySpatialIndex)
 	{
-		RebuildSpatialIndexIfDirty(false);
+		RaySpatialIndex->Warmup();
+	}
 
-		const size_t Count = CullingSoA.Proxies.size();
-		for (size_t i = 0; i < Count; i += 4)
-		{
-			int remaining = (int)Count - (int)i;
-			int batchSize = remaining > 4 ? 4 : remaining;
+	TArray<FPrimitiveProxy*> LocalCandidates;
+	if (FrustumSpatialIndex)
+	{
+		FrustumSpatialIndex->QueryFrustum(Frustum, LocalCandidates);
+		const FSpatialQueryDebugStats& SpatialStats = FrustumSpatialIndex->GetLastDebugStats();
+		LastCullingStats.SpatialTotalNodes = SpatialStats.TotalNodes;
+		LastCullingStats.SpatialTotalItems = SpatialStats.TotalItems;
+		LastCullingStats.SpatialOutsideItems = SpatialStats.OutsideItems;
+		LastCullingStats.SpatialFrustumIntersectedNodes = SpatialStats.FrustumIntersectedNodes;
+		LastCullingStats.SpatialFrustumCandidateItems = SpatialStats.FrustumCandidateItems;
+	}
 
-			float minX[4], minY[4], minZ[4], maxX[4], maxY[4], maxZ[4];
-
-			if (remaining >= 4)
-			{
-				uint32 mask = FFrustumCulling::TestAABB4(Frustum, 
-					&CullingSoA.MinX[i], &CullingSoA.MinY[i], &CullingSoA.MinZ[i],
-					&CullingSoA.MaxX[i], &CullingSoA.MaxY[i], &CullingSoA.MaxZ[i]);
-
-				for (int j = 0; j < 4; ++j)
-				{
-					if (!(mask & (1 << j)))
-					{
-						FPrimitiveProxy* Proxy = CullingSoA.Proxies[i + j];
-						UPrimitiveComponent* Owner = Proxy->GetOwner();
-						if (Owner && Owner->IsVisible())
-						{
-							if (AActor* ActorOwner = Owner->GetOwner())
-							{
-								if (!ActorOwner->IsVisible()) continue;
-							}
-							LocalCandidates.push_back(Proxy);
-						}
-					}
-				}
-			}
-			else
-			{
-				// 4개 미만 남은 경우 안전하게 패딩하여 처리
-				for (int j = 0; j < 4; ++j) {
-					int idx = (j < remaining) ? (int)i + j : (int)i; // 패딩용으로 i번째 반복
-					minX[j] = CullingSoA.MinX[idx]; minY[j] = CullingSoA.MinY[idx]; minZ[j] = CullingSoA.MinZ[idx];
-					maxX[j] = CullingSoA.MaxX[idx]; maxY[j] = CullingSoA.MaxY[idx]; maxZ[j] = CullingSoA.MaxZ[idx];
-				}
-
-				uint32 mask = FFrustumCulling::TestAABB4(Frustum, minX, minY, minZ, maxX, maxY, maxZ);
-
-				for (int j = 0; j < remaining; ++j)
-				{
-					if (!(mask & (1 << j)))
-					{
-						FPrimitiveProxy* Proxy = CullingSoA.Proxies[i + j];
-						UPrimitiveComponent* Owner = Proxy->GetOwner();
-						if (Owner && Owner->IsVisible())
-						{
-							if (AActor* ActorOwner = Owner->GetOwner())
-							{
-								if (!ActorOwner->IsVisible()) continue;
-							}
-							LocalCandidates.push_back(Proxy);
-						}
-					}
-				}
-			}
-		}
+	++FrustumVisiblePickFrameTag;
+	if (FrustumVisiblePickFrameTag == 0u)
+	{
+		FrustumVisiblePickFrameTag = 1u;
+	}
+	FrustumVisiblePickableCache.clear();
+	if (!LocalCandidates.empty())
+	{
+		FrustumVisiblePickableCache.reserve(LocalCandidates.size());
+	}
+	FrustumVisiblePickableSoA.Clear();
+	if (!LocalCandidates.empty())
+	{
+		FrustumVisiblePickableSoA.Reserve(LocalCandidates.size());
 	}
 
 	for (FPrimitiveProxy* Proxy : LocalCandidates)
 	{
+		if (Proxy)
+		{
+			if (UPrimitiveComponent* Owner = Proxy->GetOwner())
+			{
+				const bool bExcluded = Owner->IsA<UTextRenderComponent>() || Owner->IsA<UGizmoComponent>();
+				if (!bExcluded && Owner->IsVisible())
+				{
+					if (AActor* ActorOwner = Owner->GetOwner())
+					{
+						if (ActorOwner->IsVisible() && ActorOwner->GetRootComponent())
+						{
+							Proxy->MarkFrustumVisibleForPick(FrustumVisiblePickFrameTag);
+							FrustumVisiblePickableCache.push_back(Proxy);
+							FrustumVisiblePickableSoA.Add(Owner->GetWorldBoundingBox(), Proxy);
+						}
+					}
+				}
+			}
+		}
+
 		Context.AddCandidateProxy(Proxy);
 	}
 
 	LastCullingStats.CandidateProxyCount = static_cast<int32>(LocalCandidates.size());
+	bVisibleRaySpatialIndexDirty = true;
+	if (bRayFrustumGateOptimizationEnabled && FrustumVisiblePickFrameTag != 0u && !FrustumVisiblePickableCache.empty())
+	{
+		// Build visible-ray BVH on render/culling phase to keep click query path stable.
+		RebuildVisibleRaySpatialIndexIfNeeded(FPickingTuning::UseRayOcclusionGate());
+	}
 }
 
-void FWorldRenderProxy::QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates, bool bUseSpatialIndex)
+void FWorldRenderProxy::QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates)
 {
-	OutCandidates.clear();
+	thread_local TArray<FRayQueryCandidate> CandidatesWithNearT;
+	CandidatesWithNearT.clear();
+	QueryByRayWithNearT(Ray, CandidatesWithNearT, FLT_MAX);
 
-	if (bUseSpatialIndex && SpatialIndex)
+	OutCandidates.clear();
+	OutCandidates.reserve(CandidatesWithNearT.size());
+	for (const FRayQueryCandidate& Candidate : CandidatesWithNearT)
 	{
-		RebuildSpatialIndexIfDirty(false);
-		SpatialIndex->QueryRay(Ray, OutCandidates);
+		OutCandidates.push_back(Candidate.Proxy);
+	}
+}
+
+bool FWorldRenderProxy::QueryClosestByRayWithNearT(const FRay& Ray, FRayQueryCandidate& OutCandidate, float MaxNearT)
+{
+	OutCandidate = {};
+	if (SpatialIndexDeferDepth > 0 || bDeferredSpatialIndexDirtyPending)
+	{
+		const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
+		float BestNearT = MaxNearT;
+		FPrimitiveProxy* BestProxy = nullptr;
+		const size_t Count = RayPickableSoA.Size();
+		for (size_t i = 0; i < Count; ++i)
+		{
+			float NearT = 0.0f;
+			float FarT = 0.0f;
+			if (!IntersectRayAABBNearTMinMax(
+				Ray, Kernel,
+				RayPickableSoA.MinX[i], RayPickableSoA.MinY[i], RayPickableSoA.MinZ[i],
+				RayPickableSoA.MaxX[i], RayPickableSoA.MaxY[i], RayPickableSoA.MaxZ[i],
+				NearT, FarT) || NearT > BestNearT)
+			{
+				continue;
+			}
+			BestNearT = NearT;
+			BestProxy = RayPickableSoA.Proxies[i];
+		}
+
+		if (!BestProxy)
+		{
+			return false;
+		}
+
+		OutCandidate.Proxy = BestProxy;
+		OutCandidate.NearT = BestNearT;
+		return true;
+	}
+
+	if (bSpatialIndexDirty)
+	{
+		RebuildSpatialIndexIfDirty(false, false);
+	}
+
+	const bool bBypassFrustumGate = bSpatialIndexDirty || (SpatialIndexDeferDepth > 0) || bDeferredSpatialIndexDirtyPending;
+	const bool bUseFrustumGate = bRayFrustumGateOptimizationEnabled && !bBypassFrustumGate && (FrustumVisiblePickFrameTag != 0u);
+	const bool bUseOcclusionGate = bUseFrustumGate && FPickingTuning::UseRayOcclusionGate();
+	const size_t VisibleCount = FrustumVisiblePickableCache.size();
+
+	auto PickNearestFromSoA = [&](const FRayPickableSoA& SoA) -> bool
+	{
+		const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
+		float BestNearT = MaxNearT;
+		FPrimitiveProxy* BestProxy = nullptr;
+		for (size_t i = 0; i < SoA.Size(); ++i)
+		{
+			float NearT = 0.0f;
+			float FarT = 0.0f;
+			if (!IntersectRayAABBNearTMinMax(
+				Ray, Kernel,
+				SoA.MinX[i], SoA.MinY[i], SoA.MinZ[i],
+				SoA.MaxX[i], SoA.MaxY[i], SoA.MaxZ[i],
+				NearT, FarT) || NearT > BestNearT)
+			{
+				continue;
+			}
+			FPrimitiveProxy* Proxy = SoA.Proxies[i];
+			if (!Proxy)
+			{
+				continue;
+			}
+			if (bUseOcclusionGate && !FOcclusionManager::Get().IsVisible(Proxy->CachedProxyId))
+			{
+				continue;
+			}
+			BestNearT = NearT;
+			BestProxy = Proxy;
+		}
+
+		if (!BestProxy)
+		{
+			return false;
+		}
+		OutCandidate.Proxy = BestProxy;
+		OutCandidate.NearT = BestNearT;
+		return true;
+	};
+
+	if (bUseFrustumGate && VisibleCount > 0)
+	{
+		const uint32 LinearThreshold = FPickingTuning::BroadLinearVisibleThreshold();
+		if (VisibleCount <= LinearThreshold)
+		{
+			return PickNearestFromSoA(FrustumVisiblePickableSoA);
+		}
+
+		if (VisibleRaySpatialIndex &&
+			!bVisibleRaySpatialIndexDirty &&
+			(VisibleRaySpatialIndexFrameTag == FrustumVisiblePickFrameTag))
+		{
+			if (FWorldBVH* VisibleBVH = static_cast<FWorldBVH*>(VisibleRaySpatialIndex))
+			{
+				if (!VisibleBVH->QueryClosestRayCandidateWithNearT(Ray, OutCandidate, MaxNearT))
+				{
+					return false;
+				}
+				if (bUseOcclusionGate &&
+					(!OutCandidate.Proxy || !FOcclusionManager::Get().IsVisible(OutCandidate.Proxy->CachedProxyId)))
+				{
+					return false;
+				}
+				return true;
+			}
+		}
+	}
+
+	if (FWorldBVH* WorldBVH = static_cast<FWorldBVH*>(RaySpatialIndex))
+	{
+		return WorldBVH->QueryClosestRayCandidateWithNearT(Ray, OutCandidate, MaxNearT);
+	}
+
+	return false;
+}
+
+void FWorldRenderProxy::RebuildVisibleRaySpatialIndexIfNeeded(bool bUseOcclusionGate)
+{
+	if (!VisibleRaySpatialIndex)
+	{
 		return;
 	}
 
-	for (FPrimitiveProxy* Proxy : Proxies)
+	const bool bFrameMismatch = (VisibleRaySpatialIndexFrameTag != FrustumVisiblePickFrameTag);
+	const bool bOcclusionModeMismatch = (bVisibleRaySpatialIndexBuiltWithOcclusion != bUseOcclusionGate);
+	if (!bVisibleRaySpatialIndexDirty && !bFrameMismatch && !bOcclusionModeMismatch)
+	{
+		return;
+	}
+
+	VisibleRaySpatialIndex->Clear();
+	for (FPrimitiveProxy* Proxy : FrustumVisiblePickableCache)
 	{
 		if (!Proxy)
 		{
 			continue;
 		}
-
 		UPrimitiveComponent* Owner = Proxy->GetOwner();
-		if (!Owner)
+		if (!Owner || !Owner->IsVisible())
 		{
 			continue;
 		}
-
-		if (Owner->IsA<UTextRenderComponent>())
+		if (bUseOcclusionGate && !FOcclusionManager::Get().IsVisible(Proxy->CachedProxyId))
 		{
 			continue;
 		}
+		VisibleRaySpatialIndex->Insert(Proxy, Owner->GetWorldBoundingBox());
+	}
+	VisibleRaySpatialIndex->Warmup();
 
-		Owner->UpdateWorldAABB();
-		const FBoundingBox Bounds = Owner->GetWorldBoundingBox();
-		if (!FRayUtils::CheckRayAABB(Ray, Bounds.Min, Bounds.Max))
+	bVisibleRaySpatialIndexDirty = false;
+	bVisibleRaySpatialIndexBuiltWithOcclusion = bUseOcclusionGate;
+	VisibleRaySpatialIndexFrameTag = FrustumVisiblePickFrameTag;
+}
+
+void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCandidate>& OutCandidates, float MaxNearT)
+{
+	SCOPE_STAT("Picking.Ray.Broad.Query");
+	OutCandidates.clear();
+	LastRayBroadDebugCounters = {};
+	uint64 TraversalAABBTests = 0u;
+	uint64 TraversalAABBHits = 0u;
+
+	// During transform defer window, spatial index can be stale; bypass to direct broad test.
+	if (SpatialIndexDeferDepth > 0 || bDeferredSpatialIndexDirtyPending)
+	{
+		SCOPE_STAT("Picking.Ray.Broad.Traversal");
+		SCOPE_STAT("Picking.Ray.Broad.Traversal.DeferBypass");
+		const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
+		GatherRayCandidatesFromSoA(Ray, Kernel, RayPickableSoA, false, MaxNearT, OutCandidates, &TraversalAABBTests, &TraversalAABBHits);
+		LastRayBroadDebugCounters.AABBTests = TraversalAABBTests;
+		LastRayBroadDebugCounters.AABBHits = TraversalAABBHits;
+		LastRayBroadDebugCounters.LinearAABBTests = TraversalAABBTests;
+		LastRayBroadDebugCounters.CandidatesEmitted = static_cast<uint64>(OutCandidates.size());
+		LastRayBroadDebugCounters.CandidatesAfterFilter = LastRayBroadDebugCounters.CandidatesEmitted;
+		return;
+	}
+
+	if (bSpatialIndexDirty)
+	{
+		SCOPE_STAT("Picking.Ray.Broad.Rebuild");
+		RebuildSpatialIndexIfDirty(false, false);
+	}
+	if (!RaySpatialIndex)
+	{
+		return;
+	}
+
+	// TODO: expose camera-jump signal to bypass gate on large view deltas.
+	const bool bBypassFrustumGate = bSpatialIndexDirty || (SpatialIndexDeferDepth > 0) || bDeferredSpatialIndexDirtyPending;
+	const bool bUseFrustumGate = bRayFrustumGateOptimizationEnabled && !bBypassFrustumGate && (FrustumVisiblePickFrameTag != 0u);
+	const bool bUseOcclusionGate = bUseFrustumGate && FPickingTuning::UseRayOcclusionGate();
+	const uint32 LinearThreshold = FPickingTuning::BroadLinearVisibleThreshold();
+	const size_t VisibleCount = FrustumVisiblePickableCache.size();
+	bool bUsedVisibleSource = false;
+
+	if (bUseFrustumGate && VisibleCount > 0)
+	{
+		if (VisibleCount <= LinearThreshold)
 		{
-			continue;
+			SCOPE_STAT("Picking.Ray.Broad.Traversal");
+			SCOPE_STAT("Picking.Ray.Broad.Traversal.VisibleLinear");
+			const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
+			GatherRayCandidatesFromSoA(Ray, Kernel, FrustumVisiblePickableSoA, bUseOcclusionGate, MaxNearT, OutCandidates, &TraversalAABBTests, &TraversalAABBHits);
+			LastRayBroadDebugCounters.AABBTests = TraversalAABBTests;
+			LastRayBroadDebugCounters.AABBHits = TraversalAABBHits;
+			LastRayBroadDebugCounters.LinearAABBTests = TraversalAABBTests;
+			LastRayBroadDebugCounters.CandidatesEmitted = static_cast<uint64>(OutCandidates.size());
+			LastRayBroadDebugCounters.CandidatesAfterFilter = LastRayBroadDebugCounters.CandidatesEmitted;
+			return;
 		}
 
-		OutCandidates.push_back(Proxy);
+		if (VisibleRaySpatialIndex &&
+			!bVisibleRaySpatialIndexDirty &&
+			(VisibleRaySpatialIndexFrameTag == FrustumVisiblePickFrameTag))
+		{
+			SCOPE_STAT("Picking.Ray.Broad.Traversal");
+			SCOPE_STAT("Picking.Ray.Broad.Traversal.VisibleBVH");
+			VisibleRaySpatialIndex->QueryRayWithNearT(Ray, OutCandidates, MaxNearT);
+			if (bUseOcclusionGate && !bVisibleRaySpatialIndexBuiltWithOcclusion && !OutCandidates.empty())
+			{
+				size_t WriteIndex = 0;
+				for (size_t ReadIndex = 0; ReadIndex < OutCandidates.size(); ++ReadIndex)
+				{
+					const FRayQueryCandidate& Candidate = OutCandidates[ReadIndex];
+					if (!Candidate.Proxy || !FOcclusionManager::Get().IsVisible(Candidate.Proxy->CachedProxyId))
+					{
+						continue;
+					}
+					OutCandidates[WriteIndex++] = Candidate;
+				}
+				OutCandidates.resize(WriteIndex);
+			}
+			const FSpatialQueryDebugStats& RayStats = VisibleRaySpatialIndex->GetLastDebugStats();
+			LastRayBroadDebugCounters.NodeVisits = static_cast<uint64>((std::max)(0, RayStats.RayIntersectedNodes));
+			LastRayBroadDebugCounters.BVHAABBTests = static_cast<uint64>((std::max)(0, RayStats.RayAABBTests));
+			LastRayBroadDebugCounters.AABBTests = LastRayBroadDebugCounters.BVHAABBTests;
+			LastRayBroadDebugCounters.AABBHits = static_cast<uint64>((std::max)(0, RayStats.RayAABBHits));
+			LastRayBroadDebugCounters.CandidatesEmitted = static_cast<uint64>(OutCandidates.size());
+			LastRayBroadDebugCounters.CandidatesAfterFilter = LastRayBroadDebugCounters.CandidatesEmitted;
+			bUsedVisibleSource = true;
+		}
+	}
+
+	if (!bUsedVisibleSource)
+	{
+		SCOPE_STAT("Picking.Ray.Broad.Traversal");
+		SCOPE_STAT("Picking.Ray.Broad.Traversal.BVH");
+		RaySpatialIndex->QueryRayWithNearT(Ray, OutCandidates, MaxNearT);
+		const FSpatialQueryDebugStats& RayStats = RaySpatialIndex->GetLastDebugStats();
+		LastRayBroadDebugCounters.NodeVisits = static_cast<uint64>((std::max)(0, RayStats.RayIntersectedNodes));
+		LastRayBroadDebugCounters.BVHAABBTests = static_cast<uint64>((std::max)(0, RayStats.RayAABBTests));
+		LastRayBroadDebugCounters.AABBTests = LastRayBroadDebugCounters.BVHAABBTests;
+		LastRayBroadDebugCounters.AABBHits = static_cast<uint64>((std::max)(0, RayStats.RayAABBHits));
+		LastRayBroadDebugCounters.CandidatesEmitted = static_cast<uint64>(OutCandidates.size());
+	}
+
+	if (bUseFrustumGate && !bUsedVisibleSource)
+	{
+		SCOPE_STAT("Picking.Ray.Broad.Filter");
+		size_t WriteIndex = 0;
+		const size_t RawCount = OutCandidates.size();
+		for (size_t ReadIndex = 0; ReadIndex < RawCount; ++ReadIndex)
+		{
+			const FRayQueryCandidate& Candidate = OutCandidates[ReadIndex];
+			if (!Candidate.Proxy)
+			{
+				continue;
+			}
+			if (!Candidate.Proxy->IsFrustumVisibleForPick(FrustumVisiblePickFrameTag))
+			{
+				continue;
+			}
+			if (bUseOcclusionGate && !FOcclusionManager::Get().IsVisible(Candidate.Proxy->CachedProxyId))
+			{
+				continue;
+			}
+
+			OutCandidates[WriteIndex++] = Candidate;
+		}
+		OutCandidates.resize(WriteIndex);
+	}
+	LastRayBroadDebugCounters.CandidatesAfterFilter = static_cast<uint64>(OutCandidates.size());
+	if (LastRayBroadDebugCounters.CandidatesEmitted == 0u)
+	{
+		LastRayBroadDebugCounters.CandidatesEmitted = LastRayBroadDebugCounters.CandidatesAfterFilter;
 	}
 }
 
@@ -316,28 +710,30 @@ void FWorldRenderProxy::InjectAlwaysVisibleCandidates(FViewContext& Context, con
 	}
 }
 
-void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex)
+void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*>& SelectedActors)
 {
 	SCOPE_STAT("Render.CollectWorld");
 	if (!this) return;
 	LastCullingStats = {};
 	LastCullingStats.RegisteredProxyCount = static_cast<int32>(Proxies.size());
 
-	GatherCandidates(Context, bUseSpatialIndex);
+	GatherCandidates(Context);
 	SubmitRenderCommands(Context, SelectedActors);
 }
 
-void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats)
+void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats, bool bPrewarmStaticMeshBVH)
 {
 	if (!bSpatialIndexDirty)
 	{
 		return;
 	}
-	SCOPE_STAT("Render.OctreeBuild");
+	SCOPE_STAT("Render.SpatialBuild");
 
-	if (SpatialIndex) SpatialIndex->Clear();
-	CullingSoA.Clear();
-	CullingSoA.Reserve(Proxies.size());
+	if (FrustumSpatialIndex) FrustumSpatialIndex->Clear();
+	if (RaySpatialIndex) RaySpatialIndex->Clear();
+	if (VisibleRaySpatialIndex) VisibleRaySpatialIndex->Clear();
+	RayPickableSoA.Clear();
+	RayPickableSoA.Reserve(Proxies.size());
 
 	for (FPrimitiveProxy* Proxy : Proxies)
 	{
@@ -352,11 +748,41 @@ void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats)
 			continue;
 		}
 
+		// Keep this off the broad query path to avoid first-click broad spikes.
+		if (bPrewarmStaticMeshBVH)
+		{
+			if (UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(Owner))
+			{
+				if (UStaticMesh* StaticMesh = StaticMeshComp->GetStaticMesh())
+				{
+					if (FStaticMesh* Asset = StaticMesh->GetStaticMeshAsset())
+					{
+						if (!Asset->Vertices.empty() && !Asset->Indices.empty() && !Asset->GetBVH())
+						{
+							Asset->BuildBVH();
+						}
+					}
+				}
+			}
+		}
+
 		Owner->GetWorldMatrix();
 		const FBoundingBox Bounds = Owner->GetWorldBoundingBox();
 
-		if (SpatialIndex) SpatialIndex->Insert(Proxy, Bounds);
-		CullingSoA.Add(Bounds, Proxy);
+		if (FrustumSpatialIndex) FrustumSpatialIndex->Insert(Proxy, Bounds);
+		if (RaySpatialIndex)
+		{
+			const bool bOwnerVisible = Owner->IsVisible();
+			const bool bExcludedComponent = Owner->IsA<UTextRenderComponent>() || Owner->IsA<UGizmoComponent>();
+			AActor* ActorOwner = Owner->GetOwner();
+			const bool bActorPickable = (ActorOwner != nullptr) && ActorOwner->IsVisible() && (ActorOwner->GetRootComponent() != nullptr);
+
+			if (bOwnerVisible && !bExcludedComponent && bActorPickable)
+			{
+				RaySpatialIndex->Insert(Proxy, Bounds);
+				RayPickableSoA.Add(Bounds, Proxy);
+			}
+		}
 
 		if (bTrackInsertedStats)
 		{
@@ -365,4 +791,7 @@ void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats)
 	}
 
 	bSpatialIndexDirty = false;
+	bVisibleRaySpatialIndexDirty = true;
+	bVisibleRaySpatialIndexBuiltWithOcclusion = false;
+	VisibleRaySpatialIndexFrameTag = 0u;
 }
