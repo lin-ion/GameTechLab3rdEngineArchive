@@ -46,7 +46,7 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	if (!Camera) return;
 
 	FViewport* VP = VC->GetViewport();
-	if (!VP) return;
+	if (!VP || VP->GetWidth() == 0 || VP->GetHeight() == 0) return;
 
 	ID3D11DeviceContext* Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
 	if (!Ctx) return;
