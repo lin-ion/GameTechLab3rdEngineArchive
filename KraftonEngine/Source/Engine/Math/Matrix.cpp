@@ -3,6 +3,9 @@
 #include "Rotator.h"
 #include "MathUtils.h"
 #include <iostream>
+#if defined(FOR_COMPETITION) && FOR_COMPETITION
+#include <immintrin.h>
+#endif
 
 const FMatrix FMatrix::Identity(1, 0, 0, 0,
 	0, 1, 0, 0,
@@ -12,10 +15,19 @@ const FMatrix FMatrix::Identity(1, 0, 0, 0,
 FMatrix FMatrix::operator+(const FMatrix& Other) const {
 	FMatrix ret;
 
+	#if defined(FOR_COMPETITION) && FOR_COMPETITION
+	for (int i = 0; i < 16; i += 4)
+	{
+		const __m128 a = _mm_loadu_ps(&Data[i]);
+		const __m128 b = _mm_loadu_ps(&Other.Data[i]);
+		_mm_storeu_ps(&ret.Data[i], _mm_add_ps(a, b));
+	}
+	#else
 	for (int i = 0; i < 16; i++)
 	{
 		ret.Data[i] = Data[i] + Other.Data[i];
 	}
+	#endif
 
 	/*for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
@@ -29,10 +41,19 @@ FMatrix FMatrix::operator+(const FMatrix& Other) const {
 FMatrix FMatrix::operator-(const FMatrix& Other) const {
 	FMatrix ret;
 
+	#if defined(FOR_COMPETITION) && FOR_COMPETITION
+	for (int i = 0; i < 16; i += 4)
+	{
+		const __m128 a = _mm_loadu_ps(&Data[i]);
+		const __m128 b = _mm_loadu_ps(&Other.Data[i]);
+		_mm_storeu_ps(&ret.Data[i], _mm_sub_ps(a, b));
+	}
+	#else
 	for (int i = 0; i < 16; i++)
 	{
 		ret.Data[i] = Data[i] - Other.Data[i];
 	}
+	#endif
 
 	//for (int i = 0; i < 4; i++) {
 	//	for (int j = 0; j < 4; j++) {
@@ -47,6 +68,25 @@ FMatrix FMatrix::operator-(const FMatrix& Other) const {
 FMatrix FMatrix::operator*(const FMatrix& Other) const {
 	FMatrix ret{};
 
+	#if defined(FOR_COMPETITION) && FOR_COMPETITION
+	const __m128 bRow0 = _mm_loadu_ps(&Other.M[0][0]);
+	const __m128 bRow1 = _mm_loadu_ps(&Other.M[1][0]);
+	const __m128 bRow2 = _mm_loadu_ps(&Other.M[2][0]);
+	const __m128 bRow3 = _mm_loadu_ps(&Other.M[3][0]);
+
+	for (int i = 0; i < 4; ++i) {
+		const __m128 a0 = _mm_set1_ps(M[i][0]);
+		const __m128 a1 = _mm_set1_ps(M[i][1]);
+		const __m128 a2 = _mm_set1_ps(M[i][2]);
+		const __m128 a3 = _mm_set1_ps(M[i][3]);
+
+		__m128 row = _mm_mul_ps(a0, bRow0);
+		row = _mm_add_ps(row, _mm_mul_ps(a1, bRow1));
+		row = _mm_add_ps(row, _mm_mul_ps(a2, bRow2));
+		row = _mm_add_ps(row, _mm_mul_ps(a3, bRow3));
+		_mm_storeu_ps(&ret.M[i][0], row);
+	}
+	#else
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			for (int k = 0; k < 4; k++) {
@@ -54,6 +94,7 @@ FMatrix FMatrix::operator*(const FMatrix& Other) const {
 			}
 		}
 	}
+	#endif
 
 	return ret;
 }
@@ -61,16 +102,25 @@ FMatrix FMatrix::operator*(const FMatrix& Other) const {
 //	Scalar division
 FMatrix FMatrix::operator/(float Scalar) const {
 	FMatrix ret;
-	if (Scalar < 1e-4) {
+	if (std::fabsf(Scalar) < 1e-4f) {
 		return ret;	// Zero matrix
 	}
 
 	const float inv = 1.0f / Scalar;
 
+	#if defined(FOR_COMPETITION) && FOR_COMPETITION
+	const __m128 invVec = _mm_set1_ps(inv);
+	for (int i = 0; i < 16; i += 4)
+	{
+		const __m128 a = _mm_loadu_ps(&Data[i]);
+		_mm_storeu_ps(&ret.Data[i], _mm_mul_ps(a, invVec));
+	}
+	#else
 	for (int i = 0; i < 16; i++)
 	{
 		ret.Data[i] = Data[i] * inv;
 	}
+	#endif
 
 	return ret;
 }
@@ -100,10 +150,19 @@ FMatrix FMatrix::operator-(float Scalar) const {
 FMatrix FMatrix::operator*(float Scalar) const {
 	FMatrix ret{};
 
+	#if defined(FOR_COMPETITION) && FOR_COMPETITION
+	const __m128 scalarVec = _mm_set1_ps(Scalar);
+	for (int i = 0; i < 16; i += 4)
+	{
+		const __m128 a = _mm_loadu_ps(&Data[i]);
+		_mm_storeu_ps(&ret.Data[i], _mm_mul_ps(a, scalarVec));
+	}
+	#else
 	for (int i = 0; i < 16; i++)
 	{
 		ret.Data[i] = Data[i] * Scalar;
 	}
+	#endif
 
 	return ret;
 }
@@ -146,11 +205,23 @@ FMatrix& FMatrix::operator*=(float Scalar) {
 FMatrix FMatrix::GetTransposed() const {
 	FMatrix ret;
 
+	#if defined(FOR_COMPETITION) && FOR_COMPETITION
+	__m128 r0 = _mm_loadu_ps(&M[0][0]);
+	__m128 r1 = _mm_loadu_ps(&M[1][0]);
+	__m128 r2 = _mm_loadu_ps(&M[2][0]);
+	__m128 r3 = _mm_loadu_ps(&M[3][0]);
+	_MM_TRANSPOSE4_PS(r0, r1, r2, r3);
+	_mm_storeu_ps(&ret.M[0][0], r0);
+	_mm_storeu_ps(&ret.M[1][0], r1);
+	_mm_storeu_ps(&ret.M[2][0], r2);
+	_mm_storeu_ps(&ret.M[3][0], r3);
+	#else
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			ret.M[j][i] = M[i][j];
 		}
 	}
+	#endif
 
 	return ret;
 }
