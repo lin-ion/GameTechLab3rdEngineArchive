@@ -7,6 +7,7 @@
 
 class FPrimitiveProxy;
 class AActor;
+class FViewport;
 
 struct FWorldProxyCullingStats
 {
@@ -97,6 +98,7 @@ public:
 private:
 	void RebuildSpatialIndexIfDirty(bool bTrackInsertedStats, bool bPrewarmStaticMeshBVH);
 	void RebuildVisibleRaySpatialIndexIfNeeded(bool bUseOcclusionGate);
+	void BuildFrustumVisiblePickCacheIfNeeded();
 
 	TArray<FPrimitiveProxy*> Proxies;
 	IPrimitiveSpatialQuery* FrustumSpatialIndex = nullptr;
@@ -106,6 +108,8 @@ private:
 	TArray<FPrimitiveProxy*> FrustumVisiblePickableCache;
 	FRayPickableSoA FrustumVisiblePickableSoA;
 	FRayPickableSoA RayPickableSoA;
+	const FViewport* CachedOcclusionViewport = nullptr;
+	bool bFrustumVisiblePickCacheDirty = true;
 	bool bRayFrustumGateOptimizationEnabled = true;
 	bool bSpatialIndexDirty = true;
 	bool bVisibleRaySpatialIndexDirty = true;
