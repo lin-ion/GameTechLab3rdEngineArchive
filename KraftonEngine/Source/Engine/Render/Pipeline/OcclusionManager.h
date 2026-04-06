@@ -30,11 +30,11 @@ struct FViewportOcclusionState
 	uint32 HZBWidth = 0;
 	uint32 HZBHeight = 0;
 
-	// Triple buffering for readback (N-2)
-	ID3D11Buffer* ReadbackBuffers[3] = { nullptr, nullptr, nullptr };
-	TArray<uint32> ReadbackProxyIds[3];
+	// Double buffering for readback (N-2)
+	ID3D11Buffer* ReadbackBuffers[2] = { nullptr, nullptr };
+	TArray<uint32> ReadbackProxyIds[2];
 	uint32 ReadbackIndex = 0;
-	bool bReadbackReady[3] = { false, false, false };
+	bool bReadbackReady[2] = { false, false };
 	uint32 ReadbackCapacity = 0;
 
 	std::vector<uint8> VisibilityArray;
@@ -77,9 +77,7 @@ private:
 	FOcclusionManager() = default;
 	~FOcclusionManager() = default;
 
-	// 해상도에 맞는 HZB 텍스처 및 관련 뷰 생성
 	void CreateHZBTexture(ID3D11Device* InDevice, uint32 Width, uint32 Height, FViewportOcclusionState& OutState);
-	// CPU 측 프록시 데이터를 GPU 버퍼로 업로드
 	void UpdateGPUProxies(ID3D11DeviceContext* InContext, const TArray<FPrimitiveProxy*>& InProxies, FViewportOcclusionState& OutState);
 
 private:
