@@ -219,3 +219,64 @@ struct FRenderCommand
 	uint32 PerObjectBaseIndex = 0;
 #endif
 };
+
+// Render Command System SoA (Structure of Arrays)
+struct FPassQueueSoA
+{
+	// High-frequency data (tightly packed for sorting/binding)
+	TArray<FMeshBuffer*> MeshBuffers;
+	TArray<FShader*>     Shaders;
+	TArray<ID3D11ShaderResourceView*> FirstSRVs;
+	TArray<uint32>       PickingIds;
+
+	// Per-object data
+	TArray<FPerObjectConstants> Constants;
+
+	// Section referencing (indices into GlobalSectionDraws)
+	TArray<uint32> SectionStart;
+	TArray<uint32> SectionCount;
+
+	// Extra CB binding (Stored separately to avoid cache pollution during initial bind)
+	TArray<FConstantBufferBinding> ExtraCBs;
+
+#ifdef FOR_COMPETITION
+	TArray<uint32> PerObjectBaseIndices;
+#endif
+
+	// Indirect reference array for sorting
+	TArray<uint32> SortedIndices;
+
+	// Reuse memory without releasing capacity
+	void Clear()
+	{
+		MeshBuffers.clear();
+		Shaders.clear();
+		FirstSRVs.clear();
+		PickingIds.clear();
+		Constants.clear();
+		SectionStart.clear();
+		SectionCount.clear();
+		ExtraCBs.clear();
+		SortedIndices.clear();
+#ifdef FOR_COMPETITION
+		PerObjectBaseIndices.clear();
+#endif
+	}
+
+	// Force release of memory capacity
+	void Reset()
+	{
+		TArray<FMeshBuffer*>().swap(MeshBuffers);
+		TArray<FShader*>().swap(Shaders);
+		TArray<ID3D11ShaderResourceView*>().swap(FirstSRVs);
+		TArray<uint32>().swap(PickingIds);
+		TArray<FPerObjectConstants>().swap(Constants);
+		TArray<uint32>().swap(SectionStart);
+		TArray<uint32>().swap(SectionCount);
+		TArray<FConstantBufferBinding>().swap(ExtraCBs);
+		TArray<uint32>().swap(SortedIndices);
+#ifdef FOR_COMPETITION
+		TArray<uint32>().swap(PerObjectBaseIndices);
+#endif
+	}
+};

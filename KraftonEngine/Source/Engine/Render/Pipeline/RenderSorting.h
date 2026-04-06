@@ -3,31 +3,28 @@
 #include "Core/CoreTypes.h"
 #include "Render/Pipeline/RenderCommand.h"
 #include "Profiling/Stats.h"
-
 namespace FRenderSorting
 {
-	inline void SortCommands(TArray<FRenderCommand>& Commands)
+	inline void SortIndices(FPassQueueSoA& Queue)
 	{
-		if (Commands.size() < 2) return;
+		if (Queue.SortedIndices.size() < 2) return;
 
-		std::sort(Commands.begin(), Commands.end(), [](const FRenderCommand& A, const FRenderCommand& B) {
+		std::sort(Queue.SortedIndices.begin(), Queue.SortedIndices.end(), [&Queue](uint32 A, uint32 B) {
 			// 1. Shader 우선 정렬
-			if (A.Shader != B.Shader)
-				return A.Shader < B.Shader;
+			if (Queue.Shaders[A] != Queue.Shaders[B])
+				return Queue.Shaders[A] < Queue.Shaders[B];
 
 			// 2. Mesh Buffer 정렬
-			if (A.MeshBuffer != B.MeshBuffer)
-				return A.MeshBuffer < B.MeshBuffer;
+			if (Queue.MeshBuffers[A] != Queue.MeshBuffers[B])
+				return Queue.MeshBuffers[A] < Queue.MeshBuffers[B];
 
 			// 3. Texture(SRV) 정렬
-			ID3D11ShaderResourceView* SrvA = A.SectionDraws.empty() ? nullptr : A.SectionDraws[0].DiffuseSRV;
-			ID3D11ShaderResourceView* SrvB = B.SectionDraws.empty() ? nullptr : B.SectionDraws[0].DiffuseSRV;
+			if (Queue.FirstSRVs[A] != Queue.FirstSRVs[B])
+				return Queue.FirstSRVs[A] < Queue.FirstSRVs[B];
 
-			if (SrvA != SrvB)
-				return SrvA < SrvB;
-
-			// 모두 같으면 순서 유지 (Depth 등 추후 확장 가능)
+			// 모두 같으면 순서 유지
 			return false;
 		});
 	}
 }
+

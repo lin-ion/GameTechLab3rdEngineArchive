@@ -20,10 +20,10 @@ public:
 	void AddCommand(ERenderPass Pass, const FRenderCommand& InCommand);
 	void AddCommand(ERenderPass Pass, FRenderCommand&& InCommand);
 	void SortPass(ERenderPass Pass);
-	const TArray<FRenderCommand>& GetCommands(ERenderPass Pass) const;
-#ifdef FOR_COMPETITION
-	TArray<FRenderCommand>& GetCommandsMutable(ERenderPass Pass) { return PassQueues[(uint32)Pass]; }
-#endif
+	
+	const FPassQueueSoA& GetPassQueue(ERenderPass Pass) const { return PassQueues[(uint32)Pass]; }
+	const TArray<FMeshSectionDraw>& GetGlobalSectionDraws() const { return GlobalSectionDraws; }
+	uint32 GetPassSectionOffset(ERenderPass Pass) const { return PassSectionOffsets[(uint32)Pass]; }
 
 	// Batcher 패스용 — 타입 안전한 전용 큐
 	void AddFontEntry(FFontEntry&& Entry);
@@ -77,8 +77,10 @@ public:
 	void CollectViewElements();
 
 private:
-	// Mesh 패스 큐
-	TArray<FRenderCommand> PassQueues[(uint32)ERenderPass::MAX];
+	// Mesh 패스 큐 (SoA)
+	FPassQueueSoA PassQueues[(uint32)ERenderPass::MAX];
+	TArray<FMeshSectionDraw> GlobalSectionDraws;
+	uint32 PassSectionOffsets[(uint32)ERenderPass::MAX] = {};
 
 	// Batcher 패스 큐
 	TArray<FFontEntry>  FontEntries;

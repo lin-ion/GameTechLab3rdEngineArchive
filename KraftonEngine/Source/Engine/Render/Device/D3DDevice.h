@@ -34,6 +34,8 @@ public:
 	void SetRasterizerState(ERasterizerState InState);
 
 	void ResetDepthStencilCache() { DepthStencilStateManager.ResetCache(); }
+	void ResetBlendCache() { BlendStateManager.ResetCache(); }
+	void ResetRasterizerCache() { RasterizerStateManager.ResetCache(); }
 
 private:
 	void CreateDeviceAndSwapChain(HWND InHWindow);

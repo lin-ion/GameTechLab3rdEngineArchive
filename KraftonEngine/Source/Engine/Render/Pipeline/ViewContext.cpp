@@ -8,8 +8,11 @@ void FViewContext::Clear()
 {
 	for (uint32 i = 0; i < (uint32)ERenderPass::MAX; ++i)
 	{
-		PassQueues[i].clear();
+		PassQueues[i].Clear();
+		PassSectionOffsets[i] = 0;
 	}
+
+	GlobalSectionDraws.clear();
 
 	FontEntries.clear();
 	OverlayFontEntries.clear();
@@ -29,8 +32,10 @@ void FViewContext::Reset()
 	Clear();
 	for (uint32 i = 0; i < (uint32)ERenderPass::MAX; ++i)
 	{
-		TArray<FRenderCommand>().swap(PassQueues[i]);
+		PassQueues[i].Reset();
 	}
+	TArray<FMeshSectionDraw>().swap(GlobalSectionDraws);
+
 	TArray<FFontEntry>().swap(FontEntries);
 	TArray<FFontEntry>().swap(OverlayFontEntries);
 	TArray<FSubUVEntry>().swap(SubUVEntries);
@@ -41,22 +46,47 @@ void FViewContext::Reset()
 
 void FViewContext::AddCommand(ERenderPass Pass, const FRenderCommand& InCommand)
 {
-	PassQueues[(uint32)Pass].push_back(InCommand);
+	FPassQueueSoA& Queue = PassQueues[(uint32)Pass];
+
+	// 첫 명령어가 추가될 때 해당 패스의 섹션 시작 오프셋 기록
+	if (Queue.MeshBuffers.empty())
+	{
+		PassSectionOffsets[(uint32)Pass] = (uint32)GlobalSectionDraws.size();
+	}
+
+	Queue.MeshBuffers.push_back(InCommand.MeshBuffer);
+	Queue.Shaders.push_back(InCommand.Shader);
+	Queue.FirstSRVs.push_back(InCommand.SectionDraws.empty() ? nullptr : InCommand.SectionDraws[0].DiffuseSRV);
+	Queue.PickingIds.push_back(InCommand.PickingId);
+	Queue.Constants.push_back(InCommand.PerObjectConstants);
+	Queue.ExtraCBs.push_back(InCommand.ExtraCB);
+
+#ifdef FOR_COMPETITION
+	Queue.PerObjectBaseIndices.push_back(InCommand.PerObjectBaseIndex);
+#endif
+
+	// 섹션 정보 저장 (GlobalSectionDraws 내의 오프셋)
+	Queue.SectionStart.push_back((uint32)GlobalSectionDraws.size());
+	Queue.SectionCount.push_back((uint32)InCommand.SectionDraws.size());
+
+	for (const auto& Section : InCommand.SectionDraws)
+	{
+		GlobalSectionDraws.push_back(Section);
+	}
+
+	// 정렬 인덱스 초기화
+	Queue.SortedIndices.push_back((uint32)Queue.SortedIndices.size());
 }
 
 void FViewContext::AddCommand(ERenderPass Pass, FRenderCommand&& InCommand)
 {
-	PassQueues[(uint32)Pass].push_back(std::move(InCommand));
+	// move 버전도 일단 동일하게 처리 (성능 최적화 여지 있음)
+	AddCommand(Pass, static_cast<const FRenderCommand&>(InCommand));
 }
 
 void FViewContext::SortPass(ERenderPass Pass)
 {
-	FRenderSorting::SortCommands(PassQueues[(uint32)Pass]);
-}
-
-const TArray<FRenderCommand>& FViewContext::GetCommands(ERenderPass Pass) const
-{
-	return PassQueues[(uint32)Pass];
+	FRenderSorting::SortIndices(PassQueues[(uint32)Pass]);
 }
 
 void FViewContext::AddFontEntry(FFontEntry&& Entry)

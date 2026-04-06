@@ -27,9 +27,17 @@ class FFrustumCulling
 public:
 	//	ViewProj로 월드 공간 프러스텀 평면 6개를 생성
 	static FFrustumPlanes BuildFrustumPlanes(const FMatrix& View, const FMatrix& Proj);
+	
 	//	AABB가 프러스텀과 교차하면 true (완전 외부면 false)
 	static bool IntersectsAABB(const FFrustumPlanes& Frustum, const FBoundingBox& Box);
 
-	// 프러스텀 컬링 필터 적용 (ViewContext 내의 CandidateProxies 필터링)
-	static void ApplyFrustumCulling(FViewContext& Context);
+	/** 
+	 * SIMD 가속 프러스텀 컬링 (4개 단위 배치 처리)
+	 * @param Frustum 프러스텀 평면 정보
+	 * @param MinX~MaxZ 4개 단위로 패딩된 AABB SoA 데이터 포인터
+	 * @return 4개 객체의 외부 판정 비트마스크 (1이면 외부, 0이면 내부/교차)
+	 */
+	static uint32 TestAABB4(const FFrustumPlanes& Frustum, 
+		const float* MinX, const float* MinY, const float* MinZ, 
+		const float* MaxX, const float* MaxY, const float* MaxZ);
 };

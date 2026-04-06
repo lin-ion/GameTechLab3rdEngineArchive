@@ -4,6 +4,7 @@
 #include "Component/PrimitiveComponent.h"
 #include <algorithm>
 #include <cmath>
+#include <intrin.h>
 
 void FPlane::Normalize()
 {
@@ -104,19 +105,46 @@ bool FFrustumCulling::IntersectsAABB(const FFrustumPlanes& Frustum, const FBound
 	return true;
 }
 
-void FFrustumCulling::ApplyFrustumCulling(FViewContext& Context)
+uint32 FFrustumCulling::TestAABB4(const FFrustumPlanes& Frustum,
+	const float* MinX, const float* MinY, const float* MinZ,
+	const float* MaxX, const float* MaxY, const float* MaxZ)
 {
-	const FFrustumPlanes Frustum = BuildFrustumPlanes(Context.GetView(), Context.GetProj());
-	TArray<FPrimitiveProxy*>& CandidateProxies = Context.GetCandidateProxiesMutable();
+	// 평면 데이터를 128비트 레지스터로 로드 (미리 정규화된 평면들)
+	__m128 PlaneX[6], PlaneY[6], PlaneZ[6], PlaneW[6];
+	for (int p = 0; p < 6; ++p)
+	{
+		PlaneX[p] = _mm_set1_ps(Frustum.Planes[p].Normal.X);
+		PlaneY[p] = _mm_set1_ps(Frustum.Planes[p].Normal.Y);
+		PlaneZ[p] = _mm_set1_ps(Frustum.Planes[p].Normal.Z);
+		PlaneW[p] = _mm_set1_ps(Frustum.Planes[p].Distance);
+	}
 
-	CandidateProxies.erase(
-		std::remove_if(CandidateProxies.begin(), CandidateProxies.end(),
-			[&Frustum](FPrimitiveProxy* Proxy) {
-				if (!Proxy) return true;
-				UPrimitiveComponent* Owner = Proxy->GetOwner();
-				if (!Owner) return true;
-				return !IntersectsAABB(Frustum, Owner->GetWorldBoundingBox());
-			}),
-		CandidateProxies.end()
-	);
+	// SoA로부터 4개 AABB의 Min/Max 로드
+	__m128 minX = _mm_loadu_ps(MinX);
+	__m128 minY = _mm_loadu_ps(MinY);
+	__m128 minZ = _mm_loadu_ps(MinZ);
+	__m128 maxX = _mm_loadu_ps(MaxX);
+	__m128 maxY = _mm_loadu_ps(MaxY);
+	__m128 maxZ = _mm_loadu_ps(MaxZ);
+
+	__m128 outMask = _mm_setzero_ps(); // bit set means OUTSIDE
+
+	for (int p = 0; p < 6; ++p)
+	{
+		// p-vertex: 평면 노멀 방향에 따른 AABB의 가장 먼 점 추출 (SIMD blend 활용)
+		// Normal이 양수면 Max, 음수면 Min 선택
+		__m128 px = _mm_blendv_ps(minX, maxX, _mm_cmpgt_ps(PlaneX[p], _mm_setzero_ps()));
+		__m128 py = _mm_blendv_ps(minY, maxY, _mm_cmpgt_ps(PlaneY[p], _mm_setzero_ps()));
+		__m128 pz = _mm_blendv_ps(minZ, maxZ, _mm_cmpgt_ps(PlaneZ[p], _mm_setzero_ps()));
+
+		// dist = Plane.Normal * P + Plane.Distance
+		__m128 dist = _mm_add_ps(_mm_add_ps(_mm_mul_ps(px, PlaneX[p]), _mm_mul_ps(py, PlaneY[p])),
+			_mm_add_ps(_mm_mul_ps(pz, PlaneZ[p]), PlaneW[p]));
+
+		// dist < 0이면 평면 외부에 있는 것으로 간주
+		outMask = _mm_or_ps(outMask, _mm_cmplt_ps(dist, _mm_setzero_ps()));
+	}
+
+	// 4비트 마스크 리턴 (각 비트가 1이면 해당 AABB는 외부)
+	return (uint32)_mm_movemask_ps(outMask);
 }

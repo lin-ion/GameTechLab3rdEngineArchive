@@ -89,10 +89,7 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 		Scene->GetRenderProxy().GatherCandidates(ViewContext, true);
 	}
 
-	// 3. 컬링 적용 (Cull)
-	FFrustumCulling::ApplyFrustumCulling(ViewContext);
-
-	// 오클루전 테스트를 위해 프러스텀 컬링만 통과한 전체 후보군을 따로 보관 (컬링 전 상태)
+	// 3. 오클루전 테스트를 위해 프러스텀 컬링만 통과한 전체 후보군을 따로 보관
 	TArray<FPrimitiveProxy*> AllFrustumVisible = ViewContext.GetCandidateProxies();
 
 	OcclusionCulling::ApplyOcclusionCulling(ViewContext);

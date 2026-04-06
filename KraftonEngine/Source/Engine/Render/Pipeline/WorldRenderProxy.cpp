@@ -113,20 +113,67 @@ void FWorldRenderProxy::GatherCandidates(FViewContext& Context, bool bUseSpatial
 	}
 	else
 	{
-		for (FPrimitiveProxy* Proxy : Proxies)
+		RebuildSpatialIndexIfDirty(false);
+
+		const size_t Count = CullingSoA.Proxies.size();
+		for (size_t i = 0; i < Count; i += 4)
 		{
-			if (!Proxy) continue;
+			int remaining = (int)Count - (int)i;
+			int batchSize = remaining > 4 ? 4 : remaining;
 
-			UPrimitiveComponent* Owner = Proxy->GetOwner();
-			if (!Owner || !Owner->IsVisible()) continue;
+			float minX[4], minY[4], minZ[4], maxX[4], maxY[4], maxZ[4];
 
-			if (AActor* ActorOwner = Owner->GetOwner())
+			if (remaining >= 4)
 			{
-				if (!ActorOwner->IsVisible()) continue;
-			}
+				uint32 mask = FFrustumCulling::TestAABB4(Frustum, 
+					&CullingSoA.MinX[i], &CullingSoA.MinY[i], &CullingSoA.MinZ[i],
+					&CullingSoA.MaxX[i], &CullingSoA.MaxY[i], &CullingSoA.MaxZ[i]);
 
-			if (!FFrustumCulling::IntersectsAABB(Frustum, Owner->GetWorldBoundingBox())) continue;
-			LocalCandidates.push_back(Proxy);
+				for (int j = 0; j < 4; ++j)
+				{
+					if (!(mask & (1 << j)))
+					{
+						FPrimitiveProxy* Proxy = CullingSoA.Proxies[i + j];
+						UPrimitiveComponent* Owner = Proxy->GetOwner();
+						if (Owner && Owner->IsVisible())
+						{
+							if (AActor* ActorOwner = Owner->GetOwner())
+							{
+								if (!ActorOwner->IsVisible()) continue;
+							}
+							LocalCandidates.push_back(Proxy);
+						}
+					}
+				}
+			}
+			else
+			{
+				// 4개 미만 남은 경우 안전하게 패딩하여 처리
+				for (int j = 0; j < 4; ++j) {
+					int idx = (j < remaining) ? (int)i + j : (int)i; // 패딩용으로 i번째 반복
+					minX[j] = CullingSoA.MinX[idx]; minY[j] = CullingSoA.MinY[idx]; minZ[j] = CullingSoA.MinZ[idx];
+					maxX[j] = CullingSoA.MaxX[idx]; maxY[j] = CullingSoA.MaxY[idx]; maxZ[j] = CullingSoA.MaxZ[idx];
+				}
+
+				uint32 mask = FFrustumCulling::TestAABB4(Frustum, minX, minY, minZ, maxX, maxY, maxZ);
+
+				for (int j = 0; j < remaining; ++j)
+				{
+					if (!(mask & (1 << j)))
+					{
+						FPrimitiveProxy* Proxy = CullingSoA.Proxies[i + j];
+						UPrimitiveComponent* Owner = Proxy->GetOwner();
+						if (Owner && Owner->IsVisible())
+						{
+							if (AActor* ActorOwner = Owner->GetOwner())
+							{
+								if (!ActorOwner->IsVisible()) continue;
+							}
+							LocalCandidates.push_back(Proxy);
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -183,9 +230,7 @@ void FWorldRenderProxy::SubmitRenderCommands(FViewContext& Context, const TArray
 	SCOPE_STAT("Render.SubmitCommands");
 	if (!this) return;
 
-	const TSet<AActor*> SelectedActorSet(SelectedActors.begin(), SelectedActors.end());
 	const TArray<FPrimitiveProxy*>& CandidateProxies = Context.GetCandidateProxies();
-
 	LastCullingStats.RenderedProxyCount = 0;
 
 	for (FPrimitiveProxy* Proxy : CandidateProxies)
@@ -201,8 +246,17 @@ void FWorldRenderProxy::SubmitRenderCommands(FViewContext& Context, const TArray
 		bool bSelected = false;
 		if (AActor* ActorOwner = Owner->GetOwner())
 		{
-			if (!ActorOwner->IsVisible()) continue;
-			bSelected = SelectedActorSet.find(ActorOwner) != SelectedActorSet.end();
+			if (ActorOwner->IsVisible())
+			{
+				if (!SelectedActors.empty())
+				{
+					bSelected = std::find(SelectedActors.begin(), SelectedActors.end(), ActorOwner) != SelectedActors.end();
+				}
+			}
+			else
+			{
+				continue;
+			}
 		}
 
 		Proxy->SetSelected(bSelected);
@@ -218,36 +272,46 @@ void FWorldRenderProxy::InjectAlwaysVisibleCandidates(FViewContext& Context, con
 		return;
 	}
 
-	const TSet<AActor*> SelectedActorSet(SelectedActors.begin(), SelectedActors.end());
-
-	for (FPrimitiveProxy* Proxy : Proxies)
+	// 1. 선택된 액터의 프록시를 즉시 주입 (전체 순회 제거)
+	for (AActor* ActorOwner : SelectedActors)
 	{
-		if (!Proxy)
-		{
-			continue;
-		}
-
-		UPrimitiveComponent* Owner = Proxy->GetOwner();
-		if (!Owner || !Owner->IsVisible())
-		{
-			continue;
-		}
-
-		if (bIncludeGizmo && Owner->IsA<UGizmoComponent>())
-		{
-			Context.AddCandidateProxyUnique(Proxy);
-			continue;
-		}
-
-		AActor* ActorOwner = Owner->GetOwner();
 		if (!ActorOwner || !ActorOwner->IsVisible())
 		{
 			continue;
 		}
 
-		if (SelectedActorSet.find(ActorOwner) != SelectedActorSet.end())
+		TArray<UPrimitiveComponent*> Components;
+		Components = ActorOwner->GetPrimitiveComponents();
+
+		for (UPrimitiveComponent* Owner : Components)
 		{
-			Context.AddCandidateProxyUnique(Proxy);
+			if (!Owner || !Owner->IsVisible())
+			{
+				continue;
+			}
+
+			if (FPrimitiveProxy* Proxy = Owner->GetProxy())
+			{
+				if (Proxy->GetWorldRenderProxy() == this)
+				{
+					Context.AddCandidateProxyUnique(Proxy);
+				}
+			}
+		}
+	}
+
+	// 2. 기즈모 처리 (필요한 경우만 순회)
+	if (bIncludeGizmo)
+	{
+		for (FPrimitiveProxy* Proxy : Proxies)
+		{
+			if (!Proxy) continue;
+
+			UPrimitiveComponent* Owner = Proxy->GetOwner();
+			if (Owner && Owner->IsVisible() && Owner->IsA<UGizmoComponent>())
+			{
+				Context.AddCandidateProxyUnique(Proxy);
+			}
 		}
 	}
 }
@@ -265,13 +329,15 @@ void FWorldRenderProxy::CollectWorld(FViewContext& Context, const TArray<AActor*
 
 void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats)
 {
-	if (!SpatialIndex || !bSpatialIndexDirty)
+	if (!bSpatialIndexDirty)
 	{
 		return;
 	}
 	SCOPE_STAT("Render.OctreeBuild");
 
-	SpatialIndex->Clear();
+	if (SpatialIndex) SpatialIndex->Clear();
+	CullingSoA.Clear();
+	CullingSoA.Reserve(Proxies.size());
 
 	for (FPrimitiveProxy* Proxy : Proxies)
 	{
@@ -287,7 +353,11 @@ void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats)
 		}
 
 		Owner->GetWorldMatrix();
-		SpatialIndex->Insert(Proxy, Owner->GetWorldBoundingBox());
+		const FBoundingBox Bounds = Owner->GetWorldBoundingBox();
+
+		if (SpatialIndex) SpatialIndex->Insert(Proxy, Bounds);
+		CullingSoA.Add(Bounds, Proxy);
+
 		if (bTrackInsertedStats)
 		{
 			++LastCullingStats.InsertedProxyCount;

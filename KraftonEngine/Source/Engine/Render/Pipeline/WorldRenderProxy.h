@@ -21,6 +21,34 @@ struct FWorldProxyCullingStats
 	int32 OctreeFrustumCandidateItems = 0;
 };
 
+struct FBoundingBoxSoA
+{
+	TArray<float> MinX, MinY, MinZ;
+	TArray<float> MaxX, MaxY, MaxZ;
+	TArray<FPrimitiveProxy*> Proxies;
+
+	void Clear()
+	{
+		MinX.clear(); MinY.clear(); MinZ.clear();
+		MaxX.clear(); MaxY.clear(); MaxZ.clear();
+		Proxies.clear();
+	}
+
+	void Reserve(size_t Capacity)
+	{
+		MinX.reserve(Capacity); MinY.reserve(Capacity); MinZ.reserve(Capacity);
+		MaxX.reserve(Capacity); MaxY.reserve(Capacity); MaxZ.reserve(Capacity);
+		Proxies.reserve(Capacity);
+	}
+
+	void Add(const FBoundingBox& Box, FPrimitiveProxy* Proxy)
+	{
+		MinX.push_back(Box.Min.X); MinY.push_back(Box.Min.Y); MinZ.push_back(Box.Min.Z);
+		MaxX.push_back(Box.Max.X); MaxY.push_back(Box.Max.Y); MaxZ.push_back(Box.Max.Z);
+		Proxies.push_back(Proxy);
+	}
+};
+
 class FWorldRenderProxy
 {
 public:
@@ -51,6 +79,7 @@ private:
 
 	TArray<FPrimitiveProxy*> Proxies;
 	IPrimitiveSpatialQuery* SpatialIndex = nullptr;
+	FBoundingBoxSoA CullingSoA;
 	bool bSpatialIndexDirty = true;
 	int32 SpatialIndexDeferDepth = 0;
 	bool bDeferredSpatialIndexDirtyPending = false;

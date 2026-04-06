@@ -56,21 +56,20 @@ private:
 	void InitializePassBatchers();
 
 	void ApplyPassRenderState(ERenderPass Pass, ID3D11DeviceContext* Context, EViewMode ViewMode);
-	void BindCommand(const FRenderCommand& InCmd, ID3D11DeviceContext* Context);
 
-	void DrawCommand(ID3D11DeviceContext* InDeviceContext, const FRenderCommand& InCommand);
-	void DrawStaticMeshSections(ID3D11DeviceContext* Context, const FRenderCommand& Cmd);
+	void DrawCommandFromSoA(ID3D11DeviceContext* Context, const FPassQueueSoA& Queue, uint32 Idx);
+	void DrawStaticMeshSectionsFromSoA(ID3D11DeviceContext* Context, const FPassQueueSoA& Queue, uint32 Idx, const TArray<FMeshSectionDraw>& GlobalSections);
+
 	void UpdateFrameBuffer(ID3D11DeviceContext* Context, const FViewContext& InRenderBus);
 
 	// 기본 패스 실행기 — BindCommand + DrawCommand 루프
-	void ExecuteDefaultPass(const TArray<FRenderCommand>& Commands, const FViewContext& Bus, ID3D11DeviceContext* Context);
+	void ExecuteDefaultPass(const FPassQueueSoA& Queue, const FViewContext& Bus, ID3D11DeviceContext* Context);
 
 #ifdef FOR_COMPETITION
 	// Large CB 기반 Opaque 패스 실행기
 	void CollectPerObjectData(FViewContext& ViewContext);
-	void ExecuteOpaquePassWithLargeCB(const TArray<FRenderCommand>& Commands, const FViewContext& Bus, ID3D11DeviceContext* Context);
-	void BindCommandShaderOnly(const FRenderCommand& InCmd, ID3D11DeviceContext* Context);
-	void DrawStaticMeshSectionsWithLargeCB(ID3D11DeviceContext1* Context1, const FRenderCommand& Cmd);
+	void ExecuteOpaquePassWithLargeCB(const FPassQueueSoA& Queue, const FViewContext& Bus, ID3D11DeviceContext* Context);
+	void DrawStaticMeshSectionsWithLargeCBFromSoA(ID3D11DeviceContext1* Context1, const FPassQueueSoA& Queue, uint32 Idx, const TArray<FMeshSectionDraw>& GlobalSections);
 #endif
 
 	// LineBatcher DrawBatch 공통 — EditorShader 바인딩 + DrawBatch
