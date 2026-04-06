@@ -145,6 +145,7 @@ void FViewContext::SetCameraInfo(const UCameraComponent* Camera)
 
 void FViewContext::SetViewportInfo(const FViewport* VP)
 {
+	Viewport = VP;
 	viewportWidth = static_cast<float>(VP->GetWidth());
 	viewportHeight = static_cast<float>(VP->GetHeight());
 	ViewportRTV = VP->GetRTV();

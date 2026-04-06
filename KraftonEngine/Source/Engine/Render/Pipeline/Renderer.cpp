@@ -343,7 +343,7 @@ void FRenderer::Render(const FViewContext& InRenderBus)
 			ID3D11RenderTargetView* nullRTV = nullptr;
 			Context->OMSetRenderTargets(1, &nullRTV, nullptr);
 
-			FOcclusionManager::Get().BuildHZB(Context, InRenderBus.GetViewportDepthSRV(), static_cast<uint32>(InRenderBus.GetViewportWidth()), static_cast<uint32>(InRenderBus.GetViewportHeight()));
+			FOcclusionManager::Get().BuildHZB(Context, InRenderBus);
 
 			// Rebind the viewport RTV and DSV for subsequent passes (Translucent, etc.)
 			ID3D11RenderTargetView* RTV = InRenderBus.GetViewportRTV();

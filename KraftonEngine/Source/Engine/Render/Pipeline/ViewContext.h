@@ -68,6 +68,7 @@ public:
 
 	const float GetViewportWidth() const { return viewportWidth; }
 	const float GetViewportHeight() const { return viewportHeight; }
+	const FViewport* GetViewport()	const { return Viewport; }
 	ID3D11RenderTargetView*  GetViewportRTV()        const { return ViewportRTV; }
 	ID3D11DepthStencilView*  GetViewportDSV()        const { return ViewportDSV; }
 	ID3D11ShaderResourceView* GetViewportDepthSRV()   const { return ViewportDepthSRV; }
@@ -107,6 +108,9 @@ private:
 	ID3D11DepthStencilView*   ViewportDSV        = nullptr;
 	ID3D11ShaderResourceView* ViewportDepthSRV   = nullptr;
 	ID3D11ShaderResourceView* ViewportStencilSRV = nullptr;
+
+	// 어느 Viewport에 그려질 예정인지
+	const FViewport* Viewport = nullptr;
 
 	//Editor Settings
 	FViewportRenderOptions Options;

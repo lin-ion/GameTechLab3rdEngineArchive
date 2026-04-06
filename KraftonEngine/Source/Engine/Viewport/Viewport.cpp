@@ -1,5 +1,6 @@
 ﻿#include "Viewport/Viewport.h"
 #include "Profiling/Stats.h"
+#include "Render/Pipeline/OcclusionManager.h"
 
 FViewport::~FViewport()
 {
@@ -17,6 +18,7 @@ bool FViewport::Initialize(ID3D11Device* InDevice, uint32 InWidth, uint32 InHeig
 
 void FViewport::Release()
 {
+	FOcclusionManager::Get().ReleaseViewportState(this);
 	ReleaseResources();
 	Device = nullptr;
 	Width = 0;
