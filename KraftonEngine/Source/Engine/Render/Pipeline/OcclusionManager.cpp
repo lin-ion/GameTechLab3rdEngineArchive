@@ -355,10 +355,24 @@ void FOcclusionManager::UpdateGPUProxies(ID3D11DeviceContext* InContext, const T
 		}
 
 		FPrimitiveProxy* Proxy = InProxies[Index];
+		
+		/** SIMD 사용하기 이전 코드
 		MappedProxyBuffer[Index].Min = Proxy->CachedAABBMin;
 		MappedProxyBuffer[Index].Id  = Proxy->CachedProxyId;
 		MappedProxyBuffer[Index].Max = Proxy->CachedAABBMax;
 		CurrentFrameProxyIds[Index]  = Proxy->CachedProxyId;
+		*/
+		
+		// SSE를 사용하여 16바이트(float4) 단위로 데이터를 묶어 기록 (Min.xyz + Id)                            
+		__m128 vMinId = _mm_setr_ps(Proxy->CachedAABBMin.X, Proxy->CachedAABBMin.Y, Proxy->CachedAABBMin.Z,
+										*(float*)&Proxy->CachedProxyId);                                                                             
+		// SSE를 사용하여 16바이트(float4) 단위로 데이터를 묶어 기록 (Max.xyz + Padding)                       
+		__m128 vMaxPad = _mm_setr_ps(Proxy->CachedAABBMax.X, Proxy->CachedAABBMax.Y, Proxy->CachedAABBMax.Z,   
+		                             0.0f);                                                                                                       
+		_mm_store_ps((float*)&MappedProxyBuffer[Index], vMinId);                                               
+		_mm_store_ps((float*)&MappedProxyBuffer[Index] + 4, vMaxPad);   
+		
+		CurrentFrameProxyIds[Index]  = Proxy->CachedProxyId; 
 	}
 
 	InContext->Unmap(ProxyBuffer, 0);
