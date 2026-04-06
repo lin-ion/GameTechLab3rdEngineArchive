@@ -61,8 +61,9 @@ enum class EWindingOrder : uint8
 struct FImportOptions
 {
 	float Scale = 1.0f;
-	EForwardAxis ForwardAxis = EForwardAxis::NegZ;  // OBJ 기본: Y-up, -Z Forward
-	EWindingOrder WindingOrder = EWindingOrder::CCW_to_CW;
+	EForwardAxis ForwardAxis = EForwardAxis::NegY;  // UE/Blender 파이프라인 기본: Z-up, -Y Forward
+	EWindingOrder WindingOrder = EWindingOrder::Keep; // UE 스타일 기본: 좌표 변환 후 원본 와인딩 유지
+	float YawOffsetDegrees = -90.0f; // UE 호환 보정: 최종 Z축 -90도 회전
 	static FImportOptions Default() { return {}; }
 };
 
