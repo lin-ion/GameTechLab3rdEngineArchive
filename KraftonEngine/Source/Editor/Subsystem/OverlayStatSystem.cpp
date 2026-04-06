@@ -1,7 +1,5 @@
 ﻿#include "Editor/Subsystem/OverlayStatSystem.h"
 
-#include "Editor/Subsystem/OverlayStatSystem.h"
-
 #include "Editor/EditorEngine.h"
 #include "Profiling/Stats.h"
 #include "Engine/Profiling/Timer.h"
@@ -27,20 +25,17 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 		}
 
 		// 발제 필수 HUD 형식: Picking Time <ms> ms : Num Attempts <N> : Accumulated Time <ms> ms
-		// UX(E2E) 기준 Ray + ID 합산
+		// UX(E2E) 기준: 클릭 시점 -> 최종 선택 반영
 		{
-			FStatEntry RayPick = {};
-			FStatEntry IdPick = {};
-			FStatManager::Get().GetStat("Picking.Ray.E2E", RayPick);
-			FStatManager::Get().GetStat("Picking.ID.Total", IdPick);
-
-			const double LastMs  = (RayPick.LastTime + IdPick.LastTime) * 1000.0;
-			const uint64 Count   = RayPick.Count + IdPick.Count;
-			const double TotalMs = (RayPick.TotalTime + IdPick.TotalTime) * 1000.0;
+			FStatEntry ClickE2E = {};
+			FStatManager::Get().GetStat("Picking.Click.E2E", ClickE2E);
+			const double LastMs = ClickE2E.LastTime * 1000.0;
+			const uint64 Count = ClickE2E.Count;
+			const double TotalMs = ClickE2E.TotalTime * 1000.0;
 
 			char Buffer[256] = {};
 			snprintf(Buffer, sizeof(Buffer),
-				"Picking Time %.5f ms : Num Attempts %llu : Accumulated Time %.5f ms",
+				"Picking Time %.8f ms : Num Attempts %llu : Accumulated Time %.8f ms",
 				LastMs, static_cast<unsigned long long>(Count), TotalMs);
 			Group.Lines.push_back(FString(Buffer));
 		}
@@ -49,20 +44,22 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 		{
 			FStatEntry RayBroad = {};
 			FStatEntry RayNarrow = {};
-			FStatEntry IdFetch = {};
+			FStatEntry IdAlgorithm = {};
+			FStatEntry IdFetchClick = {};
 			FStatEntry IdWait = {};
 			FStatManager::Get().GetStat("Picking.Ray.Broad", RayBroad);
 			FStatManager::Get().GetStat("Picking.Ray.Narrow", RayNarrow);
-			FStatManager::Get().GetStat("Picking.ID.Fetch", IdFetch);
-			FStatManager::Get().GetStat("Picking.ID.Wait", IdWait);
+			FStatManager::Get().GetStat("Picking.ID.Algorithm", IdAlgorithm);
+			FStatManager::Get().GetStat("Picking.ID.Fetch.Click", IdFetchClick);
+			FStatManager::Get().GetStat("Picking.ID.Wait.Click", IdWait);
 
 			const double RayCoreLastMs = (RayBroad.LastTime + RayNarrow.LastTime) * 1000.0;
-			const double IdFetchLastMs = IdFetch.LastTime * 1000.0;
+			const double IdFetchLastMs = IdFetchClick.LastTime * 1000.0;
 
 			char Buffer[256] = {};
 			snprintf(Buffer, sizeof(Buffer),
-				"Picking Core Last(ms) : Ray %.5f / ID Fetch %.5f / ID Wait %.5f",
-				RayCoreLastMs, IdFetchLastMs, IdWait.LastTime * 1000.0);
+				"Picking Core Last(ms) : Ray %.8f / ID Algo %.8f / ID Stall %.8f",
+				RayCoreLastMs, IdAlgorithm.LastTime * 1000.0, IdWait.LastTime * 1000.0);
 			Group.Lines.push_back(FString(Buffer));
 		}
 

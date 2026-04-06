@@ -1,11 +1,12 @@
 ﻿#pragma once
 #include "Core/CoreTypes.h"
 #include "Core/RayTypes.h"
+#include "Render/Pipeline/IPrimitiveSpatialQuery.h"
 #include "Render/Pipeline/ViewContext.h"
+#include <cfloat>
 
 class FPrimitiveProxy;
 class AActor;
-class IPrimitiveSpatialQuery;
 
 struct FWorldProxyCullingStats
 {
@@ -14,14 +15,14 @@ struct FWorldProxyCullingStats
 	int32 CandidateProxyCount = 0;
 	int32 RenderedProxyCount = 0;
 
-	int32 OctreeTotalNodes = 0;
-	int32 OctreeTotalItems = 0;
-	int32 OctreeOutsideItems = 0;
-	int32 OctreeFrustumIntersectedNodes = 0;
-	int32 OctreeFrustumCandidateItems = 0;
+	int32 SpatialTotalNodes = 0;
+	int32 SpatialTotalItems = 0;
+	int32 SpatialOutsideItems = 0;
+	int32 SpatialFrustumIntersectedNodes = 0;
+	int32 SpatialFrustumCandidateItems = 0;
 };
 
-struct FBoundingBoxSoA
+struct FRayPickableSoA
 {
 	TArray<float> MinX, MinY, MinZ;
 	TArray<float> MaxX, MaxY, MaxZ;
@@ -47,6 +48,8 @@ struct FBoundingBoxSoA
 		MaxX.push_back(Box.Max.X); MaxY.push_back(Box.Max.Y); MaxZ.push_back(Box.Max.Z);
 		Proxies.push_back(Proxy);
 	}
+
+	size_t Size() const { return Proxies.size(); }
 };
 
 class FWorldRenderProxy
@@ -60,28 +63,38 @@ public:
 	void MarkSpatialIndexDirty();
 	void BeginDeferSpatialIndexInvalidation();
 	void EndDeferSpatialIndexInvalidation();
+	void WarmupSpatialIndices();
 
 	// Phase 1: 씬으로부터 잠재적 후보군 수집
-	void GatherCandidates(FViewContext& context, bool bUseSpatialIndex);
+	void GatherCandidates(FViewContext& context);
 
 	// Phase 2: 최종 생존한 후보들에 대해 렌더 커맨드 생성
 	void SubmitRenderCommands(FViewContext& context, const TArray<AActor*>& SelectedActors);
 	void InjectAlwaysVisibleCandidates(FViewContext& context, const TArray<AActor*>& SelectedActors, bool bIncludeGizmo);
 
 	// 레거시 지원 (필요시)
-	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors, bool bUseSpatialIndex);
-	void QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates, bool bUseSpatialIndex = true);
+	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors);
+	void QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates);
+	void QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCandidate>& OutCandidates, float MaxNearT = FLT_MAX);
+	bool IsSpatialIndexDirtyForQueries() const { return bSpatialIndexDirty || bDeferredSpatialIndexDirtyPending || (SpatialIndexDeferDepth > 0); }
+	uint64 GetSpatialChangeSerial() const { return SpatialChangeSerial; }
 
 	const FWorldProxyCullingStats& GetLastCullingStats() const { return LastCullingStats; }
 
 private:
-	void RebuildSpatialIndexIfDirty(bool bTrackInsertedStats);
+	void RebuildSpatialIndexIfDirty(bool bTrackInsertedStats, bool bPrewarmStaticMeshBVH);
 
 	TArray<FPrimitiveProxy*> Proxies;
-	IPrimitiveSpatialQuery* SpatialIndex = nullptr;
-	FBoundingBoxSoA CullingSoA;
+	IPrimitiveSpatialQuery* FrustumSpatialIndex = nullptr;
+	IPrimitiveSpatialQuery* RaySpatialIndex = nullptr;
+	uint32 FrustumVisiblePickFrameTag = 0;
+	TArray<FPrimitiveProxy*> FrustumVisiblePickableCache;
+	FRayPickableSoA FrustumVisiblePickableSoA;
+	FRayPickableSoA RayPickableSoA;
+	bool bRayFrustumGateOptimizationEnabled = true;
 	bool bSpatialIndexDirty = true;
 	int32 SpatialIndexDeferDepth = 0;
 	bool bDeferredSpatialIndexDirtyPending = false;
+	uint64 SpatialChangeSerial = 1u;
 	FWorldProxyCullingStats LastCullingStats;
 };

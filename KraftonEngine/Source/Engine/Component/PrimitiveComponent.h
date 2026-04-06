@@ -42,7 +42,7 @@ public:
 
 	//Collision
 	virtual void UpdateWorldAABB() const;
-	virtual bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult);
+	virtual bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT = FLT_MAX);
 	void UpdateWorldMatrix() const override;
 
 	virtual bool SupportsOutline() const { return true; }

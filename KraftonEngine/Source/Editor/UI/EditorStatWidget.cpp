@@ -6,6 +6,7 @@
 #include "Render/Pipeline/WorldRenderProxy.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Scene.h"
+#include "Editor/Selection/PickingTypes.h"
 #include "ImGui/imgui.h"
 
 #include <algorithm>
@@ -120,7 +121,7 @@ void FEditorStatWidget::RenderRenderStats()
 }
 
 // ────────────────────────────────────────────────────────────
-// Culling Stats: Proxy/Octree 통계 + Culling 효율
+// Culling Stats: Proxy/Spatial(BVH) 통계 + Culling 효율
 // ────────────────────────────────────────────────────────────
 void FEditorStatWidget::RenderCullingStats()
 {
@@ -141,11 +142,11 @@ void FEditorStatWidget::RenderCullingStats()
 		Total.InsertedProxyCount            += S.InsertedProxyCount;
 		Total.CandidateProxyCount           += S.CandidateProxyCount;
 		Total.RenderedProxyCount            += S.RenderedProxyCount;
-		Total.OctreeTotalNodes              += S.OctreeTotalNodes;
-		Total.OctreeTotalItems              += S.OctreeTotalItems;
-		Total.OctreeOutsideItems            += S.OctreeOutsideItems;
-		Total.OctreeFrustumIntersectedNodes += S.OctreeFrustumIntersectedNodes;
-		Total.OctreeFrustumCandidateItems   += S.OctreeFrustumCandidateItems;
+		Total.SpatialTotalNodes             += S.SpatialTotalNodes;
+		Total.SpatialTotalItems             += S.SpatialTotalItems;
+		Total.SpatialOutsideItems           += S.SpatialOutsideItems;
+		Total.SpatialFrustumIntersectedNodes += S.SpatialFrustumIntersectedNodes;
+		Total.SpatialFrustumCandidateItems  += S.SpatialFrustumCandidateItems;
 	};
 	AccumulateScene(World->GetPersistentScene());
 	AccumulateScene(World->GetActiveScene());
@@ -161,10 +162,10 @@ void FEditorStatWidget::RenderCullingStats()
 	// snprintf(EffBuf, sizeof(EffBuf), "%.1f%%", Efficiency * 100.0f);
 	// ImGui::ProgressBar(Efficiency, ImVec2(-1, 0), EffBuf);
 
-	ImGui::Text("Octree: %d nodes, %d intersected",
-		Total.OctreeTotalNodes, Total.OctreeFrustumIntersectedNodes);
-	ImGui::Text("Octree Items: %d total, %d outside, %d in frustum",
-		Total.OctreeTotalItems, Total.OctreeOutsideItems, Total.OctreeFrustumCandidateItems);
+	ImGui::Text("Spatial BVH: %d nodes, %d intersected",
+		Total.SpatialTotalNodes, Total.SpatialFrustumIntersectedNodes);
+	ImGui::Text("Spatial Items: %d total, %d outside, %d in frustum",
+		Total.SpatialTotalItems, Total.SpatialOutsideItems, Total.SpatialFrustumCandidateItems);
 }
 
 // ────────────────────────────────────────────────────────────
@@ -180,7 +181,7 @@ void FEditorStatWidget::RenderPickingDetail()
 		FStatEntry Entry = {};
 		if (!FStatManager::Get().GetStat(StatName, Entry))
 		{
-			ImGui::Text("[%s]  Last: %.5f ms  Avg: %.5f ms  Total: %.5f ms  Count: %llu",
+			ImGui::Text("[%s]  Last: %.8f ms  Avg: %.8f ms  Total: %.8f ms  Count: %llu",
 				Label, 0.0, 0.0, 0.0, 0ull);
 			return;
 		}
@@ -188,7 +189,7 @@ void FEditorStatWidget::RenderPickingDetail()
 		const double LastMs = Entry.LastTime * 1000.0;
 		const double AvgMs = Entry.GetAverageTime() * 1000.0;
 		const double TotalMs = Entry.TotalTime * 1000.0;
-		ImGui::Text("[%s]  Last: %.5f ms  Avg: %.5f ms  Total: %.5f ms  Count: %llu",
+		ImGui::Text("[%s]  Last: %.8f ms  Avg: %.8f ms  Total: %.8f ms  Count: %llu",
 			Label, LastMs, AvgMs, TotalMs,
 			static_cast<unsigned long long>(Entry.Count));
 	};
@@ -205,20 +206,30 @@ void FEditorStatWidget::RenderPickingDetail()
 		const double TotalMs = (A.TotalTime + B.TotalTime) * 1000.0;
 		const uint64 Count = (A.Count > B.Count) ? A.Count : B.Count;
 
-		ImGui::Text("[%s]  Last: %.5f ms  Avg: %.5f ms  Total: %.5f ms  Count: %llu",
+		ImGui::Text("[%s]  Last: %.8f ms  Avg: %.8f ms  Total: %.8f ms  Count: %llu",
 			Label, LastMs, AvgMs, TotalMs, static_cast<unsigned long long>(Count));
 	};
 
 	ImGui::SeparatorText("UX Metric (Click -> Final Selection)");
-	ShowStat("Ray E2E", "Picking.Ray.E2E");
-	ShowStat("ID E2E", "Picking.ID.Total");
+	ShowStat("Click E2E", "Picking.Click.E2E");
 
-	ImGui::SeparatorText("Algorithm Metric (Core)");
+	ImGui::SeparatorText("Algorithm Metric (Unified Core)");
+	if (EditorEngine && EditorEngine->GetPickingMode() == EPickingMode::IDBuffer)
+	{
+		ShowStat("Pick Core (ID Algorithm)", "Picking.ID.Algorithm");
+	}
+	else
+	{
+		ShowSumStat("Pick Core (Ray: Broad+Narrow)", "Picking.Ray.Broad", "Picking.Ray.Narrow");
+	}
+
+	ImGui::SeparatorText("Algorithm Metric (Detail)");
 	ShowSumStat("Ray Core (Broad+Narrow)", "Picking.Ray.Broad", "Picking.Ray.Narrow");
 	ShowStat("Ray Broad", "Picking.Ray.Broad");
 	ShowStat("Ray Narrow", "Picking.Ray.Narrow");
-	ShowStat("ID Fetch", "Picking.ID.Fetch");
-	ShowStat("ID Wait (Blocking Map)", "Picking.ID.Wait");
+	ShowStat("ID Algorithm (Click Fetch)", "Picking.ID.Algorithm");
+	ShowStat("ID Fetch (Click)", "Picking.ID.Fetch.Click");
+	ShowStat("ID Wait (Stall Only)", "Picking.ID.Wait.Click");
 }
 
 // ────────────────────────────────────────────────────────────
@@ -287,9 +298,9 @@ void FEditorStatWidget::RenderStatTable(const char* TableID, const TArray<FStatE
 		{
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0); ImGui::Text("%s", E.Name);
-			ImGui::TableSetColumnIndex(1); ImGui::Text("%.3f", E.MaxTime * 1000.0);
-			ImGui::TableSetColumnIndex(2); ImGui::Text("%.3f", E.MinTime == DBL_MAX ? 0.0 : E.MinTime * 1000.0);
-			ImGui::TableSetColumnIndex(3); ImGui::Text("%.3f", E.LastTime * 1000.0);
+			ImGui::TableSetColumnIndex(1); ImGui::Text("%.8f", E.MaxTime * 1000.0);
+			ImGui::TableSetColumnIndex(2); ImGui::Text("%.8f", E.MinTime == DBL_MAX ? 0.0 : E.MinTime * 1000.0);
+			ImGui::TableSetColumnIndex(3); ImGui::Text("%.8f", E.LastTime * 1000.0);
 		}
 
 		ImGui::EndTable();

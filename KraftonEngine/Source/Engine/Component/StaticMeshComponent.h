@@ -21,7 +21,7 @@ public:
 	~UStaticMeshComponent() override = default;
 
 	FMeshBuffer* GetMeshBuffer() const override;
-	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult) override;
+	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT = FLT_MAX) override;
 	void UpdateWorldAABB() const override;
 
 	FPrimitiveProxy* CreateProxy() override;

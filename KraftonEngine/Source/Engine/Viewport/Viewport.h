@@ -24,8 +24,8 @@ public:
 	void BeginRender(ID3D11DeviceContext* Ctx, const float ClearColor[4] = nullptr);
 	void BeginPickingRender(ID3D11DeviceContext* Ctx);
 	bool EnqueuePickingIdReadback(ID3D11DeviceContext* Ctx, uint32 X, uint32 Y, uint32& OutRequestId);
-	bool TryReadPickingIdReadback(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId, bool& bOutReady);
-	bool TryReadPickingIdReadbackBlocking(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId);
+	bool TryReadPickingIdReadback(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId, bool& bOutReady, uint64* OutFetchCycles = nullptr);
+	bool TryReadPickingIdReadbackBlocking(ID3D11DeviceContext* Ctx, uint32 RequestId, uint32& OutId, uint64* OutWaitCycles = nullptr, uint64* OutFetchCycles = nullptr);
 	bool CancelPickingIdReadback(uint32 RequestId);
 
 	// ViewportClient 참조
@@ -60,7 +60,7 @@ private:
 	ID3D11ShaderResourceView* SRV = nullptr;		// ImGui::Image() 출력용
 	ID3D11Texture2D* PickingTexture = nullptr;
 	ID3D11RenderTargetView* PickingRTV = nullptr;
-	static constexpr uint32 PickingReadbackRingSize = 3;
+	static constexpr uint32 PickingReadbackRingSize = 8;
 	ID3D11Texture2D* PickingReadbackRing[PickingReadbackRingSize] = {};
 	uint32 PickingReadbackRequestIds[PickingReadbackRingSize] = {};
 	bool bPickingReadbackInFlight[PickingReadbackRingSize] = {};

@@ -85,7 +85,7 @@ void UPrimitiveComponent::UpdateWorldAABB() const
 	WorldAABBMaxLocation = WorldCenter + FVector(NewEx, NewEy, NewEz);
 }
 
-bool UPrimitiveComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult)
+bool UPrimitiveComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT)
 {
 	const FMeshData* Data = GetMeshData();
 	if (!Data || Data->Indices.empty()) return false;
@@ -95,7 +95,8 @@ bool UPrimitiveComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHit
 		&Data->Vertices[0].Position,
 		sizeof(FVertex),
 		Data->Indices,
-		OutHitResult);
+		OutHitResult,
+		InClosestT);
 
 	if (bHit)
 	{
@@ -106,6 +107,11 @@ bool UPrimitiveComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHit
 
 void UPrimitiveComponent::UpdateWorldMatrix() const
 {
+	if (!bTransformDirty)
+	{
+		return;
+	}
+
 	USceneComponent::UpdateWorldMatrix();
 	UpdateWorldAABB();
 	const_cast<UPrimitiveComponent*>(this)->MarkRenderStateDirty();

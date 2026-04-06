@@ -14,7 +14,7 @@ private:
 	const char* PrimitiveTypes[2] = { "Cube", "Sphere" };
 	const char* PickingModeTypes[2] = { "Ray-Triangle (BVH)", "ID Picking" };
 	int32 SelectedPrimitiveType = 0;
-	int32 SelectedPickingMode = static_cast<int32>(EPickingMode::IDBuffer);
+	int32 SelectedPickingMode = static_cast<int32>(EPickingMode::RayTriangleBVH);
 	int32 NumberOfSpawnedActors = 1;
 	FVector CurSpawnPoint = { 0.f, 0.f, 0.f };
 };

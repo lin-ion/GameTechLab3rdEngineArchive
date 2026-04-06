@@ -13,6 +13,7 @@
 #include "Component/CameraComponent.h"
 #include "Viewport/Viewport.h"
 #include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
 #include "Component/GizmoComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Collision/RayUtils.h"
@@ -38,6 +39,20 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 	EndDeferredSpatialIndexInvalidation();
 
 	World = InWorld;
+	if (World)
+	{
+		if (UScene* ActiveScene = World->GetActiveScene())
+		{
+			ActiveScene->GetRenderProxy().WarmupSpatialIndices();
+		}
+		if (UScene* PersistentScene = World->GetPersistentScene())
+		{
+			if (PersistentScene != World->GetActiveScene())
+			{
+				PersistentScene->GetRenderProxy().WarmupSpatialIndices();
+			}
+		}
+	}
 	ResetIdPickingState();
 }
 
@@ -244,6 +259,7 @@ void FEditorViewportClient::TickInput(float DeltaTime)
 void FEditorViewportClient::TickInteraction(float DeltaTime)
 {
 	(void)DeltaTime;
+	UpdateIdPickingAdaptivePolicy();
 	ProcessPendingIdPickResult();
 
 	if (!Camera || !Gizmo || !World)
@@ -284,6 +300,7 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 
 	float LocalMouseX = static_cast<float>(MousePoint.x) - ViewportScreenRect.X;
 	float LocalMouseY = static_cast<float>(MousePoint.y) - ViewportScreenRect.Y;
+	UpdateLatestMouseLocalForIdProbe(LocalMouseX, LocalMouseY);
 
 	// 커서 숨김 제거: ShowCursor는 전역 레퍼런스 카운터라 멀티 뷰포트에서
 	// active 전환 시 GetKeyUp이 처리되지 않아 커서가 영구 숨김될 수 있음
@@ -332,6 +349,8 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 
 void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, float LocalMouseY)
 {
+	BeginClickE2ETiming();
+
 	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 	if (UEditorEngine* Editor = Cast<UEditorEngine>(GEngine))
 	{
@@ -354,6 +373,15 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		{
 			Gizmo->SetPressedOnHandle(true);
 			EndPendingIdPickTiming();
+			EndClickE2ETiming();
+			return;
+		}
+
+		uint32 CachedProbeId = 0u;
+		if (TryConsumeCachedIdProbeResult(PendingIdPickX, PendingIdPickY, CachedProbeId))
+		{
+			SetIdPickResult(CachedProbeId);
+			ApplyIdPickResultNow();
 			return;
 		}
 
@@ -377,11 +405,13 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 		if (CachedActor && CachedActor->IsVisible())
 		{
 			SelectionManager->Select(CachedActor);
+			EndClickE2ETiming();
 			return;
 		}
 		if (CachedRayPickedActorId == 0u)
 		{
 			SelectionManager->ClearSelection();
+			EndClickE2ETiming();
 			return;
 		}
 	}
@@ -417,6 +447,8 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray, float LocalMouseX, 
 
 		UpdateRayPickCache(ClickX, ClickY, BestActor);
 	}
+
+	EndClickE2ETiming();
 }
 
 void FEditorViewportClient::ProcessPendingIdPickResult()
@@ -430,43 +462,6 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 
 	if (PendingPickedObjectId == 0u)
 	{
-		if (PendingIdPickRetryCount < 1)
-		{
-			++PendingIdPickRetryCount;
-			bPendingIdPickRequest = true;
-			return;
-		}
-
-		//UE_LOG("ID Buffer picking returned 0 (no hit) at (%u, %u)", PendingIdPickX, PendingIdPickY);
-
-		//	NOTE : 함부로 지우시면 안됩니다.
-		//	ID 패스 전용 동작을 유지하기 위해 Ray fallback은 비활성화한다.
-		//	필요 시 아래 블록 주석만 해제하면 즉시 복구 가능.
-		/*
-		float ClosestDistance = FLT_MAX;
-		const float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
-		const float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
-		const FRay FallbackRay = Camera
-			? Camera->DeprojectScreenToWorld(static_cast<float>(PendingIdPickX), static_cast<float>(PendingIdPickY), VPWidth, VPHeight)
-			: FRay{};
-		AActor* FallbackActor = (World && Camera)
-			? FPickingService::PickActor(World, FallbackRay, EPickingMode::RayTriangleBVH, ClosestDistance)
-			: nullptr;
-
-		if (FallbackActor)
-		{
-			if (bPendingIdPickCtrlHeld)
-			{
-				SelectionManager->ToggleSelect(FallbackActor);
-			}
-			else
-			{
-				SelectionManager->Select(FallbackActor);
-			}
-			return;
-		}
-		*/
-
 		if (!bPendingIdPickCtrlHeld)
 		{
 			SelectionManager->ClearSelection();
@@ -483,24 +478,8 @@ void FEditorViewportClient::ProcessPendingIdPickResult()
 		return;
 	}
 
-	AActor* PickedActor = nullptr;
-	if (World)
-	{
-		for (AActor* Actor : World->GetActors())
-		{
-			if (Actor && Actor->GetUUID() == PendingPickedObjectId)
-			{
-				PickedActor = Actor;
-				break;
-			}
-		}
-	}
-
 	UObject* PickedObject = FPickingService::ResolveObjectFromPickingId(PendingPickedObjectId);
-	if (!PickedActor)
-	{
-		PickedActor = Cast<AActor>(PickedObject);
-	}
+	AActor* PickedActor = Cast<AActor>(PickedObject);
 
 	if (!PickedActor)
 	{
@@ -538,10 +517,73 @@ void FEditorViewportClient::ApplyIdPickResultNow()
 	ProcessPendingIdPickResult();
 }
 
+void FEditorViewportClient::BeginClickE2ETiming()
+{
+	bPendingClickE2ETiming = true;
+	PendingClickE2EStartCycles = FPlatformTime::Cycles64();
+	LastClickE2EStartCycles = PendingClickE2EStartCycles;
+}
+
+void FEditorViewportClient::EndClickE2ETiming()
+{
+	if (!bPendingClickE2ETiming)
+	{
+		return;
+	}
+
+	const uint64 EndCycles = FPlatformTime::Cycles64();
+	FStatManager::Get().RecordTime("Picking.Click.E2E", FPlatformTime::ToSeconds(EndCycles - PendingClickE2EStartCycles));
+	bPendingClickE2ETiming = false;
+	PendingClickE2EStartCycles = 0;
+}
+
+void FEditorViewportClient::AbortClickE2ETiming()
+{
+	bPendingClickE2ETiming = false;
+	PendingClickE2EStartCycles = 0;
+}
+
+void FEditorViewportClient::UpdateIdPickingAdaptivePolicy()
+{
+	const uint64 NowCycles = FPlatformTime::Cycles64();
+
+	const bool bCameraInputActive = IsCameraInputActiveNow();
+
+	if (bCameraInputActive)
+	{
+		LastCameraInteractCycles = NowCycles;
+	}
+
+	const double SinceClickMs =
+		(LastClickE2EStartCycles == 0u) ? DBL_MAX : FPlatformTime::ToMilliseconds(NowCycles - LastClickE2EStartCycles);
+	const double SinceInteractMs =
+		(LastCameraInteractCycles == 0u) ? DBL_MAX : FPlatformTime::ToMilliseconds(NowCycles - LastCameraInteractCycles);
+
+	if (bPendingIdPickRequest || bPendingIdPickReadback || bPendingClickE2ETiming || SinceClickMs < 150.0)
+	{
+		ActiveIdBufferUpdateIntervalMs = 0.0f;
+		IdProbePrefetchFrameStride = 1u;
+		return;
+	}
+
+	// During active camera interaction, keep ID updates sparse and disable probe prefetch.
+	if (bCameraInputActive || SinceInteractMs < 200.0)
+	{
+		ActiveIdBufferUpdateIntervalMs = 120.0f;
+		IdProbePrefetchFrameStride = 0u;
+		return;
+	}
+
+	ActiveIdBufferUpdateIntervalMs = IdBufferUpdateIntervalMs;
+	IdProbePrefetchFrameStride = 4u;
+}
+
 void FEditorViewportClient::BeginPendingIdPickTiming()
 {
 	bPendingIdPickTiming = true;
 	PendingIdPickStartCycles = FPlatformTime::Cycles64();
+	PendingIdPickFetchCycles = 0;
+	PendingIdPickWaitCycles = 0;
 }
 
 void FEditorViewportClient::EndPendingIdPickTiming()
@@ -552,9 +594,21 @@ void FEditorViewportClient::EndPendingIdPickTiming()
 	}
 
 	const uint64 EndCycles = FPlatformTime::Cycles64();
-	FStatManager::Get().RecordTime("Picking.ID.Total", FPlatformTime::ToSeconds(EndCycles - PendingIdPickStartCycles));
+	const uint64 TotalCycles = EndCycles - PendingIdPickStartCycles;
+	const uint64 FetchCycles = PendingIdPickFetchCycles;
+	const uint64 WaitCycles = PendingIdPickWaitCycles;
+	FStatManager::Get().RecordTime("Picking.ID.Total", FPlatformTime::ToSeconds(TotalCycles));
+	FStatManager::Get().RecordTime("Picking.ID.Algorithm", FPlatformTime::ToSeconds(FetchCycles));
+	FStatManager::Get().RecordTime("Picking.ID.Fetch.Click", FPlatformTime::ToSeconds(FetchCycles));
+	if (WaitCycles > 0u)
+	{
+		FStatManager::Get().RecordTime("Picking.ID.Wait.Click", FPlatformTime::ToSeconds(WaitCycles));
+	}
 	bPendingIdPickTiming = false;
 	PendingIdPickStartCycles = 0;
+	PendingIdPickFetchCycles = 0;
+	PendingIdPickWaitCycles = 0;
+	EndClickE2ETiming();
 }
 
 void FEditorViewportClient::CancelPendingIdPickReadback()
@@ -568,10 +622,150 @@ void FEditorViewportClient::CancelPendingIdPickReadback()
 	PendingIdPickReadbackRequestId = 0u;
 }
 
+void FEditorViewportClient::BeginPendingIdProbeReadback(uint32 InRequestId, uint32 InX, uint32 InY)
+{
+	bPendingIdProbeReadback = (InRequestId != 0u);
+	PendingIdProbeReadbackRequestId = InRequestId;
+	PendingIdProbeX = InX;
+	PendingIdProbeY = InY;
+}
+
+void FEditorViewportClient::CancelPendingIdProbeReadback()
+{
+	if (Viewport && PendingIdProbeReadbackRequestId != 0u)
+	{
+		Viewport->CancelPickingIdReadback(PendingIdProbeReadbackRequestId);
+	}
+
+	bPendingIdProbeReadback = false;
+	PendingIdProbeReadbackRequestId = 0u;
+}
+
+void FEditorViewportClient::OnIdProbeSampleReady(uint32 InId)
+{
+	bPendingIdProbeReadback = false;
+	PendingIdProbeReadbackRequestId = 0u;
+	bHasCachedIdProbeResult = true;
+
+	for (FCachedIdProbeSample& Sample : CachedIdProbeSamples)
+	{
+		if (Sample.X == PendingIdProbeX && Sample.Y == PendingIdProbeY)
+		{
+			Sample.Id = InId;
+			return;
+		}
+	}
+
+	if (CachedIdProbeSamples.size() >= 16)
+	{
+		CachedIdProbeSamples.erase(CachedIdProbeSamples.begin());
+	}
+	CachedIdProbeSamples.push_back({ PendingIdProbeX, PendingIdProbeY, InId });
+}
+
+bool FEditorViewportClient::TryConsumeCachedIdProbeResult(uint32 InX, uint32 InY, uint32& OutId) const
+{
+	OutId = 0u;
+	if (!bHasCachedIdProbeResult || bIdBufferDirty || !IsIdBufferCacheValidForCurrentCamera())
+	{
+		return false;
+	}
+
+	int32 BestDistSq = 10;
+	uint32 BestId = 0u;
+	for (const FCachedIdProbeSample& Sample : CachedIdProbeSamples)
+	{
+		const int32 DX = static_cast<int32>(Sample.X) - static_cast<int32>(InX);
+		const int32 DY = static_cast<int32>(Sample.Y) - static_cast<int32>(InY);
+		const int32 DistSq = DX * DX + DY * DY;
+		if (DistSq <= 9 && DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			BestId = Sample.Id;
+		}
+	}
+
+	if (BestDistSq > 9)
+	{
+		return false;
+	}
+
+	OutId = BestId;
+	return true;
+}
+
+bool FEditorViewportClient::TryPromotePendingIdProbeToPick(uint32 InX, uint32 InY, uint32& OutRequestId)
+{
+	OutRequestId = 0u;
+	if (!bPendingIdProbeReadback || PendingIdProbeReadbackRequestId == 0u)
+	{
+		return false;
+	}
+
+	const int32 DX = static_cast<int32>(PendingIdProbeX) - static_cast<int32>(InX);
+	const int32 DY = static_cast<int32>(PendingIdProbeY) - static_cast<int32>(InY);
+	if ((DX * DX + DY * DY) > 9)
+	{
+		return false;
+	}
+
+	OutRequestId = PendingIdProbeReadbackRequestId;
+	bPendingIdProbeReadback = false;
+	PendingIdProbeReadbackRequestId = 0u;
+	return true;
+}
+
+bool FEditorViewportClient::GetIdProbeCoordForPrefetch(uint32& OutX, uint32& OutY)
+{
+	OutX = 0u;
+	OutY = 0u;
+
+	if (IdProbePrefetchFrameStride == 0u)
+	{
+		return false;
+	}
+
+	if (!bHasLatestMouseLocalForIdProbe || !Viewport || Viewport->GetWidth() == 0 || Viewport->GetHeight() == 0)
+	{
+		return false;
+	}
+
+	++IdProbePrefetchFrameCounter;
+	if (IdProbePrefetchFrameStride > 1u &&
+		(IdProbePrefetchFrameCounter % IdProbePrefetchFrameStride) != 0u)
+	{
+		return false;
+	}
+
+	constexpr int32 Pattern[9][2] = {
+		{ 0, 0 }, { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }
+	};
+
+	const int32 PatternIndex = static_cast<int32>(NextIdProbePatternIndex % 9u);
+	const float ProbeX = LatestMouseLocalXForIdProbe + static_cast<float>(Pattern[PatternIndex][0]);
+	const float ProbeY = LatestMouseLocalYForIdProbe + static_cast<float>(Pattern[PatternIndex][1]);
+
+	const float MaxX = static_cast<float>(Viewport->GetWidth() - 1);
+	const float MaxY = static_cast<float>(Viewport->GetHeight() - 1);
+	OutX = static_cast<uint32>(Clamp(ProbeX, 0.0f, MaxX));
+	OutY = static_cast<uint32>(Clamp(ProbeY, 0.0f, MaxY));
+	NextIdProbePatternIndex = (NextIdProbePatternIndex + 1u) % 9u;
+	return true;
+}
+
+void FEditorViewportClient::UpdateLatestMouseLocalForIdProbe(float LocalMouseX, float LocalMouseY)
+{
+	bHasLatestMouseLocalForIdProbe = true;
+	LatestMouseLocalXForIdProbe = LocalMouseX;
+	LatestMouseLocalYForIdProbe = LocalMouseY;
+}
+
 void FEditorViewportClient::ResetIdPickingState()
 {
 	EndDeferredSpatialIndexInvalidation();
+	AbortClickE2ETiming();
 	CancelPendingIdPickReadback();
+	CancelPendingIdProbeReadback();
 	bForceIdBufferPrewarm = true;
 	bPendingIdPickRequest = false;
 	bHasPendingIdPickResult = false;
@@ -579,10 +773,27 @@ void FEditorViewportClient::ResetIdPickingState()
 	PendingIdPickRetryCount = 0;
 	bPendingIdPickTiming = false;
 	PendingIdPickStartCycles = 0;
+	PendingIdPickFetchCycles = 0;
+	PendingIdPickWaitCycles = 0;
 	bPendingIdPickCtrlHeld = false;
 	PendingIdPickX = 0u;
 	PendingIdPickY = 0u;
+	PendingIdProbeX = 0u;
+	PendingIdProbeY = 0u;
+	bHasCachedIdProbeResult = false;
+	CachedIdProbeSamples.clear();
+	NextIdProbePatternIndex = 0u;
+	IdProbePrefetchFrameCounter = 0u;
+	IdProbePrefetchFrameStride = 1u;
+	bHasLatestMouseLocalForIdProbe = false;
+	LatestMouseLocalXForIdProbe = 0.0f;
+	LatestMouseLocalYForIdProbe = 0.0f;
 	LastIdBufferRenderCycles = 0u;
+	ActiveIdBufferUpdateIntervalMs = 0.0f;
+	LastClickE2EStartCycles = 0u;
+	LastCameraInteractCycles = 0u;
+	CachedActiveSceneSpatialChangeSerial = 0u;
+	CachedPersistentSceneSpatialChangeSerial = 0u;
 	InvalidateIdBufferCache();
 }
 
@@ -619,6 +830,7 @@ void FEditorViewportClient::EndDeferredSpatialIndexInvalidation()
 	if (UScene* ActiveScene = World->GetActiveScene())
 	{
 		ActiveScene->GetRenderProxy().EndDeferSpatialIndexInvalidation();
+		ActiveScene->GetRenderProxy().WarmupSpatialIndices();
 	}
 
 	if (UScene* PersistentScene = World->GetPersistentScene())
@@ -626,6 +838,7 @@ void FEditorViewportClient::EndDeferredSpatialIndexInvalidation()
 		if (PersistentScene != World->GetActiveScene())
 		{
 			PersistentScene->GetRenderProxy().EndDeferSpatialIndexInvalidation();
+			PersistentScene->GetRenderProxy().WarmupSpatialIndices();
 		}
 	}
 
@@ -639,11 +852,16 @@ bool FEditorViewportClient::IsIdBufferCacheValidForCurrentCamera() const
 		return false;
 	}
 
+	constexpr float FOVEpsilon = 0.25f * DEG_TO_RAD;
+	constexpr float OrthoWidthEpsilon = 0.5f;
+	constexpr float PositionEpsilon = 0.02f;
+	constexpr float ForwardEpsilon = 0.001f;
+
 	const bool bSameProjection = (Camera->IsOrthogonal() == bCachedIdPickCameraOrtho)
-		&& (std::abs(Camera->GetFOV() - CachedIdPickCameraFOV) <= 1e-4f)
-		&& (std::abs(Camera->GetOrthoWidth() - CachedIdPickCameraOrthoWidth) <= 1e-4f);
-	const bool bSameView = FVector::Distance(Camera->GetWorldLocation(), CachedIdPickCameraLocation) <= 1e-4f
-		&& FVector::Distance(Camera->GetForwardVector(), CachedIdPickCameraForward) <= 1e-4f;
+		&& (std::abs(Camera->GetFOV() - CachedIdPickCameraFOV) <= FOVEpsilon)
+		&& (std::abs(Camera->GetOrthoWidth() - CachedIdPickCameraOrthoWidth) <= OrthoWidthEpsilon);
+	const bool bSameView = FVector::Distance(Camera->GetWorldLocation(), CachedIdPickCameraLocation) <= PositionEpsilon
+		&& FVector::Distance(Camera->GetForwardVector(), CachedIdPickCameraForward) <= ForwardEpsilon;
 
 	return bSameProjection && bSameView;
 }
@@ -655,11 +873,16 @@ bool FEditorViewportClient::IsRayPickCacheValidForCurrentCamera() const
 		return false;
 	}
 
+	constexpr float FOVEpsilon = 0.10f * DEG_TO_RAD;
+	constexpr float OrthoWidthEpsilon = 0.25f;
+	constexpr float PositionEpsilon = 0.01f;
+	constexpr float ForwardEpsilon = 0.0005f;
+
 	const bool bSameProjection = (Camera->IsOrthogonal() == bCachedRayPickCameraOrtho)
-		&& (std::abs(Camera->GetFOV() - CachedRayPickCameraFOV) <= 1e-4f)
-		&& (std::abs(Camera->GetOrthoWidth() - CachedRayPickCameraOrthoWidth) <= 1e-4f);
-	const bool bSameView = FVector::Distance(Camera->GetWorldLocation(), CachedRayPickCameraLocation) <= 1e-4f
-		&& FVector::Distance(Camera->GetForwardVector(), CachedRayPickCameraForward) <= 1e-4f;
+		&& (std::abs(Camera->GetFOV() - CachedRayPickCameraFOV) <= FOVEpsilon)
+		&& (std::abs(Camera->GetOrthoWidth() - CachedRayPickCameraOrthoWidth) <= OrthoWidthEpsilon);
+	const bool bSameView = FVector::Distance(Camera->GetWorldLocation(), CachedRayPickCameraLocation) <= PositionEpsilon
+		&& FVector::Distance(Camera->GetForwardVector(), CachedRayPickCameraForward) <= ForwardEpsilon;
 
 	return bSameProjection && bSameView;
 }
@@ -700,6 +923,12 @@ bool FEditorViewportClient::ShouldRenderPendingIdPick() const
 		return false;
 	}
 
+	// Keep camera interaction smooth: skip background ID refresh unless there is an urgent click path.
+	if (!bPendingIdPickRequest && !bForceIdBufferPrewarm && IsCameraInputActiveNow())
+	{
+		return false;
+	}
+
 	if (LastIdBufferRenderCycles == 0)
 	{
 		return true;
@@ -707,11 +936,12 @@ bool FEditorViewportClient::ShouldRenderPendingIdPick() const
 
 	const uint64 NowCycles = FPlatformTime::Cycles64();
 	const double ElapsedMs = FPlatformTime::ToMilliseconds(NowCycles - LastIdBufferRenderCycles);
-	return ElapsedMs >= static_cast<double>(IdBufferUpdateIntervalMs);
+	return ElapsedMs >= static_cast<double>(ActiveIdBufferUpdateIntervalMs);
 }
 
 void FEditorViewportClient::RefreshIdBufferDirtyStateFromCamera()
 {
+	HandleIdPickingSceneMutation();
 	UpdateIdBufferDirtyFromCamera();
 }
 
@@ -723,7 +953,9 @@ void FEditorViewportClient::UpdateIdBufferDirtyFromCamera()
 		return;
 	}
 
-	bIdBufferDirty = !IsIdBufferCacheValidForCurrentCamera();
+	const bool bCameraDirty = !IsIdBufferCacheValidForCurrentCamera();
+	const bool bSceneDirty = IsIdPickingSceneStateDirty();
+	bIdBufferDirty = bCameraDirty || bSceneDirty;
 }
 
 void FEditorViewportClient::UpdateIdBufferCacheCameraState()
@@ -741,9 +973,81 @@ void FEditorViewportClient::UpdateIdBufferCacheCameraState()
 	bCachedIdPickCameraOrtho = Camera->IsOrthogonal();
 	CachedIdPickCameraFOV = Camera->GetFOV();
 	CachedIdPickCameraOrthoWidth = Camera->GetOrthoWidth();
+	if (World)
+	{
+		if (UScene* ActiveScene = World->GetActiveScene())
+		{
+			CachedActiveSceneSpatialChangeSerial = ActiveScene->GetRenderProxy().GetSpatialChangeSerial();
+		}
+		if (UScene* PersistentScene = World->GetPersistentScene())
+		{
+			CachedPersistentSceneSpatialChangeSerial = PersistentScene->GetRenderProxy().GetSpatialChangeSerial();
+		}
+	}
 	LastIdBufferRenderCycles = FPlatformTime::Cycles64();
 	bForceIdBufferPrewarm = false;
 	bIdBufferDirty = false;
+}
+
+bool FEditorViewportClient::IsIdPickingSceneStateDirty() const
+{
+	if (!World)
+	{
+		return false;
+	}
+
+	if (UScene* ActiveScene = World->GetActiveScene())
+	{
+		const FWorldRenderProxy& RP = ActiveScene->GetRenderProxy();
+		if (RP.IsSpatialIndexDirtyForQueries() || RP.GetSpatialChangeSerial() != CachedActiveSceneSpatialChangeSerial)
+		{
+			return true;
+		}
+	}
+
+	if (UScene* PersistentScene = World->GetPersistentScene())
+	{
+		const FWorldRenderProxy& RP = PersistentScene->GetRenderProxy();
+		if (RP.IsSpatialIndexDirtyForQueries() || RP.GetSpatialChangeSerial() != CachedPersistentSceneSpatialChangeSerial)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void FEditorViewportClient::HandleIdPickingSceneMutation()
+{
+	if (!IsIdPickingSceneStateDirty())
+	{
+		return;
+	}
+
+	// Scene/object transform mutation invalidates stale ID results and probe samples.
+	InvalidateIdBufferCache();
+
+	// Pending probe readback is speculative; discard on mutation.
+	CancelPendingIdProbeReadback();
+
+	// If a click readback is already in flight, retry against the refreshed ID buffer.
+	if (bPendingIdPickReadback)
+	{
+		CancelPendingIdPickReadback();
+		bPendingIdPickRequest = true;
+	}
+}
+
+bool FEditorViewportClient::IsCameraInputActiveNow() const
+{
+	return InputSystem::Get().GetKey(VK_RBUTTON) ||
+		InputSystem::Get().GetLeftDragging() ||
+		InputSystem::Get().GetKey('W') || InputSystem::Get().GetKey('A') ||
+		InputSystem::Get().GetKey('S') || InputSystem::Get().GetKey('D') ||
+		InputSystem::Get().GetKey('Q') || InputSystem::Get().GetKey('E') ||
+		InputSystem::Get().GetKey(VK_UP) || InputSystem::Get().GetKey(VK_DOWN) ||
+		InputSystem::Get().GetKey(VK_LEFT) || InputSystem::Get().GetKey(VK_RIGHT) ||
+		(InputSystem::Get().GetScrollNotches() != 0.0f);
 }
 
 void FEditorViewportClient::UpdateLayoutRect()

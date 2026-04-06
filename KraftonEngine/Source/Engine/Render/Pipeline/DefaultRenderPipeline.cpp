@@ -31,11 +31,11 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 
 		if (UScene* Scene = World->GetPersistentScene())
 		{
-			Scene->GetRenderProxy().CollectWorld(Bus, {}, false);
+			Scene->GetRenderProxy().CollectWorld(Bus, {});
 		}
 		if (UScene* Scene = World->GetActiveScene())
 		{
-			Scene->GetRenderProxy().CollectWorld(Bus, {}, true);
+			Scene->GetRenderProxy().CollectWorld(Bus, {});
 		}
 
 		Bus.CollectViewElements();

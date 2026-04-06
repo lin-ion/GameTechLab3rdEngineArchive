@@ -306,7 +306,7 @@ void UGizmoComponent::SetTargetScale(FVector NewScale)
 	TargetActor->SetActorScale(SafeScale);
 }
 
-bool UGizmoComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult)
+bool UGizmoComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT)
 {
 	if (!MeshData || MeshData->Indices.empty()) return false;
 

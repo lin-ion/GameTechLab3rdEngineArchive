@@ -19,6 +19,13 @@ class AActor;
 
 class FEditorViewportClient : public FViewportClient
 {
+	struct FCachedIdProbeSample
+	{
+		uint32 X = 0u;
+		uint32 Y = 0u;
+		uint32 Id = 0u;
+	};
+
 public:
 	void Initialize(FWindowsWindow* InWindow);
 	void SetWorld(UWorld* InWorld);
@@ -66,17 +73,27 @@ private:
 	void TickInteraction(float DeltaTime);
 	void HandleDragStart(const FRay& Ray, float LocalMouseX, float LocalMouseY);
 	void ProcessPendingIdPickResult();
+	void BeginClickE2ETiming();
+	void EndClickE2ETiming();
+	void AbortClickE2ETiming();
+	void UpdateIdPickingAdaptivePolicy();
 	void BeginPendingIdPickTiming();
 	void EndPendingIdPickTiming();
+	void UpdateLatestMouseLocalForIdProbe(float LocalMouseX, float LocalMouseY);
 	void BeginDeferredSpatialIndexInvalidation();
 	void EndDeferredSpatialIndexInvalidation();
 	void UpdateIdBufferDirtyFromCamera();
+	bool IsCameraInputActiveNow() const;
+	bool IsIdPickingSceneStateDirty() const;
+	void HandleIdPickingSceneMutation();
 	bool IsRayPickCacheValidForCurrentCamera() const;
 	void UpdateRayPickCache(uint32 InX, uint32 InY, AActor* InActor);
 	void InvalidateRayPickCache() { bHasCachedRayPickResult = false; CachedRayPickedActorId = 0u; }
 
 public:
 	void ApplyIdPickResultNow();
+	void AddPendingIdPickFetchCycles(uint64 InCycles) { PendingIdPickFetchCycles += InCycles; }
+	void AddPendingIdPickWaitCycles(uint64 InCycles) { PendingIdPickWaitCycles += InCycles; }
 	bool HasPendingIdPickRequest() const { return bPendingIdPickRequest; }
 	bool HasPendingIdPickReadbackOrRequest() const { return bPendingIdPickRequest || bPendingIdPickReadback; }
 	bool ShouldRenderPendingIdPick() const;
@@ -86,10 +103,24 @@ public:
 	uint32 GetPendingIdPickReadbackRequestId() const { return PendingIdPickReadbackRequestId; }
 	void BeginPendingIdPickReadback(uint32 InRequestId) { bPendingIdPickRequest = false; bPendingIdPickReadback = true; PendingIdPickReadbackRequestId = InRequestId; }
 	void CancelPendingIdPickReadback();
+	bool HasPendingIdProbeReadback() const { return bPendingIdProbeReadback; }
+	uint32 GetPendingIdProbeReadbackRequestId() const { return PendingIdProbeReadbackRequestId; }
+	void BeginPendingIdProbeReadback(uint32 InRequestId, uint32 InX, uint32 InY);
+	void CancelPendingIdProbeReadback();
+	bool TryPromotePendingIdProbeToPick(uint32 InX, uint32 InY, uint32& OutRequestId);
+	void OnIdProbeSampleReady(uint32 InId);
+	bool TryConsumeCachedIdProbeResult(uint32 InX, uint32 InY, uint32& OutId) const;
+	bool GetIdProbeCoordForPrefetch(uint32& OutX, uint32& OutY);
 	void ResetIdPickingState();
 	void RefreshIdBufferDirtyStateFromCamera();
 	void UpdateIdBufferCacheCameraState();
-	void InvalidateIdBufferCache() { bHasCachedIdPickResult = false; bIdBufferDirty = true; }
+	void InvalidateIdBufferCache()
+	{
+		bHasCachedIdPickResult = false;
+		bIdBufferDirty = true;
+		bHasCachedIdProbeResult = false;
+		CachedIdProbeSamples.clear();
+	}
 
 private:
 	FViewport* Viewport = nullptr;
@@ -118,8 +149,24 @@ private:
 	uint32 PendingIdPickReadbackRequestId = 0;
 	uint32 PendingPickedObjectId = 0;
 	uint8 PendingIdPickRetryCount = 0;
+	bool bPendingClickE2ETiming = false;
+	uint64 PendingClickE2EStartCycles = 0;
+	uint64 LastClickE2EStartCycles = 0;
+	uint64 LastCameraInteractCycles = 0;
 	bool bPendingIdPickTiming = false;
 	uint64 PendingIdPickStartCycles = 0;
+	uint64 PendingIdPickFetchCycles = 0;
+	uint64 PendingIdPickWaitCycles = 0;
+	bool bPendingIdProbeReadback = false;
+	uint32 PendingIdProbeReadbackRequestId = 0;
+	uint32 PendingIdProbeX = 0;
+	uint32 PendingIdProbeY = 0;
+	bool bHasCachedIdProbeResult = false;
+	TArray<FCachedIdProbeSample> CachedIdProbeSamples;
+	uint32 NextIdProbePatternIndex = 0u;
+	bool bHasLatestMouseLocalForIdProbe = false;
+	float LatestMouseLocalXForIdProbe = 0.0f;
+	float LatestMouseLocalYForIdProbe = 0.0f;
 
 	bool bHasCachedIdPickResult = false;
 	FVector CachedIdPickCameraLocation = FVector(0.0f, 0.0f, 0.0f);
@@ -127,9 +174,14 @@ private:
 	bool bCachedIdPickCameraOrtho = false;
 	float CachedIdPickCameraFOV = 0.0f;
 	float CachedIdPickCameraOrthoWidth = 0.0f;
-	float IdBufferUpdateIntervalMs = 33.0f;	//	ID 버퍼 렌더 주기 (자주 렌더링 하지 않도록 방지)
+	float IdBufferUpdateIntervalMs = 33.0f;	//	유휴 상태 기본 갱신 주기
+	float ActiveIdBufferUpdateIntervalMs = 0.0f;	//	적응형 정책으로 갱신되는 실제 주기
+	uint32 IdProbePrefetchFrameStride = 1u;	//	1이면 매 프레임, 2면 격프레임, ...
+	uint32 IdProbePrefetchFrameCounter = 0u;
 	uint64 LastIdBufferRenderCycles = 0;
 	bool IsIdBufferCacheValidForCurrentCamera() const;
+	uint64 CachedActiveSceneSpatialChangeSerial = 0u;
+	uint64 CachedPersistentSceneSpatialChangeSerial = 0u;
 
 	bool bHasCachedRayPickResult = false;
 	uint32 CachedRayPickX = 0;
