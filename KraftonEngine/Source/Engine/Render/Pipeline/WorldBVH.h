@@ -137,26 +137,219 @@ public:
 		const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
 		float RootNearT = 0.0f;
 		float RootFarT = 0.0f;
+		++LastDebugStats.RayAABBTests;
 		if (!IntersectRayAABBNearT(Ray, Kernel, Nodes[0].Bounds, RootNearT, RootFarT) || RootNearT > MaxNearT)
 		{
 			return;
 		}
+		++LastDebugStats.RayAABBHits;
 
-		thread_local TArray<FNodeVisit> Stack;
-		thread_local int32 StackReserveHint = 64;
-		const size_t PreviousCapacity = Stack.capacity();
-		Stack.clear();
-		if (StackReserveHint > 0)
-		{
-			Stack.reserve(static_cast<size_t>(StackReserveHint));
-		}
-		Stack.push_back({ 0, RootNearT });
+		thread_local std::array<FNodeVisit, 128> FixedStack;
+		thread_local TArray<FNodeVisit> OverflowStack;
+		int32 FixedSize = 0;
+		OverflowStack.clear();
+		FixedStack[FixedSize++] = { 0, RootNearT };
 
-		while (!Stack.empty())
+		auto PushVisit = [&](const FNodeVisit& Visit)
 		{
-			const FNodeVisit Visit = Stack.back();
-			Stack.pop_back();
+			if (FixedSize < static_cast<int32>(FixedStack.size()))
+			{
+				FixedStack[FixedSize++] = Visit;
+				return;
+			}
+			OverflowStack.push_back(Visit);
+		};
+
+		auto PopVisit = [&]() -> FNodeVisit
+		{
+			if (FixedSize > 0)
+			{
+				return FixedStack[--FixedSize];
+			}
+			const FNodeVisit Visit = OverflowStack.back();
+			OverflowStack.pop_back();
+			return Visit;
+		};
+
+		while (FixedSize > 0 || !OverflowStack.empty())
+		{
+			const FNodeVisit Visit = PopVisit();
 			if (Visit.NearT > MaxNearT)
+			{
+				continue;
+			}
+
+			const int32 NodeIndex = Visit.NodeIndex;
+			if (NodeIndex < 0 || NodeIndex >= static_cast<int32>(Nodes.size()))
+			{
+				continue;
+			}
+
+			const FNode& Node = Nodes[NodeIndex];
+			++LastDebugStats.RayIntersectedNodes;
+			if (Node.IsLeaf())
+			{
+				const uint32 EndIndex = Node.FirstItem + Node.ItemCount;
+				uint32 Slot = Node.FirstItem;
+				const uint32 LeafCount = EndIndex - Node.FirstItem;
+				const bool bUsePacketSIMD = FPickingTuning::EnableRayAABBPacketSIMD() && (LeafCount >= FPickingTuning::RayAABBPacketMinCount());
+				if (bUsePacketSIMD)
+				{
+					for (; Slot + 4u <= EndIndex; Slot += 4u)
+					{
+						float NearT4[4] = {};
+						LastDebugStats.RayAABBTests += 4;
+						const uint32 HitMask = IntersectRayAABBNearTMinMax4(
+							Ray, Kernel,
+							&OrderedItemMinX[Slot], &OrderedItemMinY[Slot], &OrderedItemMinZ[Slot],
+							&OrderedItemMaxX[Slot], &OrderedItemMaxY[Slot], &OrderedItemMaxZ[Slot],
+							MaxNearT,
+							NearT4);
+
+						for (uint32 Lane = 0; Lane < 4u; ++Lane)
+						{
+							if ((HitMask & (1u << Lane)) == 0u)
+							{
+								continue;
+							}
+							++LastDebugStats.RayAABBHits;
+
+							OutCandidates.push_back({ OrderedItemProxy[Slot + Lane], NearT4[Lane] });
+							++LastDebugStats.RayCandidateItems;
+						}
+					}
+				}
+
+				for (; Slot < EndIndex; ++Slot)
+				{
+					float NearT = 0.0f;
+					float FarT = 0.0f;
+					++LastDebugStats.RayAABBTests;
+					if (!IntersectRayAABBNearTMinMax(
+						Ray, Kernel,
+						OrderedItemMinX[Slot], OrderedItemMinY[Slot], OrderedItemMinZ[Slot],
+						OrderedItemMaxX[Slot], OrderedItemMaxY[Slot], OrderedItemMaxZ[Slot],
+						NearT, FarT) || NearT > MaxNearT)
+					{
+						continue;
+					}
+					++LastDebugStats.RayAABBHits;
+
+					OutCandidates.push_back({ OrderedItemProxy[Slot], NearT });
+					++LastDebugStats.RayCandidateItems;
+				}
+				continue;
+			}
+
+			float LeftNearT = FLT_MAX;
+			float LeftFarT = FLT_MAX;
+			float RightNearT = FLT_MAX;
+			float RightFarT = FLT_MAX;
+			bool bHitLeft = false;
+			bool bHitRight = false;
+			if (Node.Left >= 0)
+			{
+				++LastDebugStats.RayAABBTests;
+				bHitLeft = IntersectRayAABBNearT(Ray, Kernel, Nodes[Node.Left].Bounds, LeftNearT, LeftFarT) && (LeftNearT <= MaxNearT);
+				if (bHitLeft)
+				{
+					++LastDebugStats.RayAABBHits;
+				}
+			}
+			if (Node.Right >= 0)
+			{
+				++LastDebugStats.RayAABBTests;
+				bHitRight = IntersectRayAABBNearT(Ray, Kernel, Nodes[Node.Right].Bounds, RightNearT, RightFarT) && (RightNearT <= MaxNearT);
+				if (bHitRight)
+				{
+					++LastDebugStats.RayAABBHits;
+				}
+			}
+
+			if (bHitLeft && bHitRight)
+			{
+				if (LeftNearT <= RightNearT)
+				{
+					PushVisit({ Node.Right, RightNearT });
+					PushVisit({ Node.Left, LeftNearT });
+				}
+				else
+				{
+					PushVisit({ Node.Left, LeftNearT });
+					PushVisit({ Node.Right, RightNearT });
+				}
+			}
+			else if (bHitLeft)
+			{
+				PushVisit({ Node.Left, LeftNearT });
+			}
+			else if (bHitRight)
+			{
+				PushVisit({ Node.Right, RightNearT });
+			}
+		}
+
+		if (LastDebugStats.RayCandidateItems > RayCandidateReserveHint)
+		{
+			RayCandidateReserveHint = LastDebugStats.RayCandidateItems;
+		}
+	}
+
+	bool QueryClosestRayCandidateWithNearT(const FRay& Ray, FRayQueryCandidate& OutCandidate, float MaxNearT = FLT_MAX) const
+	{
+		EnsureBuilt();
+
+		LastDebugStats = {};
+		LastDebugStats.TotalNodes = static_cast<int32>(Nodes.size());
+		LastDebugStats.TotalItems = static_cast<int32>(Items.size());
+		if (Nodes.empty())
+		{
+			return false;
+		}
+
+		const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
+		float RootNearT = 0.0f;
+		float RootFarT = 0.0f;
+		++LastDebugStats.RayAABBTests;
+		if (!IntersectRayAABBNearT(Ray, Kernel, Nodes[0].Bounds, RootNearT, RootFarT) || RootNearT > MaxNearT)
+		{
+			return false;
+		}
+		++LastDebugStats.RayAABBHits;
+
+		thread_local std::array<FNodeVisit, 128> FixedStack;
+		thread_local TArray<FNodeVisit> OverflowStack;
+		int32 FixedSize = 0;
+		OverflowStack.clear();
+		FixedStack[FixedSize++] = { 0, RootNearT };
+
+		auto PushVisit = [&](const FNodeVisit& Visit)
+		{
+			if (FixedSize < static_cast<int32>(FixedStack.size()))
+			{
+				FixedStack[FixedSize++] = Visit;
+				return;
+			}
+			OverflowStack.push_back(Visit);
+		};
+
+		auto PopVisit = [&]() -> FNodeVisit
+		{
+			if (FixedSize > 0)
+			{
+				return FixedStack[--FixedSize];
+			}
+			const FNodeVisit Visit = OverflowStack.back();
+			OverflowStack.pop_back();
+			return Visit;
+		};
+
+		float BestNearT = MaxNearT;
+		FPrimitiveProxy* BestProxy = nullptr;
+		while (FixedSize > 0 || !OverflowStack.empty())
+		{
+			const FNodeVisit Visit = PopVisit();
+			if (Visit.NearT > BestNearT)
 			{
 				continue;
 			}
@@ -176,17 +369,19 @@ public:
 				{
 					float NearT = 0.0f;
 					float FarT = 0.0f;
+					++LastDebugStats.RayAABBTests;
 					if (!IntersectRayAABBNearTMinMax(
 						Ray, Kernel,
 						OrderedItemMinX[Slot], OrderedItemMinY[Slot], OrderedItemMinZ[Slot],
 						OrderedItemMaxX[Slot], OrderedItemMaxY[Slot], OrderedItemMaxZ[Slot],
-						NearT, FarT) || NearT > MaxNearT)
+						NearT, FarT) || NearT > BestNearT)
 					{
 						continue;
 					}
 
-					OutCandidates.push_back({ OrderedItemProxy[Slot], NearT });
-					++LastDebugStats.RayCandidateItems;
+					++LastDebugStats.RayAABBHits;
+					BestNearT = NearT;
+					BestProxy = OrderedItemProxy[Slot];
 				}
 				continue;
 			}
@@ -195,40 +390,59 @@ public:
 			float LeftFarT = FLT_MAX;
 			float RightNearT = FLT_MAX;
 			float RightFarT = FLT_MAX;
-			const bool bHitLeft = (Node.Left >= 0) && IntersectRayAABBNearT(Ray, Kernel, Nodes[Node.Left].Bounds, LeftNearT, LeftFarT) && (LeftNearT <= MaxNearT);
-			const bool bHitRight = (Node.Right >= 0) && IntersectRayAABBNearT(Ray, Kernel, Nodes[Node.Right].Bounds, RightNearT, RightFarT) && (RightNearT <= MaxNearT);
+			bool bHitLeft = false;
+			bool bHitRight = false;
+			if (Node.Left >= 0)
+			{
+				++LastDebugStats.RayAABBTests;
+				bHitLeft = IntersectRayAABBNearT(Ray, Kernel, Nodes[Node.Left].Bounds, LeftNearT, LeftFarT) && (LeftNearT <= BestNearT);
+				if (bHitLeft)
+				{
+					++LastDebugStats.RayAABBHits;
+				}
+			}
+			if (Node.Right >= 0)
+			{
+				++LastDebugStats.RayAABBTests;
+				bHitRight = IntersectRayAABBNearT(Ray, Kernel, Nodes[Node.Right].Bounds, RightNearT, RightFarT) && (RightNearT <= BestNearT);
+				if (bHitRight)
+				{
+					++LastDebugStats.RayAABBHits;
+				}
+			}
 
 			if (bHitLeft && bHitRight)
 			{
 				if (LeftNearT <= RightNearT)
 				{
-					Stack.push_back({ Node.Right, RightNearT });
-					Stack.push_back({ Node.Left, LeftNearT });
+					PushVisit({ Node.Right, RightNearT });
+					PushVisit({ Node.Left, LeftNearT });
 				}
 				else
 				{
-					Stack.push_back({ Node.Left, LeftNearT });
-					Stack.push_back({ Node.Right, RightNearT });
+					PushVisit({ Node.Left, LeftNearT });
+					PushVisit({ Node.Right, RightNearT });
 				}
 			}
 			else if (bHitLeft)
 			{
-				Stack.push_back({ Node.Left, LeftNearT });
+				PushVisit({ Node.Left, LeftNearT });
 			}
 			else if (bHitRight)
 			{
-				Stack.push_back({ Node.Right, RightNearT });
+				PushVisit({ Node.Right, RightNearT });
 			}
 		}
 
-		if (LastDebugStats.RayCandidateItems > RayCandidateReserveHint)
+		if (!BestProxy)
 		{
-			RayCandidateReserveHint = LastDebugStats.RayCandidateItems;
+			return false;
 		}
-		if (Stack.capacity() > PreviousCapacity)
-		{
-			StackReserveHint = static_cast<int32>(Stack.capacity());
-		}
+
+		OutCandidate.Proxy = BestProxy;
+		OutCandidate.NearT = BestNearT;
+		LastDebugStats.RayCandidateItems = 1;
+		return true;
 	}
 
 	const FSpatialQueryDebugStats& GetLastDebugStats() const override

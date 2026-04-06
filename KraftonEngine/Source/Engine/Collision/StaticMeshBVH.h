@@ -50,16 +50,21 @@ struct FStaticMeshBVH
 		}
 
 		const size_t TriangleCount = InIndices.size() / 3;
-		Triangles.reserve(TriangleCount);
-		TriOrder.reserve(TriangleCount);
-		TriFirstIndex.reserve(TriangleCount);
-		TriV0X.reserve(TriangleCount); TriV0Y.reserve(TriangleCount); TriV0Z.reserve(TriangleCount);
-		TriE1X.reserve(TriangleCount); TriE1Y.reserve(TriangleCount); TriE1Z.reserve(TriangleCount);
-		TriE2X.reserve(TriangleCount); TriE2Y.reserve(TriangleCount); TriE2Z.reserve(TriangleCount);
+		Triangles.resize(TriangleCount);
+		TriOrder.resize(TriangleCount);
+		TriFirstIndex.resize(TriangleCount);
+		TriV0X.resize(TriangleCount); TriV0Y.resize(TriangleCount); TriV0Z.resize(TriangleCount);
+		TriE1X.resize(TriangleCount); TriE1Y.resize(TriangleCount); TriE1Z.resize(TriangleCount);
+		TriE2X.resize(TriangleCount); TriE2Y.resize(TriangleCount); TriE2Z.resize(TriangleCount);
 
 		const uint8* BasePtr = static_cast<const uint8*>(PositionData);
-		for (uint32 i = 0; i + 2 < static_cast<uint32>(InIndices.size()); i += 3)
+#if defined(_OPENMP)
+#pragma omp parallel for if(FPickingTuning::EnableOpenMP() && TriangleCount >= FPickingTuning::OpenMPMinWorkItems())
+#endif
+		for (int64 TriIdx64 = 0; TriIdx64 < static_cast<int64>(TriangleCount); ++TriIdx64)
 		{
+			const uint32 TriIdx = static_cast<uint32>(TriIdx64);
+			const uint32 i = TriIdx * 3u;
 			const uint32 I0 = InIndices[i];
 			const uint32 I1 = InIndices[i + 1];
 			const uint32 I2 = InIndices[i + 2];
@@ -76,13 +81,13 @@ struct FStaticMeshBVH
 			Tri.Bounds.Expand(V1);
 			Tri.Bounds.Expand(V2);
 			Tri.Centroid = (V0 + V1 + V2) / 3.0f;
-			Triangles.push_back(Tri);
-			TriOrder.push_back(static_cast<uint32>(TriOrder.size()));
+			Triangles[TriIdx] = Tri;
+			TriOrder[TriIdx] = TriIdx;
 
-			TriFirstIndex.push_back(i);
-			TriV0X.push_back(V0.X); TriV0Y.push_back(V0.Y); TriV0Z.push_back(V0.Z);
-			TriE1X.push_back(E1.X); TriE1Y.push_back(E1.Y); TriE1Z.push_back(E1.Z);
-			TriE2X.push_back(E2.X); TriE2Y.push_back(E2.Y); TriE2Z.push_back(E2.Z);
+			TriFirstIndex[TriIdx] = i;
+			TriV0X[TriIdx] = V0.X; TriV0Y[TriIdx] = V0.Y; TriV0Z[TriIdx] = V0.Z;
+			TriE1X[TriIdx] = E1.X; TriE1Y[TriIdx] = E1.Y; TriE1Z[TriIdx] = E1.Z;
+			TriE2X[TriIdx] = E2.X; TriE2Y[TriIdx] = E2.Y; TriE2Z[TriIdx] = E2.Z;
 		}
 
 		if (!Triangles.empty())
@@ -104,6 +109,8 @@ struct FStaticMeshBVH
 		bool bHit = false;
 		float ClosestT = InClosestT;
 		int32 HitFaceIndex = -1;
+		const bool bBackFaceCull = FPickingTuning::UseBackFaceCull();
+		const float DetEps = FPickingTuning::TriangleDetEpsilon();
 
 		const float RayOx = LocalRay.Origin.X;
 		const float RayOy = LocalRay.Origin.Y;
@@ -121,20 +128,36 @@ struct FStaticMeshBVH
 			return false;
 		}
 
-		thread_local TArray<FNodeVisit> Stack;
-		thread_local int32 StackReserveHint = 64;
-		const size_t PreviousCapacity = Stack.capacity();
-		Stack.clear();
-		if (StackReserveHint > 0)
-		{
-			Stack.reserve(static_cast<size_t>(StackReserveHint));
-		}
-		Stack.push_back({ 0, RootNearT });
+		thread_local std::array<FNodeVisit, 128> FixedStack;
+		thread_local TArray<FNodeVisit> OverflowStack;
+		int32 FixedSize = 0;
+		OverflowStack.clear();
+		FixedStack[FixedSize++] = { 0, RootNearT };
 
-		while (!Stack.empty())
+		auto PushVisit = [&](const FNodeVisit& Visit)
 		{
-			const FNodeVisit Visit = Stack.back();
-			Stack.pop_back();
+			if (FixedSize < static_cast<int32>(FixedStack.size()))
+			{
+				FixedStack[FixedSize++] = Visit;
+				return;
+			}
+			OverflowStack.push_back(Visit);
+		};
+
+		auto PopVisit = [&]() -> FNodeVisit
+		{
+			if (FixedSize > 0)
+			{
+				return FixedStack[--FixedSize];
+			}
+			const FNodeVisit Visit = OverflowStack.back();
+			OverflowStack.pop_back();
+			return Visit;
+		};
+
+		while (FixedSize > 0 || !OverflowStack.empty())
+		{
+			const FNodeVisit Visit = PopVisit();
 			if (Visit.NearT >= ClosestT)
 			{
 				continue;
@@ -154,7 +177,7 @@ struct FStaticMeshBVH
 				{
 					const uint32 TriIndex = TriOrder[TriSlot];
 					float T = 0.0f;
-					if (IntersectTriangleSoA(RayOx, RayOy, RayOz, RayDx, RayDy, RayDz, TriIndex, T) && T < ClosestT)
+					if (IntersectTriangleSoA(RayOx, RayOy, RayOz, RayDx, RayDy, RayDz, TriIndex, ClosestT, bBackFaceCull, DetEps, T))
 					{
 						ClosestT = T;
 						HitFaceIndex = static_cast<int32>(TriFirstIndex[TriIndex]);
@@ -175,22 +198,22 @@ struct FStaticMeshBVH
 				{
 					if (LeftNearT <= RightNearT)
 					{
-						Stack.push_back({ Node.Right, RightNearT });
-						Stack.push_back({ Node.Left, LeftNearT });
+						PushVisit({ Node.Right, RightNearT });
+						PushVisit({ Node.Left, LeftNearT });
 					}
 					else
 					{
-						Stack.push_back({ Node.Left, LeftNearT });
-						Stack.push_back({ Node.Right, RightNearT });
+						PushVisit({ Node.Left, LeftNearT });
+						PushVisit({ Node.Right, RightNearT });
 					}
 				}
 				else if (bHitLeft && LeftNearT < ClosestT)
 				{
-					Stack.push_back({ Node.Left, LeftNearT });
+					PushVisit({ Node.Left, LeftNearT });
 				}
 				else if (bHitRight && RightNearT < ClosestT)
 				{
-					Stack.push_back({ Node.Right, RightNearT });
+					PushVisit({ Node.Right, RightNearT });
 				}
 			}
 		}
@@ -203,10 +226,6 @@ struct FStaticMeshBVH
 			OutHitResult.FaceIndex = HitFaceIndex;
 		}
 
-		if (Stack.capacity() > PreviousCapacity)
-		{
-			StackReserveHint = static_cast<int32>(Stack.capacity());
-		}
 		return bHit;
 	}
 
@@ -424,7 +443,11 @@ private:
 
 	bool IntersectTriangleSoA(float RayOx, float RayOy, float RayOz,
 		float RayDx, float RayDy, float RayDz,
-		uint32 TriIndex, float& OutT) const
+		uint32 TriIndex,
+		float InClosestT,
+		bool bBackFaceCull,
+		float DetEps,
+		float& OutT) const
 	{
 		const float V0x = TriV0X[TriIndex];
 		const float V0y = TriV0Y[TriIndex];
@@ -440,8 +463,7 @@ private:
 		const float PVecY = RayDz * E2x - RayDx * E2z;
 		const float PVecZ = RayDx * E2y - RayDy * E2x;
 		const float Det = E1x * PVecX + E1y * PVecY + E1z * PVecZ;
-		const float DetEps = FPickingTuning::TriangleDetEpsilon();
-		if (FPickingTuning::UseBackFaceCull())
+		if (bBackFaceCull)
 		{
 			if (Det <= DetEps)
 			{
@@ -476,7 +498,7 @@ private:
 		}
 
 		OutT = (E2x * QVecX + E2y * QVecY + E2z * QVecZ) * InvDet;
-		return OutT > 0.0f;
+		return OutT > 0.0f && OutT < InClosestT;
 	}
 
 	TArray<FTriangleRef> Triangles;

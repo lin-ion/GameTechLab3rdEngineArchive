@@ -4,6 +4,9 @@
 #include "Profiling/Stats.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Profiling/MemoryStats.h"
+#include "GameFramework/World.h"
+#include "GameFramework/Scene.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
 
 TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& Editor) const
 {
@@ -44,11 +47,23 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 		{
 			FStatEntry RayBroad = {};
 			FStatEntry RayNarrow = {};
+			FStatEntry RayBroadRebuild = {};
+			FStatEntry RayBroadTraversal = {};
+			FStatEntry RayBroadTraversalDefer = {};
+			FStatEntry RayBroadTraversalLinear = {};
+			FStatEntry RayBroadTraversalBVH = {};
+			FStatEntry RayBroadFilter = {};
 			FStatEntry IdAlgorithm = {};
 			FStatEntry IdFetchClick = {};
 			FStatEntry IdWait = {};
 			FStatManager::Get().GetStat("Picking.Ray.Broad", RayBroad);
 			FStatManager::Get().GetStat("Picking.Ray.Narrow", RayNarrow);
+			FStatManager::Get().GetStat("Picking.Ray.Broad.Rebuild", RayBroadRebuild);
+			FStatManager::Get().GetStat("Picking.Ray.Broad.Traversal", RayBroadTraversal);
+			FStatManager::Get().GetStat("Picking.Ray.Broad.Traversal.DeferBypass", RayBroadTraversalDefer);
+			FStatManager::Get().GetStat("Picking.Ray.Broad.Traversal.VisibleLinear", RayBroadTraversalLinear);
+			FStatManager::Get().GetStat("Picking.Ray.Broad.Traversal.BVH", RayBroadTraversalBVH);
+			FStatManager::Get().GetStat("Picking.Ray.Broad.Filter", RayBroadFilter);
 			FStatManager::Get().GetStat("Picking.ID.Algorithm", IdAlgorithm);
 			FStatManager::Get().GetStat("Picking.ID.Fetch.Click", IdFetchClick);
 			FStatManager::Get().GetStat("Picking.ID.Wait.Click", IdWait);
@@ -61,6 +76,44 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 				"Picking Core Last(ms) : Ray %.8f / ID Algo %.8f / ID Stall %.8f",
 				RayCoreLastMs, IdAlgorithm.LastTime * 1000.0, IdWait.LastTime * 1000.0);
 			Group.Lines.push_back(FString(Buffer));
+
+			snprintf(Buffer, sizeof(Buffer),
+				"RayBroad Split Last(ms) : Rebuild %.8f / Traversal %.8f / Filter %.8f",
+				RayBroadRebuild.LastTime * 1000.0,
+				RayBroadTraversal.LastTime * 1000.0,
+				RayBroadFilter.LastTime * 1000.0);
+			Group.Lines.push_back(FString(Buffer));
+
+			snprintf(Buffer, sizeof(Buffer),
+				"RayBroad Traversal Last(ms) : Defer %.8f / Linear %.8f / BVH %.8f",
+				RayBroadTraversalDefer.LastTime * 1000.0,
+				RayBroadTraversalLinear.LastTime * 1000.0,
+				RayBroadTraversalBVH.LastTime * 1000.0);
+			Group.Lines.push_back(FString(Buffer));
+
+			if (UWorld* World = Editor.GetWorld())
+			{
+				FRayBroadDebugCounters TotalCounters = {};
+				auto AccumulateRayBroadCounters = [&TotalCounters](UScene* Scene)
+				{
+					if (!Scene) return;
+					const FRayBroadDebugCounters& C = Scene->GetRenderProxy().GetLastRayBroadDebugCounters();
+					TotalCounters.AABBTests += C.AABBTests;
+					TotalCounters.AABBHits += C.AABBHits;
+					TotalCounters.CandidatesEmitted += C.CandidatesEmitted;
+					TotalCounters.CandidatesAfterFilter += C.CandidatesAfterFilter;
+				};
+				AccumulateRayBroadCounters(World->GetPersistentScene());
+				AccumulateRayBroadCounters(World->GetActiveScene());
+
+				snprintf(Buffer, sizeof(Buffer),
+					"RayBroad Count : Test %llu / Hit %llu / Emit %llu / PostFilter %llu",
+					static_cast<unsigned long long>(TotalCounters.AABBTests),
+					static_cast<unsigned long long>(TotalCounters.AABBHits),
+					static_cast<unsigned long long>(TotalCounters.CandidatesEmitted),
+					static_cast<unsigned long long>(TotalCounters.CandidatesAfterFilter));
+				Group.Lines.push_back(FString(Buffer));
+			}
 		}
 
 		Groups.push_back(std::move(Group));

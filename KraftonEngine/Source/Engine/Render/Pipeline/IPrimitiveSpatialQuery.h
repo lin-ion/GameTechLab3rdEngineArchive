@@ -23,6 +23,8 @@ struct FSpatialQueryDebugStats
 	int32 FrustumCandidateItems = 0;
 	int32 RayIntersectedNodes = 0;
 	int32 RayCandidateItems = 0;
+	int32 RayAABBTests = 0;
+	int32 RayAABBHits = 0;
 };
 
 class IPrimitiveSpatialQuery

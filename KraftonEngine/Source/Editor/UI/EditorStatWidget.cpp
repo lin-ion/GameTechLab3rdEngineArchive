@@ -226,10 +226,51 @@ void FEditorStatWidget::RenderPickingDetail()
 	ImGui::SeparatorText("Algorithm Metric (Detail)");
 	ShowSumStat("Ray Core (Broad+Narrow)", "Picking.Ray.Broad", "Picking.Ray.Narrow");
 	ShowStat("Ray Broad", "Picking.Ray.Broad");
+	ShowStat("Ray Broad Query", "Picking.Ray.Broad.Query");
+	ShowStat("Ray Broad Rebuild", "Picking.Ray.Broad.Rebuild");
+	ShowStat("Ray Broad Traversal", "Picking.Ray.Broad.Traversal");
+	ShowStat("Ray Broad Traversal (Defer)", "Picking.Ray.Broad.Traversal.DeferBypass");
+	ShowStat("Ray Broad Traversal (Linear)", "Picking.Ray.Broad.Traversal.VisibleLinear");
+	ShowStat("Ray Broad Traversal (BVH)", "Picking.Ray.Broad.Traversal.BVH");
+	ShowStat("Ray Broad Filter", "Picking.Ray.Broad.Filter");
 	ShowStat("Ray Narrow", "Picking.Ray.Narrow");
 	ShowStat("ID Algorithm (Click Fetch)", "Picking.ID.Algorithm");
 	ShowStat("ID Fetch (Click)", "Picking.ID.Fetch.Click");
 	ShowStat("ID Wait (Stall Only)", "Picking.ID.Wait.Click");
+
+	if (EditorEngine)
+	{
+		if (UWorld* World = EditorEngine->GetWorld())
+		{
+			FRayBroadDebugCounters TotalCounters = {};
+			auto AccumulateRayBroadCounters = [&TotalCounters](UScene* Scene)
+			{
+				if (!Scene) return;
+				const FRayBroadDebugCounters& C = Scene->GetRenderProxy().GetLastRayBroadDebugCounters();
+				TotalCounters.AABBTests += C.AABBTests;
+				TotalCounters.AABBHits += C.AABBHits;
+				TotalCounters.CandidatesEmitted += C.CandidatesEmitted;
+				TotalCounters.CandidatesAfterFilter += C.CandidatesAfterFilter;
+				TotalCounters.NodeVisits += C.NodeVisits;
+				TotalCounters.LinearAABBTests += C.LinearAABBTests;
+				TotalCounters.BVHAABBTests += C.BVHAABBTests;
+			};
+
+			AccumulateRayBroadCounters(World->GetPersistentScene());
+			AccumulateRayBroadCounters(World->GetActiveScene());
+
+			ImGui::Text("[Ray Broad Count] AABB Tests: %llu  Hits: %llu  NodeVisits: %llu",
+				static_cast<unsigned long long>(TotalCounters.AABBTests),
+				static_cast<unsigned long long>(TotalCounters.AABBHits),
+				static_cast<unsigned long long>(TotalCounters.NodeVisits));
+			ImGui::Text("[Ray Broad Count] Emitted: %llu  AfterFilter: %llu",
+				static_cast<unsigned long long>(TotalCounters.CandidatesEmitted),
+				static_cast<unsigned long long>(TotalCounters.CandidatesAfterFilter));
+			ImGui::Text("[Ray Broad Count] Tests (Linear/BVH): %llu / %llu",
+				static_cast<unsigned long long>(TotalCounters.LinearAABBTests),
+				static_cast<unsigned long long>(TotalCounters.BVHAABBTests));
+		}
+	}
 }
 
 // ────────────────────────────────────────────────────────────

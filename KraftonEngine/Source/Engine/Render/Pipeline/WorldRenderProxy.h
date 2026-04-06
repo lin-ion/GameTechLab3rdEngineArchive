@@ -22,6 +22,17 @@ struct FWorldProxyCullingStats
 	int32 SpatialFrustumCandidateItems = 0;
 };
 
+struct FRayBroadDebugCounters
+{
+	uint64 AABBTests = 0;
+	uint64 AABBHits = 0;
+	uint64 CandidatesEmitted = 0;
+	uint64 CandidatesAfterFilter = 0;
+	uint64 NodeVisits = 0;
+	uint64 LinearAABBTests = 0;
+	uint64 BVHAABBTests = 0;
+};
+
 struct FRayPickableSoA
 {
 	TArray<float> MinX, MinY, MinZ;
@@ -76,25 +87,33 @@ public:
 	void CollectWorld(FViewContext& context, const TArray<AActor*>& SelectedActors);
 	void QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates);
 	void QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCandidate>& OutCandidates, float MaxNearT = FLT_MAX);
+	bool QueryClosestByRayWithNearT(const FRay& Ray, FRayQueryCandidate& OutCandidate, float MaxNearT = FLT_MAX);
 	bool IsSpatialIndexDirtyForQueries() const { return bSpatialIndexDirty || bDeferredSpatialIndexDirtyPending || (SpatialIndexDeferDepth > 0); }
 	uint64 GetSpatialChangeSerial() const { return SpatialChangeSerial; }
 
 	const FWorldProxyCullingStats& GetLastCullingStats() const { return LastCullingStats; }
+	const FRayBroadDebugCounters& GetLastRayBroadDebugCounters() const { return LastRayBroadDebugCounters; }
 
 private:
 	void RebuildSpatialIndexIfDirty(bool bTrackInsertedStats, bool bPrewarmStaticMeshBVH);
+	void RebuildVisibleRaySpatialIndexIfNeeded(bool bUseOcclusionGate);
 
 	TArray<FPrimitiveProxy*> Proxies;
 	IPrimitiveSpatialQuery* FrustumSpatialIndex = nullptr;
 	IPrimitiveSpatialQuery* RaySpatialIndex = nullptr;
+	IPrimitiveSpatialQuery* VisibleRaySpatialIndex = nullptr;
 	uint32 FrustumVisiblePickFrameTag = 0;
 	TArray<FPrimitiveProxy*> FrustumVisiblePickableCache;
 	FRayPickableSoA FrustumVisiblePickableSoA;
 	FRayPickableSoA RayPickableSoA;
 	bool bRayFrustumGateOptimizationEnabled = true;
 	bool bSpatialIndexDirty = true;
+	bool bVisibleRaySpatialIndexDirty = true;
+	bool bVisibleRaySpatialIndexBuiltWithOcclusion = false;
+	uint32 VisibleRaySpatialIndexFrameTag = 0u;
 	int32 SpatialIndexDeferDepth = 0;
 	bool bDeferredSpatialIndexDirtyPending = false;
 	uint64 SpatialChangeSerial = 1u;
 	FWorldProxyCullingStats LastCullingStats;
+	FRayBroadDebugCounters LastRayBroadDebugCounters;
 };

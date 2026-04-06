@@ -8,6 +8,7 @@
 #include "Component/PrimitiveComponent.h"
 #include "Render/Pipeline/PrimitiveProxy.h"
 #include "Render/Pipeline/IPrimitiveSpatialQuery.h"
+#include "Render/Pipeline/WorldRenderProxy.h"
 #include "Object/Object.h"
 #include "Profiling/Stats.h"
 
@@ -82,6 +83,7 @@ private:
 		bool bValid = false;
 		FRay Ray = {};
 		float ClosestDistance = FLT_MAX;
+		uint32 LastHitComponentId = 0u;
 	};
 
 	static AActor* PickActorByRay(UWorld* World, const FRay& Ray, float& OutClosestDistance, uint32* OutPickingId)
@@ -115,6 +117,100 @@ private:
 		};
 
 		bool bUsedNearTHint = false;
+		{
+			SCOPE_STAT("Picking.Ray.Narrow.DirectProbe");
+			if (TemporalHint.bValid && TemporalHint.LastHitComponentId != 0u)
+			{
+				const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
+				const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
+				const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
+				if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
+				{
+					if (UPrimitiveComponent* LastComp = Cast<UPrimitiveComponent>(ResolveObjectFromPickingId(TemporalHint.LastHitComponentId)))
+					{
+						if (AActor* LastActor = LastComp->GetOwner())
+						{
+							if (LastActor->GetRootComponent())
+							{
+								const float DirectProbeMaxT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
+								HitResult = {};
+								if (LastComp->LineTraceComponent(Ray, HitResult, DirectProbeMaxT) &&
+									HitResult.Distance < OutClosestDistance)
+								{
+									OutClosestDistance = HitResult.Distance;
+									BestActor = LastActor;
+									if (OutPickingId) *OutPickingId = MakeObjectPickingId(BestActor);
+									TemporalHint.Ray = Ray;
+									TemporalHint.ClosestDistance = OutClosestDistance;
+									TemporalHint.bValid = true;
+									TemporalHint.LastHitComponentId = MakeObjectPickingId(LastComp);
+									return BestActor;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		bool bFastProbeHit = false;
+		{
+			SCOPE_STAT("Picking.Ray.Broad.FastProbe");
+			if (UScene* Scene = World->GetActiveScene())
+			{
+				FRayQueryCandidate FastCandidate{};
+				float ProbeMaxNearT = FLT_MAX;
+				if (TemporalHint.bValid)
+				{
+					const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
+					const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
+					const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
+					if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
+					{
+						ProbeMaxNearT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
+						bUsedNearTHint = true;
+					}
+				}
+
+				if (Scene->GetRenderProxy().QueryClosestByRayWithNearT(Ray, FastCandidate, ProbeMaxNearT))
+				{
+					FPrimitiveProxy* ProbeProxy = FastCandidate.Proxy;
+					if (ProbeProxy)
+					{
+						if (UPrimitiveComponent* ProbeComp = ProbeProxy->GetOwner())
+						{
+							if (AActor* ProbeActor = ProbeComp->GetOwner())
+							{
+								if (ProbeActor->GetRootComponent())
+								{
+									HitResult = {};
+									if (ProbeComp->LineTraceComponent(Ray, HitResult, OutClosestDistance) && HitResult.Distance < OutClosestDistance)
+									{
+										OutClosestDistance = HitResult.Distance;
+										BestActor = ProbeActor;
+										bFastProbeHit = true;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (bFastProbeHit)
+		{
+			if (OutPickingId && BestActor)
+			{
+				*OutPickingId = MakeObjectPickingId(BestActor);
+			}
+			TemporalHint.Ray = Ray;
+			TemporalHint.ClosestDistance = OutClosestDistance;
+			TemporalHint.bValid = (BestActor != nullptr) && (OutClosestDistance < FLT_MAX);
+			TemporalHint.LastHitComponentId = (HitResult.HitComponent != nullptr) ? MakeObjectPickingId(HitResult.HitComponent) : 0u;
+			return BestActor;
+		}
+
 		if (TemporalHint.bValid)
 		{
 			const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
@@ -206,6 +302,7 @@ private:
 		TemporalHint.Ray = Ray;
 		TemporalHint.ClosestDistance = OutClosestDistance;
 		TemporalHint.bValid = (BestActor != nullptr) && (OutClosestDistance < FLT_MAX);
+		TemporalHint.LastHitComponentId = (HitResult.HitComponent != nullptr) ? MakeObjectPickingId(HitResult.HitComponent) : 0u;
 
 		return BestActor;
 	}
