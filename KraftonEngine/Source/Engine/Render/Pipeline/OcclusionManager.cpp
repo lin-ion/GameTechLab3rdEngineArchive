@@ -22,6 +22,7 @@ void FViewportOcclusionState::Release()
 
 	if (ReadbackBuffers[0]) { ReadbackBuffers[0]->Release(); ReadbackBuffers[0] = nullptr; }
 	if (ReadbackBuffers[1]) { ReadbackBuffers[1]->Release(); ReadbackBuffers[1] = nullptr; }
+	if (ReadbackBuffers[2]) { ReadbackBuffers[2]->Release(); ReadbackBuffers[2] = nullptr; }
 	ReadbackCapacity = 0;
 
 	HZBWidth = 0;
@@ -314,6 +315,7 @@ void FOcclusionManager::UpdateGPUProxies(ID3D11DeviceContext* InContext, const T
 	{
 		if (OutState.ReadbackBuffers[0]) OutState.ReadbackBuffers[0]->Release();
 		if (OutState.ReadbackBuffers[1]) OutState.ReadbackBuffers[1]->Release();
+		if (OutState.ReadbackBuffers[2]) OutState.ReadbackBuffers[2]->Release();
 
 		OutState.ReadbackCapacity = ProxyBufferCapacity;
 
@@ -323,9 +325,11 @@ void FOcclusionManager::UpdateGPUProxies(ID3D11DeviceContext* InContext, const T
 		rbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 		device->CreateBuffer(&rbDesc, nullptr, &OutState.ReadbackBuffers[0]);
 		device->CreateBuffer(&rbDesc, nullptr, &OutState.ReadbackBuffers[1]);
+		device->CreateBuffer(&rbDesc, nullptr, &OutState.ReadbackBuffers[2]);
 
 		OutState.bReadbackReady[0] = false;
 		OutState.bReadbackReady[1] = false;
+		OutState.bReadbackReady[2] = false;
 	}
 
 	if (device) device->Release();
@@ -371,16 +375,17 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 
 	if (InProxies.empty() || !State.HZBTexture) return;
 
-	// Process readback from PREVIOUS frame (N-1 or N-2)
-	uint32 prevIndex = (State.ReadbackIndex + 1) % 2;
-	if (State.bReadbackReady[prevIndex])
+	// Process readback from 2 frames ago (Triple Buffering N-2)
+	uint32 oldestIndex = (State.ReadbackIndex + 1) % 3;
+	if (State.bReadbackReady[oldestIndex])
 	{
 		SCOPE_STAT("Occlusion.ReadbackMap");
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
-		if (SUCCEEDED(InContext->Map(State.ReadbackBuffers[prevIndex], 0, D3D11_MAP_READ, 0, &mapped)))
+		// Use DO_NOT_WAIT to avoid CPU stall. If GPU is still busy, skip this frame and keep old results.
+		if (InContext->Map(State.ReadbackBuffers[oldestIndex], 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped) == S_OK)
 		{
 			uint32* data = static_cast<uint32*>(mapped.pData);
-			const auto& ids = State.ReadbackProxyIds[prevIndex];
+			const auto& ids = State.ReadbackProxyIds[oldestIndex];
 			for (uint32 i = 0; i < ids.size(); ++i)
 			{
 				uint32 ProxyId = ids[i];
@@ -390,7 +395,7 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 				}
 				State.VisibilityArray[ProxyId] = (data[i] != 0) ? 1 : 0;
 			}
-			InContext->Unmap(State.ReadbackBuffers[prevIndex], 0);
+			InContext->Unmap(State.ReadbackBuffers[oldestIndex], 0);
 		}
 	}
 
@@ -449,7 +454,7 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 
 	InContext->CopyResource(State.ReadbackBuffers[State.ReadbackIndex], VisibilityBuffer);
 	State.bReadbackReady[State.ReadbackIndex] = true;
-	State.ReadbackIndex = (State.ReadbackIndex + 1) % 2;
+	State.ReadbackIndex = (State.ReadbackIndex + 1) % 3;
 
 	OcclusionTestCS.Unbind(InContext);
 
