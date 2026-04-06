@@ -10,6 +10,7 @@
 
 class FViewContext;
 class FPrimitiveProxy;
+class FViewport;
 
 struct FProxyAABB
 {
@@ -17,6 +18,32 @@ struct FProxyAABB
 	uint32 Id;
 	FVector Max;
 	uint32 Padding;
+};
+
+struct FViewportOcclusionState
+{
+	ID3D11Texture2D* HZBTexture = nullptr;
+	ID3D11ShaderResourceView* HZBSRV = nullptr;
+	TArray<ID3D11UnorderedAccessView*> HZBMipsUAV;
+	TArray<ID3D11ShaderResourceView*> HZBMipsSRV;
+	uint32 HZBMipCount = 0;
+	uint32 HZBWidth = 0;
+	uint32 HZBHeight = 0;
+
+	// Triple buffering for readback (N-2)
+	ID3D11Buffer* ReadbackBuffers[3] = { nullptr, nullptr, nullptr };
+	TArray<uint32> ReadbackProxyIds[3];
+	uint32 ReadbackIndex = 0;
+	bool bReadbackReady[3] = { false, false, false };
+	uint32 ReadbackCapacity = 0;
+
+	std::vector<uint8> VisibilityArray;
+
+	// Previous frame info for temporal stability
+	FMatrix PrevViewProjection;
+	bool bHasPrevViewProjection = false;
+
+	void Release();
 };
 
 class FOcclusionManager
@@ -27,14 +54,17 @@ public:
 	void Initialize(ID3D11Device* InDevice);
 	void Release();
 
-	void BuildHZB(ID3D11DeviceContext* InContext, ID3D11ShaderResourceView* InDepthSRV, uint32 Width, uint32 Height);
+	void BuildHZB(ID3D11DeviceContext* InContext, const FViewContext& InView);
 	void ExecuteOcclusionTest(ID3D11DeviceContext* InContext, const FViewContext& InView, const TArray<FPrimitiveProxy*>& InProxies);
 
-	ID3D11ShaderResourceView* GetHZBSRV() const { return HZBSRV; }
-	uint32 GetHZBMipCount() const { return HZBMipCount; }
+	ID3D11ShaderResourceView* GetHZBSRV(const FViewport* Viewport) const;
+	uint32 GetHZBMipCount(const FViewport* Viewport) const;
 
 	// 컬링 결과 반환 (N-2 프레임 지연된 결과일 수 있음)
-	bool IsVisible(uint32 ProxyId) const;
+	bool IsVisible(const FViewport* Viewport, uint32 ProxyId) const;
+
+	// 뷰포트 삭제 시 리소스 해제
+	void ReleaseViewportState(const FViewport* Viewport);
 
 	// 통계
 	void ResetStats() { NumTotalCandidates = 0; NumOccluded = 0; }
@@ -47,22 +77,16 @@ private:
 	FOcclusionManager() = default;
 	~FOcclusionManager() = default;
 
-	void CreateHZBTexture(ID3D11Device* InDevice, uint32 Width, uint32 Height);
-	void UpdateGPUProxies(ID3D11DeviceContext* InContext, const TArray<FPrimitiveProxy*>& InProxies);
+	// 해상도에 맞는 HZB 텍스처 및 관련 뷰 생성
+	void CreateHZBTexture(ID3D11Device* InDevice, uint32 Width, uint32 Height, FViewportOcclusionState& OutState);
+	// CPU 측 프록시 데이터를 GPU 버퍼로 업로드
+	void UpdateGPUProxies(ID3D11DeviceContext* InContext, const TArray<FPrimitiveProxy*>& InProxies, FViewportOcclusionState& OutState);
 
 private:
 	FComputeShader HZBBuildCS;
 	ID3D11Buffer* HZBConstantBuffer = nullptr;
 
-	ID3D11Texture2D* HZBTexture = nullptr;
-	ID3D11ShaderResourceView* HZBSRV = nullptr;
-	TArray<ID3D11UnorderedAccessView*> HZBMipsUAV;
-	TArray<ID3D11ShaderResourceView*> HZBMipsSRV;
 	ID3D11SamplerState* PointClampSampler = nullptr;
-
-	uint32 HZBMipCount = 0;
-	uint32 HZBWidth = 0;
-	uint32 HZBHeight = 0;
 
 	// Phase 2: Occlusion Test
 	FComputeShader OcclusionTestCS;
@@ -75,19 +99,10 @@ private:
 	ID3D11Buffer* VisibilityBuffer = nullptr;
 	ID3D11UnorderedAccessView* VisibilityUAV = nullptr;
 	
-	// Double buffering for readback (N-2)
-	ID3D11Buffer* ReadbackBuffers[2] = { nullptr, nullptr };
-	TArray<uint32> ReadbackProxyIds[2];
-	uint32 ReadbackIndex = 0;
-	bool bReadbackReady[2] = { false, false };
-
-	std::unordered_map<uint32, bool> VisibilityMap;
+	// Per-Viewport occlusion state
+	std::unordered_map<const FViewport*, FViewportOcclusionState> ViewportStates;
 
 	// Stats
 	uint32 NumTotalCandidates = 0;
 	uint32 NumOccluded = 0;
-
-	// Previous frame info for temporal stability
-	FMatrix PrevViewProjection;
-	bool bHasPrevViewProjection = false;
 };

@@ -18,8 +18,8 @@ void OcclusionCulling::ApplyOcclusionCulling(FViewContext& Context)
 
 	// Remove occluded proxies based on last known results from FOcclusionManager
 	Proxies.erase(std::remove_if(Proxies.begin(), Proxies.end(),
-		[](FPrimitiveProxy* Proxy) {
-			return !FOcclusionManager::Get().IsVisible(Proxy->CachedProxyId);
+		[&Context](FPrimitiveProxy* Proxy) {
+			return !FOcclusionManager::Get().IsVisible(Context.GetViewport(), Proxy->CachedProxyId);
 		}), Proxies.end());
 
 	uint32 finalSize = (uint32)Proxies.size();

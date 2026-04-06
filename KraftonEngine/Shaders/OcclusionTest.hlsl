@@ -29,33 +29,36 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
 
     ProxyAABB proxy = InProxies[DTid.x];
     
-    // Project AABB to NDC
+    float3 minP = proxy.Min;
+    float3 maxP = proxy.Max;
+
     float3 corners[8] = {
-        float3(proxy.Min.x, proxy.Min.y, proxy.Min.z),
-        float3(proxy.Max.x, proxy.Min.y, proxy.Min.z),
-        float3(proxy.Min.x, proxy.Max.y, proxy.Min.z),
-        float3(proxy.Max.x, proxy.Max.y, proxy.Min.z),
-        float3(proxy.Min.x, proxy.Min.y, proxy.Max.z),
-        float3(proxy.Max.x, proxy.Min.y, proxy.Max.z),
-        float3(proxy.Min.x, proxy.Max.y, proxy.Max.z),
-        float3(proxy.Max.x, proxy.Max.y, proxy.Max.z)
+        minP,
+        float3(maxP.x, minP.y, minP.z),
+        float3(minP.x, maxP.y, minP.z),
+        float3(maxP.x, maxP.y, minP.z),
+        float3(minP.x, minP.y, maxP.z),
+        float3(maxP.x, minP.y, maxP.z),
+        float3(minP.x, maxP.y, maxP.z),
+        maxP
     };
 
-    float3 minNDC = float3(1, 1, 1);
-    float3 maxNDC = float3(-1, -1, -1);
-
-    bool anyBehindNearPlane = false;
+    float3 minNDC = float3(1.1, 1.1, 1.1);
+    float3 maxNDC = float3(-1.1, -1.1, -1.1);
 
     [unroll]
     for (int i = 0; i < 8; ++i)
     {
         float4 clip = mul(float4(corners[i], 1.0), ViewProjection);
         
-        // If any part is behind or very close to near plane, consider it visible
+        // If any corner is behind or on the near plane, it's visible.
+        // In Reverse-Z with D3D, near is Z=W, far is Z=0. 
+        // So behind near plane means clip.z > clip.w (if using standard projection)
+        // Actually, let's just use clip.w <= 0 logic as it's safe.
         if (clip.w <= 0.0001)
         {
-            anyBehindNearPlane = true;
-            break;
+            OutVisibility[DTid.x] = 1;
+            return;
         }
 
         float3 ndc = clip.xyz / clip.w;
@@ -63,66 +66,43 @@ void CSMain(uint3 DTid : SV_DispatchThreadID)
         maxNDC = max(maxNDC, ndc);
     }
 
-    if (anyBehindNearPlane)
-    {
-        OutVisibility[DTid.x] = 1;
-        return;
-    }
-
-    // Clipping check - if it's completely outside the view, we can cull it
-    if (maxNDC.x < -1.0 || minNDC.x > 1.0 || maxNDC.y < -1.0 || minNDC.y > 1.0 || maxNDC.z < 0.0)
+    // Frustum Culling
+    if (maxNDC.x < -1.0 || minNDC.x > 1.0 || maxNDC.y < -1.0 || minNDC.y > 1.0 || maxNDC.z < 0.0 || minNDC.z > 1.0)
     {
         OutVisibility[DTid.x] = 0;
         return;
     }
 
-    // Clamp NDC to view range
-    minNDC.xy = max(minNDC.xy, float2(-1, -1));
-    maxNDC.xy = min(maxNDC.xy, float2(1, 1));
-
     // Convert to [0, 1] UV
-    float2 minUV = minNDC.xy * float2(0.5, -0.5) + 0.5;
-    float2 maxUV = maxNDC.xy * float2(0.5, -0.5) + 0.5;
+    float2 minUV = saturate(minNDC.xy * float2(0.5, -0.5) + 0.5);
+    float2 maxUV = saturate(maxNDC.xy * float2(0.5, -0.5) + 0.5);
     
-    // Swap if needed
+    // Ensure minUV is top-left and maxUV is bottom-right
     if (minUV.x > maxUV.x) { float t = minUV.x; minUV.x = maxUV.x; maxUV.x = t; }
     if (minUV.y > maxUV.y) { float t = minUV.y; minUV.y = maxUV.y; maxUV.y = t; }
     
-    // Scale UV to fit the sub-region of the POT(Power of Two) HZB texture
-    // HZB Mip 0 is half of viewport resolution.
+    // Adjust for HZB texture aspect/region
     float2 uvScale = (ViewportSize * 0.5f) / HZBSize;
     minUV *= uvScale;
     maxUV *= uvScale;
 
-    // Calculate footprint size in pixels (mip 0 resolution)
+    // Calculate mip level for 4-tap sampling
     float2 size = (maxUV - minUV) * HZBSize;
     float maxSide = max(size.x, size.y);
-    
-    // floor(log2) covers the footprint with 4 samples in that mip
-    float mip = floor(log2(maxSide + 0.01f));
+    float mip = floor(log2(maxSide));
     mip = clamp(mip, 0, (float)HZBMipCount - 1.0);
     
-    float2 midUV = (minUV + maxUV) * 0.5f;
-
-    // 9-tap HZB test
+    // 4-tap HZB test at the calculated mip level
     float d0 = HZB.SampleLevel(PointClampSampler, float2(minUV.x, minUV.y), mip).r;
-    float d1 = HZB.SampleLevel(PointClampSampler, float2(midUV.x, minUV.y), mip).r;
-    float d2 = HZB.SampleLevel(PointClampSampler, float2(maxUV.x, minUV.y), mip).r;
-    float d3 = HZB.SampleLevel(PointClampSampler, float2(minUV.x, midUV.y), mip).r;
-    float d4 = HZB.SampleLevel(PointClampSampler, float2(midUV.x, midUV.y), mip).r;
-    float d5 = HZB.SampleLevel(PointClampSampler, float2(maxUV.x, midUV.y), mip).r;
-    float d6 = HZB.SampleLevel(PointClampSampler, float2(minUV.x, maxUV.y), mip).r;
-    float d7 = HZB.SampleLevel(PointClampSampler, float2(midUV.x, maxUV.y), mip).r;
-    float d8 = HZB.SampleLevel(PointClampSampler, float2(maxUV.x, maxUV.y), mip).r;
+    float d1 = HZB.SampleLevel(PointClampSampler, float2(maxUV.x, minUV.y), mip).r;
+    float d2 = HZB.SampleLevel(PointClampSampler, float2(minUV.x, maxUV.y), mip).r;
+    float d3 = HZB.SampleLevel(PointClampSampler, float2(maxUV.x, maxUV.y), mip).r;
 
-    // Reverse-Z: min is furthest. minH is the furthest point in the 3x3 region.
-    float minH = min(min(min(min(d0, d1), min(d2, d3)), min(min(d4, d5), min(d6, d7))), d8);
+    // In Reverse-Z, min is furthest. 
+    float minH = min(min(d0, d1), min(d2, d3));
     
-    float nearD = maxNDC.z;
-    
-    // Conservative test: If the object's closest point (nearD) is further than 
-    // the furthest point in the HZB region (minH), it's definitely occluded.
-    uint isVisible = (nearD >= minH - 0.0001f) ? 1 : 0;
+    // Closest point of the object in Reverse-Z is maxNDC.z
+    uint isVisible = (maxNDC.z >= minH - 0.0001f) ? 1 : 0;
     
     OutVisibility[DTid.x] = isVisible;
 }

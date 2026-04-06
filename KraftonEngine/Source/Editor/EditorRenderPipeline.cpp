@@ -46,7 +46,7 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	if (!Camera) return;
 
 	FViewport* VP = VC->GetViewport();
-	if (!VP) return;
+	if (!VP || VP->GetWidth() == 0 || VP->GetHeight() == 0) return;
 
 	ID3D11DeviceContext* Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
 	if (!Ctx) return;
@@ -115,19 +115,20 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	}
 	// 4-1. 에디터 오브젝트는 컬링 적용하지 않고 수집
 	ViewContext.CollectViewElements();
-
-	// 5. Batcher 사용하는 렌더객체 처리
-	Renderer.PrepareBatchers(ViewContext);
-
-	// 6. ViewContext에 담긴 커맨드와 엔트리를 기반으로 GPU 드로우 콜 실행
-	Renderer.Render(ViewContext);
-
-	// 7. 차기 프레임용 오클루전 테스트 실행 (N-1 HZB 사용)
+	
+	// 5. Frustum Culling을 통과한 것들에 오클루전 테스트 실행 (이전 프레임에서의 HZB 사용)
 	if (ShowFlags.bOcclusionCulling)
 	{
 		FOcclusionManager::Get().ExecuteOcclusionTest(Ctx, ViewContext, AllFrustumVisible);
 	}
 
+	// 6. Batcher 사용하는 렌더객체 처리
+	Renderer.PrepareBatchers(ViewContext);
+
+	// 7. ViewContext에 담긴 커맨드와 엔트리를 기반으로 GPU 드로우 콜 실행
+	Renderer.Render(ViewContext);
+
+	// 8. IDBuffer 방식의 picking 지원
 	if (Editor->GetPickingMode() == EPickingMode::IDBuffer)
 	{
 		VC->RefreshIdBufferDirtyStateFromCamera();

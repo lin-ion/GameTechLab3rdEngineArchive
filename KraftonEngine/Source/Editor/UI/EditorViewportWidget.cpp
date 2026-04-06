@@ -86,7 +86,7 @@ void FEditorViewportWidget::Render(float DeltaTime)
 			// HZB 디버그 출력
 			if (ViewportClient->GetRenderOptions().ShowFlags.bShowHZB)
 			{
-				ID3D11ShaderResourceView* HZBSRV = FOcclusionManager::Get().GetHZBSRV();
+				ID3D11ShaderResourceView* HZBSRV = FOcclusionManager::Get().GetHZBSRV(ViewportClient->GetViewport());
 				if (HZBSRV)
 				{
 					// 우하단에 작게 표시
