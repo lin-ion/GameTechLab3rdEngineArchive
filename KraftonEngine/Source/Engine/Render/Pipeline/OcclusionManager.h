@@ -37,7 +37,7 @@ struct FViewportOcclusionState
 	bool bReadbackReady[2] = { false, false };
 	uint32 ReadbackCapacity = 0;
 
-	std::unordered_map<uint32, bool> VisibilityMap;
+	std::vector<uint8> VisibilityArray;
 
 	// Previous frame info for temporal stability
 	FMatrix PrevViewProjection;

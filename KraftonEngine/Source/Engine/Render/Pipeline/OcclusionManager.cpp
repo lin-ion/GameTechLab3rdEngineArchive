@@ -43,7 +43,7 @@ void FOcclusionManager::Initialize(ID3D11Device* InDevice)
 	}
 
 	D3D11_BUFFER_DESC cbDesc = {};
-	cbDesc.ByteWidth = (sizeof(uint32) * 4 + 15) & ~15;
+	cbDesc.ByteWidth = 32; // (sizeof(uint32) * 6 + 15) & ~15 = 32
 	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -198,21 +198,26 @@ void FOcclusionManager::BuildHZB(ID3D11DeviceContext* InContext, const FViewCont
 	{
 		uint32 SrcRes[2];
 		uint32 DstRes[2];
+		uint32 NumMips;
+		uint32 Padding;
 	};
 
-	uint32 currWidth = Width;
-	uint32 currHeight = Height;
+	uint32 currSrcWidth = Width;
+	uint32 currSrcHeight = Height;
+	uint32 currDstWidth = State.HZBWidth;
+	uint32 currDstHeight = State.HZBHeight;
 
-	for (uint32 i = 0; i < State.HZBMipCount; ++i)
+	for (uint32 i = 0; i < State.HZBMipCount; )
 	{
-		uint32 nextWidth = std::max(1u, currWidth / 2);
-		uint32 nextHeight = std::max(1u, currHeight / 2);
+		uint32 mipsToBuild = std::min(4u, State.HZBMipCount - i);
 
 		HZBConstants consts;
-		consts.SrcRes[0] = currWidth;
-		consts.SrcRes[1] = currHeight;
-		consts.DstRes[0] = nextWidth;
-		consts.DstRes[1] = nextHeight;
+		consts.SrcRes[0] = currSrcWidth;
+		consts.SrcRes[1] = currSrcHeight;
+		consts.DstRes[0] = currDstWidth;
+		consts.DstRes[1] = currDstHeight;
+		consts.NumMips = mipsToBuild;
+		consts.Padding = 0;
 
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
 		if (SUCCEEDED(InContext->Map(HZBConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
@@ -225,21 +230,32 @@ void FOcclusionManager::BuildHZB(ID3D11DeviceContext* InContext, const FViewCont
 
 		ID3D11ShaderResourceView* srcSRV = (i == 0) ? InDepthSRV : State.HZBMipsSRV[i - 1];
 		InContext->CSSetShaderResources(0, 1, &srcSRV);
-		InContext->CSSetUnorderedAccessViews(0, 1, &State.HZBMipsUAV[i], nullptr);
+		
+		ID3D11UnorderedAccessView* uavs[4] = { nullptr, nullptr, nullptr, nullptr };
+		for (uint32 j = 0; j < mipsToBuild; ++j)
+		{
+			uavs[j] = State.HZBMipsUAV[i + j];
+		}
+		InContext->CSSetUnorderedAccessViews(0, 4, uavs, nullptr);
 
-		uint32 groupX = (nextWidth + 7) / 8;
-		uint32 groupY = (nextHeight + 7) / 8;
+		uint32 groupX = (currDstWidth + 15) / 16;
+		uint32 groupY = (currDstHeight + 15) / 16;
 		HZBBuildCS.Dispatch(InContext, groupX, groupY, 1);
 
-		ID3D11UnorderedAccessView* nullUAV = nullptr;
-		InContext->CSSetUnorderedAccessViews(0, 1, &nullUAV, nullptr);
+		ID3D11UnorderedAccessView* nullUAVs[4] = { nullptr, nullptr, nullptr, nullptr };
+		InContext->CSSetUnorderedAccessViews(0, 4, nullUAVs, nullptr);
 		ID3D11ShaderResourceView* nullSRV = nullptr;
 		InContext->CSSetShaderResources(0, 1, &nullSRV);
 
-		currWidth = nextWidth;
-		currHeight = nextHeight;
-
-		if (currWidth == 1 && currHeight == 1 && i > 0) break;
+		// Update resolutions for next pass if any
+		for (uint32 j = 0; j < mipsToBuild; ++j)
+		{
+			currSrcWidth = currDstWidth;
+			currSrcHeight = currDstHeight;
+			currDstWidth = std::max(1u, currDstWidth / 2);
+			currDstHeight = std::max(1u, currDstHeight / 2);
+		}
+		i += mipsToBuild;
 	}
 
 	HZBBuildCS.Unbind(InContext);
@@ -367,7 +383,12 @@ void FOcclusionManager::ExecuteOcclusionTest(ID3D11DeviceContext* InContext, con
 			const auto& ids = State.ReadbackProxyIds[prevIndex];
 			for (uint32 i = 0; i < ids.size(); ++i)
 			{
-				State.VisibilityMap[ids[i]] = (data[i] != 0);
+				uint32 ProxyId = ids[i];
+				if (ProxyId >= State.VisibilityArray.size())
+				{
+					State.VisibilityArray.resize(ProxyId + 1, 1);
+				}
+				State.VisibilityArray[ProxyId] = (data[i] != 0) ? 1 : 0;
 			}
 			InContext->Unmap(State.ReadbackBuffers[prevIndex], 0);
 		}
@@ -442,10 +463,10 @@ bool FOcclusionManager::IsVisible(const FViewport* Viewport, uint32 ProxyId) con
 	auto itState = ViewportStates.find(Viewport);
 	if (itState != ViewportStates.end())
 	{
-		auto it = itState->second.VisibilityMap.find(ProxyId);
-		if (it != itState->second.VisibilityMap.end())
+		const auto& Array = itState->second.VisibilityArray;
+		if (ProxyId < Array.size())
 		{
-			return it->second;
+			return Array[ProxyId] != 0;
 		}
 	}
 	return true; // Default to visible if no result yet
