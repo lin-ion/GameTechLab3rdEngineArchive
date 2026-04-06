@@ -89,6 +89,33 @@ private:
 	static AActor* PickActorByRay(UWorld* World, const FRay& Ray, float& OutClosestDistance, uint32* OutPickingId)
 	{
 		thread_local FTemporalRayNearTHint TemporalHint;
+		UScene* ActiveScene = World->GetActiveScene();
+		if (ActiveScene)
+		{
+			FWorldRenderProxy& RenderProxy = ActiveScene->GetRenderProxy();
+			// Exclude spatial index rebuild/warmup from algorithm timing window.
+			if (RenderProxy.IsSpatialIndexDirtyForQueries())
+			{
+				RenderProxy.WarmupSpatialIndices();
+			}
+			RenderProxy.PrepareRayPickingCachesForQuery();
+		}
+		
+		bool bHasComparableHint = false;
+		float HintNearT = FLT_MAX;
+		if (TemporalHint.bValid)
+		{
+			const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
+			const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
+			const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
+			if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
+			{
+				bHasComparableHint = true;
+				HintNearT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
+			}
+		}
+
+		SCOPE_STAT("Picking.Ray.Algorithm");
 
 		AActor* BestActor = nullptr;
 		OutClosestDistance = FLT_MAX;
@@ -106,46 +133,38 @@ private:
 		{
 			SCOPE_STAT("Picking.Ray.Broad");
 			RayCandidates.clear();
-			if (UScene* Scene = World->GetActiveScene())
+			if (ActiveScene)
 			{
-				Scene->GetRenderProxy().QueryByRayWithNearT(Ray, RayCandidates, MaxNearT);
+				ActiveScene->GetRenderProxy().QueryByRayWithNearT(Ray, RayCandidates, MaxNearT);
 				if (static_cast<int32>(RayCandidates.size()) > RayCandidateReserveHint)
 				{
 					RayCandidateReserveHint = static_cast<int32>(RayCandidates.size());
 				}
 			}
 		};
-
 		bool bUsedNearTHint = false;
 		{
 			SCOPE_STAT("Picking.Ray.Narrow.DirectProbe");
-			if (TemporalHint.bValid && TemporalHint.LastHitComponentId != 0u)
+			if (bHasComparableHint && TemporalHint.LastHitComponentId != 0u)
 			{
-				const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
-				const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
-				const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
-				if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
+				if (UPrimitiveComponent* LastComp = Cast<UPrimitiveComponent>(ResolveObjectFromPickingId(TemporalHint.LastHitComponentId)))
 				{
-					if (UPrimitiveComponent* LastComp = Cast<UPrimitiveComponent>(ResolveObjectFromPickingId(TemporalHint.LastHitComponentId)))
+					if (AActor* LastActor = LastComp->GetOwner())
 					{
-						if (AActor* LastActor = LastComp->GetOwner())
+						if (LastActor->GetRootComponent())
 						{
-							if (LastActor->GetRootComponent())
+							HitResult = {};
+							if (LastComp->LineTraceComponent(Ray, HitResult, HintNearT) &&
+								HitResult.Distance < OutClosestDistance)
 							{
-								const float DirectProbeMaxT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
-								HitResult = {};
-								if (LastComp->LineTraceComponent(Ray, HitResult, DirectProbeMaxT) &&
-									HitResult.Distance < OutClosestDistance)
-								{
-									OutClosestDistance = HitResult.Distance;
-									BestActor = LastActor;
-									if (OutPickingId) *OutPickingId = MakeObjectPickingId(BestActor);
-									TemporalHint.Ray = Ray;
-									TemporalHint.ClosestDistance = OutClosestDistance;
-									TemporalHint.bValid = true;
-									TemporalHint.LastHitComponentId = MakeObjectPickingId(LastComp);
-									return BestActor;
-								}
+								OutClosestDistance = HitResult.Distance;
+								BestActor = LastActor;
+								if (OutPickingId) *OutPickingId = MakeObjectPickingId(BestActor);
+								TemporalHint.Ray = Ray;
+								TemporalHint.ClosestDistance = OutClosestDistance;
+								TemporalHint.bValid = true;
+								TemporalHint.LastHitComponentId = MakeObjectPickingId(LastComp);
+								return BestActor;
 							}
 						}
 					}
@@ -155,24 +174,16 @@ private:
 
 		bool bFastProbeHit = false;
 		{
-			SCOPE_STAT("Picking.Ray.Broad.FastProbe");
-			if (UScene* Scene = World->GetActiveScene())
+			// FastProbe는 temporal hint가 유효할 때만 의미가 있다.
+			// 힌트가 없으면 전역 closest query가 되어 오히려 병목이 될 수 있다.
+			if (ActiveScene && bHasComparableHint)
 			{
+				SCOPE_STAT("Picking.Ray.Broad.FastProbe");
 				FRayQueryCandidate FastCandidate{};
-				float ProbeMaxNearT = FLT_MAX;
-				if (TemporalHint.bValid)
-				{
-					const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
-					const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
-					const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
-					if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
-					{
-						ProbeMaxNearT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
-						bUsedNearTHint = true;
-					}
-				}
+				const float ProbeMaxNearT = HintNearT;
+				bUsedNearTHint = true;
 
-				if (Scene->GetRenderProxy().QueryClosestByRayWithNearT(Ray, FastCandidate, ProbeMaxNearT))
+				if (ActiveScene->GetRenderProxy().QueryClosestByRayWithNearT(Ray, FastCandidate, ProbeMaxNearT))
 				{
 					FPrimitiveProxy* ProbeProxy = FastCandidate.Proxy;
 					if (ProbeProxy)
@@ -211,17 +222,10 @@ private:
 			return BestActor;
 		}
 
-		if (TemporalHint.bValid)
+		if (bHasComparableHint)
 		{
-			const float DirSimilarity = Ray.Direction.Dot(TemporalHint.Ray.Direction);
-			const FVector OriginDelta = Ray.Origin - TemporalHint.Ray.Origin;
-			const float OriginDeltaSq = OriginDelta.Dot(OriginDelta);
-			if (DirSimilarity > 0.9995f && OriginDeltaSq < 1.0f)
-			{
-				const float HintNearT = TemporalHint.ClosestDistance * 1.5f + 2.0f;
-				ExecuteBroadQuery(HintNearT);
-				bUsedNearTHint = true;
-			}
+			ExecuteBroadQuery(HintNearT);
+			bUsedNearTHint = true;
 		}
 
 		if (!bUsedNearTHint)

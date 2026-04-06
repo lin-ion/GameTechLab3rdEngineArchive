@@ -34,7 +34,7 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 	ControlWidget.Initialize(InEditorEngine);
 	PropertyWidget.Initialize(InEditorEngine);
 	SceneWidget.Initialize(InEditorEngine);
-	StatWidget.Initialize(InEditorEngine);
+	// StatWidget.Initialize(InEditorEngine);
 }
 
 void FEditorMainPanel::Release()
@@ -64,7 +64,7 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ControlWidget.Render(DeltaTime);
 	SceneWidget.Render(DeltaTime);
 	PropertyWidget.Render(DeltaTime);
-	StatWidget.Render(DeltaTime);
+	// StatWidget.Render(DeltaTime);
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
 
 

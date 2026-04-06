@@ -89,6 +89,7 @@ public:
 	void QueryByRay(const FRay& Ray, TArray<FPrimitiveProxy*>& OutCandidates);
 	void QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCandidate>& OutCandidates, float MaxNearT = FLT_MAX);
 	bool QueryClosestByRayWithNearT(const FRay& Ray, FRayQueryCandidate& OutCandidate, float MaxNearT = FLT_MAX);
+	void PrepareRayPickingCachesForQuery();
 	bool IsSpatialIndexDirtyForQueries() const { return bSpatialIndexDirty || bDeferredSpatialIndexDirtyPending || (SpatialIndexDeferDepth > 0); }
 	uint64 GetSpatialChangeSerial() const { return SpatialChangeSerial; }
 

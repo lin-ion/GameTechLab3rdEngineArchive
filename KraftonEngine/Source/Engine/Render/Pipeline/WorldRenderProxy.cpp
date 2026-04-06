@@ -487,6 +487,35 @@ bool FWorldRenderProxy::QueryClosestByRayWithNearT(const FRay& Ray, FRayQueryCan
 	return false;
 }
 
+void FWorldRenderProxy::PrepareRayPickingCachesForQuery()
+{
+	// Build-only prep for click path measurement isolation:
+	// keep expensive rebuild/cache prep right before pick algorithm timing.
+	if (bSpatialIndexDirty)
+	{
+		RebuildSpatialIndexIfDirty(false, false);
+	}
+
+	const bool bBypassFrustumGate = bSpatialIndexDirty || (SpatialIndexDeferDepth > 0) || bDeferredSpatialIndexDirtyPending;
+	const bool bUseFrustumGate = bRayFrustumGateOptimizationEnabled && !bBypassFrustumGate && (FrustumVisiblePickFrameTag != 0u);
+	if (!bUseFrustumGate)
+	{
+		return;
+	}
+
+	BuildFrustumVisiblePickCacheIfNeeded();
+
+	const size_t VisibleCount = FrustumVisiblePickableCache.size();
+	const uint32 LinearThreshold = FPickingTuning::BroadLinearVisibleThreshold();
+	if (!VisibleRaySpatialIndex || VisibleCount <= static_cast<size_t>(LinearThreshold))
+	{
+		return;
+	}
+
+	const bool bUseOcclusionGate = FPickingTuning::UseRayOcclusionGate();
+	RebuildVisibleRaySpatialIndexIfNeeded(bUseOcclusionGate);
+}
+
 void FWorldRenderProxy::RebuildVisibleRaySpatialIndexIfNeeded(bool bUseOcclusionGate)
 {
 	if (!VisibleRaySpatialIndex)
