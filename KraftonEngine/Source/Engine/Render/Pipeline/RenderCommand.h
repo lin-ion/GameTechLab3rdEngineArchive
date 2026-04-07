@@ -39,17 +39,6 @@ struct FPerObjectConstants
 	}
 };
 
-#ifdef FOR_COMPETITION
-// 256바이트 정렬된 PerObject 데이터 (Large CB 슬롯 1개)
-struct alignas(256) FPerObjectAligned
-{
-	FMatrix Model; // 64B
-	FVector4 Color; // 16B
-	uint8 _pad[176];  // 80B → 256B 패딩
-};
-static_assert(sizeof(FPerObjectAligned) == 256, "Must be 256-byte aligned for CB offset binding");
-#endif
-
 struct FFrameConstants
 {
 	FMatrix View;
@@ -213,11 +202,6 @@ struct FRenderCommand
 
 	// GPU CB 바인딩 — ExtraCB.Data를 지정 슬롯의 CB에 업로드 (Gizmo, Outline 등)
 	FConstantBufferBinding ExtraCB;
-
-#ifdef FOR_COMPETITION
-	// Large CB 내 오브젝트 인덱스 (CollectPerObjectData에서 부여)
-	uint32 PerObjectBaseIndex = 0;
-#endif
 };
 
 // Render Command System SoA (Structure of Arrays)
@@ -239,10 +223,6 @@ struct FPassQueueSoA
 	// Extra CB binding (Stored separately to avoid cache pollution during initial bind)
 	TArray<FConstantBufferBinding> ExtraCBs;
 
-#ifdef FOR_COMPETITION
-	TArray<uint32> PerObjectBaseIndices;
-#endif
-
 	// Indirect reference array for sorting
 	TArray<uint32> SortedIndices;
 
@@ -258,9 +238,6 @@ struct FPassQueueSoA
 		SectionCount.clear();
 		ExtraCBs.clear();
 		SortedIndices.clear();
-#ifdef FOR_COMPETITION
-		PerObjectBaseIndices.clear();
-#endif
 	}
 
 	// Force release of memory capacity
@@ -275,8 +252,5 @@ struct FPassQueueSoA
 		TArray<uint32>().swap(SectionCount);
 		TArray<FConstantBufferBinding>().swap(ExtraCBs);
 		TArray<uint32>().swap(SortedIndices);
-#ifdef FOR_COMPETITION
-		TArray<uint32>().swap(PerObjectBaseIndices);
-#endif
 	}
 };

@@ -21,9 +21,6 @@ public:
 
 	ID3D11Device* GetDevice() const;
 	ID3D11DeviceContext* GetDeviceContext() const;
-#ifdef FOR_COMPETITION
-	ID3D11DeviceContext1* GetDeviceContext1() const;
-#endif
 	ID3D11RenderTargetView* GetFrameBufferRTV() const { return FrameBufferRTV; }
 	ID3D11DepthStencilView* GetDepthStencilView() const { return DepthStencilView; }
 	const D3D11_VIEWPORT& GetViewport() const { return ViewportInfo; }
@@ -52,9 +49,6 @@ private:
 private:
 	ID3D11Device* Device = nullptr;
 	ID3D11DeviceContext* DeviceContext = nullptr;
-#ifdef FOR_COMPETITION
-	ID3D11DeviceContext1* DeviceContext1 = nullptr;
-#endif
 	IDXGISwapChain* SwapChain = nullptr;
 
 	ID3D11Texture2D* FrameBuffer = nullptr;

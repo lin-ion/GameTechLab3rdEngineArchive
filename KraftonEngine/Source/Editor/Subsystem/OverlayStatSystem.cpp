@@ -42,5 +42,60 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 		Groups.push_back(std::move(Group));
 	}
 
+	if (bShowMemory)
+	{
+		FOverlayStatGroup Group;
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "Memory Allocated : %u", static_cast<unsigned int>(MemoryStats::GetTotalAllocationBytes()));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "Times Allocated : %u", static_cast<unsigned int>(MemoryStats::GetTotalAllocationCount()));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "PixelShader Memory : %.2f KB", static_cast<double>(MemoryStats::GetPixelShaderMemory() / 1024.0f));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "VertexShader Memory : %.2f KB", static_cast<double>(MemoryStats::GetVertexShaderMemory() / 1024.0f));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "VertexBuffer Memory : %.2f KB", static_cast<double>(MemoryStats::GetVertexBufferMemory() / 1024.0f));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "IndexBuffer Memory : %.2f KB", static_cast<double>(MemoryStats::GetIndexBufferMemory() / 1024.0f));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "StaticMesh CPU Memory : %.2f KB", static_cast<double>(MemoryStats::GetStaticMeshCPUMemory() / 1024.0f));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		{
+			char Buffer[128] = {};
+			snprintf(Buffer, sizeof(Buffer), "Texture Memory : %.2f KB", static_cast<double>(MemoryStats::GetTextureMemory() / 1024.0f));
+			Group.Lines.push_back(FString(Buffer));
+		}
+
+		Groups.push_back(std::move(Group));
+	}
+
 	return Groups;
 }

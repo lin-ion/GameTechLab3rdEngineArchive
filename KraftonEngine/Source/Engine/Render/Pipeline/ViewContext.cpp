@@ -61,10 +61,6 @@ void FViewContext::AddCommand(ERenderPass Pass, const FRenderCommand& InCommand)
 	Queue.Constants.push_back(InCommand.PerObjectConstants);
 	Queue.ExtraCBs.push_back(InCommand.ExtraCB);
 
-#ifdef FOR_COMPETITION
-	Queue.PerObjectBaseIndices.push_back(InCommand.PerObjectBaseIndex);
-#endif
-
 	// 섹션 정보 저장 (GlobalSectionDraws 내의 오프셋)
 	Queue.SectionStart.push_back((uint32)GlobalSectionDraws.size());
 	Queue.SectionCount.push_back((uint32)InCommand.SectionDraws.size());

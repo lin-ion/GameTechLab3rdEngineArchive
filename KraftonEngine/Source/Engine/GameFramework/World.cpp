@@ -74,9 +74,7 @@ void UWorld::BeginPlay()
 
 void UWorld::Tick(float DeltaTime)
 {
-#ifndef FOR_COMPETITION
 	if (ActiveScene) ActiveScene->Tick(DeltaTime);
-#endif // !FOR_COMPETITION
 	if (PersistentScene) PersistentScene->Tick(DeltaTime);
 }
 

@@ -15,7 +15,5 @@ public:
 
 private:
 	UStaticMeshComponent* StaticMeshComponent = nullptr;
-#ifndef FOR_COMPETITION
-	 UTextRenderComponent* TextRenderComponent = nullptr;
-#endif
+	UTextRenderComponent* TextRenderComponent = nullptr;
 };

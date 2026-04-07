@@ -20,7 +20,7 @@ public:
 	void AddCommand(ERenderPass Pass, const FRenderCommand& InCommand);
 	void AddCommand(ERenderPass Pass, FRenderCommand&& InCommand);
 	void SortPass(ERenderPass Pass);
-	
+
 	const FPassQueueSoA& GetPassQueue(ERenderPass Pass) const { return PassQueues[(uint32)Pass]; }
 	const TArray<FMeshSectionDraw>& GetGlobalSectionDraws() const { return GlobalSectionDraws; }
 	uint32 GetPassSectionOffset(ERenderPass Pass) const { return PassSectionOffsets[(uint32)Pass]; }

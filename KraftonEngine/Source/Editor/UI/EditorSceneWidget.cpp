@@ -98,6 +98,7 @@ void FEditorSceneWidget::Render(float DeltaTime)
 
 	if (!SceneFiles.empty())
 	{
+		// TODO: Case Sensitivity 삭제
 		// SceneFiles에는 "A.Scene" / "A.scene" 형태의 파일명이 들어있으므로
 		// Combo 표시용으로 확장자를 제거한 stem 목록을 별도 구성
 		TArray<FString> SceneStems;
@@ -171,7 +172,6 @@ void FEditorSceneWidget::Render(float DeltaTime)
 
 	SEPARATOR();
 
-#ifndef FOR_COMPETITION
 	// Actor Outliner
 	UWorld* World = EditorEngine->GetWorld();
 	if (World)
@@ -213,6 +213,5 @@ void FEditorSceneWidget::Render(float DeltaTime)
 		}
 		ImGui::EndChild();
 	}
-#endif
 	ImGui::End();
 }
