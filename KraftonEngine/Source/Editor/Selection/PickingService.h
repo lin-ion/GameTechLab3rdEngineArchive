@@ -89,10 +89,10 @@ private:
 	static AActor* PickActorByRay(UWorld* World, const FRay& Ray, float& OutClosestDistance, uint32* OutPickingId)
 	{
 		thread_local FTemporalRayNearTHint TemporalHint;
-		UScene* ActiveScene = World->GetActiveScene();
-		if (ActiveScene)
+		ULevel* ActiveLevel = World->GetActiveLevel();
+		if (ActiveLevel)
 		{
-			FWorldRenderProxy& RenderProxy = ActiveScene->GetRenderProxy();
+			FWorldRenderProxy& RenderProxy = ActiveLevel->GetRenderProxy();
 			// Exclude spatial index rebuild/warmup from algorithm timing window.
 			if (RenderProxy.IsSpatialIndexDirtyForQueries())
 			{
@@ -133,9 +133,9 @@ private:
 		{
 			SCOPE_STAT("Picking.Ray.Broad");
 			RayCandidates.clear();
-			if (ActiveScene)
+			if (ActiveLevel)
 			{
-				ActiveScene->GetRenderProxy().QueryByRayWithNearT(Ray, RayCandidates, MaxNearT);
+				ActiveLevel->GetRenderProxy().QueryByRayWithNearT(Ray, RayCandidates, MaxNearT);
 				if (static_cast<int32>(RayCandidates.size()) > RayCandidateReserveHint)
 				{
 					RayCandidateReserveHint = static_cast<int32>(RayCandidates.size());
@@ -176,14 +176,14 @@ private:
 		{
 			// FastProbe는 temporal hint가 유효할 때만 의미가 있다.
 			// 힌트가 없으면 전역 closest query가 되어 오히려 병목이 될 수 있다.
-			if (ActiveScene && bHasComparableHint)
+			if (ActiveLevel && bHasComparableHint)
 			{
 				SCOPE_STAT("Picking.Ray.Broad.FastProbe");
 				FRayQueryCandidate FastCandidate{};
 				const float ProbeMaxNearT = HintNearT;
 				bUsedNearTHint = true;
 
-				if (ActiveScene->GetRenderProxy().QueryClosestByRayWithNearT(Ray, FastCandidate, ProbeMaxNearT))
+				if (ActiveLevel->GetRenderProxy().QueryClosestByRayWithNearT(Ray, FastCandidate, ProbeMaxNearT))
 				{
 					FPrimitiveProxy* ProbeProxy = FastCandidate.Proxy;
 					if (ProbeProxy)

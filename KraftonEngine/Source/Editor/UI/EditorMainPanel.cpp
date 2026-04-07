@@ -4,7 +4,7 @@
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"

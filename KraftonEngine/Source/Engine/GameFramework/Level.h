@@ -6,12 +6,12 @@
 class AActor;
 class UWorld;
 
-class UScene : public UObject
+class ULevel : public UObject
 {
 public:
-	DECLARE_CLASS(UScene, UObject)
-	UScene();
-	~UScene() override;
+	DECLARE_CLASS(ULevel, UObject)
+	ULevel();
+	~ULevel() override;
 
 	void SetWorld(UWorld* InWorld) { OwningWorld = InWorld; }
 	UWorld* GetWorld() const { return OwningWorld; }

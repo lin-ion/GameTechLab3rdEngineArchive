@@ -84,8 +84,8 @@ private:
 	void EndDeferredSpatialIndexInvalidation();
 	void UpdateIdBufferDirtyFromCamera();
 	bool IsCameraInputActiveNow() const;
-	bool IsIdPickingSceneStateDirty() const;
-	void HandleIdPickingSceneMutation();
+	bool IsIdPickingLevelStateDirty() const;
+	void HandleIdPickingLevelMutation();
 	bool IsRayPickCacheValidForCurrentCamera() const;
 	void UpdateRayPickCache(uint32 InX, uint32 InY, AActor* InActor);
 	void InvalidateRayPickCache() { bHasCachedRayPickResult = false; CachedRayPickedActorId = 0u; }
@@ -180,8 +180,8 @@ private:
 	uint32 IdProbePrefetchFrameCounter = 0u;
 	uint64 LastIdBufferRenderCycles = 0;
 	bool IsIdBufferCacheValidForCurrentCamera() const;
-	uint64 CachedActiveSceneSpatialChangeSerial = 0u;
-	uint64 CachedPersistentSceneSpatialChangeSerial = 0u;
+	uint64 CachedActiveLevelSpatialChangeSerial = 0u;
+	uint64 CachedPersistentLevelSpatialChangeSerial = 0u;
 
 	bool bHasCachedRayPickResult = false;
 	uint32 CachedRayPickX = 0;

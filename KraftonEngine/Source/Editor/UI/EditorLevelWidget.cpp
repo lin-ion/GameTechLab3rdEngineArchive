@@ -1,4 +1,4 @@
-﻿#include "Editor/UI/EditorSceneWidget.h"
+﻿#include "Editor/UI/EditorLevelWidget.h"
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
@@ -8,28 +8,28 @@
 
 #include "ImGui/imgui.h"
 #include "Component/GizmoComponent.h"
-#include "Serialization/SceneSaveManager.h"
+#include "Serialization/LevelSaveManager.h"
 
 #include <filesystem>
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
 
-void FEditorSceneWidget::Initialize(UEditorEngine* InEditorEngine)
+void FEditorLevelWidget::Initialize(UEditorEngine* InEditorEngine)
 {
 	FEditorWidget::Initialize(InEditorEngine);
-	RefreshSceneFileList();
+	RefreshLevelFileList();
 }
 
-void FEditorSceneWidget::RefreshSceneFileList()
+void FEditorLevelWidget::RefreshLevelFileList()
 {
-	SceneFiles = FSceneSaveManager::GetSceneFileList();
-	if (SelectedSceneIndex >= static_cast<int32>(SceneFiles.size()))
+	LevelFiles = FLevelSaveManager::GetLevelFileList();
+	if (SelectedLevelIndex >= static_cast<int32>(LevelFiles.size()))
 	{
-		SelectedSceneIndex = SceneFiles.empty() ? -1 : 0;
+		SelectedLevelIndex = LevelFiles.empty() ? -1 : 0;
 	}
 }
 
-void FEditorSceneWidget::Render(float DeltaTime)
+void FEditorLevelWidget::Render(float DeltaTime)
 {
 	using namespace common::constants::ImGui;
 
@@ -40,27 +40,27 @@ void FEditorSceneWidget::Render(float DeltaTime)
 
 	ImGui::SetNextWindowSize(ImVec2(400.0f, 350.0f), ImGuiCond_Once);
 
-	ImGui::Begin("Jungle Scene Manager");
+	ImGui::Begin("Jungle Level Manager");
 
-	// New Scene
-	if (ImGui::Button("New Scene"))
+	// New Level
+	if (ImGui::Button("New Level"))
 	{
-		EditorEngine->NewScene();
-		NewSceneNotificationTimer = NotificationTimer;
+		EditorEngine->NewLevel();
+		NewLevelNotificationTimer = NotificationTimer;
 	}
-	if (NewSceneNotificationTimer > 0.0f)
+	if (NewLevelNotificationTimer > 0.0f)
 	{
-		NewSceneNotificationTimer -= DeltaTime;
+		NewLevelNotificationTimer -= DeltaTime;
 		ImGui::SameLine();
-		ImGui::Text("New scene created");
+		ImGui::Text("New Level created");
 	}
 
 	SEPARATOR();
 
-	// Save Scene
-	ImGui::InputText("Scene Name", SceneName, IM_ARRAYSIZE(SceneName));
+	// Save Level
+	ImGui::InputText("Level Name", LevelName, IM_ARRAYSIZE(LevelName));
 
-	if (ImGui::Button("Save Scene"))
+	if (ImGui::Button("Save Level"))
 	{
 		FWorldContext* Ctx = EditorEngine->GetWorldContextFromHandle(EditorEngine->GetActiveWorldHandle());
 		if (Ctx)
@@ -74,36 +74,36 @@ void FEditorSceneWidget::Render(float DeltaTime)
 					break;
 				}
 			}
-			FSceneSaveManager::SaveSceneAsJSON(SceneName, *Ctx, PerspectiveCam);
+			FLevelSaveManager::SaveLevelAsJSON(LevelName, *Ctx, PerspectiveCam);
 		}
-		SceneSaveNotificationTimer = NotificationTimer;
-		RefreshSceneFileList();
+		LevelSaveNotificationTimer = NotificationTimer;
+		RefreshLevelFileList();
 	}
-	if (SceneSaveNotificationTimer > 0.0f)
+	if (LevelSaveNotificationTimer > 0.0f)
 	{
-		SceneSaveNotificationTimer -= DeltaTime;
+		LevelSaveNotificationTimer -= DeltaTime;
 		ImGui::SameLine();
-		ImGui::Text("Scene saved");
+		ImGui::Text("Level saved");
 	}
 
 	SEPARATOR();
 
-	// Load Scene (combo box)
+	// Load Level (combo box)
 	if (ImGui::Button("Refresh"))
 	{
-		RefreshSceneFileList();
+		RefreshLevelFileList();
 	}
 	ImGui::SameLine();
-	ImGui::Text("Scene Files (%d)", static_cast<int32>(SceneFiles.size()));
+	ImGui::Text("Level Files (%d)", static_cast<int32>(LevelFiles.size()));
 
-	if (!SceneFiles.empty())
+	if (!LevelFiles.empty())
 	{
 		// TODO: Case Sensitivity 삭제
-		// SceneFiles에는 "A.Scene" / "A.scene" 형태의 파일명이 들어있으므로
+		// LevelFiles에는 "A.Scene" / "A.scene" 형태의 파일명이 들어있으므로
 		// Combo 표시용으로 확장자를 제거한 stem 목록을 별도 구성
 		TArray<FString> SceneStems;
-		SceneStems.reserve(SceneFiles.size());
-		for (const auto& F : SceneFiles)
+		SceneStems.reserve(LevelFiles.size());
+		for (const auto& F : LevelFiles)
 			SceneStems.push_back(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(F)).stem().wstring()));
 
 		auto SceneNameGetter = [](void* Data, int32 Idx) -> const char*
@@ -113,19 +113,19 @@ void FEditorSceneWidget::Render(float DeltaTime)
 				return (*Stems)[Idx].c_str();
 			};
 
-		ImGui::Combo("Scene File", &SelectedSceneIndex, SceneNameGetter, &SceneStems, static_cast<int32>(SceneStems.size()));
+		ImGui::Combo("Level File", &SelectedLevelIndex, SceneNameGetter, &SceneStems, static_cast<int32>(SceneStems.size()));
 
-		if (ImGui::Button("Load Scene") && SelectedSceneIndex >= 0)
+		if (ImGui::Button("Load Level") && SelectedLevelIndex >= 0)
 		{
 			// 원본 확장자(.Scene / .scene)를 그대로 사용
-			std::filesystem::path ScenePath = std::filesystem::path(FSceneSaveManager::GetSceneDirectory())
-				/ FPaths::ToWide(SceneFiles[SelectedSceneIndex]);
+			std::filesystem::path ScenePath = std::filesystem::path(FLevelSaveManager::GetSceneDirectory())
+				/ FPaths::ToWide(LevelFiles[SelectedLevelIndex]);
 			FString FilePath = FPaths::ToUtf8(ScenePath.wstring());
 
-			EditorEngine->ClearScene();
+			EditorEngine->ClearWorlds();
 			FWorldContext LoadCtx;
 			FPerspectiveCameraData CamData;
-			FSceneSaveManager::LoadSceneFromJSON(FilePath, LoadCtx, CamData);
+			FLevelSaveManager::LoadLevelFromJSON(FilePath, LoadCtx, CamData);
 			if (LoadCtx.World)
 			{
 				EditorEngine->GetWorldList().push_back(LoadCtx);
@@ -156,18 +156,18 @@ void FEditorSceneWidget::Render(float DeltaTime)
 				}
 			}
 
-			SceneLoadNotificationTimer = NotificationTimer;
+			LevelLoadNotificationTimer = NotificationTimer;
 		}
-		if (SceneLoadNotificationTimer > 0.0f)
+		if (LevelLoadNotificationTimer > 0.0f)
 		{
-			SceneLoadNotificationTimer -= DeltaTime;
+			LevelLoadNotificationTimer -= DeltaTime;
 			ImGui::SameLine();
-			ImGui::Text("Scene loaded");
+			ImGui::Text("Level loaded");
 		}
 	}
 	else
 	{
-		ImGui::Text("No scene files found in %s", FPaths::ToUtf8(FSceneSaveManager::GetSceneDirectory()).c_str());
+		ImGui::Text("No level files found in %s", FPaths::ToUtf8(FLevelSaveManager::GetSceneDirectory()).c_str());
 	}
 
 	SEPARATOR();

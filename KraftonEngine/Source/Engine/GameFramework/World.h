@@ -7,7 +7,7 @@
 
 // === Forward Declaration
 class UCameraComponent;
-class UScene;
+class ULevel;
 
 class UWorld : public UObject {
 public:
@@ -33,18 +33,18 @@ public:
 	void SetActiveCamera(UCameraComponent* InCamera) { ActiveCamera = InCamera; }
 	UCameraComponent* GetActiveCamera() const { return ActiveCamera; }
 
-	UScene* GetActiveScene() const { return ActiveScene; }
-	UScene* GetPersistentScene() const { return PersistentScene; }
+	ULevel* GetActiveLevel() const { return ActiveLevel; }
+	ULevel* GetPersistentLevel() const { return PersistentLevel; }
 
 private:
-	UScene* ActiveScene = nullptr;
-	UScene* PersistentScene = nullptr;
+	ULevel* ActiveLevel = nullptr;
+	ULevel* PersistentLevel = nullptr;
 
 	UCameraComponent* ActiveCamera = nullptr;
 	bool bHasBegunPlay = false;
 };
 
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 
 template<typename T>
 inline T* UWorld::SpawnActor()
@@ -53,8 +53,8 @@ inline T* UWorld::SpawnActor()
 	T* Actor = UObjectManager::Get().CreateObject<T>();
 	Actor->SetWorld(this);
 	
-	// Default to ActiveScene
-	ActiveScene->AddActor(Actor);
+	// Default to ActiveLevel
+	ActiveLevel->AddActor(Actor);
 
 	return Actor;
 }

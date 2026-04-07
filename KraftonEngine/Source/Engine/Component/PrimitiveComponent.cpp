@@ -5,7 +5,7 @@
 #include "Render/Resource/ShaderManager.h"
 #include "Core/CollisionTypes.h"
 #include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 #include "Render/Pipeline/PrimitiveProxy.h"
 
@@ -33,19 +33,19 @@ void UPrimitiveComponent::OnRegister()
 		Proxy = CreateProxy();
 	}
 
-	UScene* Scene = GetScene();
-	if (Proxy && Scene)
+	ULevel* Level = GetLevel();
+	if (Proxy && Level)
 	{
-		Scene->GetRenderProxy().AddProxy(Proxy);
+		Level->GetRenderProxy().AddProxy(Proxy);
 	}
 }
 
 void UPrimitiveComponent::OnUnregister()
 {
-	UScene* Scene = GetScene();
-	if (Proxy && Scene)
+	ULevel* Level = GetLevel();
+	if (Proxy && Level)
 	{
-		Scene->GetRenderProxy().RemoveProxy(Proxy);
+		Level->GetRenderProxy().RemoveProxy(Proxy);
 		delete Proxy;
 		Proxy = nullptr;
 	}
@@ -116,8 +116,8 @@ void UPrimitiveComponent::UpdateWorldMatrix() const
 	UpdateWorldAABB();
 	const_cast<UPrimitiveComponent*>(this)->MarkRenderStateDirty();
 
-	if (UScene* Scene = GetScene())
+	if (ULevel* Level = GetLevel())
 	{
-		Scene->GetRenderProxy().MarkSpatialIndexDirty();
+		Level->GetRenderProxy().MarkSpatialIndexDirty();
 	}
 }

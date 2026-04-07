@@ -1,4 +1,4 @@
-﻿#include "SceneSaveManager.h"
+﻿#include "LevelSaveManager.h"
 
 #include <iostream>
 #include <fstream>
@@ -7,7 +7,7 @@
 
 #include "SimpleJSON/json.hpp"
 #include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "GameFramework/AActor.h"
 #include "Component/SceneComponent.h"
 #include "Component/ActorComponent.h"
@@ -75,18 +75,18 @@ static const char* WorldTypeToString(EWorldType Type)
 // Save
 // ============================================================
 
-void FSceneSaveManager::SaveSceneAsJSON(const string& InSceneName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam)
+void FLevelSaveManager::SaveLevelAsJSON(const string& InLevelName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam)
 {
 	using namespace json;
 
 	if (!WorldContext.World) return;
 
-	string FinalName = InSceneName.empty()
+	string FinalName = InLevelName.empty()
 		? "Save_" + GetCurrentTimeStamp()
-		: InSceneName;
+		: InLevelName;
 
 	std::wstring SceneDir = GetSceneDirectory();
-	std::filesystem::path FileDestination = std::filesystem::path(SceneDir) / (FPaths::ToWide(FinalName) + SceneExtension);
+	std::filesystem::path FileDestination = std::filesystem::path(SceneDir) / (FPaths::ToWide(FinalName) + LevelExtension);
 	std::filesystem::create_directories(SceneDir);
 
 	JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectiveCam);
@@ -101,7 +101,7 @@ void FSceneSaveManager::SaveSceneAsJSON(const string& InSceneName, FWorldContext
 	}
 }
 
-json::JSON FSceneSaveManager::SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam)
+json::JSON FLevelSaveManager::SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam)
 {
 	using namespace json;
 	JSON w = json::Object();
@@ -175,7 +175,7 @@ json::JSON FSceneSaveManager::SerializeWorld(UWorld* World, const FWorldContext&
 	return w;
 }
 
-json::JSON FSceneSaveManager::SerializeActor(AActor* Actor)
+json::JSON FLevelSaveManager::SerializeActor(AActor* Actor)
 {
 	using namespace json;
 	JSON a = json::Object();
@@ -184,7 +184,7 @@ json::JSON FSceneSaveManager::SerializeActor(AActor* Actor)
 
 	// RootComponent 트리 직렬화
 	if (Actor->GetRootComponent()) {
-		a[SceneKeys::RootComponent] = SerializeSceneComponentTree(Actor->GetRootComponent());
+		a[SceneKeys::RootComponent] = SerializeLevelComponentTree(Actor->GetRootComponent());
 	}
 
 	// Non-scene components
@@ -203,7 +203,7 @@ json::JSON FSceneSaveManager::SerializeActor(AActor* Actor)
 	return a;
 }
 
-json::JSON FSceneSaveManager::SerializeSceneComponentTree(USceneComponent* Comp)
+json::JSON FLevelSaveManager::SerializeLevelComponentTree(USceneComponent* Comp)
 {
 	using namespace json;
 	JSON c = json::Object();
@@ -213,14 +213,14 @@ json::JSON FSceneSaveManager::SerializeSceneComponentTree(USceneComponent* Comp)
 	JSON Children = json::Array();
 	for (USceneComponent* Child : Comp->GetChildren()) {
 		if (!Child) continue;
-		Children.append(SerializeSceneComponentTree(Child));
+		Children.append(SerializeLevelComponentTree(Child));
 	}
 	c[SceneKeys::Children] = Children;
 
 	return c;
 }
 
-json::JSON FSceneSaveManager::SerializeProperties(UActorComponent* Comp)
+json::JSON FLevelSaveManager::SerializeProperties(UActorComponent* Comp)
 {
 	using namespace json;
 	JSON props = json::Object();
@@ -235,7 +235,7 @@ json::JSON FSceneSaveManager::SerializeProperties(UActorComponent* Comp)
 	return props;
 }
 
-json::JSON FSceneSaveManager::SerializePropertyValue(const FPropertyDescriptor& Prop)
+json::JSON FLevelSaveManager::SerializePropertyValue(const FPropertyDescriptor& Prop)
 {
 	using namespace json;
 
@@ -291,7 +291,7 @@ json::JSON FSceneSaveManager::SerializePropertyValue(const FPropertyDescriptor& 
 
 // ---- Camera helpers ----
 
-json::JSON FSceneSaveManager::SerializeCamera(UCameraComponent* Cam)
+json::JSON FLevelSaveManager::SerializeCamera(UCameraComponent* Cam)
 {
 	constexpr float Rad2Deg = 180.0f / 3.14159265358979f;
 
@@ -311,7 +311,7 @@ json::JSON FSceneSaveManager::SerializeCamera(UCameraComponent* Cam)
 	return cam;
 }
 
-void FSceneSaveManager::DeserializePrimitives(json::JSON& Primitives, UWorld* World, std::unordered_map<string, AActor*>& OutCreatedActors)
+void FLevelSaveManager::DeserializePrimitives(json::JSON& Primitives, UWorld* World, std::unordered_map<string, AActor*>& OutCreatedActors)
 {
 	for (auto& kv : Primitives.ObjectRange()) {
 		const string& Key  = kv.first;
@@ -343,7 +343,7 @@ static float ReadScalarOrArray(json::JSON& Val)
 	return static_cast<float>(Val.ToFloat());
 }
 
-void FSceneSaveManager::DeserializeCamera(json::JSON& CameraJSON, FPerspectiveCameraData& OutCam)
+void FLevelSaveManager::DeserializeCamera(json::JSON& CameraJSON, FPerspectiveCameraData& OutCam)
 {
 	constexpr float Rad2Deg = 180.0f / 3.14159265358979f;
 
@@ -362,7 +362,7 @@ void FSceneSaveManager::DeserializeCamera(json::JSON& CameraJSON, FPerspectiveCa
 // Load
 // ============================================================
 
-void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam)
+void FLevelSaveManager::LoadLevelFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam)
 {
 	using json::JSON;
 	std::ifstream File(std::filesystem::path(FPaths::ToWide(filepath)));
@@ -434,7 +434,7 @@ void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext&
 			if (!ActorObj || !ActorObj->IsA<AActor>()) continue;
 			Actor = static_cast<AActor*>(ActorObj);
 			Actor->SetWorld(World);
-			World->GetActiveScene()->AddActor(Actor);
+			World->GetActiveLevel()->AddActor(Actor);
 		}
 
 		if (ActorJSON.hasKey(SceneKeys::Visible)) {
@@ -481,7 +481,7 @@ void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext&
 	OutWorldContext.ContextHandle = FName(ContextHandle);
 }
 
-USceneComponent* FSceneSaveManager::DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner)
+USceneComponent* FLevelSaveManager::DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner)
 {
 	string ClassName = Node[SceneKeys::ClassName].ToString();
 	UObject* Obj = FObjectFactory::Get().Create(ClassName);
@@ -510,7 +510,7 @@ USceneComponent* FSceneSaveManager::DeserializeSceneComponentTree(json::JSON& No
 	return Comp;
 }
 
-void FSceneSaveManager::DeserializeSceneComponentIntoExisting(USceneComponent* Existing, json::JSON& Node, AActor* Owner)
+void FLevelSaveManager::DeserializeSceneComponentIntoExisting(USceneComponent* Existing, json::JSON& Node, AActor* Owner)
 {
 	using namespace json;
 	if (!Existing) return;
@@ -538,7 +538,7 @@ void FSceneSaveManager::DeserializeSceneComponentIntoExisting(USceneComponent* E
 	}
 }
 
-void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON& PropsJSON)
+void FLevelSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON& PropsJSON)
 {
 	auto ApplyProp = [&](FPropertyDescriptor& Prop) {
 		if (!PropsJSON.hasKey(Prop.Name.c_str())) return;
@@ -557,7 +557,7 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON&
 	for (size_t i = Before.size(); i < After.size(); ++i) ApplyProp(After[i]);
 }
 
-void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json::JSON& Value)
+void FLevelSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json::JSON& Value)
 {
 	switch (Prop.Type) {
 	case EPropertyType::Bool:
@@ -619,7 +619,7 @@ void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json
 // Utility
 // ============================================================
 
-string FSceneSaveManager::GetCurrentTimeStamp()
+string FLevelSaveManager::GetCurrentTimeStamp()
 {
 	std::time_t t = std::time(nullptr);
 	std::tm tm{};
@@ -630,7 +630,7 @@ string FSceneSaveManager::GetCurrentTimeStamp()
 	return buf;
 }
 
-TArray<FString> FSceneSaveManager::GetSceneFileList()
+TArray<FString> FLevelSaveManager::GetLevelFileList()
 {
 	TArray<FString> Result;
 	std::wstring SceneDir = GetSceneDirectory();

@@ -2,7 +2,7 @@
 #include "Object/Object.h"
 #include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "GameFramework/AActor.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 
@@ -18,10 +18,10 @@ void FSelectionManager::Init(UWorld* InWorld)
 		// 명시적으로 OnRegister를 호출하여 Proxy를 생성
 		Gizmo->OnRegister();
 
-		// World의 PersistentScene에 Gizmo의 Proxy를 수동 등록
-		if (UScene* PersistentScene = InWorld->GetPersistentScene())
+		// World의 PersistentLevel에 Gizmo의 Proxy를 수동 등록
+		if (ULevel* PersistentLevel = InWorld->GetPersistentLevel())
 		{
-			PersistentScene->GetRenderProxy().AddProxy(Gizmo->GetProxy());
+			PersistentLevel->GetRenderProxy().AddProxy(Gizmo->GetProxy());
 		}
 	}
 }
@@ -59,9 +59,9 @@ void FSelectionManager::SetWorld(UWorld* InWorld)
 		Gizmo->OnRegister();
 	}
 
-	if (UScene* PersistentScene = InWorld->GetPersistentScene())
+	if (ULevel* PersistentLevel = InWorld->GetPersistentLevel())
 	{
-		PersistentScene->GetRenderProxy().AddProxy(Gizmo->GetProxy());
+		PersistentLevel->GetRenderProxy().AddProxy(Gizmo->GetProxy());
 	}
 }
 
@@ -181,16 +181,16 @@ void FSelectionManager::SyncGizmo()
 {
 	if (!Gizmo) return;
 
-	// Scene Load/World 전환 이후에도 Gizmo 프록시가 현재 월드에 확실히 연결되도록 보장한다.
+	// Level Load/World 전환 이후에도 Gizmo 프록시가 현재 월드에 확실히 연결되도록 보장한다.
 	if (UWorld* World = Gizmo->GetWorld())
 	{
 		if (!Gizmo->GetProxy())
 		{
 			Gizmo->OnRegister();
 		}
-		if (UScene* PersistentScene = World->GetPersistentScene())
+		if (ULevel* PersistentLevel = World->GetPersistentLevel())
 		{
-			PersistentScene->GetRenderProxy().AddProxy(Gizmo->GetProxy());
+			PersistentLevel->GetRenderProxy().AddProxy(Gizmo->GetProxy());
 		}
 	}
 

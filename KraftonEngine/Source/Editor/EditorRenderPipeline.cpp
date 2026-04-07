@@ -80,13 +80,13 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	// 2. RenderCommand(DefaultPass), Entry(Batcher)를 ERenderPass별로 수집
 	const TArray<AActor*>& SelectedActors = Editor->GetSelectionManager().GetSelectedActors();
-	if (UScene* Scene = World->GetPersistentScene())
+	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		Scene->GetRenderProxy().GatherCandidates(ViewContext);
+		PersistentLevel->GetRenderProxy().GatherCandidates(ViewContext);
 	}
-	if (UScene* Scene = World->GetActiveScene())
+	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		Scene->GetRenderProxy().GatherCandidates(ViewContext);
+		ActiveLevel->GetRenderProxy().GatherCandidates(ViewContext);
 	}
 
 	// 3. 오클루전 테스트를 위해 프러스텀 컬링만 통과한 전체 후보군을 따로 보관
@@ -95,23 +95,23 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	OcclusionCulling::ApplyOcclusionCulling(ViewContext);
 
 	// Gizmo / Selected Actor는 컬링 결과와 무관하게 항상 렌더 후보로 유지한다.
-	if (UScene* Scene = World->GetPersistentScene())
+	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		Scene->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, true);
+		PersistentLevel->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, true);
 	}
-	if (UScene* Scene = World->GetActiveScene())
+	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		Scene->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, false);
+		ActiveLevel->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, false);
 	}
 
 	// 4. 컬링을 통과한 후보군만 RenderCommand를 ViewContext에 제출
-	if (UScene* Scene = World->GetPersistentScene())
+	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		Scene->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
+		PersistentLevel->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
 	}
-	if (UScene* Scene = World->GetActiveScene())
+	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		Scene->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
+		ActiveLevel->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
 	}
 	// 4-1. 에디터 오브젝트는 컬링 적용하지 않고 수집
 	ViewContext.CollectViewElements();

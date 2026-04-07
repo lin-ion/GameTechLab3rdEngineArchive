@@ -6,7 +6,7 @@
 #include <type_traits>
 
 class UWorld;
-class UScene;
+class ULevel;
 class UPrimitiveComponent;
 
 class AActor : public UObject
@@ -31,7 +31,7 @@ public:
 		OwnedComponents.push_back(Comp);
 		bPrimitiveCacheDirty = true;
 
-		if (GetScene())
+		if (GetLevel())
 		{
 			Comp->OnRegister();
 		}
@@ -72,8 +72,8 @@ public:
 	void SetWorld(UWorld* World) { OwningWorld = World; }
 	UWorld* GetWorld() const { return OwningWorld; }
 
-	void SetScene(UScene* Scene) { OwningScene = Scene; }
-	UScene* GetScene() const { return OwningScene; }
+	void SetLevel(ULevel* Level) { OwningLevel = Level; }
+	ULevel* GetLevel() const { return OwningLevel; }
 
 	bool IsVisible() const { return bVisible; }
 	void SetVisible(bool Visible) { bVisible = Visible; }
@@ -86,7 +86,7 @@ public:
 protected:
 	USceneComponent* RootComponent = nullptr;
 	UWorld* OwningWorld = nullptr;
-	UScene* OwningScene = nullptr;
+	ULevel* OwningLevel = nullptr;
 
 	FVector PendingActorLocation = FVector(0, 0, 0);
 	bool bVisible = true;

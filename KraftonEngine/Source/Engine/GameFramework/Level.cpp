@@ -1,26 +1,26 @@
-#include "Scene.h"
+#include "Level.h"
 #include "GameFramework/AActor.h"
 #include "Object/ObjectFactory.h"
 #include <algorithm>
 
-DEFINE_CLASS(UScene, UObject)
+DEFINE_CLASS(ULevel, UObject)
 
-UScene::UScene()
+ULevel::ULevel()
 {
 	RenderProxy = std::make_unique<FWorldRenderProxy>();
 }
 
-UScene::~UScene()
+ULevel::~ULevel()
 {
 	EndPlay();
 }
 
-void UScene::AddActor(AActor* Actor)
+void ULevel::AddActor(AActor* Actor)
 {
 	if (Actor)
 	{
 		Actors.push_back(Actor);
-		Actor->SetScene(this);
+		Actor->SetLevel(this);
 		Actor->RegisterAllComponents();
 		if (bHasBegunPlay)
 		{
@@ -29,7 +29,7 @@ void UScene::AddActor(AActor* Actor)
 	}
 }
 
-void UScene::RemoveActor(AActor* Actor)
+void ULevel::RemoveActor(AActor* Actor)
 {
 	if (!Actor) return;
 
@@ -40,10 +40,10 @@ void UScene::RemoveActor(AActor* Actor)
 	if (it != Actors.end())
 		Actors.erase(it);
 
-	Actor->SetScene(nullptr);
+	Actor->SetLevel(nullptr);
 }
 
-void UScene::BeginPlay()
+void ULevel::BeginPlay()
 {
 	bHasBegunPlay = true;
 	for (AActor* Actor : Actors)
@@ -55,7 +55,7 @@ void UScene::BeginPlay()
 	}
 }
 
-void UScene::Tick(float DeltaTime)
+void ULevel::Tick(float DeltaTime)
 {
 	for (AActor* Actor : Actors)
 	{
@@ -66,7 +66,7 @@ void UScene::Tick(float DeltaTime)
 	}
 }
 
-void UScene::EndPlay()
+void ULevel::EndPlay()
 {
 	bHasBegunPlay = false;
 

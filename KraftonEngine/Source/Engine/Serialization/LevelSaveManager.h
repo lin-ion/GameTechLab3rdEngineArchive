@@ -35,23 +35,23 @@ struct FPerspectiveCameraData
 	bool    bValid   = false;
 };
 
-class FSceneSaveManager
+class FLevelSaveManager
 {
 public:
-	static constexpr const wchar_t* SceneExtension = L".Scene";
+	static constexpr const wchar_t* LevelExtension = L".Scene";
 
-	static std::wstring GetSceneDirectory() { return FPaths::SceneDir(); }
+	static std::wstring GetSceneDirectory() { return FPaths::LevelDir(); }
 
-	static void SaveSceneAsJSON(const string& SceneName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
-	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
+	static void SaveLevelAsJSON(const string& LevelName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
+	static void LoadLevelFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 
-	static TArray<FString> GetSceneFileList();
+	static TArray<FString> GetLevelFileList();
 
 private:
 	// ---- Serialization ----
 	static json::JSON SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam);
 	static json::JSON SerializeActor(AActor* Actor);
-	static json::JSON SerializeSceneComponentTree(USceneComponent* Comp);
+	static json::JSON SerializeLevelComponentTree(USceneComponent* Comp);
 	static json::JSON SerializeProperties(UActorComponent* Comp);
 	static json::JSON SerializePropertyValue(const FPropertyDescriptor& Prop);
 

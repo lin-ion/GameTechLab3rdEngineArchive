@@ -8,9 +8,9 @@ UWorld* UActorComponent::GetWorld() const
 	return Owner ? Owner->GetWorld() : nullptr;
 }
 
-UScene* UActorComponent::GetScene() const
+ULevel* UActorComponent::GetLevel() const
 {
-	return Owner ? Owner->GetScene() : nullptr;
+	return Owner ? Owner->GetLevel() : nullptr;
 }
 
 void UActorComponent::BeginPlay()

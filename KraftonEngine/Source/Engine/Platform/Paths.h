@@ -13,7 +13,7 @@ public:
 
 	// 주요 디렉터리
 	static std::wstring ShaderDir();      // Shaders/
-	static std::wstring SceneDir();       // Asset/Scene/
+	static std::wstring LevelDir();       // Asset/Level/
 	static std::wstring DumpDir();        // Saves/Dump/
 	static std::wstring SettingsDir();    // Settings/
 
@@ -21,7 +21,7 @@ public:
 	static std::wstring SettingsFilePath();  // Settings/Editor.ini
 	static std::wstring ResourceFilePath();  // Settings/Resource.ini
 
-	// 경로 결합: FPaths::Combine(L"Asset/Scene", L"Default.Scene")
+	// 경로 결합: FPaths::Combine(L"Asset/Level", L"Default.Scene")
 	static std::wstring Combine(const std::wstring& Base, const std::wstring& Child);
 
 	// 디렉터리가 없으면 재귀적으로 생성

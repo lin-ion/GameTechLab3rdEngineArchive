@@ -32,10 +32,10 @@ public:
 	UGizmoComponent* GetGizmo() const { return SelectionManager.GetGizmo(); }
 	UCameraComponent* GetCamera() const;
 
-	void ClearScene();
+	void ClearWorlds();
 	void ResetViewport();
-	void CloseScene();
-	void NewScene();
+	void CloseLevel();
+	void NewLevel();
 
 	FEditorSettings& GetSettings() { return FEditorSettings::Get(); }
 	const FEditorSettings& GetSettings() const { return FEditorSettings::Get(); }

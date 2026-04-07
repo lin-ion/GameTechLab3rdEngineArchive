@@ -29,13 +29,13 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 		Bus.SetCameraInfo(Camera);
 		Bus.SetRenderOptions(Opts);
 
-		if (UScene* Scene = World->GetPersistentScene())
+		if (ULevel* PersistentLevel = World->GetPersistentLevel())
 		{
-			Scene->GetRenderProxy().CollectWorld(Bus, {});
+			PersistentLevel->GetRenderProxy().CollectWorld(Bus, {});
 		}
-		if (UScene* Scene = World->GetActiveScene())
+		if (ULevel* ActiveLevel = World->GetActiveLevel())
 		{
-			Scene->GetRenderProxy().CollectWorld(Bus, {});
+			ActiveLevel->GetRenderProxy().CollectWorld(Bus, {});
 		}
 
 		Bus.CollectViewElements();

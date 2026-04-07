@@ -66,13 +66,13 @@ void FObjViewerRenderPipeline::RenderPreviewViewport(FRenderer& Renderer)
 
 	// 월드 수집 (선택 액터 없음)
 	TArray<AActor*> EmptySelection;
-	if (UScene* Scene = World->GetPersistentScene())
+	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection);
+		PersistentLevel->GetRenderProxy().CollectWorld(Bus, EmptySelection);
 	}
-	if (UScene* Scene = World->GetActiveScene())
+	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		Scene->GetRenderProxy().CollectWorld(Bus, EmptySelection);
+		ActiveLevel->GetRenderProxy().CollectWorld(Bus, EmptySelection);
 	}
 	Bus.CollectViewElements();
 

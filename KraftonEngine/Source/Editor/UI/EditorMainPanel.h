@@ -3,7 +3,7 @@
 #include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/UI/EditorControlWidget.h"
 #include "Editor/UI/EditorPropertyWidget.h"
-#include "Editor/UI/EditorSceneWidget.h"
+#include "Editor/UI/EditorLevelWidget.h"
 #include "Editor/UI/EditorStatWidget.h"
 
 class FRenderer;
@@ -24,6 +24,6 @@ private:
 	FEditorConsoleWidget ConsoleWidget;
 	FEditorControlWidget ControlWidget;
 	FEditorPropertyWidget PropertyWidget;
-	FEditorSceneWidget SceneWidget;
+	FEditorLevelWidget SceneWidget;
 	FEditorStatWidget StatWidget;
 };

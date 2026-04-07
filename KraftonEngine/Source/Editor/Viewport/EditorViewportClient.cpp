@@ -13,7 +13,7 @@
 #include "Component/CameraComponent.h"
 #include "Viewport/Viewport.h"
 #include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "Component/GizmoComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Collision/RayUtils.h"
@@ -41,15 +41,15 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 	World = InWorld;
 	if (World)
 	{
-		if (UScene* ActiveScene = World->GetActiveScene())
+		if (ULevel* ActiveLevel = World->GetActiveLevel())
 		{
-			ActiveScene->GetRenderProxy().WarmupSpatialIndices();
+			ActiveLevel->GetRenderProxy().WarmupSpatialIndices();
 		}
-		if (UScene* PersistentScene = World->GetPersistentScene())
+		if (ULevel* PersistentLevel = World->GetPersistentLevel())
 		{
-			if (PersistentScene != World->GetActiveScene())
+			if (PersistentLevel != World->GetActiveLevel())
 			{
-				PersistentScene->GetRenderProxy().WarmupSpatialIndices();
+				PersistentLevel->GetRenderProxy().WarmupSpatialIndices();
 			}
 		}
 	}
@@ -792,8 +792,8 @@ void FEditorViewportClient::ResetIdPickingState()
 	ActiveIdBufferUpdateIntervalMs = 0.0f;
 	LastClickE2EStartCycles = 0u;
 	LastCameraInteractCycles = 0u;
-	CachedActiveSceneSpatialChangeSerial = 0u;
-	CachedPersistentSceneSpatialChangeSerial = 0u;
+	CachedActiveLevelSpatialChangeSerial = 0u;
+	CachedPersistentLevelSpatialChangeSerial = 0u;
 	InvalidateIdBufferCache();
 }
 
@@ -804,16 +804,16 @@ void FEditorViewportClient::BeginDeferredSpatialIndexInvalidation()
 		return;
 	}
 
-	if (UScene* ActiveScene = World->GetActiveScene())
+	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		ActiveScene->GetRenderProxy().BeginDeferSpatialIndexInvalidation();
+		ActiveLevel->GetRenderProxy().BeginDeferSpatialIndexInvalidation();
 	}
 
-	if (UScene* PersistentScene = World->GetPersistentScene())
+	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		if (PersistentScene != World->GetActiveScene())
+		if (PersistentLevel != World->GetActiveLevel())
 		{
-			PersistentScene->GetRenderProxy().BeginDeferSpatialIndexInvalidation();
+			PersistentLevel->GetRenderProxy().BeginDeferSpatialIndexInvalidation();
 		}
 	}
 
@@ -827,18 +827,18 @@ void FEditorViewportClient::EndDeferredSpatialIndexInvalidation()
 		return;
 	}
 
-	if (UScene* ActiveScene = World->GetActiveScene())
+	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		ActiveScene->GetRenderProxy().EndDeferSpatialIndexInvalidation();
-		ActiveScene->GetRenderProxy().WarmupSpatialIndices();
+		ActiveLevel->GetRenderProxy().EndDeferSpatialIndexInvalidation();
+		ActiveLevel->GetRenderProxy().WarmupSpatialIndices();
 	}
 
-	if (UScene* PersistentScene = World->GetPersistentScene())
+	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		if (PersistentScene != World->GetActiveScene())
+		if (PersistentLevel != World->GetActiveLevel())
 		{
-			PersistentScene->GetRenderProxy().EndDeferSpatialIndexInvalidation();
-			PersistentScene->GetRenderProxy().WarmupSpatialIndices();
+			PersistentLevel->GetRenderProxy().EndDeferSpatialIndexInvalidation();
+			PersistentLevel->GetRenderProxy().WarmupSpatialIndices();
 		}
 	}
 
@@ -941,7 +941,7 @@ bool FEditorViewportClient::ShouldRenderPendingIdPick() const
 
 void FEditorViewportClient::RefreshIdBufferDirtyStateFromCamera()
 {
-	HandleIdPickingSceneMutation();
+	HandleIdPickingLevelMutation();
 	UpdateIdBufferDirtyFromCamera();
 }
 
@@ -954,7 +954,7 @@ void FEditorViewportClient::UpdateIdBufferDirtyFromCamera()
 	}
 
 	const bool bCameraDirty = !IsIdBufferCacheValidForCurrentCamera();
-	const bool bSceneDirty = IsIdPickingSceneStateDirty();
+	const bool bSceneDirty = IsIdPickingLevelStateDirty();
 	bIdBufferDirty = bCameraDirty || bSceneDirty;
 }
 
@@ -975,13 +975,13 @@ void FEditorViewportClient::UpdateIdBufferCacheCameraState()
 	CachedIdPickCameraOrthoWidth = Camera->GetOrthoWidth();
 	if (World)
 	{
-		if (UScene* ActiveScene = World->GetActiveScene())
+		if (ULevel* ActiveLevel = World->GetActiveLevel())
 		{
-			CachedActiveSceneSpatialChangeSerial = ActiveScene->GetRenderProxy().GetSpatialChangeSerial();
+			CachedActiveLevelSpatialChangeSerial = ActiveLevel->GetRenderProxy().GetSpatialChangeSerial();
 		}
-		if (UScene* PersistentScene = World->GetPersistentScene())
+		if (ULevel* PersistentLevel = World->GetPersistentLevel())
 		{
-			CachedPersistentSceneSpatialChangeSerial = PersistentScene->GetRenderProxy().GetSpatialChangeSerial();
+			CachedPersistentLevelSpatialChangeSerial = PersistentLevel->GetRenderProxy().GetSpatialChangeSerial();
 		}
 	}
 	LastIdBufferRenderCycles = FPlatformTime::Cycles64();
@@ -989,26 +989,26 @@ void FEditorViewportClient::UpdateIdBufferCacheCameraState()
 	bIdBufferDirty = false;
 }
 
-bool FEditorViewportClient::IsIdPickingSceneStateDirty() const
+bool FEditorViewportClient::IsIdPickingLevelStateDirty() const
 {
 	if (!World)
 	{
 		return false;
 	}
 
-	if (UScene* ActiveScene = World->GetActiveScene())
+	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		const FWorldRenderProxy& RP = ActiveScene->GetRenderProxy();
-		if (RP.IsSpatialIndexDirtyForQueries() || RP.GetSpatialChangeSerial() != CachedActiveSceneSpatialChangeSerial)
+		const FWorldRenderProxy& RP = ActiveLevel->GetRenderProxy();
+		if (RP.IsSpatialIndexDirtyForQueries() || RP.GetSpatialChangeSerial() != CachedActiveLevelSpatialChangeSerial)
 		{
 			return true;
 		}
 	}
 
-	if (UScene* PersistentScene = World->GetPersistentScene())
+	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		const FWorldRenderProxy& RP = PersistentScene->GetRenderProxy();
-		if (RP.IsSpatialIndexDirtyForQueries() || RP.GetSpatialChangeSerial() != CachedPersistentSceneSpatialChangeSerial)
+		const FWorldRenderProxy& RP = PersistentLevel->GetRenderProxy();
+		if (RP.IsSpatialIndexDirtyForQueries() || RP.GetSpatialChangeSerial() != CachedPersistentLevelSpatialChangeSerial)
 		{
 			return true;
 		}
@@ -1017,14 +1017,14 @@ bool FEditorViewportClient::IsIdPickingSceneStateDirty() const
 	return false;
 }
 
-void FEditorViewportClient::HandleIdPickingSceneMutation()
+void FEditorViewportClient::HandleIdPickingLevelMutation()
 {
-	if (!IsIdPickingSceneStateDirty())
+	if (!IsIdPickingLevelStateDirty())
 	{
 		return;
 	}
 
-	// Scene/object transform mutation invalidates stale ID results and probe samples.
+	// Level/object transform mutation invalidates stale ID results and probe samples.
 	InvalidateIdBufferCache();
 
 	// Pending probe readback is speculative; discard on mutation.

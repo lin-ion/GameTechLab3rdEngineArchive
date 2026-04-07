@@ -33,7 +33,7 @@ public:
 	float PerspCamFarClip = 1000.0f;
 
 	// File paths
-	FString DefaultSavePath = FPaths::ToUtf8(FPaths::SceneDir());
+	FString DefaultSavePath = FPaths::ToUtf8(FPaths::LevelDir());
 
 	void SaveToFile(const FString& Path) const;
 	void LoadFromFile(const FString& Path);

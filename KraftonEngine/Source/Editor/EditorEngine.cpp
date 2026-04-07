@@ -1,11 +1,11 @@
 ﻿#include "Editor/EditorEngine.h"
 
 #include "Engine/Runtime/WindowsWindow.h"
-#include "Engine/Serialization/SceneSaveManager.h"
+#include "Engine/Serialization/LevelSaveManager.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Profiling/Stats.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
@@ -51,7 +51,7 @@ void UEditorEngine::Shutdown()
 	// 에디터 해제 (엔진보다 먼저)
 	ViewportLayout.SaveToSettings();
 	FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
-	CloseScene();
+	CloseLevel();
 	SelectionManager.Shutdown();
 	MainPanel.Release();
 
@@ -118,21 +118,21 @@ void UEditorEngine::ResetViewport()
 	ViewportLayout.ResetViewport(GetWorld());
 }
 
-void UEditorEngine::CloseScene()
+void UEditorEngine::CloseLevel()
 {
-	ClearScene();
+	ClearWorlds();
 }
 
-void UEditorEngine::NewScene()
+void UEditorEngine::NewLevel()
 {
-	ClearScene();
-	FWorldContext& Ctx = CreateWorldContext(EWorldType::Editor, FName("NewScene"), "New Scene");
+	ClearWorlds();
+	FWorldContext& Ctx = CreateWorldContext(EWorldType::Editor, FName("NewLevel"), "New Level");
 	SetActiveWorld(Ctx.ContextHandle);
 
 	ResetViewport();
 }
 
-void UEditorEngine::ClearScene()
+void UEditorEngine::ClearWorlds()
 {
 	FStatManager::Get().ResetStats();
 

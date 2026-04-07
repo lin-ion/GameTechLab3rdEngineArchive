@@ -5,7 +5,7 @@
 #include "Render/Pipeline/RenderStats.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 #include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "Editor/Selection/PickingTypes.h"
 #include "ImGui/imgui.h"
 
@@ -134,10 +134,10 @@ void FEditorStatWidget::RenderCullingStats()
 	if (!World) return;
 
 	FWorldProxyCullingStats Total = {};
-	auto AccumulateScene = [&Total](UScene* Scene)
+	auto AccumulateLevel = [&Total](ULevel* Level)
 	{
-		if (!Scene) return;
-		const FWorldProxyCullingStats& S = Scene->GetRenderProxy().GetLastCullingStats();
+		if (!Level) return;
+		const FWorldProxyCullingStats& S = Level->GetRenderProxy().GetLastCullingStats();
 		Total.RegisteredProxyCount          += S.RegisteredProxyCount;
 		Total.InsertedProxyCount            += S.InsertedProxyCount;
 		Total.CandidateProxyCount           += S.CandidateProxyCount;
@@ -148,8 +148,8 @@ void FEditorStatWidget::RenderCullingStats()
 		Total.SpatialFrustumIntersectedNodes += S.SpatialFrustumIntersectedNodes;
 		Total.SpatialFrustumCandidateItems  += S.SpatialFrustumCandidateItems;
 	};
-	AccumulateScene(World->GetPersistentScene());
-	AccumulateScene(World->GetActiveScene());
+	AccumulateLevel(World->GetPersistentLevel());
+	AccumulateLevel(World->GetActiveLevel());
 
 	int32 Culled = Total.RegisteredProxyCount - Total.RenderedProxyCount;
 	float Efficiency = Total.RegisteredProxyCount > 0
@@ -243,10 +243,10 @@ void FEditorStatWidget::RenderPickingDetail()
 		if (UWorld* World = EditorEngine->GetWorld())
 		{
 			FRayBroadDebugCounters TotalCounters = {};
-			auto AccumulateRayBroadCounters = [&TotalCounters](UScene* Scene)
+			auto AccumulateRayBroadCounters = [&TotalCounters](ULevel* Level)
 			{
-				if (!Scene) return;
-				const FRayBroadDebugCounters& C = Scene->GetRenderProxy().GetLastRayBroadDebugCounters();
+				if (!Level) return;
+				const FRayBroadDebugCounters& C = Level->GetRenderProxy().GetLastRayBroadDebugCounters();
 				TotalCounters.AABBTests += C.AABBTests;
 				TotalCounters.AABBHits += C.AABBHits;
 				TotalCounters.CandidatesEmitted += C.CandidatesEmitted;
@@ -256,8 +256,8 @@ void FEditorStatWidget::RenderPickingDetail()
 				TotalCounters.BVHAABBTests += C.BVHAABBTests;
 			};
 
-			AccumulateRayBroadCounters(World->GetPersistentScene());
-			AccumulateRayBroadCounters(World->GetActiveScene());
+			AccumulateRayBroadCounters(World->GetPersistentLevel());
+			AccumulateRayBroadCounters(World->GetActiveLevel());
 
 			ImGui::Text("[Ray Broad Count] AABB Tests: %llu  Hits: %llu  NodeVisits: %llu",
 				static_cast<unsigned long long>(TotalCounters.AABBTests),

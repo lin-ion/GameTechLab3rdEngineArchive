@@ -1,5 +1,5 @@
 ﻿#include "GameFramework/World.h"
-#include "GameFramework/Scene.h"
+#include "GameFramework/Level.h"
 #include "Object/ObjectFactory.h"
 #include <algorithm>
 #include <memory>
@@ -18,15 +18,15 @@ UWorld::~UWorld()
 		EndPlay();
 	}
 
-	if (ActiveScene)
+	if (ActiveLevel)
 	{
-		UObjectManager::Get().DestroyObject(ActiveScene);
-		ActiveScene = nullptr;
+		UObjectManager::Get().DestroyObject(ActiveLevel);
+		ActiveLevel = nullptr;
 	}
-	if (PersistentScene)
+	if (PersistentLevel)
 	{
-		UObjectManager::Get().DestroyObject(PersistentScene);
-		PersistentScene = nullptr;
+		UObjectManager::Get().DestroyObject(PersistentLevel);
+		PersistentLevel = nullptr;
 	}
 }
 
@@ -34,9 +34,9 @@ void UWorld::DestroyActor(AActor* Actor)
 {
 	if (!Actor) return;
 
-	if (UScene* Scene = Actor->GetScene())
+	if (ULevel* Level = Actor->GetLevel())
 	{
-		Scene->RemoveActor(Actor);
+		Level->RemoveActor(Actor);
 	}
 
 	// Mark for garbage collection
@@ -45,22 +45,22 @@ void UWorld::DestroyActor(AActor* Actor)
 
 const TArray<AActor*>& UWorld::GetActors() const
 {
-	// NOTE: For compatibility, we return PersistentScene's actors.
+	// NOTE: For compatibility, we return PersistentLevel's actors.
 	// In the future, we might want to return a combined list or change the API.
-	return ActiveScene->GetActors();
+	return ActiveLevel->GetActors();
 }
 
 void UWorld::InitWorld()
 {
-	if (!ActiveScene)
+	if (!ActiveLevel)
 	{
-		ActiveScene = UObjectManager::Get().CreateObject<UScene>();
-		ActiveScene->SetWorld(this);
+		ActiveLevel = UObjectManager::Get().CreateObject<ULevel>();
+		ActiveLevel->SetWorld(this);
 	}
-	if (!PersistentScene)
+	if (!PersistentLevel)
 	{
-		PersistentScene = UObjectManager::Get().CreateObject<UScene>();
-		PersistentScene->SetWorld(this);
+		PersistentLevel = UObjectManager::Get().CreateObject<ULevel>();
+		PersistentLevel->SetWorld(this);
 	}
 }
 
@@ -68,20 +68,20 @@ void UWorld::BeginPlay()
 {
 	bHasBegunPlay = true;
 
-	if (ActiveScene) ActiveScene->BeginPlay();
-	if (PersistentScene) PersistentScene->BeginPlay();
+	if (ActiveLevel) ActiveLevel->BeginPlay();
+	if (PersistentLevel) PersistentLevel->BeginPlay();
 }
 
 void UWorld::Tick(float DeltaTime)
 {
-	if (ActiveScene) ActiveScene->Tick(DeltaTime);
-	if (PersistentScene) PersistentScene->Tick(DeltaTime);
+	if (ActiveLevel) ActiveLevel->Tick(DeltaTime);
+	if (PersistentLevel) PersistentLevel->Tick(DeltaTime);
 }
 
 void UWorld::EndPlay()
 {
 	bHasBegunPlay = false;
 
-	if (ActiveScene) ActiveScene->EndPlay();
-	if (PersistentScene) PersistentScene->EndPlay();
+	if (ActiveLevel) ActiveLevel->EndPlay();
+	if (PersistentLevel) PersistentLevel->EndPlay();
 }
