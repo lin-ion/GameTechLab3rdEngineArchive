@@ -3,7 +3,7 @@
 #include "ObjViewer/ObjViewerEngine.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
-#include "Component/CameraComponent.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "GameFramework/World.h"
 
 FObjViewerRenderPipeline::FObjViewerRenderPipeline(UObjViewerEngine* InEngine, FRenderer& InRenderer)
@@ -31,7 +31,7 @@ void FObjViewerRenderPipeline::RenderPreviewViewport(FRenderer& Renderer)
 	FObjViewerViewportClient* VC = Engine->GetViewportClient();
 	if (!VC) return;
 
-	UCameraComponent* Camera = VC->GetCamera();
+	FViewportCamera* Camera = VC->GetCamera();
 	if (!Camera) return;
 
 	FViewport* VP = VC->GetViewport();
@@ -52,7 +52,14 @@ void FObjViewerRenderPipeline::RenderPreviewViewport(FRenderer& Renderer)
 
 	UWorld* World = Engine->GetWorld();
 
-	Bus.SetCameraInfo(Camera);
+	Bus.SetCameraInfo(
+		Camera->GetViewMatrix(),
+		Camera->GetProjectionMatrix(),
+		Camera->GetForwardVector(),
+		Camera->GetRightVector(),
+		Camera->GetUpVector(),
+		Camera->IsOrthogonal(),
+		Camera->GetOrthoWidth());
 
 	FViewportRenderOptions Opts;
 	Opts.ViewMode = EViewMode::Lit;

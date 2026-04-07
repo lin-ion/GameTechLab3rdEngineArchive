@@ -13,6 +13,7 @@ class UGizmoComponent;
 class FLevelEditorViewportClient;
 class FEditorViewportClient;
 class FOverlayStatSystem;
+class FViewportCamera;
 
 class UEditorEngine : public UEngine
 {
@@ -30,7 +31,7 @@ public:
 
 	// Editor-specific API
 	UGizmoComponent* GetGizmo() const { return SelectionManager.GetGizmo(); }
-	UCameraComponent* GetCamera() const;
+	FViewportCamera* GetCamera() const;
 
 	void ClearWorlds();
 	void ResetViewport();

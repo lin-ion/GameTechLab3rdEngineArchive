@@ -2,11 +2,11 @@
 
 #include "Render/Types/ViewTypes.h"
 
-class UCameraComponent;
+class FViewportCamera;
 
 struct FRenderCollectorContext
 {
-	UCameraComponent* Camera = nullptr;
+	FViewportCamera* Camera = nullptr;
 	EViewMode ViewMode = EViewMode::Lit;
 	FShowFlags ShowFlags;
 };

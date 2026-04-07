@@ -2,9 +2,9 @@
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "Engine/Core/Common.h"
 #include "GameFramework/WorldContext.h"
-#include "Component/CameraComponent.h"
 
 #include "ImGui/imgui.h"
 #include "Component/GizmoComponent.h"
@@ -65,12 +65,22 @@ void FEditorLevelWidget::Render(float DeltaTime)
 		FWorldContext* Ctx = EditorEngine->GetWorldContextFromHandle(EditorEngine->GetActiveWorldHandle());
 		if (Ctx)
 		{
-			UCameraComponent* PerspectiveCam = nullptr;
+			FPerspectiveCameraData PerspectiveCamData;
+			const FPerspectiveCameraData* PerspectiveCam = nullptr;
 			for (FLevelEditorViewportClient* VC : EditorEngine->GetLevelViewportClients())
 			{
 				if (VC->GetRenderOptions().ViewportType == ELevelViewportType::Perspective || VC->GetRenderOptions().ViewportType == ELevelViewportType::FreeOrthographic)
 				{
-					PerspectiveCam = VC->GetCamera();
+					if (FViewportCamera* Cam = VC->GetCamera())
+					{
+						PerspectiveCamData.Location = Cam->GetWorldLocation();
+						PerspectiveCamData.Rotation = Cam->GetWorldMatrix().GetEuler();
+						PerspectiveCamData.FOV = Cam->GetFOV();
+						PerspectiveCamData.NearClip = Cam->GetNearPlane();
+						PerspectiveCamData.FarClip = Cam->GetFarPlane();
+						PerspectiveCamData.bValid = true;
+						PerspectiveCam = &PerspectiveCamData;
+					}
 					break;
 				}
 			}
@@ -140,11 +150,11 @@ void FEditorLevelWidget::Render(float DeltaTime)
 				{
 					if (VC->GetRenderOptions().ViewportType == ELevelViewportType::Perspective || VC->GetRenderOptions().ViewportType == ELevelViewportType::FreeOrthographic)
 					{
-						if (UCameraComponent* Cam = VC->GetCamera())
+						if (FViewportCamera* Cam = VC->GetCamera())
 						{
 							Cam->SetWorldLocation(CamData.Location);
 							Cam->SetRelativeRotation(CamData.Rotation);
-							FCameraState CS = Cam->GetCameraState();
+							FViewportCameraState CS = Cam->GetCameraState();
 							CS.FOV   = CamData.FOV;
 							CS.NearZ = CamData.NearClip;
 							CS.FarZ  = CamData.FarClip;

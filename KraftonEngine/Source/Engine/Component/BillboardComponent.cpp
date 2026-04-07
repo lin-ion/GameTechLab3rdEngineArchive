@@ -1,6 +1,6 @@
 ﻿#include "BillboardComponent.h"
 #include "GameFramework/World.h"
-#include "Component/CameraComponent.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "Render/Resource/ShaderManager.h"
 
 #include "Render/Pipeline/PrimitiveProxy.h"
@@ -61,7 +61,7 @@ void UBillboardComponent::TickComponent(float DeltaTime)
 {
 	if (!GetOwner() || !GetOwner()->GetWorld()) return;
 
-	const UCameraComponent* ActiveCamera = GetOwner()->GetWorld()->GetActiveCamera();
+	const FViewportCamera* ActiveCamera = GetOwner()->GetWorld()->GetActiveCamera();
 	if (!ActiveCamera) return;
 
 	FVector WorldLocation = GetWorldLocation();

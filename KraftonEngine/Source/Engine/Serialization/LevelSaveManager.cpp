@@ -12,7 +12,6 @@
 #include "Component/SceneComponent.h"
 #include "Component/ActorComponent.h"
 #include "Component/StaticMeshComponent.h"
-#include "Component/CameraComponent.h"
 #include "GameFramework/StaticMeshActor.h"
 #include "Object/Object.h"
 #include "Object/ObjectFactory.h"
@@ -75,7 +74,7 @@ static const char* WorldTypeToString(EWorldType Type)
 // Save
 // ============================================================
 
-void FLevelSaveManager::SaveLevelAsJSON(const string& InLevelName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam)
+void FLevelSaveManager::SaveLevelAsJSON(const string& InLevelName, FWorldContext& WorldContext, const FPerspectiveCameraData* PerspectiveCamData)
 {
 	using namespace json;
 
@@ -89,7 +88,7 @@ void FLevelSaveManager::SaveLevelAsJSON(const string& InLevelName, FWorldContext
 	std::filesystem::path FileDestination = std::filesystem::path(SceneDir) / (FPaths::ToWide(FinalName) + LevelExtension);
 	std::filesystem::create_directories(SceneDir);
 
-	JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectiveCam);
+	JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectiveCamData);
 	Root[SceneKeys::Version] = 2;
 	Root[SceneKeys::Name] = FinalName;
 
@@ -101,7 +100,7 @@ void FLevelSaveManager::SaveLevelAsJSON(const string& InLevelName, FWorldContext
 	}
 }
 
-json::JSON FLevelSaveManager::SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam)
+json::JSON FLevelSaveManager::SerializeWorld(UWorld* World, const FWorldContext& Ctx, const FPerspectiveCameraData* PerspectiveCamData)
 {
 	using namespace json;
 	JSON w = json::Object();
@@ -136,15 +135,9 @@ json::JSON FLevelSaveManager::SerializeWorld(UWorld* World, const FWorldContext&
 			WriteVec3(p, "Scale",    scale);
 			p["Type"] = "StaticMeshComp";
 
-			// Note: per design, material/UV overrides are stored on the Actor->RootComponent Properties
-			// and are NOT duplicated inside the Primitives block to avoid redundancy.
-
-			// Use the Actor's UUID as the primitive key to avoid positional/index coupling
 			string key = std::to_string(Actor->GetUUID());
 			Primitives[key] = p;
 			ActorPrimitiveKey[Actor] = key;
-
-			// only first static mesh component per actor is exported as primitive
 			break;
 		}
 	}
@@ -167,9 +160,12 @@ json::JSON FLevelSaveManager::SerializeWorld(UWorld* World, const FWorldContext&
 	w[SceneKeys::Actors] = Actors;
 
 	// ---- Perspective camera ----
-	JSON cam = SerializeCamera(PerspectiveCam);
-	if (cam.size() > 0) {
-		w["PerspectiveCamera"] = cam;
+	if (PerspectiveCamData && PerspectiveCamData->bValid)
+	{
+		JSON cam = SerializeCamera(*PerspectiveCamData);
+		if (cam.size() > 0) {
+			w["PerspectiveCamera"] = cam;
+		}
 	}
 
 	return w;
@@ -291,23 +287,17 @@ json::JSON FLevelSaveManager::SerializePropertyValue(const FPropertyDescriptor& 
 
 // ---- Camera helpers ----
 
-json::JSON FLevelSaveManager::SerializeCamera(UCameraComponent* Cam)
+json::JSON FLevelSaveManager::SerializeCamera(const FPerspectiveCameraData& CamData)
 {
 	constexpr float Rad2Deg = 180.0f / 3.14159265358979f;
 
 	using namespace json;
 	JSON cam = json::Object();
-	if (!Cam) return cam;
-
-	const FMatrix& M = Cam->GetWorldMatrix();
-	WriteVec3(cam, "Location", M.GetLocation());
-	WriteVec3(cam, "Rotation", M.GetEuler());
-
-	const FCameraState& S = Cam->GetCameraState();
-	cam["FOV"]      = static_cast<double>(S.FOV * Rad2Deg);
-	cam["NearClip"] = static_cast<double>(S.NearZ);
-	cam["FarClip"]  = static_cast<double>(S.FarZ);
-
+	WriteVec3(cam, "Location", CamData.Location);
+	WriteVec3(cam, "Rotation", CamData.Rotation);
+	cam["FOV"] = static_cast<double>(CamData.FOV * Rad2Deg);
+	cam["NearClip"] = static_cast<double>(CamData.NearClip);
+	cam["FarClip"] = static_cast<double>(CamData.FarClip);
 	return cam;
 }
 

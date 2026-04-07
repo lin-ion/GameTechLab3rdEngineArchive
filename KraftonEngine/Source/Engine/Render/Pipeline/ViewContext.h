@@ -3,7 +3,6 @@
 #include "Render/Pipeline/RenderCommand.h"
 #include "Render/Types/ViewTypes.h"
 
-class UCameraComponent;
 class FViewport;
 class FPrimitiveProxy;
 
@@ -45,7 +44,14 @@ public:
 	TArray<FPrimitiveProxy*>& GetCandidateProxiesMutable() { return CandidateProxies; }
 
 	// Getter,Setter
-	void SetCameraInfo(const UCameraComponent* Camera);
+	void SetCameraInfo(
+		const FMatrix& InView,
+		const FMatrix& InProj,
+		const FVector& InCameraForward,
+		const FVector& InCameraRight,
+		const FVector& InCameraUp,
+		bool bInIsOrtho,
+		float InOrthoWidth);
 	void SetViewportInfo(const FViewport* VP);
 	void SetViewportSize(float InWidth, float InHeight);
 	void SetRenderOptions(const FViewportRenderOptions& InOptions);

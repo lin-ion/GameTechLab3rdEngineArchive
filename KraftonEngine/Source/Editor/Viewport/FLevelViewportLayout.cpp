@@ -4,6 +4,7 @@
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Selection/SelectionManager.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
@@ -12,7 +13,6 @@
 #include "Platform/Paths.h"
 #include "ImGui/imgui.h"
 #include "WICTextureLoader.h"
-#include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 
 // ─── 레이아웃별 슬롯 수 ─────────────────────────────────────
@@ -165,11 +165,6 @@ void FLevelViewportLayout::SetActiveViewport(FLevelEditorViewportClient* InClien
 	if (ActiveViewportClient)
 	{
 		ActiveViewportClient->SetActive(true);
-		UWorld* World = Editor->GetWorld();
-		if (World && ActiveViewportClient->GetCamera())
-		{
-			World->SetActiveCamera(ActiveViewportClient->GetCamera());
-		}
 	}
 }
 
@@ -193,7 +188,7 @@ void FLevelViewportLayout::ResetViewport(UWorld* InWorld)
 		// 카메라 재생성 후 현재 뷰포트 크기로 AspectRatio 동기화
 		if (FViewport* VP = VC->GetViewport())
 		{
-			UCameraComponent* Cam = VC->GetCamera();
+			FViewportCamera* Cam = VC->GetCamera();
 			if (Cam && VP->GetWidth() > 0 && VP->GetHeight() > 0)
 			{
 				Cam->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
@@ -203,8 +198,6 @@ void FLevelViewportLayout::ResetViewport(UWorld* InWorld)
 		// 기존 뷰포트 타입(Ortho 방향 등)을 새 카메라에 재적용
 		VC->SetViewportType(VC->GetRenderOptions().ViewportType);
 	}
-	if (ActiveViewportClient && InWorld)
-		InWorld->SetActiveCamera(ActiveViewportClient->GetCamera());
 }
 
 void FLevelViewportLayout::DestroyAllCameras()
@@ -981,12 +974,12 @@ void FLevelViewportLayout::SaveToSettings()
 	// Perspective 카메라 (slot 0) 저장
 	if (!LevelViewportClients.empty())
 	{
-		UCameraComponent* Cam = LevelViewportClients[0]->GetCamera();
+		FViewportCamera* Cam = LevelViewportClients[0]->GetCamera();
 		if (Cam)
 		{
 			S.PerspCamLocation = Cam->GetWorldLocation();
 			S.PerspCamRotation = Cam->GetRelativeRotation();
-			const FCameraState& CS = Cam->GetCameraState();
+			const FViewportCameraState& CS = Cam->GetCameraState();
 			S.PerspCamFOV = CS.FOV * (180.0f / 3.14159265358979f); // rad → deg
 			S.PerspCamNearClip = CS.NearZ;
 			S.PerspCamFarClip = CS.FarZ;
@@ -1043,13 +1036,13 @@ void FLevelViewportLayout::LoadFromSettings()
 	// Perspective 카메라 (slot 0) 복원
 	if (!LevelViewportClients.empty())
 	{
-		UCameraComponent* Cam = LevelViewportClients[0]->GetCamera();
+		FViewportCamera* Cam = LevelViewportClients[0]->GetCamera();
 		if (Cam)
 		{
 			Cam->SetRelativeLocation(S.PerspCamLocation);
 			Cam->SetRelativeRotation(S.PerspCamRotation);
 
-			FCameraState CS = Cam->GetCameraState();
+			FViewportCameraState CS = Cam->GetCameraState();
 			CS.FOV = S.PerspCamFOV * (3.14159265358979f / 180.0f); // deg → rad
 			CS.NearZ = S.PerspCamNearClip;
 			CS.FarZ = S.PerspCamFarClip;

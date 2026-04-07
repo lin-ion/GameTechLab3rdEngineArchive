@@ -3,13 +3,14 @@
 #include "Viewport/ViewportClient.h"
 #include "Render/Types/RenderTypes.h"
 #include "Render/Types/ViewTypes.h"
+#include "Editor/Viewport/ViewportCamera.h"
 
 #include "UI/SWindow.h"
 #include <string>
+#include <memory>
 #include "Core/RayTypes.h"
 #include "Core/CollisionTypes.h"
 class UWorld;
-class UCameraComponent;
 class UGizmoComponent;
 class FEditorSettings;
 class FWindowsWindow;
@@ -46,7 +47,7 @@ public:
 	void CreateCamera();
 	void DestroyCamera();
 	void ResetCamera();
-	UCameraComponent* GetCamera() const { return Camera; }
+	FViewportCamera* GetCamera() const { return Camera.get(); }
 
 	void Tick(float DeltaTime);
 
@@ -127,7 +128,7 @@ private:
 	SWindow* LayoutWindow = nullptr;
 	FWindowsWindow* Window = nullptr;
 	UWorld* World = nullptr;
-	UCameraComponent* Camera = nullptr;
+	std::unique_ptr<FViewportCamera> Camera;
 	UGizmoComponent* Gizmo = nullptr;
 	const FEditorSettings* Settings = nullptr;
 	FSelectionManager* SelectionManager = nullptr;

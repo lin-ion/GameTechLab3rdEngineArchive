@@ -8,7 +8,7 @@
 #include "Render/Pipeline/OcclusionManager.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 #include "Viewport/Viewport.h"
-#include "Component/CameraComponent.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "GameFramework/World.h"
 #include "Profiling/Stats.h"
 
@@ -42,7 +42,7 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 
 void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRenderer& Renderer)
 {
-	UCameraComponent* Camera = VC->GetCamera();
+	FViewportCamera* Camera = VC->GetCamera();
 	if (!Camera) return;
 
 	FViewport* VP = VC->GetViewport();
@@ -74,7 +74,14 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	// 1. ViewContext 수집
 	ViewContext.Clear();
 
-	ViewContext.SetCameraInfo(Camera);
+	ViewContext.SetCameraInfo(
+		Camera->GetViewMatrix(),
+		Camera->GetProjectionMatrix(),
+		Camera->GetForwardVector(),
+		Camera->GetRightVector(),
+		Camera->GetUpVector(),
+		Camera->IsOrthogonal(),
+		Camera->GetOrthoWidth());
 	ViewContext.SetRenderOptions(Opts);
 	ViewContext.SetViewportInfo(VP);
 

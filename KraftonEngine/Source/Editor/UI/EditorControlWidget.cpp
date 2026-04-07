@@ -5,8 +5,8 @@
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Profiling/MemoryStats.h"
 #include "ImGui/imgui.h"
-#include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "GameFramework/StaticMeshActor.h"
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
@@ -91,7 +91,12 @@ void FEditorControlWidget::Render(float DeltaTime)
 	SEPARATOR();
 
 	// Camera
-	UCameraComponent* Camera = EditorEngine->GetCamera();
+	FViewportCamera* Camera = EditorEngine->GetCamera();
+	if (!Camera)
+	{
+		ImGui::End();
+		return;
+	}
 
 	float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
 	if (ImGui::DragFloat("Camera FOV", &CameraFOV_Deg, 0.5f, 1.0f, 90.0f))

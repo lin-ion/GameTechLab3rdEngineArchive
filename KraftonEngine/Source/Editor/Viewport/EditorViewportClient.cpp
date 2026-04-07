@@ -10,7 +10,6 @@
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
 
-#include "Component/CameraComponent.h"
 #include "Viewport/Viewport.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Level.h"
@@ -59,16 +58,12 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 void FEditorViewportClient::CreateCamera()
 {
 	DestroyCamera();
-	Camera = UObjectManager::Get().CreateObject<UCameraComponent>();
+	Camera = std::make_unique<FViewportCamera>();
 }
 
 void FEditorViewportClient::DestroyCamera()
 {
-	if (Camera)
-	{
-		UObjectManager::Get().DestroyObject(Camera);
-		Camera = nullptr;
-	}
+	Camera.reset();
 }
 
 void FEditorViewportClient::ResetCamera()
@@ -176,7 +171,7 @@ void FEditorViewportClient::TickInput(float DeltaTime)
 		return;
 	}
 
-	const FCameraState& CameraState = Camera->GetCameraState();
+	const FViewportCameraState& CameraState = Camera->GetCameraState();
 	const bool bIsOrtho = CameraState.bIsOrthogonal;
 
 	const float MoveSensitivity = RenderOptions.CameraMoveSensitivity;

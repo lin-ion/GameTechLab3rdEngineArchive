@@ -13,7 +13,6 @@ class UWorld;
 class AActor;
 class UActorComponent;
 class USceneComponent;
-class UCameraComponent;
 
 namespace json
 {
@@ -42,21 +41,21 @@ public:
 
 	static std::wstring GetSceneDirectory() { return FPaths::LevelDir(); }
 
-	static void SaveLevelAsJSON(const string& LevelName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
+	static void SaveLevelAsJSON(const string& LevelName, FWorldContext& WorldContext, const FPerspectiveCameraData* PerspectiveCamData = nullptr);
 	static void LoadLevelFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 
 	static TArray<FString> GetLevelFileList();
 
 private:
 	// ---- Serialization ----
-	static json::JSON SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam);
+	static json::JSON SerializeWorld(UWorld* World, const FWorldContext& Ctx, const FPerspectiveCameraData* PerspectiveCamData);
 	static json::JSON SerializeActor(AActor* Actor);
 	static json::JSON SerializeLevelComponentTree(USceneComponent* Comp);
 	static json::JSON SerializeProperties(UActorComponent* Comp);
 	static json::JSON SerializePropertyValue(const FPropertyDescriptor& Prop);
 
 	// ---- Camera ----
-	static json::JSON SerializeCamera(UCameraComponent* Cam);
+	static json::JSON SerializeCamera(const FPerspectiveCameraData& CamData);
 	static void DeserializeCamera(json::JSON& CamJSON, FPerspectiveCameraData& OutCam);
 
 	// ---- Primitives ----

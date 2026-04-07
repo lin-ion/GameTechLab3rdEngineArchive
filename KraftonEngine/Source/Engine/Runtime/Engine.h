@@ -10,7 +10,6 @@
 
 class FWindowsWindow;
 class FTimer;
-class UCameraComponent;
 class UGameViewportClient;
 
 class UEngine : public UObject

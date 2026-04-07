@@ -6,7 +6,7 @@
 #include <memory>
 
 // === Forward Declaration
-class UCameraComponent;
+class FViewportCamera;
 class ULevel;
 
 class UWorld : public UObject {
@@ -29,9 +29,9 @@ public:
 
 	bool HasBegunPlay() const { return bHasBegunPlay; }
 
-	// Active Camera — EditorViewportClient 또는 PlayerController가 세팅
-	void SetActiveCamera(UCameraComponent* InCamera) { ActiveCamera = InCamera; }
-	UCameraComponent* GetActiveCamera() const { return ActiveCamera; }
+	// Active Camera
+	void SetActiveCamera(FViewportCamera* InCamera) { ActiveCamera = InCamera; }
+	FViewportCamera* GetActiveCamera() const { return ActiveCamera; }
 
 	ULevel* GetActiveLevel() const { return ActiveLevel; }
 	ULevel* GetPersistentLevel() const { return PersistentLevel; }
@@ -40,7 +40,7 @@ private:
 	ULevel* ActiveLevel = nullptr;
 	ULevel* PersistentLevel = nullptr;
 
-	UCameraComponent* ActiveCamera = nullptr;
+	FViewportCamera* ActiveCamera = nullptr;
 	bool bHasBegunPlay = false;
 };
 

@@ -6,7 +6,6 @@
 #include "Resource/ResourceManager.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
-#include "Component/CameraComponent.h"
 
 #include "Render/Pipeline/PrimitiveProxy.h"
 

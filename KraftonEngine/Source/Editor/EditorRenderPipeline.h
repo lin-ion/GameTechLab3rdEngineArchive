@@ -4,7 +4,6 @@
 
 class UEditorEngine;
 class FViewport;
-class UCameraComponent;
 class FLevelEditorViewportClient;
 
 class FEditorRenderPipeline : public IRenderPipeline

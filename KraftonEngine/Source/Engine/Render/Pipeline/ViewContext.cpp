@@ -1,5 +1,4 @@
 #include "ViewContext.h"
-#include "Component/CameraComponent.h"
 #include "Viewport/Viewport.h"
 #include "Render/Pipeline/RenderSorting.h"
 #include <algorithm>
@@ -128,15 +127,22 @@ void FViewContext::AddCandidateProxyUnique(FPrimitiveProxy* Proxy)
 	}
 }
 
-void FViewContext::SetCameraInfo(const UCameraComponent* Camera)
+void FViewContext::SetCameraInfo(
+	const FMatrix& InView,
+	const FMatrix& InProj,
+	const FVector& InCameraForward,
+	const FVector& InCameraRight,
+	const FVector& InCameraUp,
+	bool bInIsOrtho,
+	float InOrthoWidth)
 {
-	View = Camera->GetViewMatrix();
-	Proj = Camera->GetProjectionMatrix();
-	CameraForward = Camera->GetForwardVector();
-	CameraRight = Camera->GetRightVector();
-	CameraUp = Camera->GetUpVector();
-	bIsOrtho = Camera->IsOrthogonal();
-	OrthoWidth = Camera->GetOrthoWidth();
+	View = InView;
+	Proj = InProj;
+	CameraForward = InCameraForward;
+	CameraRight = InCameraRight;
+	CameraUp = InCameraUp;
+	bIsOrtho = bInIsOrtho;
+	OrthoWidth = InOrthoWidth;
 }
 
 void FViewContext::SetViewportInfo(const FViewport* VP)

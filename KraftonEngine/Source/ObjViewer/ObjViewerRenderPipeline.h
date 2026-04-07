@@ -5,7 +5,6 @@
 
 class UObjViewerEngine;
 class FViewport;
-class UCameraComponent;
 
 class FObjViewerRenderPipeline : public IRenderPipeline
 {

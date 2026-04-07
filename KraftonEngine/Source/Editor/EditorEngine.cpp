@@ -2,11 +2,11 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/LevelSaveManager.h"
-#include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Level.h"
 #include "Editor/EditorRenderPipeline.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "Profiling/Stats.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Object/ObjectFactory.h"
@@ -79,7 +79,7 @@ void UEditorEngine::Tick(float DeltaTime)
 	UEngine::Tick(DeltaTime);
 }
 
-UCameraComponent* UEditorEngine::GetCamera() const
+FViewportCamera* UEditorEngine::GetCamera() const
 {
 	if (FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport())
 	{

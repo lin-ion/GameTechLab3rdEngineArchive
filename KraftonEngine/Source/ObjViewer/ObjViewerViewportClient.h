@@ -2,8 +2,9 @@
 
 #include "Viewport/ViewportClient.h"
 #include "Math/Vector.h"
+#include "Editor/Viewport/ViewportCamera.h"
+#include <memory>
 
-class UCameraComponent;
 class FWindowsWindow;
 class FViewport;
 
@@ -18,7 +19,7 @@ public:
 	void CreateCamera();
 	void DestroyCamera();
 	void ResetCamera();
-	UCameraComponent* GetCamera() const { return Camera; }
+	FViewportCamera* GetCamera() const { return Camera.get(); }
 
 	// Viewport
 	void SetViewport(FViewport* InViewport) { Viewport = InViewport; }
@@ -38,7 +39,7 @@ private:
 private:
 	FViewport* Viewport = nullptr;
 	FWindowsWindow* Window = nullptr;
-	UCameraComponent* Camera = nullptr;
+	std::unique_ptr<FViewportCamera> Camera;
 
 	// 오빗 파라미터
 	FVector OrbitTarget = FVector(0, 0, 0);

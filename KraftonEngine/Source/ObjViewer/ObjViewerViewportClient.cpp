@@ -2,7 +2,7 @@
 
 #include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/WindowsWindow.h"
-#include "Component/CameraComponent.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "Viewport/Viewport.h"
 #include "Math/MathUtils.h"
 #include "ImGui/imgui.h"
@@ -28,16 +28,12 @@ void FObjViewerViewportClient::Release()
 void FObjViewerViewportClient::CreateCamera()
 {
 	DestroyCamera();
-	Camera = UObjectManager::Get().CreateObject<UCameraComponent>();
+	Camera = std::make_unique<FViewportCamera>();
 }
 
 void FObjViewerViewportClient::DestroyCamera()
 {
-	if (Camera)
-	{
-		UObjectManager::Get().DestroyObject(Camera);
-		Camera = nullptr;
-	}
+	Camera.reset();
 }
 
 void FObjViewerViewportClient::ResetCamera()
@@ -48,7 +44,7 @@ void FObjViewerViewportClient::ResetCamera()
 	OrbitPitch = 30.0f;
 }
 
-static void UpdateOrbitCamera(UCameraComponent* Camera, const FVector& Target, float Distance, float Yaw, float Pitch)
+static void UpdateOrbitCamera(FViewportCamera* Camera, const FVector& Target, float Distance, float Yaw, float Pitch)
 {
 	float YawRad = Yaw * DEG_TO_RAD;
 	float PitchRad = Pitch * DEG_TO_RAD;
@@ -69,7 +65,7 @@ void FObjViewerViewportClient::Tick(float DeltaTime)
 
 	if (Camera)
 	{
-		UpdateOrbitCamera(Camera, OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+		UpdateOrbitCamera(Camera.get(), OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
 	}
 }
 
