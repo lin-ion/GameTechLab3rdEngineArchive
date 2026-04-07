@@ -43,20 +43,6 @@ public:
 
 	FSelectionManager& GetSelectionManager() { return SelectionManager; }
 
-	// 레이아웃에 위임
-	const TArray<FEditorViewportClient*>& GetAllViewportClients() const { return ViewportLayout.GetAllViewportClients(); }
-	const TArray<FLevelEditorViewportClient*>& GetLevelViewportClients() const { return ViewportLayout.GetLevelViewportClients(); }
-
-	void SetActiveViewport(FLevelEditorViewportClient* InClient) { ViewportLayout.SetActiveViewport(InClient); }
-	FLevelEditorViewportClient* GetActiveViewport() const { return ViewportLayout.GetActiveViewport(); }
-
-	void ToggleViewportSplit() { ViewportLayout.ToggleViewportSplit(); }
-	bool IsSplitViewport() const { return ViewportLayout.IsSplitViewport(); }
-
-	void RenderViewportUI(float DeltaTime) { ViewportLayout.RenderViewportUI(DeltaTime); }
-
-	bool IsMouseOverViewport() const { return ViewportLayout.IsMouseOverViewport(); }
-
 	void RenderUI(float DeltaTime);
 
 	FOverlayStatSystem& GetOverlayStatSystem() { return OverlayStatSystem; }
@@ -68,7 +54,6 @@ public:
 private:
 	FSelectionManager SelectionManager;
 	FEditorMainPanel MainPanel;
-	FLevelViewportLayout ViewportLayout;
 	FOverlayStatSystem OverlayStatSystem;
 	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 };

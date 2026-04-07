@@ -61,7 +61,10 @@ void UBillboardComponent::TickComponent(float DeltaTime)
 {
 	if (!GetOwner() || !GetOwner()->GetWorld()) return;
 
-	const FViewportCamera* ActiveCamera = GetOwner()->GetWorld()->GetActiveCamera();
+	// const FViewportCamera* ActiveCamera = GetOwner()->GetWorld()->GetActiveCamera();
+	// 빌드 오류로 인해 임시로 강제 실패 처리.
+	// 재구현 필요
+	const FViewportCamera* ActiveCamera = nullptr;
 	if (!ActiveCamera) return;
 
 	FVector WorldLocation = GetWorldLocation();

@@ -8,6 +8,8 @@
 
 #include <memory>
 
+#include "Viewport/FLevelViewportLayout.h"
+
 class FWindowsWindow;
 class FTimer;
 class UGameViewportClient;
@@ -53,10 +55,21 @@ public:
 	FRenderer& GetRenderer() { return Renderer; }
 	void ResetRenderPipeline() { if (RenderPipeline) RenderPipeline->Reset(); }
 
-	// Game Viewport Client — PIE/Standalone 용
-	void SetGameViewportClient(UGameViewportClient* InClient) { GameViewportClient = InClient; }
-	UGameViewportClient* GetGameViewportClient() const { return GameViewportClient; }
+public:
+	// 레이아웃에 위임
+	const TArray<FEditorViewportClient*>& GetAllViewportClients() const { return ViewportLayout.GetAllViewportClients(); }
+	const TArray<FLevelEditorViewportClient*>& GetLevelViewportClients() const { return ViewportLayout.GetLevelViewportClients(); }
 
+	void SetActiveViewport(FLevelEditorViewportClient* InClient) { ViewportLayout.SetActiveViewport(InClient); }
+	FLevelEditorViewportClient* GetActiveViewport() const { return ViewportLayout.GetActiveViewport(); }
+
+	void ToggleViewportSplit() { ViewportLayout.ToggleViewportSplit(); }
+	bool IsSplitViewport() const { return ViewportLayout.IsSplitViewport(); }
+
+	void RenderViewportUI(float DeltaTime) { ViewportLayout.RenderViewportUI(DeltaTime); }
+
+	bool IsMouseOverViewport() const { return ViewportLayout.IsMouseOverViewport(); }
+	
 protected:
 	void Render(float DeltaTime);
 	void SetRenderPipeline(std::unique_ptr<IRenderPipeline> InPipeline);
@@ -70,7 +83,7 @@ protected:
 
 	FTimer* Timer = nullptr;
 
-	UGameViewportClient* GameViewportClient = nullptr;
+	FLevelViewportLayout ViewportLayout;
 
 	FRenderer Renderer;
 

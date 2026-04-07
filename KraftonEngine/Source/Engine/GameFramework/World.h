@@ -29,18 +29,12 @@ public:
 
 	bool HasBegunPlay() const { return bHasBegunPlay; }
 
-	// Active Camera
-	void SetActiveCamera(FViewportCamera* InCamera) { ActiveCamera = InCamera; }
-	FViewportCamera* GetActiveCamera() const { return ActiveCamera; }
-
 	ULevel* GetActiveLevel() const { return ActiveLevel; }
 	ULevel* GetPersistentLevel() const { return PersistentLevel; }
 
 private:
 	ULevel* ActiveLevel = nullptr;
 	ULevel* PersistentLevel = nullptr;
-
-	FViewportCamera* ActiveCamera = nullptr;
 	bool bHasBegunPlay = false;
 };
 
