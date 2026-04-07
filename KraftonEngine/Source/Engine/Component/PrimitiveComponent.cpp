@@ -1,8 +1,6 @@
 #include "PrimitiveComponent.h"
 #include "Core/RayTypes.h"
 #include "Collision/RayUtils.h"
-#include "Render/Resource/MeshBufferManager.h"
-#include "Render/Resource/ShaderManager.h"
 #include "Core/CollisionTypes.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Level.h"
@@ -19,6 +17,12 @@ UPrimitiveComponent::~UPrimitiveComponent()
 		delete Proxy;
 		Proxy = nullptr;
 	}
+}
+
+void UPrimitiveComponent::DuplicateSubObjects()
+{
+	USceneComponent::DuplicateSubObjects();
+	Proxy = CreateProxy();
 }
 
 FPrimitiveProxy* UPrimitiveComponent::CreateProxy()

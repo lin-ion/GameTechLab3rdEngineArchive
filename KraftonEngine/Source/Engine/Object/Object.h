@@ -9,6 +9,10 @@
     const FTypeInfo* GetTypeInfo() const override {                    \
         return &s_TypeInfo;                                            \
     }                                                                  \
+	ClassName* Duplicate() override {								   \
+		UObject* Duplicated = Duplicate();							   \
+		return dynamic_cast<ClassName*>(Duplicated);				   \
+	}
 
 #define DEFINE_CLASS(ClassName, ParentClass)                           \
     const FTypeInfo ClassName::s_TypeInfo = {                          \
@@ -71,6 +75,17 @@ public:
 			std::free(Ptr);
 		}
 	}
+	
+	// 깊은 복사가 필요한 서브오브젝트를 복제 (하위 클래스에서 Override)
+	virtual void DuplicateSubObjects() { }
+	
+	// 현재 오브젝트 복제
+	virtual UObject* Duplicate()
+	{
+		UObject* NewObject = new UObject(*this);		// 얕은 복사로 새 객체 생성
+		NewObject->DuplicateSubObjects();				// 서브 오브젝트는 깊은 복사로 별도 처리
+		return NewObject;
+	}
 
 	// FName
 	FString GetFName() const { return ObjectName; }
@@ -81,7 +96,9 @@ public:
 
 	template<typename T>
 	bool IsA() const { return GetTypeInfo()->IsA(&T::s_TypeInfo); }
-
+	
+	template<typename T>
+	T* As() { return this->IsA<T>() ? nullptr : static_cast<T*>(this); }
 
 	static const FTypeInfo s_TypeInfo;
 

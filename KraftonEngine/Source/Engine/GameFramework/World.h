@@ -14,6 +14,7 @@ public:
 	DECLARE_CLASS(UWorld, UObject)
 	UWorld();
 	~UWorld() override;
+	void DuplicateSubObjects() override;
 
 	// Actor lifecycle
 	template<typename T>

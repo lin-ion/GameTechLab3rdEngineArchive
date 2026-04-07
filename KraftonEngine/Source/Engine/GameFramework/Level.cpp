@@ -3,6 +3,8 @@
 #include "Object/ObjectFactory.h"
 #include <algorithm>
 
+#include "Component/PrimitiveComponent.h"
+
 DEFINE_CLASS(ULevel, UObject)
 
 ULevel::ULevel()
@@ -13,6 +15,32 @@ ULevel::ULevel()
 ULevel::~ULevel()
 {
 	EndPlay();
+}
+
+void ULevel::DuplicateSubObjects()
+{
+	TArray<AActor*> NewActors;
+	NewActors.reserve(Actors.size());
+	for (AActor* Actor : Actors)
+	{
+		AActor* DuplicatedActor = static_cast<AActor*>(Actor->Duplicate());
+		DuplicatedActor->SetWorld(OwningWorld);
+		DuplicatedActor->SetLevel(this);
+		NewActors.push_back(DuplicatedActor);
+	}
+	// Create new FWorldRenderProxy & Rebuild 
+	RenderProxy = std::make_unique<FWorldRenderProxy>();
+	for (AActor* Actor : Actors)
+	{
+		for (UActorComponent* Comp : Actor->GetComponents())
+		{
+			auto PrimComp = Comp->As<UPrimitiveComponent>();
+			if (PrimComp)
+			{
+				RenderProxy->AddProxy(PrimComp->GetProxy());
+			}
+		}
+	}
 }
 
 void ULevel::AddActor(AActor* Actor)

@@ -61,6 +61,18 @@ USceneComponent::~USceneComponent()
 	ChildComponents.clear();
 }
 
+void USceneComponent::DuplicateSubObjects()
+{
+	TArray<USceneComponent*> NewChildCompList;
+	for (auto ChildComp : ChildComponents)
+	{
+		auto Duplicated = ChildComp->Duplicate();
+		Duplicated->SetParent(this);
+		NewChildCompList.push_back(Duplicated);
+	}
+	ChildComponents = NewChildCompList;
+}
+
 void USceneComponent::SetParent(USceneComponent* NewParent)
 {
 	if (NewParent == ParentComponent || NewParent == this)

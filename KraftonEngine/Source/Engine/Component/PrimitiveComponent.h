@@ -20,11 +20,11 @@ public:
 	DECLARE_CLASS(UPrimitiveComponent, USceneComponent)
 
 	~UPrimitiveComponent() override;
+	void DuplicateSubObjects() override;
 
 	void OnRegister() override;
 	void OnUnregister() override;
-
-	virtual FPrimitiveProxy* CreateProxy();
+	
 	void MarkRenderStateDirty();
 
 	FPrimitiveProxy* GetProxy() const { return Proxy; }
@@ -46,6 +46,9 @@ public:
 	void UpdateWorldMatrix() const override;
 
 	virtual bool SupportsOutline() const { return true; }
+	
+protected:
+	virtual FPrimitiveProxy* CreateProxy();
 
 protected:
 	FPrimitiveProxy* Proxy = nullptr;

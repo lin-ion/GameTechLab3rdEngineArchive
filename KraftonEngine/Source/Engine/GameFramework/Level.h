@@ -12,6 +12,7 @@ public:
 	DECLARE_CLASS(ULevel, UObject)
 	ULevel();
 	~ULevel() override;
+	void DuplicateSubObjects() override;
 
 	void SetWorld(UWorld* InWorld) { OwningWorld = InWorld; }
 	UWorld* GetWorld() const { return OwningWorld; }

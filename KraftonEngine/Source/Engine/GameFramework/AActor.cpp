@@ -17,6 +17,32 @@ AActor::~AActor()
 	RootComponent = nullptr;
 }
 
+void AActor::DuplicateSubObjects()
+{
+	UActorComponent* DuplicatedComp = RootComponent->Duplicate();
+	DuplicatedComp->SetOwner(this);
+	RootComponent = static_cast<USceneComponent*>(DuplicatedComp);
+	
+	// Duplicate 'OwnedComponents' list
+	TArray<UActorComponent*> NewActorComponentList;
+	TQueue<UActorComponent*> CompQueue;		// BFS
+	CompQueue.push(RootComponent);
+	while (!CompQueue.empty())
+	{
+		auto Comp = CompQueue.front();
+		NewActorComponentList.push_back(Comp);
+		if (Comp->IsA<USceneComponent>())
+		{
+			auto SceneComp = static_cast<USceneComponent*>(Comp); 
+			for (auto ChildComp : SceneComp->GetChildren())
+			{
+				CompQueue.push(ChildComp);
+			}
+		}
+	}
+	OwnedComponents = NewActorComponentList;
+}
+
 UActorComponent* AActor::AddComponentByClass(const FTypeInfo* Class)
 {
 	if (!Class) return nullptr;

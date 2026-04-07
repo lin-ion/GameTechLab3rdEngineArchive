@@ -15,6 +15,7 @@ public:
 	DECLARE_CLASS(AActor, UObject)
 	AActor() = default;
 	~AActor() override;
+	void DuplicateSubObjects() override;
 
 	virtual void BeginPlay() {}
 	virtual void Tick(float DeltaTime);
