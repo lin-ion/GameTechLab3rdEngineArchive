@@ -60,7 +60,7 @@ void FLevelViewportLayout::LoadLayoutIcons(ID3D11Device* Device)
 {
 	if (!Device) return;
 
-	std::wstring IconDir = FPaths::Combine(FPaths::RootDir(), L"Asset/Editor/Icons/");
+	std::wstring IconDir = FPaths::Combine(FPaths::RootDir(), L"Asset/Editor/Icon/");
 
 	for (int32 i = 0; i < static_cast<int32>(EViewportLayout::MAX); ++i)
 	{
