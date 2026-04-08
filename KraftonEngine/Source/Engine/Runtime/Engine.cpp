@@ -139,10 +139,48 @@ void UEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 void UEngine::WorldTick(float DeltaTime)
 {
+	const FWorldContext* Context = GetWorldContextFromHandle(ActiveWorldHandle);
+	if (Context == nullptr) return;
+	
 	UWorld* World = GetWorld();
-	if (World)
+	
+	// Editor Tick
+	if (Context->WorldType == EWorldType::Editor)
 	{
-		World->Tick(DeltaTime);
+		ULevel* ActiveLevel = World->GetActiveLevel();
+		{
+			for (auto Actor : ActiveLevel->GetActors())
+			{
+				if (Actor->IsTickInEditor())
+					Actor->Tick(DeltaTime);
+			}
+		}
+		ULevel* PersistentLevel = World->GetPersistentLevel();
+		{
+			for (auto Actor : PersistentLevel->GetActors())
+			{
+				if (Actor->IsTickInEditor())
+					Actor->Tick(DeltaTime);
+			}
+		}
+	}
+	// PIE Tick
+	else if (Context->WorldType == EWorldType::PIE)
+	{
+		ULevel* ActiveLevel = World->GetActiveLevel();
+		{
+			for (AActor* Actor : ActiveLevel->GetActors())
+			{
+				Actor->Tick(DeltaTime);
+			}
+		}
+		ULevel* PersistentLevel = World->GetPersistentLevel();
+		{
+			for (AActor* Actor : PersistentLevel->GetActors())
+			{
+				Actor->Tick(DeltaTime);
+			}
+		}
 	}
 }
 

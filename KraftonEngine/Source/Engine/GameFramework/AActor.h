@@ -78,6 +78,9 @@ public:
 
 	bool IsVisible() const { return bVisible; }
 	void SetVisible(bool Visible) { bVisible = Visible; }
+	
+	bool IsTickInEditor() const { return bTickInEditor; }
+	void SetTickInEditor(bool bTickInEditor) { bTickInEditor = bTickInEditor; }
 
 	virtual void RegisterAllComponents();
 	virtual void UnregisterAllComponents();
@@ -91,6 +94,7 @@ protected:
 
 	FVector PendingActorLocation = FVector(0, 0, 0);
 	bool bVisible = true;
+	bool bTickInEditor = false;
 
 	TArray<UActorComponent*> OwnedComponents;
 

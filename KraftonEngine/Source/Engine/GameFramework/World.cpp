@@ -79,12 +79,6 @@ void UWorld::BeginPlay()
 	if (PersistentLevel) PersistentLevel->BeginPlay();
 }
 
-void UWorld::Tick(float DeltaTime)
-{
-	if (ActiveLevel) ActiveLevel->Tick(DeltaTime);
-	if (PersistentLevel) PersistentLevel->Tick(DeltaTime);
-}
-
 void UWorld::EndPlay()
 {
 	bHasBegunPlay = false;

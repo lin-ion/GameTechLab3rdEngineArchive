@@ -25,7 +25,6 @@ public:
 
 	void InitWorld();      // Set up the world before gameplay begins
 	void BeginPlay();      // Triggers BeginPlay on all actors
-	void Tick(float DeltaTime);  // Drives the game loop every frame
 	void EndPlay();        // Cleanup before world is destroyed
 
 	bool HasBegunPlay() const { return bHasBegunPlay; }
