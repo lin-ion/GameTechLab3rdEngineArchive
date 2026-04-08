@@ -7,6 +7,7 @@
 #include "GameFramework/Level.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Editor/Viewport/ViewportCamera.h"
+#include "Engine/Input/InputSystem.h"
 #include "Profiling/Stats.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Object/ObjectFactory.h"
@@ -282,6 +283,14 @@ void UEditorEngine::Tick(float DeltaTime)
 
 	for (FEditorViewportClient* VC : ViewportLayout.GetAllViewportClients())
 	{
+		if (bPIEEnabled
+			&& PIEControlMode == EPIEControlMode::Possessed
+			&& VC == PIEEntryEditorViewportClient)
+		{
+			// Possessed PIE 동안 엔트리 에디터 카메라 로직을 중지해
+			// PIE 카메라 동기화와 충돌하지 않도록 한다.
+			continue;
+		}
 		VC->Tick(DeltaTime);
 	}
 
@@ -348,6 +357,11 @@ void UEditorEngine::StartPIE()
 {
 	ViewportLayout.BeginPIEViewportMode();
 
+	FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport();
+	PIEEntryEditorViewportClient = ActiveVC;
+	PIEEntryViewport = ActiveVC ? ActiveVC->GetViewport() : nullptr;
+	PIEControlMode = EPIEControlMode::Possessed;
+
 	FWorldContext* Context = GetEditorWorldContext();
 	FWorldContext PIEWorldContext = Context->Duplicate();
 	PIEWorldContext.WorldType = EWorldType::PIE;
@@ -364,11 +378,24 @@ void UEditorEngine::StartPIE()
 	bPIEEnabled = true;
 
 	// ViewportClient 전환
-	SetActiveViewportSubClientForWorldType(EWorldType::PIE);
+	if (PIEEntryViewport)
+	{
+		SetViewportSubClientForWorldType(PIEEntryViewport, EWorldType::PIE);
+	}
+	else
+	{
+		SetActiveViewportSubClientForWorldType(EWorldType::PIE);
+	}
 }
 
 void UEditorEngine::EndPIE()
 {
+	InputSystem::Get().EndRelativeMouseMode();
+	if (PIEViewportClient)
+	{
+		PIEViewportClient->OnEndPIE();
+	}
+
 	UWorld* PIEWorld = GetWorld();
 	// Get PIE world context
 	FWorldContext* PIEContext = GetWorldContextFromWorld(PIEWorld);
@@ -386,7 +413,14 @@ void UEditorEngine::EndPIE()
 		}
 
 		// 2. ViewportClient 및 레이어 원상 복구
-		SetActiveViewportSubClientForWorldType(EWorldType::Editor);
+		if (PIEEntryViewport)
+		{
+			SetViewportSubClientForWorldType(PIEEntryViewport, EWorldType::Editor);
+		}
+		else
+		{
+			SetActiveViewportSubClientForWorldType(EWorldType::Editor);
+		}
 
 		// 3. PIE 월드 정리
 		PIEContext->World->EndPlay();
@@ -403,7 +437,86 @@ void UEditorEngine::EndPIE()
 	}
 	
 	bPIEEnabled = false;
+	PIEControlMode = EPIEControlMode::Possessed;
+	PIEEntryViewport = nullptr;
+	PIEEntryEditorViewportClient = nullptr;
 	ViewportLayout.EndPIEViewportMode();
+}
+
+bool UEditorEngine::TogglePIEControlMode()
+{
+	if (!bPIEEnabled)
+	{
+		return false;
+	}
+
+	if (PIEControlMode == EPIEControlMode::Possessed)
+	{
+		return EnterPIEEjectedMode();
+	}
+
+	return EnterPIEPossessedMode();
+}
+
+bool UEditorEngine::EnterPIEPossessedMode()
+{
+	if (!bPIEEnabled)
+	{
+		return false;
+	}
+
+	FViewport* TargetViewport = PIEEntryViewport;
+	if (!TargetViewport)
+	{
+		FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport();
+		TargetViewport = ActiveVC ? ActiveVC->GetViewport() : nullptr;
+	}
+
+	if (!TargetViewport)
+	{
+		return false;
+	}
+
+	if (!ApplyPIEControlMode(TargetViewport, EPIEControlMode::Possessed))
+	{
+		return false;
+	}
+
+	PIEEntryViewport = TargetViewport;
+	PIEEntryEditorViewportClient = FindLevelViewportClientByViewport(TargetViewport);
+	PIEControlMode = EPIEControlMode::Possessed;
+	return true;
+}
+
+bool UEditorEngine::EnterPIEEjectedMode()
+{
+	if (!bPIEEnabled)
+	{
+		return false;
+	}
+
+	FViewport* TargetViewport = PIEEntryViewport;
+	if (!TargetViewport)
+	{
+		FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport();
+		TargetViewport = ActiveVC ? ActiveVC->GetViewport() : nullptr;
+	}
+
+	if (!TargetViewport)
+	{
+		return false;
+	}
+
+	if (!ApplyPIEControlMode(TargetViewport, EPIEControlMode::Ejected))
+	{
+		return false;
+	}
+
+	InputSystem::Get().EndRelativeMouseMode();
+	PIEEntryViewport = TargetViewport;
+	PIEEntryEditorViewportClient = FindLevelViewportClientByViewport(TargetViewport);
+	PIEControlMode = EPIEControlMode::Ejected;
+	return true;
 }
 
 void UEditorEngine::ClearWorlds()
@@ -667,6 +780,10 @@ bool UEditorEngine::ResetViewportSubClient(FViewport* InViewport)
 	auto Found = InputTargetHosts.find(InViewport);
 	if (Found != InputTargetHosts.end())
 	{
+		if (PIEViewportClient)
+		{
+			Found->second.RemoveLayerClient(PIEViewportClient);
+		}
 		Found->second.RemoveLayerClient(DefaultClient);
 	}
 	DefaultClient->SetWorld(GetWorld());
@@ -692,6 +809,7 @@ bool UEditorEngine::SetViewportSubClientForWorldType(FViewport* InViewport, EWor
 			PIEViewportClient = UObjectManager::Get().CreateObject<UGameViewportClient>();
 		}
 		PIEViewportClient->SetViewport(InViewport);
+		PIEViewportClient->OnBeginPIE();
 
 		// 기존 레벨 에디터 클라이언트를 ViewportHost의 레이어로 추가
 		// => PIE 모드에서도 에디터 기능(기즈모, 선택 등) 유지
@@ -699,11 +817,12 @@ bool UEditorEngine::SetViewportSubClientForWorldType(FViewport* InViewport, EWor
 		if (EditorVC)
 		{
 			EditorVC->SetWorld(GetWorld());
-			
-			FViewportHostClient& Host = InputTargetHosts[InViewport];
-			Host.SetActiveSubClient(PIEViewportClient);
-			Host.AddLayerClient(EditorVC);
-			InViewport->SetClient(&Host);
+			PIEEntryViewport = InViewport;
+			PIEEntryEditorViewportClient = EditorVC;
+			if (!ApplyPIEControlMode(InViewport, PIEControlMode))
+			{
+				return false;
+			}
 			return true;
 		}
 
@@ -713,6 +832,37 @@ bool UEditorEngine::SetViewportSubClientForWorldType(FViewport* InViewport, EWor
 		// Game specific client is not wired yet.
 		return false;
 	}
+}
+
+bool UEditorEngine::ApplyPIEControlMode(FViewport* InViewport, EPIEControlMode InMode)
+{
+	if (!InViewport || !PIEViewportClient)
+	{
+		return false;
+	}
+
+	FLevelEditorViewportClient* EditorVC = FindLevelViewportClientByViewport(InViewport);
+	if (!EditorVC)
+	{
+		return false;
+	}
+
+	FViewportHostClient& Host = InputTargetHosts[InViewport];
+	EditorVC->SetWorld(GetWorld());
+	Host.RemoveLayerClient(EditorVC);
+	Host.RemoveLayerClient(PIEViewportClient);
+
+	if (InMode == EPIEControlMode::Possessed)
+	{
+		Host.SetActiveSubClient(PIEViewportClient);
+	}
+	else
+	{
+		Host.SetActiveSubClient(EditorVC);
+	}
+
+	InViewport->SetClient(&Host);
+	return true;
 }
 
 FViewportClient* UEditorEngine::GetViewportSubClient(FViewport* InViewport) const

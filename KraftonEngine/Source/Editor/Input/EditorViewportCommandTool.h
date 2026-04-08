@@ -20,6 +20,9 @@ private:
 	bool LoadLevel();
 	bool SaveLevel();
 	bool SaveLevelAs();
+	bool PIEEndPlay();
+	bool PIETogglePossessEject();
+	bool PIEReleaseMouseCapture();
 
 private:
 	FEditorViewportClient* Owner = nullptr;

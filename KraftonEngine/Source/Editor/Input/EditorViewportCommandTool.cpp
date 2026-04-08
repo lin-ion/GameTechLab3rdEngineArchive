@@ -6,6 +6,7 @@
 #include "Editor/EditorEngine.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Editor/Viewport/EditorViewportClient.h"
+#include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/Engine.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -39,7 +40,10 @@ bool FEditorViewportCommandTool::HandleInput(float DeltaTime)
 		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::NewLevel),
 		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::LoadLevel),
 		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::SaveLevel),
-		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::SaveLevelAs)
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::SaveLevelAs),
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::PIEEndPlay),
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::PIETogglePossessEject),
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::PIEReleaseMouseCapture)
 	};
 
 	int32 TriggeredCommandActionId = 0;
@@ -76,6 +80,12 @@ bool FEditorViewportCommandTool::HandleInput(float DeltaTime)
 		return SaveLevel();
 	case EditorViewportInputMapping::EEditorViewportAction::SaveLevelAs:
 		return SaveLevelAs();
+	case EditorViewportInputMapping::EEditorViewportAction::PIEEndPlay:
+		return PIEEndPlay();
+	case EditorViewportInputMapping::EEditorViewportAction::PIETogglePossessEject:
+		return PIETogglePossessEject();
+	case EditorViewportInputMapping::EEditorViewportAction::PIEReleaseMouseCapture:
+		return PIEReleaseMouseCapture();
 	default:
 		return false;
 	}
@@ -205,4 +215,39 @@ bool FEditorViewportCommandTool::SaveLevelAs()
 {
 	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
 	return EditorEngine ? EditorEngine->SaveLevelAsWithDialog() : false;
+}
+
+bool FEditorViewportCommandTool::PIEEndPlay()
+{
+	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+	if (!EditorEngine || !EditorEngine->IsPIEEnabled())
+	{
+		return false;
+	}
+
+	EditorEngine->EndPIE();
+	return true;
+}
+
+bool FEditorViewportCommandTool::PIETogglePossessEject()
+{
+	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+	if (!EditorEngine || !EditorEngine->IsPIEEnabled())
+	{
+		return false;
+	}
+
+	return EditorEngine->TogglePIEControlMode();
+}
+
+bool FEditorViewportCommandTool::PIEReleaseMouseCapture()
+{
+	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+	if (!EditorEngine || !EditorEngine->IsPIEEnabled())
+	{
+		return false;
+	}
+
+	InputSystem::Get().EndRelativeMouseMode();
+	return true;
 }
