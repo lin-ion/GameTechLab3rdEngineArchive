@@ -3,14 +3,20 @@
 #include "Object/Object.h"
 #include "GameFramework/World.h"
 #include "GameFramework/WorldContext.h"
+#include "Engine/Input/InputRouter.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Render/Pipeline/IRenderPipeline.h"
+#include "Engine/Input/InputTypes.h"
 
 #include <memory>
+#include <functional>
 
 class FWindowsWindow;
 class FTimer;
 class UGameViewportClient;
+class FViewport;
+class FViewportClient;
+struct FRect;
 
 class UEngine : public UObject
 {
@@ -18,7 +24,7 @@ public:
 	DECLARE_CLASS(UEngine, UObject)
 
 	UEngine() = default;
-	~UEngine() override = default;
+	~UEngine() override;
 
 	// Lifecycle
 	virtual void Init(FWindowsWindow* InWindow);
@@ -57,7 +63,16 @@ public:
 	void SetGameViewportClient(UGameViewportClient* InClient) { GameViewportClient = InClient; }
 	UGameViewportClient* GetGameViewportClient() const { return GameViewportClient; }
 
+	void SetImGuiInputCapture(bool bCaptureMouse, bool bCaptureKeyboard);
+	void ClearInputTargets();
+	void RegisterInputTarget(
+		FViewport* InViewport,
+		FViewportClient* InClient,
+		EInputRouteDomain InDomain,
+		const std::function<bool(FRect&)>& InRectProvider);
+
 protected:
+	void DispatchInput();
 	void Render(float DeltaTime);
 	void SetRenderPipeline(std::unique_ptr<IRenderPipeline> InPipeline);
 	void WorldTick(float DeltaTime);
@@ -75,6 +90,7 @@ protected:
 	FRenderer Renderer;
 
 private:
+	std::unique_ptr<FInputRouter> InputRouter;
 	std::unique_ptr<IRenderPipeline> RenderPipeline;
 };
 

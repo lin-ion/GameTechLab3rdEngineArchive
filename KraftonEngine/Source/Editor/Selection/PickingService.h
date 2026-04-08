@@ -10,7 +10,6 @@
 #include "Render/Pipeline/IPrimitiveSpatialQuery.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 #include "Object/Object.h"
-#include "Profiling/Stats.h"
 
 #include <cfloat>
 #include <algorithm>
@@ -115,8 +114,6 @@ private:
 			}
 		}
 
-		SCOPE_STAT("Picking.Ray.Algorithm");
-
 		AActor* BestActor = nullptr;
 		OutClosestDistance = FLT_MAX;
 		if (OutPickingId) *OutPickingId = 0u;
@@ -131,7 +128,6 @@ private:
 
 		auto ExecuteBroadQuery = [&](float MaxNearT)
 		{
-			SCOPE_STAT("Picking.Ray.Broad");
 			RayCandidates.clear();
 			if (ActiveLevel)
 			{
@@ -144,7 +140,6 @@ private:
 		};
 		bool bUsedNearTHint = false;
 		{
-			SCOPE_STAT("Picking.Ray.Narrow.DirectProbe");
 			if (bHasComparableHint && TemporalHint.LastHitComponentId != 0u)
 			{
 				if (UPrimitiveComponent* LastComp = Cast<UPrimitiveComponent>(ResolveObjectFromPickingId(TemporalHint.LastHitComponentId)))
@@ -178,7 +173,6 @@ private:
 			// 힌트가 없으면 전역 closest query가 되어 오히려 병목이 될 수 있다.
 			if (ActiveLevel && bHasComparableHint)
 			{
-				SCOPE_STAT("Picking.Ray.Broad.FastProbe");
 				FRayQueryCandidate FastCandidate{};
 				const float ProbeMaxNearT = HintNearT;
 				bUsedNearTHint = true;
@@ -235,8 +229,6 @@ private:
 
 		auto ExecuteNarrowQuery = [&]()
 		{
-			SCOPE_STAT("Picking.Ray.Narrow");
-
 			const float NearTEpsilon = FPickingTuning::NearTEpsilon();
 			const auto NearTMinHeapCompare = [](const FRayQueryCandidate& L, const FRayQueryCandidate& R)
 			{

@@ -1,99 +1,73 @@
 #pragma once
-#include <windows.h>
-#include "Core/Singleton.h"
 
-struct FGuiInputState
-{
-    bool bUsingMouse = false;
-    bool bUsingKeyboard = false;
-};
+#include <windows.h>
+
+#include "Core/Singleton.h"
+#include "Engine/Input/InputTypes.h"
 
 class InputSystem : public TSingleton<InputSystem>
 {
 	friend class TSingleton<InputSystem>;
 
 public:
-    void Tick();
+	void Tick();
+	const FInputFrame& GetFrame() const { return CurrentFrame; }
 
-    // Keyboard
-    bool GetKeyDown(int VK) const { return CurrentStates[VK] && !PrevStates[VK]; }
-    bool GetKey(int VK) const { return CurrentStates[VK]; }
-    bool GetKeyUp(int VK) const { return !CurrentStates[VK] && PrevStates[VK]; }
-
-    // Mouse position
-    POINT GetMousePos() const { return MousePos; }
-    int MouseDeltaX() const { return MousePos.x - PrevMousePos.x; }
-    int MouseDeltaY() const { return MousePos.y - PrevMousePos.y; }
-    bool MouseMoved() const { return MouseDeltaX() != 0 || MouseDeltaY() != 0; }
-
-    // Left drag
-    bool IsDraggingLeft() const { return GetKey(VK_LBUTTON) && MouseMoved(); }
-    bool GetLeftDragStart() const { return bLeftDragJustStarted; }
-    bool GetLeftDragging() const { return bLeftDragging; }
-    bool GetLeftDragEnd() const { return bLeftDragJustEnded; }
-    POINT GetLeftDragVector() const;
-    float GetLeftDragDistance() const;
-
-    // Right drag
-    bool IsDraggingRight() const { return GetKey(VK_RBUTTON) && MouseMoved(); }
-    bool GetRightDragStart() const { return bRightDragJustStarted; }
-    bool GetRightDragging() const { return bRightDragging; }
-    bool GetRightDragEnd() const { return bRightDragJustEnded; }
-    POINT GetRightDragVector() const;
-    float GetRightDragDistance() const;
-
-    // Scrolling
-    void AddScrollDelta(int Delta) { ScrollDelta += Delta; }
-    int GetScrollDelta() const { return PrevScrollDelta; }
-    bool ScrolledUp() const { return PrevScrollDelta > 0; }
-    bool ScrolledDown() const { return PrevScrollDelta < 0; }
-    float GetScrollNotches() const { return PrevScrollDelta / (float)WHEEL_DELTA; }
-
-    // Window focus
-    void SetOwnerWindow(HWND InHWnd) { OwnerHWnd = InHWnd; }
-
-    // GUI state
-    FGuiInputState& GetGuiInputState() { return GuiState; }
-    const FGuiInputState& GetGuiInputState() const { return GuiState; }
+	void AddScrollDelta(int Delta) { ScrollDelta += Delta; }
+	void AddRawMouseDelta(int32 DeltaX, int32 DeltaY) { PendingRawDeltaX += DeltaX; PendingRawDeltaY += DeltaY; }
+	void SetOwnerWindow(HWND InHWnd) { OwnerHWnd = InHWnd; }
+	void BeginRelativeMouseMode(HWND InOwnerWindow, POINT InRestoreScreenPos);
+	void EndRelativeMouseMode();
+	bool IsRelativeMouseMode() const { return MouseInputMode == EMouseInputMode::Relative; }
+	POINT GetRelativeRestoreScreenPos() const { return RelativeRestoreScreenPos; }
 
 private:
-    bool CurrentStates[256] = { false };
-    bool PrevStates[256] = { false };
+	bool CurrentStates[256] = { false };
+	bool PrevStates[256] = { false };
 
-    // Mouse members
-    POINT MousePos = { 0, 0 };
-    POINT PrevMousePos = { 0, 0 };
+	POINT MousePos = { 0, 0 };
+	POINT AbsoluteMousePos = { 0, 0 };
+	POINT LeftDragAccum = { 0, 0 };
+	POINT RightDragAccum = { 0, 0 };
+	int32 PendingRawDeltaX = 0;
+	int32 PendingRawDeltaY = 0;
 
-    bool bLeftDragCandidate = false;
-    bool bRightDragCandidate = false;
-    bool bLeftDragging = false;
-    bool bRightDragging = false;
+	bool bLeftDragCandidate = false;
+	bool bRightDragCandidate = false;
+	bool bLeftDragging = false;
+	bool bRightDragging = false;
 
-    bool bLeftDragJustStarted = false;
-    bool bRightDragJustStarted = false;
-    bool bLeftDragJustEnded = false;
-    bool bRightDragJustEnded = false;
+	bool bLeftDragJustStarted = false;
+	bool bRightDragJustStarted = false;
+	bool bLeftDragJustEnded = false;
+	bool bRightDragJustEnded = false;
 
-    // Drag origin
-    POINT LeftDragStartPos = { 0, 0 };
-    POINT LeftMouseDownPos = { 0, 0 };
-    POINT RightDragStartPos = { 0, 0 };
-    POINT RightMouseDownPos = { 0, 0 };
+	int ScrollDelta = 0;
+	int PrevScrollDelta = 0;
 
-    // Scrolling
-    int ScrollDelta = 0;
-    int PrevScrollDelta = 0;
+	HWND OwnerHWnd = nullptr;
+	HWND RelativeOwnerWindow = nullptr;
+	POINT RelativeRestoreScreenPos = { 0, 0 };
+	EMouseInputMode MouseInputMode = EMouseInputMode::Absolute;
 
-    // Window handle for focus check
-    HWND OwnerHWnd = nullptr;
+	uint64 FrameCounter = 0;
+	FInputFrame CurrentFrame{};
 
-    // GUI InputState
-    FGuiInputState GuiState{};
+	static constexpr int DRAG_THRESHOLD = 5;
 
-    static constexpr int DRAG_THRESHOLD = 5;
+	bool GetKeyDown(int VK) const { return CurrentStates[VK] && !PrevStates[VK]; }
+	bool GetKey(int VK) const { return CurrentStates[VK]; }
+	bool GetKeyUp(int VK) const { return !CurrentStates[VK] && PrevStates[VK]; }
+	bool HasRawMouseDelta() const { return PendingRawDeltaX != 0 || PendingRawDeltaY != 0; }
+	bool IsDraggingLeft() const { return GetKey(VK_LBUTTON) && HasRawMouseDelta(); }
+	bool IsDraggingRight() const { return GetKey(VK_RBUTTON) && HasRawMouseDelta(); }
 
-    // Internal drag threshold helper — unified Left/Right logic
-    void FilterDragThreshold(
-        bool& bCandidate, bool& bDragging, bool& bJustStarted,
-        const POINT& MouseDownPos, POINT& DragStartPos);
+	POINT GetLeftDragVector() const;
+	float GetLeftDragDistance() const;
+	POINT GetRightDragVector() const;
+	float GetRightDragDistance() const;
+
+	void FilterDragThreshold(
+		bool& bCandidate, bool& bDragging, bool& bJustStarted,
+		const POINT& AccumDelta);
 };

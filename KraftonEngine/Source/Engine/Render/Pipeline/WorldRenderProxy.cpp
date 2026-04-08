@@ -557,7 +557,6 @@ void FWorldRenderProxy::RebuildVisibleRaySpatialIndexIfNeeded(bool bUseOcclusion
 
 void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCandidate>& OutCandidates, float MaxNearT)
 {
-	SCOPE_STAT("Picking.Ray.Broad.Query");
 	OutCandidates.clear();
 	LastRayBroadDebugCounters = {};
 	uint64 TraversalAABBTests = 0u;
@@ -566,8 +565,6 @@ void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCan
 	// During transform defer window, spatial index can be stale; bypass to direct broad test.
 	if (SpatialIndexDeferDepth > 0 || bDeferredSpatialIndexDirtyPending)
 	{
-		SCOPE_STAT("Picking.Ray.Broad.Traversal");
-		SCOPE_STAT("Picking.Ray.Broad.Traversal.DeferBypass");
 		const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
 		GatherRayCandidatesFromSoA(Ray, Kernel, RayPickableSoA, CachedOcclusionViewport, false, MaxNearT, OutCandidates, &TraversalAABBTests, &TraversalAABBHits);
 		LastRayBroadDebugCounters.AABBTests = TraversalAABBTests;
@@ -580,7 +577,6 @@ void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCan
 
 	if (bSpatialIndexDirty)
 	{
-		SCOPE_STAT("Picking.Ray.Broad.Rebuild");
 		RebuildSpatialIndexIfDirty(false, false);
 	}
 	if (!RaySpatialIndex)
@@ -609,8 +605,6 @@ void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCan
 
 		if (VisibleCount <= LinearThreshold)
 		{
-			SCOPE_STAT("Picking.Ray.Broad.Traversal");
-			SCOPE_STAT("Picking.Ray.Broad.Traversal.VisibleLinear");
 			const FRayAABBKernel Kernel = FRayAABBKernel::Build(Ray);
 			GatherRayCandidatesFromSoA(Ray, Kernel, FrustumVisiblePickableSoA, CachedOcclusionViewport, bUseOcclusionGate, MaxNearT, OutCandidates, &TraversalAABBTests, &TraversalAABBHits);
 			LastRayBroadDebugCounters.AABBTests = TraversalAABBTests;
@@ -625,8 +619,6 @@ void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCan
 			!bVisibleRaySpatialIndexDirty &&
 			(VisibleRaySpatialIndexFrameTag == FrustumVisiblePickFrameTag))
 		{
-			SCOPE_STAT("Picking.Ray.Broad.Traversal");
-			SCOPE_STAT("Picking.Ray.Broad.Traversal.VisibleBVH");
 			VisibleRaySpatialIndex->QueryRayWithNearT(Ray, OutCandidates, MaxNearT);
 			if (bUseOcclusionGate && !bVisibleRaySpatialIndexBuiltWithOcclusion && !OutCandidates.empty())
 			{
@@ -655,8 +647,6 @@ void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCan
 
 	if (!bUsedVisibleSource)
 	{
-		SCOPE_STAT("Picking.Ray.Broad.Traversal");
-		SCOPE_STAT("Picking.Ray.Broad.Traversal.BVH");
 		RaySpatialIndex->QueryRayWithNearT(Ray, OutCandidates, MaxNearT);
 		const FSpatialQueryDebugStats& RayStats = RaySpatialIndex->GetLastDebugStats();
 		LastRayBroadDebugCounters.NodeVisits = static_cast<uint64>((std::max)(0, RayStats.RayIntersectedNodes));
@@ -668,7 +658,6 @@ void FWorldRenderProxy::QueryByRayWithNearT(const FRay& Ray, TArray<FRayQueryCan
 
 	if (bUseFrustumGate && !bUsedVisibleSource)
 	{
-		SCOPE_STAT("Picking.Ray.Broad.Filter");
 		size_t WriteIndex = 0;
 		const size_t RawCount = OutCandidates.size();
 		for (size_t ReadIndex = 0; ReadIndex < RawCount; ++ReadIndex)

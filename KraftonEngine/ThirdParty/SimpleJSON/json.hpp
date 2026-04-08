@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include <cstdint>
 #include <cmath>
 #include <cctype>
 #include <string>
@@ -9,7 +8,6 @@
 #include <map>
 #include <type_traits>
 #include <initializer_list>
-#include <ostream>
 #include <iostream>
 
 namespace json {

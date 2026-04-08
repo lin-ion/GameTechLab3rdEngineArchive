@@ -63,9 +63,26 @@ void UObjViewerEngine::Shutdown()
 
 void UObjViewerEngine::Tick(float DeltaTime)
 {
-	ViewportClient.Tick(DeltaTime);
 	Panel.Update();
-	UEngine::Tick(DeltaTime);
+	SetImGuiInputCapture(Panel.IsCapturingMouse(), Panel.IsCapturingKeyboard());
+
+	ClearInputTargets();
+	if (FViewport* VP = ViewportClient.GetViewport())
+	{
+		RegisterInputTarget(
+			VP,
+			&ViewportClient,
+			EInputRouteDomain::ObjViewer,
+			[this](FRect& OutRect)
+			{
+				return ViewportClient.GetViewportRect(OutRect);
+			});
+	}
+
+	DispatchInput();
+	ViewportClient.Tick(DeltaTime);
+	WorldTick(DeltaTime);
+	Render(DeltaTime);
 }
 
 void UObjViewerEngine::RenderUI(float DeltaTime)

@@ -11,9 +11,9 @@
 #include "UI/SSplitter.h"
 #include "Math/MathUtils.h"
 #include "Platform/Paths.h"
+#include "Editor/Gizmo/TransformGizmo.h"
 #include "ImGui/imgui.h"
 #include "WICTextureLoader.h"
-#include "Component/GizmoComponent.h"
 
 // ─── 레이아웃별 슬롯 수 ─────────────────────────────────────
 
@@ -855,7 +855,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 		}
 
 		// ── Gizmo Mode 팝업 ──
-		UGizmoComponent* Gizmo = Editor->GetGizmo();
+		FTransformGizmo* Gizmo = Editor->GetGizmo();
 		if (Gizmo)
 		{
 			ImGui::SameLine();

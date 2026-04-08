@@ -10,7 +10,6 @@
 #include "ImGui/imgui_impl_win32.h"
 
 #include "Render/Pipeline/Renderer.h"
-#include "Engine/Input/InputSystem.h"
 
 
 void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, UEditorEngine* InEditorEngine)
@@ -20,6 +19,8 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 
 	ImGuiIO& IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	IO.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+	IO.MouseDrawCursor = false;
 
 	Window = InWindow;
 	EditorEngine = InEditorEngine;
@@ -85,8 +86,8 @@ void FEditorMainPanel::Update()
 		bWantMouse = false;
 		bWantKeyboard = false;
 	}
-	InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
-	InputSystem::Get().GetGuiInputState().bUsingKeyboard = bWantKeyboard;
+	bWantCaptureMouse = bWantMouse;
+	bWantCaptureKeyboard = bWantKeyboard;
 
 	// IME는 ImGui가 텍스트 입력을 원할 때만 활성화.
 	if (Window)

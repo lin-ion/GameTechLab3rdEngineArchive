@@ -6,7 +6,7 @@
 class FViewport;
 
 // UE의 UGameViewportClient 대응 — UObject + FViewportClient 다중상속
-// 게임 런타임 뷰포트를 담당 (PIE / Standalone)
+// 게임 화면 뷰포트를 담당 (PIE / Standalone)
 class UGameViewportClient : public UObject, public FViewportClient
 {
 public:

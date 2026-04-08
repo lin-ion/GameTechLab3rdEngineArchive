@@ -3,7 +3,6 @@
 #include "ObjViewer/ObjViewerEngine.h"
 #include "ObjViewer/ObjViewerViewportClient.h"
 #include "Engine/Runtime/WindowsWindow.h"
-#include "Engine/Input/InputSystem.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Mesh/ObjManager.h"
 #include "Viewport/Viewport.h"
@@ -19,6 +18,8 @@ void FObjViewerPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, UO
 
 	ImGuiIO& IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	IO.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+	IO.MouseDrawCursor = false;
 
 	Window = InWindow;
 	Engine = InEngine;
@@ -56,17 +57,14 @@ void FObjViewerPanel::Update()
 {
 	ImGuiIO& IO = ImGui::GetIO();
 
-	// 프리뷰 뷰포트 위에서는 ImGui 마우스 캡처 해제
 	bool bWantMouse = IO.WantCaptureMouse;
-	FObjViewerViewportClient* VC = Engine ? Engine->GetViewportClient() : nullptr;
-	if (VC)
+	if (bPreviewViewportHovered)
 	{
-		// ImGui hover 체크를 통해 뷰포트 영역 감지
-		// (뷰포트 ImGui::Image 위에 InvisibleButton이 있으므로 그걸로 판단)
-		bWantMouse = IO.WantCaptureMouse;
+		bWantMouse = false;
 	}
-	InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
-	InputSystem::Get().GetGuiInputState().bUsingKeyboard = IO.WantCaptureKeyboard;
+
+	bWantCaptureMouse = bWantMouse;
+	bWantCaptureKeyboard = IO.WantCaptureKeyboard;
 }
 
 void FObjViewerPanel::RenderMeshList()
@@ -195,6 +193,7 @@ void FObjViewerPanel::RenderImportPopup()
 void FObjViewerPanel::RenderPreviewViewport(float DeltaTime)
 {
 	ImGui::Begin("Preview");
+	bPreviewViewportHovered = false;
 
 	FObjViewerViewportClient* VC = Engine ? Engine->GetViewportClient() : nullptr;
 
@@ -208,13 +207,13 @@ void FObjViewerPanel::RenderPreviewViewport(float DeltaTime)
 			VC->SetViewportRect(Pos.x, Pos.y, Size.x, Size.y);
 			VC->RenderViewportImage();
 
-			// 투명 버튼으로 ImGui 마우스 캡처를 뷰포트 위에서 해제
 			ImGui::InvisibleButton("##PreviewViewport", Size);
-			if (ImGui::IsItemHovered())
-			{
-				InputSystem::Get().GetGuiInputState().bUsingMouse = false;
-			}
+			bPreviewViewportHovered = ImGui::IsItemHovered();
 		}
+	}
+	else
+	{
+		bPreviewViewportHovered = false;
 	}
 
 	ImGui::End();

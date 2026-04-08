@@ -1,16 +1,94 @@
 #include "Engine/Input/InputSystem.h"
+
 #include <cmath>
+
+#include "Editor/UI/EditorConsoleWidget.h"
+#include "Engine/Input/CursorControl.h"
+
+void InputSystem::BeginRelativeMouseMode(HWND InOwnerWindow, POINT InRestoreScreenPos)
+{
+    if (!InOwnerWindow)
+    {
+        return;
+    }
+
+    OwnerHWnd = InOwnerWindow;
+    RelativeOwnerWindow = InOwnerWindow;
+    RelativeRestoreScreenPos = InRestoreScreenPos;
+    MousePos = InRestoreScreenPos;
+    MouseInputMode = EMouseInputMode::Relative;
+    PendingRawDeltaX = 0;
+    PendingRawDeltaY = 0;
+
+    ::SetCapture(InOwnerWindow);
+
+    RECT LockRect =
+    {
+        InRestoreScreenPos.x,
+        InRestoreScreenPos.y,
+        InRestoreScreenPos.x + 1,
+        InRestoreScreenPos.y + 1
+    };
+    ::SetCursorPos(InRestoreScreenPos.x, InRestoreScreenPos.y);
+    ::ClipCursor(&LockRect);
+
+    FCursorControlState CursorState;
+    CursorState.bHideInClient = true;
+    CursorState.bLockToScreenPos = true;
+    CursorState.LockScreenPos = InRestoreScreenPos;
+    CursorState.OwnerWindow = InOwnerWindow;
+    FCursorControl::SetState(CursorState);
+
+}
+
+void InputSystem::EndRelativeMouseMode()
+{
+    if (MouseInputMode != EMouseInputMode::Relative)
+    {
+        return;
+    }
+
+    const POINT RestorePos = RelativeRestoreScreenPos;
+    const HWND CaptureWindow = RelativeOwnerWindow ? RelativeOwnerWindow : OwnerHWnd;
+
+    MouseInputMode = EMouseInputMode::Absolute;
+    RelativeOwnerWindow = nullptr;
+    PendingRawDeltaX = 0;
+    PendingRawDeltaY = 0;
+    MousePos = RestorePos;
+    AbsoluteMousePos = RestorePos;
+
+    ::ClipCursor(nullptr);
+    if (CaptureWindow && ::GetCapture() == CaptureWindow)
+    {
+        ::ReleaseCapture();
+    }
+
+    FCursorControl::Clear();
+    ::SetCursorPos(RestorePos.x, RestorePos.y);
+
+}
 
 void InputSystem::Tick()
 {
-    // 윈도우 포커스가 없으면 모든 입력 상태 해제
-    if (OwnerHWnd && GetForegroundWindow() != OwnerHWnd)
+    const int32 RawDeltaX = PendingRawDeltaX;
+    const int32 RawDeltaY = PendingRawDeltaY;
+    PendingRawDeltaX = 0;
+    PendingRawDeltaY = 0;
+
+    const bool bOwnerActive = OwnerHWnd
+        && (GetForegroundWindow() == OwnerHWnd || GetCapture() == OwnerHWnd || GetCapture() == RelativeOwnerWindow);
+
+    if (OwnerHWnd && !bOwnerActive)
     {
+        EndRelativeMouseMode();
+
         for (int i = 0; i < 256; ++i)
         {
             PrevStates[i] = CurrentStates[i];
             CurrentStates[i] = false;
         }
+
         bLeftDragJustStarted = false;
         bRightDragJustStarted = false;
         bLeftDragJustEnded = bLeftDragging;
@@ -19,112 +97,158 @@ void InputSystem::Tick()
         bRightDragging = false;
         bLeftDragCandidate = false;
         bRightDragCandidate = false;
+        LeftDragAccum = { 0, 0 };
+        RightDragAccum = { 0, 0 };
+
         PrevScrollDelta = ScrollDelta;
         ScrollDelta = 0;
-        // 마우스 위치 동기화 (복귀 시 델타 점프 방지)
-        GetCursorPos(&MousePos);
-        PrevMousePos = MousePos;
-        return;
+
+        GetCursorPos(&AbsoluteMousePos);
+        MousePos = AbsoluteMousePos;
     }
+    else
+    {
+        for (int i = 0; i < 256; ++i)
+        {
+            PrevStates[i] = CurrentStates[i];
+            CurrentStates[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
+        }
+
+        bLeftDragJustStarted = false;
+        bRightDragJustStarted = false;
+        bLeftDragJustEnded = false;
+        bRightDragJustEnded = false;
+
+        PrevScrollDelta = ScrollDelta;
+        ScrollDelta = 0;
+
+        if (MouseInputMode == EMouseInputMode::Absolute)
+        {
+            GetCursorPos(&AbsoluteMousePos);
+            MousePos = AbsoluteMousePos;
+        }
+        else
+        {
+            MousePos = RelativeRestoreScreenPos;
+        }
+
+        if (GetKeyDown(VK_LBUTTON))
+        {
+            bLeftDragCandidate = true;
+            LeftDragAccum = { 0, 0 };
+        }
+
+        if (GetKeyDown(VK_RBUTTON))
+        {
+            bRightDragCandidate = true;
+            RightDragAccum = { 0, 0 };
+        }
+
+        if (GetKey(VK_LBUTTON))
+        {
+            LeftDragAccum.x += RawDeltaX;
+            LeftDragAccum.y += RawDeltaY;
+        }
+
+        if (GetKey(VK_RBUTTON))
+        {
+            RightDragAccum.x += RawDeltaX;
+            RightDragAccum.y += RawDeltaY;
+        }
+
+        if (!bLeftDragging && IsDraggingLeft())
+        {
+            FilterDragThreshold(bLeftDragCandidate, bLeftDragging, bLeftDragJustStarted, LeftDragAccum);
+        }
+        else if (GetKeyUp(VK_LBUTTON))
+        {
+            if (bLeftDragging)
+            {
+                bLeftDragJustEnded = true;
+            }
+            bLeftDragging = false;
+            bLeftDragCandidate = false;
+            LeftDragAccum = { 0, 0 };
+        }
+
+        if (!bRightDragging && IsDraggingRight())
+        {
+            FilterDragThreshold(bRightDragCandidate, bRightDragging, bRightDragJustStarted, RightDragAccum);
+        }
+        else if (GetKeyUp(VK_RBUTTON))
+        {
+            if (bRightDragging)
+            {
+                bRightDragJustEnded = true;
+            }
+            bRightDragging = false;
+            bRightDragCandidate = false;
+            RightDragAccum = { 0, 0 };
+        }
+    }
+
+    ++FrameCounter;
+    CurrentFrame.FrameNumber = FrameCounter;
+    CurrentFrame.SourceWindow = OwnerHWnd;
+    CurrentFrame.MouseInputMode = MouseInputMode;
+    CurrentFrame.MouseScreenPos = MousePos;
+    CurrentFrame.MouseDelta.x = RawDeltaX;
+    CurrentFrame.MouseDelta.y = RawDeltaY;
+    CurrentFrame.WheelNotches = PrevScrollDelta / static_cast<float>(WHEEL_DELTA);
 
     for (int i = 0; i < 256; ++i)
     {
-        PrevStates[i] = CurrentStates[i];
-        CurrentStates[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
+        CurrentFrame.KeyDown[i] = CurrentStates[i];
+        CurrentFrame.KeyPressed[i] = CurrentStates[i] && !PrevStates[i];
+        CurrentFrame.KeyReleased[i] = !CurrentStates[i] && PrevStates[i];
     }
 
-    bLeftDragJustStarted = false;
-    bRightDragJustStarted = false;
-    bLeftDragJustEnded = false;
-    bRightDragJustEnded = false;
-
-    PrevScrollDelta = ScrollDelta;
-    ScrollDelta = 0;
-
-    PrevMousePos = MousePos;
-    GetCursorPos(&MousePos);
-
-    if (GetKeyDown(VK_LBUTTON))
-    {
-        bLeftDragCandidate = true;
-        LeftMouseDownPos = MousePos;
-    }
-    if (GetKeyDown(VK_RBUTTON))
-    {
-        bRightDragCandidate = true;
-        RightMouseDownPos = MousePos;
-    }
-
-    // Left drag
-    if (!bLeftDragging && IsDraggingLeft())
-    {
-        FilterDragThreshold(bLeftDragCandidate, bLeftDragging, bLeftDragJustStarted,
-            LeftMouseDownPos, LeftDragStartPos);
-    }
-    else if (GetKeyUp(VK_LBUTTON))
-    {
-        if (bLeftDragging) bLeftDragJustEnded = true;
-        bLeftDragging = false;
-        bLeftDragCandidate = false;
-    }
-
-    // Right drag
-    if (!bRightDragging && IsDraggingRight())
-    {
-        FilterDragThreshold(bRightDragCandidate, bRightDragging, bRightDragJustStarted,
-            RightMouseDownPos, RightDragStartPos);
-    }
-    else if (GetKeyUp(VK_RBUTTON))
-    {
-        if (bRightDragging) bRightDragJustEnded = true;
-        bRightDragging = false;
-        bRightDragCandidate = false;
-    }
+    CurrentFrame.bLeftDragStarted = bLeftDragJustStarted;
+    CurrentFrame.bLeftDragging = bLeftDragging;
+    CurrentFrame.bLeftDragEnded = bLeftDragJustEnded;
+    CurrentFrame.bRightDragStarted = bRightDragJustStarted;
+    CurrentFrame.bRightDragging = bRightDragging;
+    CurrentFrame.bRightDragEnded = bRightDragJustEnded;
+    CurrentFrame.LeftDragVector = GetLeftDragVector();
+    CurrentFrame.RightDragVector = GetRightDragVector();
 }
 
 void InputSystem::FilterDragThreshold(
     bool& bCandidate, bool& bDragging, bool& bJustStarted,
-    const POINT& MouseDownPos, POINT& DragStartPos)
+    const POINT& AccumDelta)
 {
     if (bCandidate && !bDragging)
     {
-        int DX = MousePos.x - MouseDownPos.x;
-        int DY = MousePos.y - MouseDownPos.y;
-        int DistSq = DX * DX + DY * DY;
+        const int DX = AccumDelta.x;
+        const int DY = AccumDelta.y;
+        const int DistSq = DX * DX + DY * DY;
 
         if (DistSq >= DRAG_THRESHOLD * DRAG_THRESHOLD)
         {
             bJustStarted = true;
             bDragging = true;
-            DragStartPos = MouseDownPos;
         }
     }
 }
 
 POINT InputSystem::GetLeftDragVector() const
 {
-    POINT V;
-    V.x = MousePos.x - LeftDragStartPos.x;
-    V.y = MousePos.y - LeftDragStartPos.y;
-    return V;
+    return LeftDragAccum;
 }
 
 POINT InputSystem::GetRightDragVector() const
 {
-    POINT V;
-    V.x = MousePos.x - RightDragStartPos.x;
-    V.y = MousePos.y - RightDragStartPos.y;
-    return V;
+    return RightDragAccum;
 }
 
 float InputSystem::GetLeftDragDistance() const
 {
-    POINT V = GetLeftDragVector();
-    return std::sqrt((float)(V.x * V.x + V.y * V.y));
+    const POINT V = GetLeftDragVector();
+    return std::sqrt(static_cast<float>(V.x * V.x + V.y * V.y));
 }
 
 float InputSystem::GetRightDragDistance() const
 {
-    POINT V = GetRightDragVector();
-    return std::sqrt((float)(V.x * V.x + V.y * V.y));
+    const POINT V = GetRightDragVector();
+    return std::sqrt(static_cast<float>(V.x * V.x + V.y * V.y));
 }

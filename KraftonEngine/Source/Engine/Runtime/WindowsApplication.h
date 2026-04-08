@@ -9,7 +9,6 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 using FOnSizingCallback = std::function<void()>;
-using FOnResizedCallback = std::function<void(unsigned int, unsigned int)>;
 
 class FWindowsApplication
 {
@@ -28,7 +27,6 @@ public:
 	bool IsResizing() const { return bIsResizing; }
 
 	void SetOnSizingCallback(FOnSizingCallback InCallback) { OnSizingCallback = std::move(InCallback); }
-	void SetOnResizedCallback(FOnResizedCallback InCallback) { OnResizedCallback = std::move(InCallback); }
 
 private:
 	static LRESULT CALLBACK StaticWndProc(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam);
@@ -42,5 +40,4 @@ private:
 	bool bIsResizing = false;
 
 	FOnSizingCallback OnSizingCallback;
-	FOnResizedCallback OnResizedCallback;
 };

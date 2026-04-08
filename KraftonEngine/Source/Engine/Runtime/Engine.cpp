@@ -2,7 +2,7 @@
 
 #include "Platform/Paths.h"
 #include "Profiling/Stats.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Resource/ResourceManager.h"
 #include "Render/Pipeline/DefaultRenderPipeline.h"
@@ -14,6 +14,8 @@ DEFINE_CLASS(UEngine, UObject)
 
 UEngine* GEngine = nullptr;
 
+UEngine::~UEngine() = default;
+
 void UEngine::Init(FWindowsWindow* InWindow)
 {
 	Window = InWindow;
@@ -22,7 +24,8 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	FNamePool::Get();
 	FObjectFactory::Get();
 
-	InputSystem::Get().SetOwnerWindow(Window->GetHWND());
+	InputRouter = std::make_unique<FInputRouter>();
+	InputRouter->SetOwnerWindow(Window->GetHWND());
 	Renderer.Create(Window->GetHWND());
 
 	ID3D11Device* Device = Renderer.GetFD3DDevice().GetDevice();
@@ -34,6 +37,7 @@ void UEngine::Init(FWindowsWindow* InWindow)
 
 void UEngine::Shutdown()
 {
+	InputRouter.reset();
 	RenderPipeline.reset();
 	FResourceManager::Get().ReleaseGPUResources();
 	FMeshBufferManager::Get().Release();
@@ -55,7 +59,7 @@ void UEngine::BeginPlay()
 void UEngine::Tick(float DeltaTime)
 {
 	SCOPE_STAT("Frame");
-	InputSystem::Get().Tick();
+	DispatchInput();
 	{
 		SCOPE_STAT("Frame.WorldTick");
 		WorldTick(DeltaTime);
@@ -64,6 +68,50 @@ void UEngine::Tick(float DeltaTime)
 		SCOPE_STAT("Frame.Render");
 		Render(DeltaTime);
 	}
+}
+
+void UEngine::SetImGuiInputCapture(bool bCaptureMouse, bool bCaptureKeyboard)
+{
+	if (!InputRouter)
+	{
+		return;
+	}
+
+	InputRouter->SetImGuiCaptureState(bCaptureMouse, bCaptureKeyboard);
+}
+
+void UEngine::ClearInputTargets()
+{
+	if (!InputRouter)
+	{
+		return;
+	}
+
+	InputRouter->ClearTargets();
+}
+
+void UEngine::RegisterInputTarget(
+	FViewport* InViewport,
+	FViewportClient* InClient,
+	EInputRouteDomain InDomain,
+	const std::function<bool(FRect&)>& InRectProvider)
+{
+	if (!InputRouter)
+	{
+		return;
+	}
+
+	InputRouter->RegisterTarget(InViewport, InClient, InDomain, InRectProvider);
+}
+
+void UEngine::DispatchInput()
+{
+	if (!InputRouter)
+	{
+		return;
+	}
+
+	InputRouter->Tick();
 }
 
 void UEngine::Render(float DeltaTime)

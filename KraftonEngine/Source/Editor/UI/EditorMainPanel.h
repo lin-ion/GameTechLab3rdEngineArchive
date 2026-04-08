@@ -17,6 +17,8 @@ public:
 	void Release();
 	void Render(float DeltaTime);
 	void Update();
+	bool IsCapturingMouse() const { return bWantCaptureMouse; }
+	bool IsCapturingKeyboard() const { return bWantCaptureKeyboard; }
 
 private:
 	FWindowsWindow* Window = nullptr;
@@ -26,4 +28,6 @@ private:
 	FEditorPropertyWidget PropertyWidget;
 	FEditorLevelWidget SceneWidget;
 	FEditorStatWidget StatWidget;
+	bool bWantCaptureMouse = false;
+	bool bWantCaptureKeyboard = false;
 };
