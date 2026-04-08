@@ -53,6 +53,7 @@ public:
 
 	// 레이아웃 전환
 	void SetLayout(EViewportLayout NewLayout);
+	void SetLayoutAnimated(EViewportLayout NewLayout);
 	EViewportLayout GetLayout() const { return CurrentLayout; }
 
 	// 편의용 토글 (OnePane ↔ FourPanes2x2)
@@ -77,6 +78,25 @@ public:
 	static int32 GetSlotCount(EViewportLayout Layout);
 
 private:
+	enum class ELayoutTransitionState : uint8
+	{
+		None,
+		CollapsingCurrent,
+		ExpandingTarget
+	};
+
+	void StartAnimatedLayoutTransition(EViewportLayout NewLayout);
+	void TickLayoutTransition(float DeltaTime);
+	void BeginCurrentLayoutCollapsePhase();
+	void BeginTargetLayoutExpandPhase();
+	void EndLayoutTransition();
+
+	int32 GetActiveSlotIndex() const;
+	bool DoesWindowContainSlot(const SWindow* InWindow, int32 SlotIndex) const;
+	void ApplyFocusCollapseRecursive(SSplitter* InNode, int32 FocusSlotIndex);
+	void CollectSplitterRatios(TArray<float>& OutRatios) const;
+	void ApplySplitterRatios(const TArray<float>& InRatios);
+
 	SSplitter* BuildSplitterTree(EViewportLayout Layout);
 	void EnsureViewportSlots(int32 RequiredCount);
 	void ShrinkViewportSlots(int32 RequiredCount);
@@ -107,4 +127,17 @@ private:
 
 	// 레이아웃 아이콘 SRV (EViewportLayout::MAX 개)
 	ID3D11ShaderResourceView* LayoutIcons[static_cast<int>(EViewportLayout::MAX)] = {};
+
+	ELayoutTransitionState LayoutTransitionState = ELayoutTransitionState::None;
+	EViewportLayout PendingTargetLayout = EViewportLayout::OnePane;
+	EViewportLayout LastSplitLayout = EViewportLayout::FourPanes2x2;
+	bool bSuppressLastSplitLayoutUpdate = false;
+	bool bRequestPreserveSplitOnOnePane = false;
+	bool bIsTemporaryOnePane = false;
+	int32 TemporaryOnePaneSourceSlot = 0;
+	int32 TransitionFocusSlot = 0;
+	float LayoutTransitionElapsed = 0.0f;
+	float LayoutTransitionDuration = 0.18f;
+	TArray<float> TransitionStartRatios;
+	TArray<float> TransitionTargetRatios;
 };

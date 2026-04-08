@@ -209,6 +209,243 @@ void FLevelViewportLayout::DestroyAllCameras()
 	}
 }
 
+int32 FLevelViewportLayout::GetActiveSlotIndex() const
+{
+	for (int32 i = 0; i < static_cast<int32>(LevelViewportClients.size()); ++i)
+	{
+		if (LevelViewportClients[i] == ActiveViewportClient)
+		{
+			return i;
+		}
+	}
+	return 0;
+}
+
+bool FLevelViewportLayout::DoesWindowContainSlot(const SWindow* InWindow, int32 SlotIndex) const
+{
+	if (!InWindow || SlotIndex < 0 || SlotIndex >= MaxViewportSlots || !ViewportWindows[SlotIndex])
+	{
+		return false;
+	}
+
+	if (!InWindow->IsSplitter())
+	{
+		return InWindow == ViewportWindows[SlotIndex];
+	}
+
+	const SSplitter* Split = static_cast<const SSplitter*>(InWindow);
+	return DoesWindowContainSlot(Split->GetSideLT(), SlotIndex)
+		|| DoesWindowContainSlot(Split->GetSideRB(), SlotIndex);
+}
+
+void FLevelViewportLayout::ApplyFocusCollapseRecursive(SSplitter* InNode, int32 FocusSlotIndex)
+{
+	if (!InNode)
+	{
+		return;
+	}
+
+	constexpr float FocusMin = 0.02f;
+	constexpr float FocusMax = 0.98f;
+	const bool bFocusInLT = DoesWindowContainSlot(InNode->GetSideLT(), FocusSlotIndex);
+	const bool bFocusInRB = DoesWindowContainSlot(InNode->GetSideRB(), FocusSlotIndex);
+	if (bFocusInLT && !bFocusInRB)
+	{
+		InNode->SetRatio(FocusMax);
+	}
+	else if (!bFocusInLT && bFocusInRB)
+	{
+		InNode->SetRatio(FocusMin);
+	}
+
+	if (SSplitter* LT = SSplitter::AsSplitter(InNode->GetSideLT()))
+	{
+		ApplyFocusCollapseRecursive(LT, FocusSlotIndex);
+	}
+	if (SSplitter* RB = SSplitter::AsSplitter(InNode->GetSideRB()))
+	{
+		ApplyFocusCollapseRecursive(RB, FocusSlotIndex);
+	}
+}
+
+void FLevelViewportLayout::CollectSplitterRatios(TArray<float>& OutRatios) const
+{
+	OutRatios.clear();
+	if (!RootSplitter)
+	{
+		return;
+	}
+
+	TArray<SSplitter*> Splitters;
+	SSplitter::CollectSplitters(RootSplitter, Splitters);
+	OutRatios.reserve(Splitters.size());
+	for (SSplitter* Split : Splitters)
+	{
+		OutRatios.push_back(Split ? Split->GetRatio() : 0.5f);
+	}
+}
+
+void FLevelViewportLayout::ApplySplitterRatios(const TArray<float>& InRatios)
+{
+	if (!RootSplitter || InRatios.empty())
+	{
+		return;
+	}
+
+	TArray<SSplitter*> Splitters;
+	SSplitter::CollectSplitters(RootSplitter, Splitters);
+	const size_t Count = (std::min)(Splitters.size(), InRatios.size());
+	for (size_t i = 0; i < Count; ++i)
+	{
+		if (Splitters[i])
+		{
+			Splitters[i]->SetRatio(Clamp(InRatios[i], 0.02f, 0.98f));
+		}
+	}
+}
+
+void FLevelViewportLayout::EndLayoutTransition()
+{
+	LayoutTransitionState = ELayoutTransitionState::None;
+	LayoutTransitionElapsed = 0.0f;
+	TransitionStartRatios.clear();
+	TransitionTargetRatios.clear();
+	bSuppressLastSplitLayoutUpdate = false;
+}
+
+void FLevelViewportLayout::BeginCurrentLayoutCollapsePhase()
+{
+	if (!RootSplitter)
+	{
+		if (PendingTargetLayout == EViewportLayout::OnePane)
+		{
+			SetLayout(EViewportLayout::OnePane);
+			EndLayoutTransition();
+		}
+		else
+		{
+			BeginTargetLayoutExpandPhase();
+		}
+		return;
+	}
+
+	CollectSplitterRatios(TransitionStartRatios);
+	ApplyFocusCollapseRecursive(RootSplitter, TransitionFocusSlot);
+	CollectSplitterRatios(TransitionTargetRatios);
+	ApplySplitterRatios(TransitionStartRatios);
+
+	LayoutTransitionState = ELayoutTransitionState::CollapsingCurrent;
+	LayoutTransitionElapsed = 0.0f;
+}
+
+void FLevelViewportLayout::BeginTargetLayoutExpandPhase()
+{
+	if (PendingTargetLayout == EViewportLayout::OnePane)
+	{
+		SetLayout(EViewportLayout::OnePane);
+		EndLayoutTransition();
+		return;
+	}
+
+	SetLayout(PendingTargetLayout);
+	if (!RootSplitter)
+	{
+		EndLayoutTransition();
+		return;
+	}
+
+	const int32 TargetSlotCount = GetSlotCount(PendingTargetLayout);
+	TransitionFocusSlot = (std::max)(0, (std::min)((std::max)(0, TargetSlotCount - 1), TransitionFocusSlot));
+
+	CollectSplitterRatios(TransitionTargetRatios);
+	ApplyFocusCollapseRecursive(RootSplitter, TransitionFocusSlot);
+	CollectSplitterRatios(TransitionStartRatios);
+	ApplySplitterRatios(TransitionStartRatios);
+
+	LayoutTransitionState = ELayoutTransitionState::ExpandingTarget;
+	LayoutTransitionElapsed = 0.0f;
+}
+
+void FLevelViewportLayout::TickLayoutTransition(float DeltaTime)
+{
+	if (LayoutTransitionState == ELayoutTransitionState::None)
+	{
+		return;
+	}
+
+	if (!RootSplitter || TransitionStartRatios.empty() || TransitionTargetRatios.empty())
+	{
+		EndLayoutTransition();
+		return;
+	}
+
+	LayoutTransitionElapsed += DeltaTime;
+	float T = Clamp(LayoutTransitionElapsed / LayoutTransitionDuration, 0.0f, 1.0f);
+	const float SmoothT = T * T * (3.0f - 2.0f * T);
+
+	TArray<float> InterpolatedRatios;
+	const size_t Count = (std::min)(TransitionStartRatios.size(), TransitionTargetRatios.size());
+	InterpolatedRatios.resize(Count);
+	for (size_t i = 0; i < Count; ++i)
+	{
+		InterpolatedRatios[i] = TransitionStartRatios[i] + (TransitionTargetRatios[i] - TransitionStartRatios[i]) * SmoothT;
+	}
+	ApplySplitterRatios(InterpolatedRatios);
+
+	if (T < 1.0f)
+	{
+		return;
+	}
+
+	if (LayoutTransitionState == ELayoutTransitionState::CollapsingCurrent)
+	{
+		if (PendingTargetLayout == EViewportLayout::OnePane)
+		{
+			SetLayout(EViewportLayout::OnePane);
+			EndLayoutTransition();
+			return;
+		}
+
+		BeginTargetLayoutExpandPhase();
+		return;
+	}
+
+	EndLayoutTransition();
+}
+
+void FLevelViewportLayout::StartAnimatedLayoutTransition(EViewportLayout NewLayout)
+{
+	if (NewLayout == CurrentLayout)
+	{
+		return;
+	}
+
+	if (LayoutTransitionState != ELayoutTransitionState::None)
+	{
+		return;
+	}
+
+	PendingTargetLayout = NewLayout;
+	if (CurrentLayout == EViewportLayout::OnePane && bIsTemporaryOnePane && NewLayout != EViewportLayout::OnePane)
+	{
+		const int32 TargetMaxSlot = (std::max)(0, GetSlotCount(NewLayout) - 1);
+		TransitionFocusSlot = (std::max)(0, (std::min)(TargetMaxSlot, TemporaryOnePaneSourceSlot));
+	}
+	else
+	{
+		const int32 SourceMaxSlot = (std::max)(0, GetSlotCount(CurrentLayout) - 1);
+		TransitionFocusSlot = (std::max)(0, (std::min)(SourceMaxSlot, GetActiveSlotIndex()));
+	}
+
+	if (CurrentLayout == EViewportLayout::OnePane)
+	{
+		BeginTargetLayoutExpandPhase();
+		return;
+	}
+
+	BeginCurrentLayoutCollapsePhase();
+}
+
 // ─── 뷰포트 슬롯 관리 ───────────────────────────────────────
 
 void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
@@ -429,7 +666,8 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 {
 	if (NewLayout == CurrentLayout) return;
 
-	bool bWasOnePane = (CurrentLayout == EViewportLayout::OnePane);
+	const bool bWasOnePane = (CurrentLayout == EViewportLayout::OnePane);
+	const bool bWasTemporaryOnePane = bIsTemporaryOnePane;
 
 	// 기존 트리 해제
 	SSplitter::DestroyTree(RootSplitter);
@@ -438,12 +676,26 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 
 	int32 RequiredSlots = GetSlotCount(NewLayout);
 	int32 OldSlotCount = static_cast<int32>(LevelViewportClients.size());
+	const bool bUseTemporaryOnePane = (NewLayout == EViewportLayout::OnePane && bRequestPreserveSplitOnOnePane);
 
-	// 슬롯 수 조정
-	if (RequiredSlots > OldSlotCount)
-		EnsureViewportSlots(RequiredSlots);
-	else if (RequiredSlots < OldSlotCount)
-		ShrinkViewportSlots(RequiredSlots);
+	if (bUseTemporaryOnePane)
+	{
+		TemporaryOnePaneSourceSlot = (std::max)(0, (std::min)((std::max)(0, OldSlotCount - 1), GetActiveSlotIndex()));
+		bIsTemporaryOnePane = true;
+	}
+
+	// 슬롯 수 조정 (toggle 기반 OnePane에서는 split 슬롯을 보존)
+	if (!bUseTemporaryOnePane)
+	{
+		if (RequiredSlots > OldSlotCount)
+			EnsureViewportSlots(RequiredSlots);
+		else if (RequiredSlots < OldSlotCount)
+			ShrinkViewportSlots(RequiredSlots);
+	}
+	else
+	{
+		RequiredSlots = OldSlotCount;
+	}
 
 	// 분할 전환 시 새로 추가된 슬롯에 Top, Front, Right 순으로 기본 설정
 	if (NewLayout != EViewportLayout::OnePane)
@@ -453,8 +705,8 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 			ELevelViewportType::Front,
 			ELevelViewportType::Right
 		};
-		// 기존 슬롯(또는 슬롯 0)은 유지, 새로 생긴 슬롯에만 적용
-		int32 StartIdx = bWasOnePane ? 1 : OldSlotCount;
+		// 새로 생성된 슬롯에만 적용
+		const int32 StartIdx = OldSlotCount;
 		for (int32 i = StartIdx; i < RequiredSlots && (i - 1) < 3; ++i)
 		{
 			LevelViewportClients[i]->SetViewportType(DefaultTypes[i - 1]);
@@ -463,24 +715,52 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 
 	// 새 트리 빌드
 	RootSplitter = BuildSplitterTree(NewLayout);
-	ActiveSlotCount = RequiredSlots;
+	ActiveSlotCount = (NewLayout == EViewportLayout::OnePane) ? 1 : RequiredSlots;
 	CurrentLayout = NewLayout;
+
+	if (NewLayout != EViewportLayout::OnePane)
+	{
+		bIsTemporaryOnePane = false;
+	}
+	else if (!bUseTemporaryOnePane && !bWasTemporaryOnePane)
+	{
+		TemporaryOnePaneSourceSlot = 0;
+	}
+
+	bRequestPreserveSplitOnOnePane = false;
+
+	if (!bSuppressLastSplitLayoutUpdate && CurrentLayout != EViewportLayout::OnePane)
+	{
+		LastSplitLayout = CurrentLayout;
+	}
+}
+
+void FLevelViewportLayout::SetLayoutAnimated(EViewportLayout NewLayout)
+{
+	StartAnimatedLayoutTransition(NewLayout);
 }
 
 void FLevelViewportLayout::ToggleViewportSplit()
 {
+	bSuppressLastSplitLayoutUpdate = true;
+
 	if (CurrentLayout == EViewportLayout::OnePane)
-		SetLayout(EViewportLayout::FourPanes2x2);
+	{
+		SetLayoutAnimated(LastSplitLayout == EViewportLayout::OnePane ? EViewportLayout::FourPanes2x2 : LastSplitLayout);
+	}
 	else
-		SetLayout(EViewportLayout::OnePane);
+	{
+		bRequestPreserveSplitOnOnePane = true;
+		SetLayoutAnimated(EViewportLayout::OnePane);
+	}
 }
 
 // ─── Viewport UI 렌더링 ─────────────────────────────────────
 
 void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 {
-	(void)DeltaTime;
 	bMouseOverViewport = false;
+	TickLayoutTransition(DeltaTime);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_None);
@@ -491,23 +771,27 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 	if (ContentSize.x > 0 && ContentSize.y > 0)
 	{
 		FRect ContentRect = { ContentPos.x, ContentPos.y, ContentSize.x, ContentSize.y };
+		const int32 OnePaneSlotIndex = (CurrentLayout == EViewportLayout::OnePane && bIsTemporaryOnePane)
+			? (std::max)(0, (std::min)(TemporaryOnePaneSourceSlot, static_cast<int32>(LevelViewportClients.size()) - 1))
+			: 0;
 
 		// SSplitter 레이아웃 계산
 		if (RootSplitter)
 		{
 			RootSplitter->ComputeLayout(ContentRect);
 		}
-		else if (ViewportWindows[0])
+		else if (OnePaneSlotIndex < MaxViewportSlots && ViewportWindows[OnePaneSlotIndex])
 		{
-			ViewportWindows[0]->SetRect(ContentRect);
+			ViewportWindows[OnePaneSlotIndex]->SetRect(ContentRect);
 		}
 
 		// 각 ViewportClient에 Rect 반영 + 이미지 렌더
 		for (int32 i = 0; i < ActiveSlotCount; ++i)
 		{
-			if (i < static_cast<int32>(LevelViewportClients.size()))
+			const int32 SlotIndex = (CurrentLayout == EViewportLayout::OnePane) ? OnePaneSlotIndex : i;
+			if (SlotIndex < static_cast<int32>(LevelViewportClients.size()))
 			{
-				FLevelEditorViewportClient* VC = LevelViewportClients[i];
+				FLevelEditorViewportClient* VC = LevelViewportClients[SlotIndex];
 				VC->UpdateLayoutRect();
 				VC->RenderViewportImage(VC == ActiveViewportClient);
 			}
@@ -516,7 +800,8 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 		// 각 뷰포트 패인 상단에 툴바 오버레이 렌더
 		for (int32 i = 0; i < ActiveSlotCount; ++i)
 		{
-			RenderPaneToolbar(i);
+			const int32 SlotIndex = (CurrentLayout == EViewportLayout::OnePane) ? OnePaneSlotIndex : i;
+			RenderPaneToolbar(SlotIndex);
 		}
 
 		RenderActiveViewportStatOverlay();
@@ -549,7 +834,8 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			// 마우스가 어떤 슬롯 위에 있는지
 			for (int32 i = 0; i < ActiveSlotCount; ++i)
 			{
-				if (ViewportWindows[i] && ViewportWindows[i]->IsHover(MP))
+				const int32 SlotIndex = (CurrentLayout == EViewportLayout::OnePane) ? OnePaneSlotIndex : i;
+				if (SlotIndex < MaxViewportSlots && ViewportWindows[SlotIndex] && ViewportWindows[SlotIndex]->IsHover(MP))
 				{
 					bMouseOverViewport = true;
 					break;
@@ -797,14 +1083,23 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 		ImGui::SameLine();
 
 		constexpr float ToggleIconSize = 16.0f;
-		int32 ToggleIdx = (CurrentLayout == EViewportLayout::OnePane)
-			? static_cast<int32>(EViewportLayout::FourPanes2x2)
-			: static_cast<int32>(EViewportLayout::OnePane);
+		EViewportLayout NextToggleLayout = EViewportLayout::OnePane;
+		if (CurrentLayout == EViewportLayout::OnePane)
+		{
+			NextToggleLayout = (LastSplitLayout == EViewportLayout::OnePane)
+				? EViewportLayout::FourPanes2x2
+				: LastSplitLayout;
+		}
+		int32 ToggleIdx = static_cast<int32>(NextToggleLayout);
 
 		if (LayoutIcons[ToggleIdx])
 		{
 			if (ImGui::ImageButton("##toggle", (ImTextureID)LayoutIcons[ToggleIdx], ImVec2(ToggleIconSize, ToggleIconSize)))
 			{
+				if (SlotIndex < static_cast<int32>(LevelViewportClients.size()) && LevelViewportClients[SlotIndex] != ActiveViewportClient)
+				{
+					SetActiveViewport(LevelViewportClients[SlotIndex]);
+				}
 				ToggleViewportSplit();
 			}
 		}
@@ -813,6 +1108,10 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			const char* ToggleLabel = (CurrentLayout == EViewportLayout::OnePane) ? "Split" : "Merge";
 			if (ImGui::Button(ToggleLabel))
 			{
+				if (SlotIndex < static_cast<int32>(LevelViewportClients.size()) && LevelViewportClients[SlotIndex] != ActiveViewportClient)
+				{
+					SetActiveViewport(LevelViewportClients[SlotIndex]);
+				}
 				ToggleViewportSplit();
 			}
 		}
