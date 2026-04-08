@@ -136,6 +136,7 @@ void AActor::AddActorWorldOffset(const FVector& Delta)
 	if (RootComponent)
 	{
 		RootComponent->AddWorldOffset(Delta);
+		RootComponent->MarkTransformDirty();
 	}
 }
 
@@ -178,6 +179,7 @@ void AActor::SetActorScale(const FVector& NewScale)
 	if (RootComponent)
 	{
 		RootComponent->SetRelativeScale(NewScale);
+		RootComponent->MarkTransformDirty();
 	}
 }
 
