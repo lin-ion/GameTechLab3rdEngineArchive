@@ -132,6 +132,8 @@ private:
 	EViewportLayout PendingTargetLayout = EViewportLayout::OnePane;
 	EViewportLayout LastSplitLayout = EViewportLayout::FourPanes2x2;
 	bool bSuppressLastSplitLayoutUpdate = false;
+	bool bUseCoverTransitionToOnePane = false;
+	bool bUseCoverTransitionFromOnePane = false;
 	bool bRequestPreserveSplitOnOnePane = false;
 	bool bIsTemporaryOnePane = false;
 	int32 TemporaryOnePaneSourceSlot = 0;

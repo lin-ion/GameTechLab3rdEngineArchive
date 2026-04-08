@@ -13,7 +13,7 @@ public:
 
 	// 주요 디렉터리
 	static std::wstring ShaderDir();      // Shaders/
-	static std::wstring LevelDir();       // Asset/Level/
+	static std::wstring LevelDir();       // Asset/Scene/ (legacy API name)
 	static std::wstring DumpDir();        // Saves/Dump/
 	static std::wstring SettingsDir();    // Settings/
 

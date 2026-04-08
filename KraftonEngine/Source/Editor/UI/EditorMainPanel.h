@@ -9,6 +9,7 @@
 class FRenderer;
 class UEditorEngine;
 class FWindowsWindow;
+struct ImFont;
 
 class FEditorMainPanel
 {
@@ -21,13 +22,27 @@ public:
 	bool IsCapturingKeyboard() const { return bWantCaptureKeyboard; }
 
 private:
+	void RenderMainMenuBar();
+	void RenderDockSpace();
+	void RenderShortcutOverlay();
+	void RenderFooterOverlay();
+
+private:
 	FWindowsWindow* Window = nullptr;
 	UEditorEngine* EditorEngine = nullptr;
 	FEditorConsoleWidget ConsoleWidget;
 	FEditorControlWidget ControlWidget;
 	FEditorPropertyWidget PropertyWidget;
-	FEditorLevelWidget SceneWidget;
+	FEditorLevelWidget LevelWidget;
 	FEditorStatWidget StatWidget;
+	bool bShowConsolePanel = true;
+	bool bShowControlPanel = true;
+	bool bShowLevelPanel = true;
+	bool bShowPropertyPanel = true;
+	bool bShowStatPanel = false;
+	bool bShowShortcutOverlay = false;
 	bool bWantCaptureMouse = false;
 	bool bWantCaptureKeyboard = false;
+	ImFont* FooterFont = nullptr;
+	ImFont* FooterBoldFont = nullptr;
 };

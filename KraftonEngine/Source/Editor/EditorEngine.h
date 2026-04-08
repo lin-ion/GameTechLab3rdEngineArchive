@@ -6,6 +6,7 @@
 #include "Editor/Selection/PickingTypes.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
 #include "Editor/UI/EditorMainPanel.h"
+#include "Editor/UI/EditorFooterLogSystem.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Viewport/ViewportClient.h"
@@ -38,6 +39,15 @@ public:
 	void ResetViewport();
 	void CloseLevel();
 	void NewLevel();
+	bool LoadLevelFromPath(const FString& InLevelFilePath);
+	bool LoadLevelWithDialog();
+	bool SaveLevel();
+	bool SaveLevelAsWithDialog();
+	bool SaveLevelAsName(const FString& InLevelName);
+	bool OpenAssetFolder();
+	const FString& GetCurrentLevelFilePath() const { return CurrentLevelFilePath; }
+	bool HasCurrentLevelFilePath() const { return !CurrentLevelFilePath.empty(); }
+	TArray<FString> GetActiveFooterLogMessages() const;
 
 	FEditorSettings& GetSettings() { return FEditorSettings::Get(); }
 	const FEditorSettings& GetSettings() const { return FEditorSettings::Get(); }
@@ -70,6 +80,8 @@ private:
 	FSelectionManager SelectionManager;
 	FEditorMainPanel MainPanel;
 	FOverlayStatSystem OverlayStatSystem;
+	FEditorFooterLogSystem FooterLogSystem;
 	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
+	FString CurrentLevelFilePath;
 };

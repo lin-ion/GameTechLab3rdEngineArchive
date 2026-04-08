@@ -12,6 +12,125 @@
 #include "Mesh/ObjManager.h"
 #include "Viewport/Viewport.h"
 
+#include <commdlg.h>
+#include <shellapi.h>
+#include <filesystem>
+
+namespace
+{
+FString ToProjectRelativePathUtf8(const std::filesystem::path& InPath)
+{
+	const std::filesystem::path RootPath(FPaths::RootDir());
+	const std::filesystem::path Normalized = InPath.lexically_normal();
+	std::filesystem::path Relative = Normalized.lexically_relative(RootPath);
+	if (!Relative.empty() && Relative.wstring().find(L"..") != 0)
+	{
+		return FPaths::ToUtf8(Relative.generic_wstring());
+	}
+
+	return FPaths::ToUtf8(Normalized.generic_wstring());
+}
+
+std::filesystem::path ToAbsolutePath(const FString& InPath)
+{
+	std::filesystem::path P(FPaths::ToWide(InPath));
+	if (P.is_absolute())
+	{
+		return P.lexically_normal();
+	}
+
+	return (std::filesystem::path(FPaths::RootDir()) / P).lexically_normal();
+}
+
+bool BuildPerspectiveCameraData(UEditorEngine* InEditor, FPerspectiveCameraData& OutCamData)
+{
+	if (!InEditor)
+	{
+		return false;
+	}
+
+	for (FLevelEditorViewportClient* VC : InEditor->GetLevelViewportClients())
+	{
+		if (!VC)
+		{
+			continue;
+		}
+
+		const ELevelViewportType ViewportType = VC->GetRenderOptions().ViewportType;
+		const bool bCanUseAsPerspectiveSource =
+			(ViewportType == ELevelViewportType::Perspective)
+			|| (ViewportType == ELevelViewportType::FreeOrthographic);
+		if (!bCanUseAsPerspectiveSource)
+		{
+			continue;
+		}
+
+		FViewportCamera* Cam = VC->GetCamera();
+		if (!Cam)
+		{
+			continue;
+		}
+
+		OutCamData.Location = Cam->GetWorldLocation();
+		OutCamData.Rotation = Cam->GetWorldMatrix().GetEuler();
+		OutCamData.FOV = Cam->GetFOV();
+		OutCamData.NearClip = Cam->GetNearPlane();
+		OutCamData.FarClip = Cam->GetFarPlane();
+		OutCamData.bValid = true;
+		return true;
+	}
+
+	return false;
+}
+
+bool OpenLevelFileDialog(bool bSave, FString& OutFilePath, const FString& InSuggestedName = "")
+{
+	OutFilePath.clear();
+
+	wchar_t FilePathBuffer[MAX_PATH] = {};
+	const std::wstring SceneDir = FLevelSaveManager::GetSceneDirectory();
+	const std::wstring InitialFileName = InSuggestedName.empty() ? L"" : FPaths::ToWide(InSuggestedName + ".Scene");
+	if (!InitialFileName.empty())
+	{
+		wcsncpy_s(FilePathBuffer, InitialFileName.c_str(), _TRUNCATE);
+	}
+
+	OPENFILENAMEW Ofn = {};
+	Ofn.lStructSize = sizeof(Ofn);
+	Ofn.hwndOwner = nullptr;
+	Ofn.lpstrFilter = L"Level Files (*.Scene;*.scene)\0*.Scene;*.scene\0All Files (*.*)\0*.*\0";
+	Ofn.lpstrFile = FilePathBuffer;
+	Ofn.nMaxFile = MAX_PATH;
+	Ofn.lpstrInitialDir = SceneDir.c_str();
+	Ofn.lpstrDefExt = L"Scene";
+	Ofn.lpstrTitle = bSave ? L"Save Level As" : L"Load Level";
+	Ofn.Flags = OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+	if (bSave)
+	{
+		Ofn.Flags |= OFN_OVERWRITEPROMPT;
+	}
+	else
+	{
+		Ofn.Flags |= OFN_FILEMUSTEXIST;
+	}
+
+	const BOOL bSuccess = bSave ? GetSaveFileNameW(&Ofn) : GetOpenFileNameW(&Ofn);
+	if (!bSuccess)
+	{
+		return false;
+	}
+
+	std::filesystem::path PickedPath(FilePathBuffer);
+	if (PickedPath.extension().empty())
+	{
+		PickedPath.replace_extension(L".Scene");
+	}
+
+	OutFilePath = ToProjectRelativePathUtf8(PickedPath);
+	return true;
+}
+}
+
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
 void UEditorEngine::Init(FWindowsWindow* InWindow)
@@ -72,6 +191,7 @@ void UEditorEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 void UEditorEngine::Tick(float DeltaTime)
 {
+	FooterLogSystem.Tick(DeltaTime);
 	MainPanel.Update();
 	SetImGuiInputCapture(MainPanel.IsCapturingMouse(), MainPanel.IsCapturingKeyboard());
 	PruneInputTargetHosts();
@@ -171,6 +291,8 @@ void UEditorEngine::NewLevel()
 	ClearWorlds();
 	FWorldContext& Ctx = CreateWorldContext(EWorldType::Editor, FName("NewLevel"), "New Level");
 	SetActiveWorld(Ctx.ContextHandle);
+	CurrentLevelFilePath.clear();
+	FooterLogSystem.Push("New Level created");
 
 	ResetViewport();
 }
@@ -196,6 +318,150 @@ void UEditorEngine::ClearWorlds()
 	UObjectManager::Get().ClearNameCounters();
 
 	ViewportLayout.DestroyAllCameras();
+}
+
+bool UEditorEngine::SaveLevelAsName(const FString& InLevelName)
+{
+	FWorldContext* Ctx = GetWorldContextFromHandle(GetActiveWorldHandle());
+	if (!Ctx || !Ctx->World)
+	{
+		return false;
+	}
+
+	const FString TrimmedName = InLevelName;
+	if (TrimmedName.empty())
+	{
+		return false;
+	}
+
+	FPerspectiveCameraData PerspectiveCamData;
+	const FPerspectiveCameraData* PerspectiveCam = BuildPerspectiveCameraData(this, PerspectiveCamData)
+		? &PerspectiveCamData
+		: nullptr;
+	FLevelSaveManager::SaveLevelAsJSON(TrimmedName, *Ctx, PerspectiveCam);
+
+	const std::filesystem::path ScenePath =
+		std::filesystem::path(FLevelSaveManager::GetSceneDirectory())
+		/ (FPaths::ToWide(TrimmedName) + FLevelSaveManager::LevelExtension);
+	CurrentLevelFilePath = ToProjectRelativePathUtf8(ScenePath);
+	FooterLogSystem.Push("Level saved: " + TrimmedName);
+	return true;
+}
+
+bool UEditorEngine::SaveLevelAsWithDialog()
+{
+	FString PickedFilePath;
+	FString SuggestedName;
+	if (HasCurrentLevelFilePath())
+	{
+		SuggestedName = FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(CurrentLevelFilePath)).stem().wstring());
+	}
+	else if (const FWorldContext* ActiveCtx = GetWorldContextFromHandle(GetActiveWorldHandle()))
+	{
+		SuggestedName = ActiveCtx->ContextName;
+	}
+	if (!OpenLevelFileDialog(true, PickedFilePath, SuggestedName))
+	{
+		return false;
+	}
+
+	const FString LevelName = FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(PickedFilePath)).stem().wstring());
+	return SaveLevelAsName(LevelName);
+}
+
+bool UEditorEngine::SaveLevel()
+{
+	if (!HasCurrentLevelFilePath())
+	{
+		return SaveLevelAsWithDialog();
+	}
+
+	const FString LevelName = FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(CurrentLevelFilePath)).stem().wstring());
+	return SaveLevelAsName(LevelName);
+}
+
+bool UEditorEngine::LoadLevelFromPath(const FString& InLevelFilePath)
+{
+	if (InLevelFilePath.empty())
+	{
+		return false;
+	}
+
+	ClearWorlds();
+
+	FWorldContext LoadCtx;
+	FPerspectiveCameraData CamData;
+	const std::filesystem::path AbsolutePath = ToAbsolutePath(InLevelFilePath);
+	FLevelSaveManager::LoadLevelFromJSON(FPaths::ToUtf8(AbsolutePath.wstring()), LoadCtx, CamData);
+	if (!LoadCtx.World)
+	{
+		return false;
+	}
+
+	WorldList.push_back(LoadCtx);
+	SetActiveWorld(LoadCtx.ContextHandle);
+	ResetViewport();
+
+	// ResetViewport()가 카메라를 기본값으로 초기화하므로 이후 복원한다.
+	if (CamData.bValid)
+	{
+		for (FLevelEditorViewportClient* VC : GetLevelViewportClients())
+		{
+			if (!VC)
+			{
+				continue;
+			}
+
+			const ELevelViewportType ViewportType = VC->GetRenderOptions().ViewportType;
+			const bool bCanRestoreToViewport =
+				(ViewportType == ELevelViewportType::Perspective)
+				|| (ViewportType == ELevelViewportType::FreeOrthographic);
+			if (!bCanRestoreToViewport)
+			{
+				continue;
+			}
+
+			if (FViewportCamera* Cam = VC->GetCamera())
+			{
+				Cam->SetWorldLocation(CamData.Location);
+				Cam->SetRelativeRotation(CamData.Rotation);
+				FViewportCameraState CS = Cam->GetCameraState();
+				CS.FOV = CamData.FOV;
+				CS.NearZ = CamData.NearClip;
+				CS.FarZ = CamData.FarClip;
+				Cam->SetCameraState(CS);
+			}
+			break;
+		}
+	}
+
+	CurrentLevelFilePath = ToProjectRelativePathUtf8(AbsolutePath);
+	FooterLogSystem.Push("Level loaded: " + FPaths::ToUtf8(AbsolutePath.stem().wstring()));
+	return true;
+}
+
+bool UEditorEngine::LoadLevelWithDialog()
+{
+	FString PickedFilePath;
+	if (!OpenLevelFileDialog(false, PickedFilePath))
+	{
+		return false;
+	}
+
+	return LoadLevelFromPath(PickedFilePath);
+}
+
+bool UEditorEngine::OpenAssetFolder()
+{
+	const std::wstring AssetDir = FPaths::RootDir() + L"Asset";
+	FPaths::CreateDir(AssetDir);
+	const HINSTANCE OpenResult = ShellExecuteW(nullptr, L"open", AssetDir.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+	return reinterpret_cast<INT_PTR>(OpenResult) > 32;
+}
+
+TArray<FString> UEditorEngine::GetActiveFooterLogMessages() const
+{
+	return FooterLogSystem.GetActiveMessages();
 }
 
 FViewportClient* UEditorEngine::ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const
