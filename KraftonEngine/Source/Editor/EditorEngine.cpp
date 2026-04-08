@@ -16,6 +16,7 @@
 #include "Component/TextRenderComponent.h"
 #include "Component/SceneComponent.h"
 #include "Engine/GameFramework/StaticMeshActor.h"
+#include "GameFramework/TestRotateActor.h"
 #include "Texture/Texture2D.h"
 
 #include <commdlg.h>
@@ -170,6 +171,18 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	RegisterPlaceableActor({ "Cube", "Basic", [](UWorld* W) {
 		AStaticMeshActor* A = W->SpawnActor<AStaticMeshActor>();
 		A->InitDefaultComponents("Data/BasicShape/Cube.OBJ");
+		return static_cast<AActor*>(A);
+	} });
+
+	RegisterPlaceableActor({ "Rotate Test (TickOn)", "Basic", [](UWorld* W) {
+		ATestRotateActor* A = W->SpawnActor<ATestRotateActor>();
+		A->InitializeTest(true);
+		return static_cast<AActor*>(A);
+	} });
+
+	RegisterPlaceableActor({ "Rotate Test (TickOff)", "Basic", [](UWorld* W) {
+		ATestRotateActor* A = W->SpawnActor<ATestRotateActor>();
+		A->InitializeTest(false);
 		return static_cast<AActor*>(A);
 	} });
 
