@@ -123,6 +123,8 @@ private:
 	EPIEControlMode PIEControlMode = EPIEControlMode::Possessed;
 	FViewport* PIEEntryViewport = nullptr;
 	FLevelEditorViewportClient* PIEEntryEditorViewportClient = nullptr;
+	bool bPIEEntryPrevShowGizmo = true;
+	bool bPIEEntryPrevShowGizmoValid = false;
 
 	TArray<FPlaceActorDesc> PlaceableActors;
 	FString CurrentLevelFilePath;

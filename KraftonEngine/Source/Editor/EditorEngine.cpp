@@ -361,6 +361,15 @@ void UEditorEngine::StartPIE()
 	PIEEntryEditorViewportClient = ActiveVC;
 	PIEEntryViewport = ActiveVC ? ActiveVC->GetViewport() : nullptr;
 	PIEControlMode = EPIEControlMode::Possessed;
+	if (PIEEntryEditorViewportClient)
+	{
+		bPIEEntryPrevShowGizmo = PIEEntryEditorViewportClient->GetRenderOptions().ShowFlags.bGizmo;
+		bPIEEntryPrevShowGizmoValid = true;
+	}
+	else
+	{
+		bPIEEntryPrevShowGizmoValid = false;
+	}
 
 	FWorldContext* Context = GetEditorWorldContext();
 	FWorldContext PIEWorldContext = Context->Duplicate();
@@ -413,6 +422,10 @@ void UEditorEngine::EndPIE()
 		}
 
 		// 2. ViewportClient 및 레이어 원상 복구
+		if (bPIEEntryPrevShowGizmoValid && PIEEntryEditorViewportClient)
+		{
+			PIEEntryEditorViewportClient->GetRenderOptions().ShowFlags.bGizmo = bPIEEntryPrevShowGizmo;
+		}
 		if (PIEEntryViewport)
 		{
 			SetViewportSubClientForWorldType(PIEEntryViewport, EWorldType::Editor);
@@ -440,6 +453,7 @@ void UEditorEngine::EndPIE()
 	PIEControlMode = EPIEControlMode::Possessed;
 	PIEEntryViewport = nullptr;
 	PIEEntryEditorViewportClient = nullptr;
+	bPIEEntryPrevShowGizmoValid = false;
 	ViewportLayout.EndPIEViewportMode();
 }
 
@@ -849,6 +863,7 @@ bool UEditorEngine::ApplyPIEControlMode(FViewport* InViewport, EPIEControlMode I
 
 	FViewportHostClient& Host = InputTargetHosts[InViewport];
 	EditorVC->SetWorld(GetWorld());
+	EditorVC->GetRenderOptions().ShowFlags.bGizmo = (InMode == EPIEControlMode::Ejected);
 	Host.RemoveLayerClient(EditorVC);
 	Host.RemoveLayerClient(PIEViewportClient);
 

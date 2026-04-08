@@ -237,6 +237,10 @@ bool UGameViewportClient::ProcessInput(FViewportInputContext& Context)
 	bHasInputContext = false;
 	DispatchDeltaTime = 1.0f / 60.0f;
 
+	if (Context.WasPressed(VK_LBUTTON) && !Context.bHovered)
+	{
+		bPIEInputArmed = false;
+	}
 	if (Context.WasPressed(VK_LBUTTON) && Context.bHovered)
 	{
 		bPIEInputArmed = true;
@@ -250,7 +254,7 @@ bool UGameViewportClient::ProcessInput(FViewportInputContext& Context)
 		EditorEngine
 		&& EditorEngine->IsPIEEnabled()
 		&& EditorEngine->GetPIEControlMode() == UEditorEngine::EPIEControlMode::Possessed;
-	const bool bInputOwnership = Context.bFocused || Context.bCaptured;
+	const bool bInputOwnership = Context.bFocused && (Context.bCaptured || Context.bRelativeMouseMode);
 
 	if (Controller)
 	{
@@ -275,7 +279,7 @@ bool UGameViewportClient::WantsRelativeMouseMode(const FViewportInputContext& Co
 		return false;
 	}
 
-	if (!Context.bFocused && !Context.bCaptured)
+	if (!Context.bFocused || (!Context.bCaptured && !Context.bRelativeMouseMode))
 	{
 		return false;
 	}
@@ -372,7 +376,7 @@ bool UGameViewportClient::HandlePlayerInput(float DeltaTime)
 		return false;
 	}
 
-	if (!InputContext.bFocused)
+	if (!InputContext.bFocused || (!InputContext.bCaptured && !InputContext.bRelativeMouseMode))
 	{
 		return false;
 	}

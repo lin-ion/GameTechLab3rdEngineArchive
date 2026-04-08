@@ -56,9 +56,21 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	if (!World) return;
 
 	// 뷰포트별 렌더 옵션 사용
-	const FViewportRenderOptions& Opts = VC->GetRenderOptions();
-	const FShowFlags& ShowFlags = Opts.ShowFlags;
-	EViewMode ViewMode = Opts.ViewMode;
+	FViewportRenderOptions EffectiveOpts = VC->GetRenderOptions();
+
+	const bool bPIEPossessedViewport =
+		Editor->IsPIEEnabled()
+		&& Editor->GetPIEControlMode() == UEditorEngine::EPIEControlMode::Possessed
+		&& VC == Editor->GetPIEEntryViewportClient();
+	if (bPIEPossessedViewport)
+	{
+		// PIE Possessed에서는 편집 디버그 오버레이를 숨긴다.
+		EffectiveOpts.ShowFlags.bGizmo = false;
+		EffectiveOpts.ShowFlags.bBoundingVolume = false;
+	}
+
+	const FShowFlags& ShowFlags = EffectiveOpts.ShowFlags;
+	EViewMode ViewMode = EffectiveOpts.ViewMode;
 
 	// 지연 리사이즈 적용 + 오프스크린 RT 바인딩
 	if (VP->ApplyPendingResize())
@@ -82,11 +94,13 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 		Camera->GetUpVector(),
 		Camera->IsOrthogonal(),
 		Camera->GetOrthoWidth());
-	ViewContext.SetRenderOptions(Opts);
+	ViewContext.SetRenderOptions(EffectiveOpts);
 	ViewContext.SetViewportInfo(VP);
 
 	// 2. RenderCommand(DefaultPass), Entry(Batcher)를 ERenderPass별로 수집
 	const TArray<AActor*>& SelectedActors = Editor->GetSelectionManager().GetSelectedActors();
+	const TArray<AActor*> EmptySelectedActors;
+	const TArray<AActor*>& EffectiveSelectedActors = bPIEPossessedViewport ? EmptySelectedActors : SelectedActors;
 	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
 		PersistentLevel->GetRenderProxy().GatherCandidates(ViewContext);
@@ -104,21 +118,21 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 	// Gizmo / Selected Actor는 컬링 결과와 무관하게 항상 렌더 후보로 유지한다.
 	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		PersistentLevel->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, true);
+		PersistentLevel->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, EffectiveSelectedActors, true);
 	}
 	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		ActiveLevel->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, SelectedActors, false);
+		ActiveLevel->GetRenderProxy().InjectAlwaysVisibleCandidates(ViewContext, EffectiveSelectedActors, false);
 	}
 
 	// 4. 컬링을 통과한 후보군만 RenderCommand를 ViewContext에 제출
 	if (ULevel* PersistentLevel = World->GetPersistentLevel())
 	{
-		PersistentLevel->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
+		PersistentLevel->GetRenderProxy().SubmitRenderCommands(ViewContext, EffectiveSelectedActors);
 	}
 	if (ULevel* ActiveLevel = World->GetActiveLevel())
 	{
-		ActiveLevel->GetRenderProxy().SubmitRenderCommands(ViewContext, SelectedActors);
+		ActiveLevel->GetRenderProxy().SubmitRenderCommands(ViewContext, EffectiveSelectedActors);
 	}
 	// 4-1. 에디터 오브젝트는 컬링 적용하지 않고 수집
 	ViewContext.CollectViewElements();

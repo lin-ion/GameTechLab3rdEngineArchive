@@ -697,6 +697,14 @@ void FEditorMainPanel::RenderShortcutOverlay()
 	{ "Backtick(`)", "Console Mode 순환" },
 	});
 
+	DrawShortcutSection("▼ PIE", "ShortcutTable_PIE", {
+		{ "Esc", "PIE 종료" },
+		{ "F8", "Possess / Eject 토글" },
+		{ "Shift + F1", "마우스 캡처 해제" },
+		{ "W / A / S / D", "PIE 플레이어 이동" },
+		{ "Mouse Move (captured)", "PIE 플레이어 카메라 회전" },
+	});
+
 	ImGui::Separator();
 	ImGui::TextUnformatted("참고: ImGui 입력창이 키보드를 잡고 있으면 일부 단축키는 동작하지 않을 수 있습니다.");
 
