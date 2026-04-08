@@ -44,7 +44,7 @@ void ULevel::DuplicateSubObjects()
 	{
 		for (UActorComponent* Comp : Actor->GetComponents())
 		{
-			auto PrimComp = Comp->As<UPrimitiveComponent>();
+			auto PrimComp = Cast<UPrimitiveComponent>(Comp);
 			if (PrimComp)
 			{
 				RenderProxy->AddProxy(PrimComp->GetProxy());

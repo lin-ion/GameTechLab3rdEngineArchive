@@ -112,9 +112,6 @@ public:
 
 	template<typename T>
 	bool IsA() const { return GetTypeInfo()->IsA(&T::s_TypeInfo); }
-	
-	template<typename T>
-	T* As() { return this->IsA<T>() ? static_cast<T*>(this) : nullptr; }
 
 	static const FTypeInfo s_TypeInfo;
 
