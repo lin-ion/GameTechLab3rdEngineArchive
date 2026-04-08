@@ -13,11 +13,14 @@ public:
 	EEditorViewportModeType GetMode() const;
 	bool CycleMode();
 
-	bool HandleCommandInput(float DeltaTime);
+	bool HandleViewportCommandInput(float DeltaTime);
 	bool HandleGizmoInput(float DeltaTime);
 	bool HandleSelectionInput(float DeltaTime);
 	bool HandleNavigationInput(float DeltaTime);
+	IEditorViewportTool* GetNavigationTool() const { return NavigationTool.get(); }
 	bool IsNavigationInputActiveNow() const;
+	void TickNavigationSmoothing(float DeltaTime);
+	void SyncNavigationFromCamera();
 	bool HasPendingIdPickRequest() const;
 	void GetPendingIdPickCoord(uint32& OutX, uint32& OutY) const;
 	bool HasPendingIdPickReadback() const;
@@ -28,8 +31,8 @@ public:
 	void ResetIdPickingState();
 	void ResetInputState();
 
-private:
 	FEditorViewportClient* Owner = nullptr;
 	std::unique_ptr<IEditorViewportMode> ActiveMode;
+	std::unique_ptr<IEditorViewportTool> ViewportCommandTool;
 	std::unique_ptr<IEditorViewportTool> NavigationTool;
 };

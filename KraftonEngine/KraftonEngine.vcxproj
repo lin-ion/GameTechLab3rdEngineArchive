@@ -208,6 +208,10 @@
     <ClCompile Include="Source\Editor\Gizmo\TransformGizmo.cpp" />
     <ClCompile Include="Source\Editor\Selection\SelectionManager.cpp" />
     <ClCompile Include="Source\Editor\Input\EditorViewportController.cpp" />
+    <ClCompile Include="Source\Editor\Input\EditorViewportCommandTool.cpp" />
+    <ClCompile Include="Source\Editor\Input\EditorGizmoTool.cpp" />
+    <ClCompile Include="Source\Editor\Input\EditorSelectionTool.cpp" />
+    <ClCompile Include="Source\Editor\Input\EditorNavigationTool.cpp" />
     <ClCompile Include="Source\Editor\Input\EditorViewportInputContexts.cpp" />
     <ClCompile Include="Source\Editor\Input\EditorViewportInputUtils.cpp" />
     <ClCompile Include="Source\Editor\Input\EditorViewportModes.cpp" />
@@ -323,7 +327,12 @@
     <ClInclude Include="Source\Editor\EditorRenderPipeline.h" />
     <ClInclude Include="Source\Editor\Gizmo\TransformGizmo.h" />
     <ClInclude Include="Source\Editor\Input\EditorViewportController.h" />
+    <ClInclude Include="Source\Editor\Input\EditorViewportCommandTool.h" />
+    <ClInclude Include="Source\Editor\Input\EditorGizmoTool.h" />
+    <ClInclude Include="Source\Editor\Input\EditorSelectionTool.h" />
+    <ClInclude Include="Source\Editor\Input\EditorNavigationTool.h" />
     <ClInclude Include="Source\Editor\Input\EditorViewportInputContexts.h" />
+    <ClInclude Include="Source\Editor\Input\EditorViewportInputMapping.h" />
     <ClInclude Include="Source\Editor\Input\EditorViewportInputUtils.h" />
     <ClInclude Include="Source\Editor\Input\EditorViewportModes.h" />
     <ClInclude Include="Source\Editor\Input\EditorViewportTools.h" />
@@ -370,6 +379,7 @@
     <ClInclude Include="Source\Engine\GameFramework\World.h" />
     <ClInclude Include="Source\Engine\GameFramework\WorldContext.h" />
     <ClInclude Include="Source\Engine\Input\CursorControl.h" />
+    <ClInclude Include="Source\Engine\Input\InputBinding.h" />
     <ClInclude Include="Source\Engine\Input\InputRouter.h" />
     <ClInclude Include="Source\Engine\Input\InputTypes.h" />
     <ClInclude Include="Source\Engine\Materials\Material.h" />
@@ -449,6 +459,7 @@
     <ClInclude Include="Source\Engine\Viewport\Viewport.h" />
     <ClInclude Include="Source\Engine\Viewport\ViewportClient.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerEngine.h" />
+    <ClInclude Include="Source\ObjViewer\ObjViewerInputMapping.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerPanel.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerRenderPipeline.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerViewportController.h" />

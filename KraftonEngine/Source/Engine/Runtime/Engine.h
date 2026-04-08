@@ -85,6 +85,7 @@ public:
 		const std::function<bool(FRect&)>& InRectProvider);
 
 protected:
+	virtual FViewportClient* ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const;
 	void DispatchInput();
 	void Render(float DeltaTime);
 	void SetRenderPipeline(std::unique_ptr<IRenderPipeline> InPipeline);

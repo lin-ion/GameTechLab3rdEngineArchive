@@ -2,8 +2,53 @@
 
 #include <cmath>
 
-#include "Editor/UI/EditorConsoleWidget.h"
 #include "Engine/Input/CursorControl.h"
+
+namespace
+{
+void PushKeyEvent(TArray<FInputEvent>& Events, EInputEventType Type, int32 Key, const POINT& MouseScreenPos)
+{
+    FInputEvent Event;
+    Event.Type = Type;
+    Event.Key = Key;
+    Event.MouseScreenPos = MouseScreenPos;
+    Events.push_back(Event);
+}
+
+void PushWheelEvent(TArray<FInputEvent>& Events, float WheelNotches, const POINT& MouseScreenPos)
+{
+    if (WheelNotches == 0.0f)
+    {
+        return;
+    }
+
+    FInputEvent Event;
+    Event.Type = EInputEventType::WheelScrolled;
+    Event.WheelNotches = WheelNotches;
+    Event.MouseScreenPos = MouseScreenPos;
+    Events.push_back(Event);
+}
+
+void PushDragEvent(
+    TArray<FInputEvent>& Events,
+    EInputEventType Type,
+    EPointerButton Button,
+    const POINT& MouseScreenPos,
+    const POINT& MouseDelta,
+    const POINT& DragDelta)
+{
+    FInputEvent Event;
+    Event.Type = Type;
+    Event.PointerButton = Button;
+    Event.MouseScreenPos = MouseScreenPos;
+    Event.MouseDelta = MouseDelta;
+    if (DragDelta.x != 0 || DragDelta.y != 0)
+    {
+        Event.MouseDelta = DragDelta;
+    }
+    Events.push_back(Event);
+}
+}
 
 void InputSystem::BeginRelativeMouseMode(HWND InOwnerWindow, POINT InRestoreScreenPos)
 {
@@ -71,6 +116,8 @@ void InputSystem::EndRelativeMouseMode()
 
 void InputSystem::Tick()
 {
+    CurrentEvents.clear();
+
     const int32 RawDeltaX = PendingRawDeltaX;
     const int32 RawDeltaY = PendingRawDeltaY;
     PendingRawDeltaX = 0;
@@ -199,18 +246,69 @@ void InputSystem::Tick()
     for (int i = 0; i < 256; ++i)
     {
         CurrentFrame.KeyDown[i] = CurrentStates[i];
-        CurrentFrame.KeyPressed[i] = CurrentStates[i] && !PrevStates[i];
-        CurrentFrame.KeyReleased[i] = !CurrentStates[i] && PrevStates[i];
     }
 
-    CurrentFrame.bLeftDragStarted = bLeftDragJustStarted;
     CurrentFrame.bLeftDragging = bLeftDragging;
-    CurrentFrame.bLeftDragEnded = bLeftDragJustEnded;
-    CurrentFrame.bRightDragStarted = bRightDragJustStarted;
     CurrentFrame.bRightDragging = bRightDragging;
-    CurrentFrame.bRightDragEnded = bRightDragJustEnded;
     CurrentFrame.LeftDragVector = GetLeftDragVector();
     CurrentFrame.RightDragVector = GetRightDragVector();
+
+    for (int i = 0; i < 256; ++i)
+    {
+        const bool bPressed = CurrentStates[i] && !PrevStates[i];
+        const bool bReleased = !CurrentStates[i] && PrevStates[i];
+        if (bPressed)
+        {
+            PushKeyEvent(CurrentEvents, EInputEventType::KeyPressed, i, CurrentFrame.MouseScreenPos);
+        }
+        if (bReleased)
+        {
+            PushKeyEvent(CurrentEvents, EInputEventType::KeyReleased, i, CurrentFrame.MouseScreenPos);
+        }
+    }
+
+    PushWheelEvent(CurrentEvents, CurrentFrame.WheelNotches, CurrentFrame.MouseScreenPos);
+
+    if (bLeftDragJustStarted)
+    {
+        PushDragEvent(
+            CurrentEvents,
+            EInputEventType::PointerDragStarted,
+            EPointerButton::Left,
+            CurrentFrame.MouseScreenPos,
+            CurrentFrame.MouseDelta,
+            CurrentFrame.LeftDragVector);
+    }
+    if (bLeftDragJustEnded)
+    {
+        PushDragEvent(
+            CurrentEvents,
+            EInputEventType::PointerDragEnded,
+            EPointerButton::Left,
+            CurrentFrame.MouseScreenPos,
+            CurrentFrame.MouseDelta,
+            CurrentFrame.LeftDragVector);
+    }
+    if (bRightDragJustStarted)
+    {
+        PushDragEvent(
+            CurrentEvents,
+            EInputEventType::PointerDragStarted,
+            EPointerButton::Right,
+            CurrentFrame.MouseScreenPos,
+            CurrentFrame.MouseDelta,
+            CurrentFrame.RightDragVector);
+    }
+    if (bRightDragJustEnded)
+    {
+        PushDragEvent(
+            CurrentEvents,
+            EInputEventType::PointerDragEnded,
+            EPointerButton::Right,
+            CurrentFrame.MouseScreenPos,
+            CurrentFrame.MouseDelta,
+            CurrentFrame.RightDragVector);
+    }
 }
 
 void InputSystem::FilterDragThreshold(

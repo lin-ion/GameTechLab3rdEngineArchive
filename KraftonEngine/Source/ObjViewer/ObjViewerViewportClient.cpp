@@ -1,5 +1,6 @@
 ﻿#include "ObjViewer/ObjViewerViewportClient.h"
 
+#include "ObjViewer/ObjViewerInputMapping.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Editor/Viewport/ViewportCamera.h"
 #include "UI/SWindow.h"
@@ -155,7 +156,8 @@ bool FObjViewerViewportClient::WantsRelativeMouseMode(const FViewportInputContex
 		return false;
 	}
 
-	return Context.Frame.IsDown(VK_RBUTTON) || Context.Frame.IsDown(VK_MBUTTON);
+	return ObjViewerInputMapping::IsTriggered(Context, ObjViewerInputMapping::EObjViewerAction::LookRightDown)
+		|| ObjViewerInputMapping::IsTriggered(Context, ObjViewerInputMapping::EObjViewerAction::PanMiddleDown);
 }
 
 void FObjViewerViewportClient::EnsureInputController()

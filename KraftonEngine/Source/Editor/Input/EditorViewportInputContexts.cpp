@@ -1,23 +1,24 @@
 #include "Editor/Input/EditorViewportInputContexts.h"
 
-#include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/Viewport/EditorViewportClient.h"
 
-FEditorCommandInputContext::FEditorCommandInputContext(FEditorViewportClient* InOwner, float* InDeltaTime)
+FViewportCommandContext::FViewportCommandContext(FEditorViewportClient* InOwner, float* InDeltaTime)
 	: Owner(InOwner), DeltaTimePtr(InDeltaTime)
 {
 }
 
-bool FEditorCommandInputContext::HandleInput(FViewportInputContext& Context)
+bool FViewportCommandContext::HandleInput(FViewportInputContext& Context)
 {
-	(void)Context;
 	if (!Owner || !DeltaTimePtr)
 	{
 		return false;
 	}
 
+	// Top-priority viewport-global command stage.
+	// It should consume only global shortcut actions.
+	Owner->InputContext = Context;
 	Owner->EnsureInputController();
-	return Owner->InputController ? Owner->InputController->HandleCommandInput(*DeltaTimePtr) : false;
+	return Owner->InputController ? Owner->InputController->HandleViewportCommandInput(*DeltaTimePtr) : false;
 }
 
 FEditorGizmoInputContext::FEditorGizmoInputContext(FEditorViewportClient* InOwner, float* InDeltaTime)
@@ -27,12 +28,12 @@ FEditorGizmoInputContext::FEditorGizmoInputContext(FEditorViewportClient* InOwne
 
 bool FEditorGizmoInputContext::HandleInput(FViewportInputContext& Context)
 {
-	(void)Context;
 	if (!Owner || !DeltaTimePtr)
 	{
 		return false;
 	}
 
+	Owner->InputContext = Context;
 	Owner->EnsureInputController();
 	return Owner->InputController ? Owner->InputController->HandleGizmoInput(*DeltaTimePtr) : false;
 }
@@ -44,12 +45,12 @@ FEditorSelectionInputContext::FEditorSelectionInputContext(FEditorViewportClient
 
 bool FEditorSelectionInputContext::HandleInput(FViewportInputContext& Context)
 {
-	(void)Context;
 	if (!Owner || !DeltaTimePtr)
 	{
 		return false;
 	}
 
+	Owner->InputContext = Context;
 	Owner->EnsureInputController();
 	return Owner->InputController ? Owner->InputController->HandleSelectionInput(*DeltaTimePtr) : false;
 }
@@ -66,6 +67,7 @@ bool FEditorNavigationInputContext::HandleInput(FViewportInputContext& Context)
 		return false;
 	}
 
+	Owner->InputContext = Context;
 	Owner->EnsureInputController();
 	return Owner->InputController ? Owner->InputController->HandleNavigationInput(*DeltaTimePtr) : false;
 }

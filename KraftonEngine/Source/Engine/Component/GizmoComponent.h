@@ -63,6 +63,8 @@ public:
 	float ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f);
 	void ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f);
 	void SetWorldSpace(bool bWorldSpace);
+	bool IsWorldSpace() const { return bIsWorldSpace; }
+	void ToggleWorldSpace();
 
 
 	//UActorComponent Override

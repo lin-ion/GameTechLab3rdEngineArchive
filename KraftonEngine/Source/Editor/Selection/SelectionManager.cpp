@@ -51,6 +51,21 @@ void FSelectionManager::Select(AActor* Actor)
 	SyncGizmo();
 }
 
+void FSelectionManager::AddSelect(AActor* Actor)
+{
+	if (!Actor)
+	{
+		return;
+	}
+
+	if (!IsSelected(Actor))
+	{
+		SelectedActors.push_back(Actor);
+	}
+	PrimarySelection = Actor;
+	SyncGizmo();
+}
+
 void FSelectionManager::SelectRange(AActor* ClickedActor, const TArray<AActor*>& ActorList)
 {
 	if (!ClickedActor) return;

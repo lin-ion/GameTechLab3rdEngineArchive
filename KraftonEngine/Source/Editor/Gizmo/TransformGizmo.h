@@ -25,6 +25,9 @@ public:
 	void SetRotateMode();
 	void SetScaleMode();
 	void SetNextMode();
+	void SetWorldSpace(bool bWorldSpace);
+	bool IsWorldSpace() const;
+	void ToggleCoordinateSpace();
 
 	void SetTarget(AActor* NewTarget);
 	void SetSelectedActors(const TArray<AActor*>* InSelectedActors);

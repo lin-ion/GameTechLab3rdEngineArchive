@@ -101,7 +101,19 @@ void UEngine::RegisterInputTarget(
 		return;
 	}
 
-	InputRouter->RegisterTarget(InViewport, InClient, InDomain, InRectProvider);
+	FViewportClient* RoutedClient = ResolveInputTargetClient(InViewport, InClient);
+	if (!RoutedClient)
+	{
+		return;
+	}
+
+	InputRouter->RegisterTarget(InViewport, RoutedClient, InDomain, InRectProvider);
+}
+
+FViewportClient* UEngine::ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const
+{
+	(void)InViewport;
+	return InClient;
 }
 
 void UEngine::DispatchInput()
