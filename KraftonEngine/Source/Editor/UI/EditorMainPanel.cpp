@@ -241,7 +241,11 @@ void FEditorMainPanel::RenderEditorToolbar()
 	if (ImGui::Begin("##EditorToolbar", nullptr, BarFlags))
 	{
 		const bool bPIEEnabled = EditorEngine ? EditorEngine->IsPIEEnabled() : false;
-		const bool bAddActorEnabled = !bPIEEnabled;
+		const bool bPIEEjectedMode =
+			bPIEEnabled
+			&& EditorEngine
+			&& EditorEngine->GetPIEControlMode() == UEditorEngine::EPIEControlMode::Ejected;
+		const bool bAddActorEnabled = !bPIEEnabled || bPIEEjectedMode;
 		const bool bStartEnabled = !bPIEEnabled;
 		const bool bStopEnabled = bPIEEnabled;
 

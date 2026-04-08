@@ -250,10 +250,7 @@ bool UGameViewportClient::ProcessInput(FViewportInputContext& Context)
 		EditorEngine
 		&& EditorEngine->IsPIEEnabled()
 		&& EditorEngine->GetPIEControlMode() == UEditorEngine::EPIEControlMode::Possessed;
-	const bool bInputOwnership =
-		Context.bFocused
-		|| Context.bCaptured
-		|| Context.bRelativeMouseMode;
+	const bool bInputOwnership = Context.bFocused || Context.bCaptured;
 
 	if (Controller)
 	{
@@ -278,7 +275,7 @@ bool UGameViewportClient::WantsRelativeMouseMode(const FViewportInputContext& Co
 		return false;
 	}
 
-	if (!Context.bFocused && !Context.bCaptured && !Context.bRelativeMouseMode)
+	if (!Context.bFocused && !Context.bCaptured)
 	{
 		return false;
 	}
@@ -371,6 +368,11 @@ bool UGameViewportClient::HandlePlayerInput(float DeltaTime)
 
 	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
 	if (!EditorEngine || EditorEngine->GetPIEControlMode() != UEditorEngine::EPIEControlMode::Possessed)
+	{
+		return false;
+	}
+
+	if (!InputContext.bFocused)
 	{
 		return false;
 	}
@@ -537,7 +539,8 @@ void UGameViewportClient::EnsurePIEPlayer()
 		PIEPlayerCamera->OnResize(static_cast<int32>(Viewport->GetWidth()), static_cast<int32>(Viewport->GetHeight()));
 	}
 
-	const FVector SpawnLocation = EditorEngine->GetCamera() ? EditorEngine->GetCamera()->GetWorldLocation() : FVector(0.0f, 0.0f, 0.0f);
+	FVector SpawnLocation = EditorEngine->GetCamera() ? EditorEngine->GetCamera()->GetWorldLocation() : FVector(0.0f, 0.0f, 0.0f);
+	SpawnLocation.Z *= 0.5f;
 	PIEPlayerActor->SetActorLocation(SpawnLocation);
 	PIECameraYaw = EditorEngine->GetCamera() ? EditorEngine->GetCamera()->GetRelativeRotation().Yaw : 0.0f;
 	PIECameraPitch = -20.0f;

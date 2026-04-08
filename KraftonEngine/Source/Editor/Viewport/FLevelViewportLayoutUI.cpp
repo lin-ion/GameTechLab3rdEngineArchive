@@ -466,7 +466,10 @@ void FLevelViewportLayoutUI::RenderViewportUI(FLevelViewportLayout& Layout, floa
 				}
 			}
 
-			if (!Layout.bPIEViewportMode)
+			if (!Layout.bPIEViewportMode
+				|| (Layout.Editor
+					&& Layout.Editor->IsPIEEnabled()
+					&& Layout.Editor->GetPIEControlMode() == UEditorEngine::EPIEControlMode::Ejected))
 			{
 				constexpr float RightClickPopupThresholdPx = 20.0f;
 				const float RightClickPopupThresholdSq = RightClickPopupThresholdPx * RightClickPopupThresholdPx;
@@ -532,7 +535,10 @@ void FLevelViewportLayoutUI::RenderViewportUI(FLevelViewportLayout& Layout, floa
 			}
 		}
 
-		if (!Layout.bPIEViewportMode)
+		if (!Layout.bPIEViewportMode
+			|| (Layout.Editor
+				&& Layout.Editor->IsPIEEnabled()
+				&& Layout.Editor->GetPIEControlMode() == UEditorEngine::EPIEControlMode::Ejected))
 		{
 			for (int32 i = 0; i < Layout.ActiveSlotCount; ++i)
 			{
