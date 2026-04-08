@@ -1,0 +1,71 @@
+#include "Editor/Input/EditorViewportInputContexts.h"
+
+#include "Editor/UI/EditorConsoleWidget.h"
+#include "Editor/Viewport/EditorViewportClient.h"
+
+FEditorCommandInputContext::FEditorCommandInputContext(FEditorViewportClient* InOwner, float* InDeltaTime)
+	: Owner(InOwner), DeltaTimePtr(InDeltaTime)
+{
+}
+
+bool FEditorCommandInputContext::HandleInput(FViewportInputContext& Context)
+{
+	(void)Context;
+	if (!Owner || !DeltaTimePtr)
+	{
+		return false;
+	}
+
+	Owner->EnsureInputController();
+	return Owner->InputController ? Owner->InputController->HandleCommandInput(*DeltaTimePtr) : false;
+}
+
+FEditorGizmoInputContext::FEditorGizmoInputContext(FEditorViewportClient* InOwner, float* InDeltaTime)
+	: Owner(InOwner), DeltaTimePtr(InDeltaTime)
+{
+}
+
+bool FEditorGizmoInputContext::HandleInput(FViewportInputContext& Context)
+{
+	(void)Context;
+	if (!Owner || !DeltaTimePtr)
+	{
+		return false;
+	}
+
+	Owner->EnsureInputController();
+	return Owner->InputController ? Owner->InputController->HandleGizmoInput(*DeltaTimePtr) : false;
+}
+
+FEditorSelectionInputContext::FEditorSelectionInputContext(FEditorViewportClient* InOwner, float* InDeltaTime)
+	: Owner(InOwner), DeltaTimePtr(InDeltaTime)
+{
+}
+
+bool FEditorSelectionInputContext::HandleInput(FViewportInputContext& Context)
+{
+	(void)Context;
+	if (!Owner || !DeltaTimePtr)
+	{
+		return false;
+	}
+
+	Owner->EnsureInputController();
+	return Owner->InputController ? Owner->InputController->HandleSelectionInput(*DeltaTimePtr) : false;
+}
+
+FEditorNavigationInputContext::FEditorNavigationInputContext(FEditorViewportClient* InOwner, float* InDeltaTime)
+	: Owner(InOwner), DeltaTimePtr(InDeltaTime)
+{
+}
+
+bool FEditorNavigationInputContext::HandleInput(FViewportInputContext& Context)
+{
+	if (!Owner || !DeltaTimePtr)
+	{
+		return false;
+	}
+
+	Owner->EnsureInputController();
+	return Owner->InputController ? Owner->InputController->HandleNavigationInput(*DeltaTimePtr) : false;
+}

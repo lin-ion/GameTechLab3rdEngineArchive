@@ -1,9 +1,9 @@
 ﻿#include "Editor/UI/EditorPropertyWidget.h"
 
 #include "Editor/EditorEngine.h"
+#include "Editor/Gizmo/TransformGizmo.h"
 
 #include "ImGui/imgui.h"
-#include "Component/GizmoComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/SceneComponent.h"

@@ -30,14 +30,6 @@ bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 			GEngine->Tick(Timer.GetDeltaTime());
 		});
 
-	Application.SetOnResizedCallback([](unsigned int Width, unsigned int Height)
-		{
-			if (GEngine)
-			{
-				GEngine->OnWindowResized(Width, Height);
-			}
-		});
-
 	CreateEngine();
 	GEngine->Init(&Application.GetWindow());
 	GEngine->SetTimer(&Timer);

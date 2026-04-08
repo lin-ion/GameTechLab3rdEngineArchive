@@ -13,6 +13,9 @@
     <Filter Include="Source\Editor">
       <UniqueIdentifier>{879fdc11-4e44-c448-2bbf-5fd281dc244f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\Gizmo">
+      <UniqueIdentifier>{6d7b0931-b180-4fc2-b968-ef53a5ccbe8a}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Selection">
       <UniqueIdentifier>{024578ed-1bd0-0e0e-b5f9-209501f28d5c}</UniqueIdentifier>
     </Filter>
@@ -27,6 +30,9 @@
     </Filter>
     <Filter Include="Source\Editor\Viewport">
       <UniqueIdentifier>{42b90bf1-e993-e912-0e50-58d7095d5e8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Input">
+      <UniqueIdentifier>{412faebd-a092-4f8f-b6d8-a9a0f37f7e73}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine">
       <UniqueIdentifier>{d0b56061-5521-9f21-3d03-1e11f47e99a7}</UniqueIdentifier>
@@ -164,6 +170,24 @@
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp">
       <Filter>Source\Editor</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Gizmo\TransformGizmo.cpp">
+      <Filter>Source\Editor\Gizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorViewportController.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorViewportIdPickCoordinator.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorViewportInputContexts.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorViewportModes.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorViewportTools.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Selection\SelectionManager.cpp">
       <Filter>Source\Editor\Selection</Filter>
     </ClCompile>
@@ -253,6 +277,12 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\GameFramework\World.cpp">
       <Filter>Source\Engine\GameFramework</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
+      <Filter>Source\Engine\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputRouter.cpp">
+      <Filter>Source\Engine\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
       <Filter>Source\Engine\Input</Filter>
@@ -440,6 +470,15 @@
     <ClCompile Include="Source\ObjViewer\ObjViewerRenderPipeline.cpp">
       <Filter>Source\ObjViewer</Filter>
     </ClCompile>
+    <ClCompile Include="Source\ObjViewer\ObjViewerViewportController.cpp">
+      <Filter>Source\ObjViewer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ObjViewer\ObjViewerViewportModes.cpp">
+      <Filter>Source\ObjViewer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ObjViewer\ObjViewerViewportTools.cpp">
+      <Filter>Source\ObjViewer</Filter>
+    </ClCompile>
     <ClCompile Include="Source\ObjViewer\ObjViewerViewportClient.cpp">
       <Filter>Source\ObjViewer</Filter>
     </ClCompile>
@@ -472,6 +511,24 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\EditorRenderPipeline.h">
       <Filter>Source\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Gizmo\TransformGizmo.h">
+      <Filter>Source\Editor\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorViewportController.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorViewportIdPickCoordinator.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorViewportInputContexts.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorViewportModes.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorViewportTools.h">
+      <Filter>Source\Editor\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Selection\PickingService.h">
       <Filter>Source\Editor\Selection</Filter>
@@ -600,6 +657,12 @@
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputRouter.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputTypes.h">
       <Filter>Source\Engine\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Materials\Material.h">
@@ -837,6 +900,15 @@
       <Filter>Source\ObjViewer</Filter>
     </ClInclude>
     <ClInclude Include="Source\ObjViewer\ObjViewerRenderPipeline.h">
+      <Filter>Source\ObjViewer</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ObjViewer\ObjViewerViewportController.h">
+      <Filter>Source\ObjViewer</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ObjViewer\ObjViewerViewportModes.h">
+      <Filter>Source\ObjViewer</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ObjViewer\ObjViewerViewportTools.h">
       <Filter>Source\ObjViewer</Filter>
     </ClInclude>
     <ClInclude Include="Source\ObjViewer\ObjViewerViewportClient.h">

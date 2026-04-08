@@ -15,6 +15,8 @@ public:
 	void Release();
 	void Render(float DeltaTime);
 	void Update();
+	bool IsCapturingMouse() const { return bWantCaptureMouse; }
+	bool IsCapturingKeyboard() const { return bWantCaptureKeyboard; }
 
 private:
 	void RenderMeshList();
@@ -29,4 +31,7 @@ private:
 	int32 SelectedObjIndex = -1;
 	bool bShowImportPopup = false;
 	FImportOptions PendingImportOptions;
+	bool bWantCaptureMouse = false;
+	bool bWantCaptureKeyboard = false;
+	bool bPreviewViewportHovered = false;
 };

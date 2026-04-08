@@ -2,7 +2,6 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/LevelSaveManager.h"
-#include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Level.h"
 #include "Editor/EditorRenderPipeline.h"
@@ -71,12 +70,48 @@ void UEditorEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 void UEditorEngine::Tick(float DeltaTime)
 {
+	MainPanel.Update();
+	SetImGuiInputCapture(MainPanel.IsCapturingMouse(), MainPanel.IsCapturingKeyboard());
+
+	ClearInputTargets();
+	for (FLevelEditorViewportClient* VC : ViewportLayout.GetLevelViewportClients())
+	{
+		if (!VC)
+		{
+			continue;
+		}
+
+		FViewport* VP = VC->GetViewport();
+		if (!VP)
+		{
+			continue;
+		}
+
+		RegisterInputTarget(
+			VP,
+			VC,
+			EInputRouteDomain::Editor,
+			[VC](FRect& OutRect)
+			{
+				const FRect& R = VC->GetViewportScreenRect();
+				if (R.Width <= 0.0f || R.Height <= 0.0f)
+				{
+					return false;
+				}
+				OutRect = R;
+				return true;
+			});
+	}
+
+	DispatchInput();
+
 	for (FEditorViewportClient* VC : ViewportLayout.GetAllViewportClients())
 	{
 		VC->Tick(DeltaTime);
 	}
-	MainPanel.Update();
-	UEngine::Tick(DeltaTime);
+
+	WorldTick(DeltaTime);
+	Render(DeltaTime);
 }
 
 FViewportCamera* UEditorEngine::GetCamera() const

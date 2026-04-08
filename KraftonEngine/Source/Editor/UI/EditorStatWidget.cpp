@@ -176,67 +176,15 @@ void FEditorStatWidget::RenderPickingDetail()
 	if (!ImGui::CollapsingHeader("Picking Detail"))
 		return;
 
-	auto ShowStat = [](const char* Label, const char* StatName)
-	{
-		FStatEntry Entry = {};
-		if (!FStatManager::Get().GetStat(StatName, Entry))
-		{
-			ImGui::Text("[%s]  Last: %.8f ms  Avg: %.8f ms  Total: %.8f ms  Count: %llu",
-				Label, 0.0, 0.0, 0.0, 0ull);
-			return;
-		}
-
-		const double LastMs = Entry.LastTime * 1000.0;
-		const double AvgMs = Entry.GetAverageTime() * 1000.0;
-		const double TotalMs = Entry.TotalTime * 1000.0;
-		ImGui::Text("[%s]  Last: %.8f ms  Avg: %.8f ms  Total: %.8f ms  Count: %llu",
-			Label, LastMs, AvgMs, TotalMs,
-			static_cast<unsigned long long>(Entry.Count));
-	};
-
-	auto ShowSumStat = [](const char* Label, const char* StatA, const char* StatB)
-	{
-		FStatEntry A = {};
-		FStatEntry B = {};
-		FStatManager::Get().GetStat(StatA, A);
-		FStatManager::Get().GetStat(StatB, B);
-
-		const double LastMs = (A.LastTime + B.LastTime) * 1000.0;
-		const double AvgMs = (A.GetAverageTime() + B.GetAverageTime()) * 1000.0;
-		const double TotalMs = (A.TotalTime + B.TotalTime) * 1000.0;
-		const uint64 Count = (A.Count > B.Count) ? A.Count : B.Count;
-
-		ImGui::Text("[%s]  Last: %.8f ms  Avg: %.8f ms  Total: %.8f ms  Count: %llu",
-			Label, LastMs, AvgMs, TotalMs, static_cast<unsigned long long>(Count));
-	};
-
-	ImGui::SeparatorText("UX Metric (Click -> Final Selection)");
-	ShowStat("Click E2E", "Picking.Click.E2E");
-
 	ImGui::SeparatorText("Algorithm Metric (Unified Core)");
 	if (EditorEngine && EditorEngine->GetPickingMode() == EPickingMode::IDBuffer)
 	{
-		ShowStat("Pick Core (ID Algorithm)", "Picking.ID.Algorithm");
+		ImGui::TextUnformatted("[Pick Core] IDBuffer mode");
 	}
 	else
 	{
-		ShowSumStat("Pick Core (Ray: Broad+Narrow)", "Picking.Ray.Broad", "Picking.Ray.Narrow");
+		ImGui::TextUnformatted("[Pick Core] Ray mode");
 	}
-
-	ImGui::SeparatorText("Algorithm Metric (Detail)");
-	ShowSumStat("Ray Core (Broad+Narrow)", "Picking.Ray.Broad", "Picking.Ray.Narrow");
-	ShowStat("Ray Broad", "Picking.Ray.Broad");
-	ShowStat("Ray Broad Query", "Picking.Ray.Broad.Query");
-	ShowStat("Ray Broad Rebuild", "Picking.Ray.Broad.Rebuild");
-	ShowStat("Ray Broad Traversal", "Picking.Ray.Broad.Traversal");
-	ShowStat("Ray Broad Traversal (Defer)", "Picking.Ray.Broad.Traversal.DeferBypass");
-	ShowStat("Ray Broad Traversal (Linear)", "Picking.Ray.Broad.Traversal.VisibleLinear");
-	ShowStat("Ray Broad Traversal (BVH)", "Picking.Ray.Broad.Traversal.BVH");
-	ShowStat("Ray Broad Filter", "Picking.Ray.Broad.Filter");
-	ShowStat("Ray Narrow", "Picking.Ray.Narrow");
-	ShowStat("ID Algorithm (Click Fetch)", "Picking.ID.Algorithm");
-	ShowStat("ID Fetch (Click)", "Picking.ID.Fetch.Click");
-	ShowStat("ID Wait (Stall Only)", "Picking.ID.Wait.Click");
 
 	if (EditorEngine)
 	{

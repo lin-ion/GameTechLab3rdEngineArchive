@@ -9,7 +9,7 @@
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Selection/SelectionManager.h"
 
-class UGizmoComponent;
+class FTransformGizmo;
 class FLevelEditorViewportClient;
 class FEditorViewportClient;
 class FOverlayStatSystem;
@@ -30,7 +30,7 @@ public:
 	void OnWindowResized(uint32 Width, uint32 Height) override;
 
 	// Editor-specific API
-	UGizmoComponent* GetGizmo() const { return SelectionManager.GetGizmo(); }
+	FTransformGizmo* GetGizmo() const { return SelectionManager.GetGizmo(); }
 	FViewportCamera* GetCamera() const;
 
 	void ClearWorlds();

@@ -7,7 +7,6 @@
 #include "GameFramework/WorldContext.h"
 
 #include "ImGui/imgui.h"
-#include "Component/GizmoComponent.h"
 #include "Serialization/LevelSaveManager.h"
 
 #include <filesystem>
@@ -159,7 +158,6 @@ void FEditorLevelWidget::Render(float DeltaTime)
 							CS.NearZ = CamData.NearClip;
 							CS.FarZ  = CamData.FarClip;
 							Cam->SetCameraState(CS);
-							VC->InvalidateIdBufferCache();
 						}
 						break;
 					}

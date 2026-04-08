@@ -1,9 +1,11 @@
 #include "Engine/Runtime/WindowsApplication.h"
 #include "Engine/Runtime/resource.h"
+#include "Engine/Input/CursorControl.h"
+#include "Engine/Input/InputSystem.h"
+#include "Engine/Runtime/Engine.h"
 
 #include <windowsx.h>
-
-#include "Engine/Input/InputSystem.h"
+#include <vector>
 
 // ImGui Win32 메시지 핸들러
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam);
@@ -29,6 +31,50 @@ LRESULT CALLBACK FWindowsApplication::StaticWndProc(HWND hWnd, unsigned int Msg,
 
 LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam)
 {
+	if (Msg == WM_INPUT)
+	{
+		UINT RawInputSize = 0;
+		if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &RawInputSize, sizeof(RAWINPUTHEADER)) == 0
+			&& RawInputSize > 0)
+		{
+			std::vector<BYTE> RawInputBuffer;
+			RawInputBuffer.resize(RawInputSize);
+			if (GetRawInputData(
+				reinterpret_cast<HRAWINPUT>(lParam),
+				RID_INPUT,
+				RawInputBuffer.data(),
+				&RawInputSize,
+				sizeof(RAWINPUTHEADER)) == RawInputSize)
+			{
+				const RAWINPUT* RawInput = reinterpret_cast<const RAWINPUT*>(RawInputBuffer.data());
+				if (RawInput && RawInput->header.dwType == RIM_TYPEMOUSE)
+				{
+					const int32 DeltaX = static_cast<int32>(RawInput->data.mouse.lLastX);
+					const int32 DeltaY = static_cast<int32>(RawInput->data.mouse.lLastY);
+					if (DeltaX != 0 || DeltaY != 0)
+					{
+						InputSystem::Get().AddRawMouseDelta(DeltaX, DeltaY);
+					}
+				}
+			}
+		}
+	}
+
+	if (Msg == WM_SETCURSOR)
+	{
+		const FCursorControlState CursorState = FCursorControl::GetState();
+		if (CursorState.bHideInClient && CursorState.OwnerWindow == hWnd)
+		{
+			FCursorControl::Apply();
+			return TRUE;
+		}
+	}
+
+	if (Msg == WM_MOUSEWHEEL)
+	{
+		InputSystem::Get().AddScrollDelta(GET_WHEEL_DELTA_WPARAM(wParam));
+	}
+
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, Msg, wParam, lParam))
 	{
 		return true;
@@ -40,7 +86,6 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 		PostQuitMessage(0);
 		return 0;
 	case WM_MOUSEWHEEL:
-		InputSystem::Get().AddScrollDelta(GET_WHEEL_DELTA_WPARAM(wParam));
 		return 0;
 	case WM_SIZE:
 		if (wParam != SIZE_MINIMIZED)
@@ -48,9 +93,9 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 			unsigned int Width = LOWORD(lParam);
 			unsigned int Height = HIWORD(lParam);
 			Window.OnResized(Width, Height);
-			if (OnResizedCallback)
+			if (GEngine)
 			{
-				OnResizedCallback(Width, Height);
+				GEngine->OnWindowResized(Width, Height);
 			}
 		}
 		return 0;
@@ -105,6 +150,14 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 	}
 
 	Window.Initialize(HWindow);
+
+	RAWINPUTDEVICE RawMouseDevice = {};
+	RawMouseDevice.usUsagePage = 0x01;
+	RawMouseDevice.usUsage = 0x02;
+	RawMouseDevice.dwFlags = RIDEV_INPUTSINK;
+	RawMouseDevice.hwndTarget = HWindow;
+	RegisterRawInputDevices(&RawMouseDevice, 1, sizeof(RAWINPUTDEVICE));
+
 	return true;
 }
 
@@ -122,6 +175,8 @@ void FWindowsApplication::PumpMessages()
 			break;
 		}
 	}
+
+	FCursorControl::Apply();
 }
 
 void FWindowsApplication::Destroy()

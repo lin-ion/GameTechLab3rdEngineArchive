@@ -1,13 +1,61 @@
 ﻿#include "ObjViewer/ObjViewerViewportClient.h"
 
-#include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Editor/Viewport/ViewportCamera.h"
+#include "UI/SWindow.h"
 #include "Viewport/Viewport.h"
 #include "Math/MathUtils.h"
 #include "ImGui/imgui.h"
 
 #include <cmath>
+
+class FObjViewerCommandInputContext final : public IInputContext
+{
+public:
+	FObjViewerCommandInputContext(FObjViewerViewportClient* InOwner, float* InDeltaTime)
+		: Owner(InOwner), DeltaTimePtr(InDeltaTime)
+	{
+	}
+
+	bool HandleInput(FViewportInputContext& Context) override
+	{
+		(void)Context;
+		if (!Owner || !DeltaTimePtr)
+		{
+			return false;
+		}
+		Owner->EnsureInputController();
+		return Owner->InputController ? Owner->InputController->HandleCommandInput(*DeltaTimePtr) : false;
+	}
+
+private:
+	FObjViewerViewportClient* Owner = nullptr;
+	float* DeltaTimePtr = nullptr;
+};
+
+class FObjViewerNavigationInputContext final : public IInputContext
+{
+public:
+	FObjViewerNavigationInputContext(FObjViewerViewportClient* InOwner, float* InDeltaTime)
+		: Owner(InOwner), DeltaTimePtr(InDeltaTime)
+	{
+	}
+
+	bool HandleInput(FViewportInputContext& Context) override
+	{
+		(void)Context;
+		if (!Owner || !DeltaTimePtr)
+		{
+			return false;
+		}
+		Owner->EnsureInputController();
+		return Owner->InputController ? Owner->InputController->HandleNavigationInput(*DeltaTimePtr) : false;
+	}
+
+private:
+	FObjViewerViewportClient* Owner = nullptr;
+	float* DeltaTimePtr = nullptr;
+};
 
 void FObjViewerViewportClient::Initialize(FWindowsWindow* InWindow)
 {
@@ -61,63 +109,76 @@ static void UpdateOrbitCamera(FViewportCamera* Camera, const FVector& Target, fl
 
 void FObjViewerViewportClient::Tick(float DeltaTime)
 {
-	TickInput(DeltaTime);
+	if (!bHasInputContext)
+	{
+		return;
+	}
+
+	DispatchDeltaTime = DeltaTime;
+	EnsureInputController();
+	EnsureInputContextStack();
+	for (IInputContext* Context : InputContextStack)
+	{
+		if (Context && Context->HandleInput(InputContext))
+		{
+			break;
+		}
+	}
 
 	if (Camera)
 	{
 		UpdateOrbitCamera(Camera.get(), OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
 	}
+
+	bHasInputContext = false;
 }
 
-void FObjViewerViewportClient::TickInput(float DeltaTime)
+bool FObjViewerViewportClient::ProcessInput(FViewportInputContext& Context)
 {
-	if (!Camera) return;
-	if (InputSystem::Get().GetGuiInputState().bUsingKeyboard) return;
+	InputContext = Context;
+	bHasInputContext = true;
+	return false;
+}
 
-	// 마우스가 뷰포트 영역 안에 있는지 확인
-	POINT MousePos = InputSystem::Get().GetMousePos();
-	if (Window)
+bool FObjViewerViewportClient::WantsRelativeMouseMode(const FViewportInputContext& Context, POINT& OutRestoreScreenPos) const
+{
+	OutRestoreScreenPos = Context.Frame.MouseScreenPos;
+
+	if (Context.bImGuiCapturedMouse || !Camera)
 	{
-		MousePos = Window->ScreenToClientPoint(MousePos);
-	}
-	float MX = static_cast<float>(MousePos.x);
-	float MY = static_cast<float>(MousePos.y);
-
-	bool bMouseInViewport = (MX >= ViewportX && MX <= ViewportX + ViewportWidth &&
-		MY >= ViewportY && MY <= ViewportY + ViewportHeight);
-
-	if (!bMouseInViewport) return;
-
-	// 우클릭 드래그 → 오빗 회전
-	if (InputSystem::Get().GetKey(VK_RBUTTON))
-	{
-		float DeltaX = static_cast<float>(InputSystem::Get().MouseDeltaX());
-		float DeltaY = static_cast<float>(InputSystem::Get().MouseDeltaY());
-
-		OrbitYaw += DeltaX * 0.3f;
-		OrbitPitch += DeltaY * 0.3f;
-		OrbitPitch = Clamp(OrbitPitch, -89.0f, 89.0f);
+		return false;
 	}
 
-	// 중클릭 드래그 → 팬
-	if (InputSystem::Get().GetKey(VK_MBUTTON))
+	const bool bMouseOwnedByViewport = Context.bCaptured || Context.bHovered || Context.bRelativeMouseMode;
+	if (!bMouseOwnedByViewport)
 	{
-		float DeltaX = static_cast<float>(InputSystem::Get().MouseDeltaX());
-		float DeltaY = static_cast<float>(InputSystem::Get().MouseDeltaY());
-
-		float PanScale = OrbitDistance * 0.002f;
-		FVector Right = Camera->GetRightVector();
-		FVector Up = Camera->GetUpVector();
-		OrbitTarget = OrbitTarget - Right * (DeltaX * PanScale) + Up * (DeltaY * PanScale);
+		return false;
 	}
 
-	// 스크롤 → 줌
-	float ScrollNotches = InputSystem::Get().GetScrollNotches();
-	if (ScrollNotches != 0.0f)
+	return Context.Frame.IsDown(VK_RBUTTON) || Context.Frame.IsDown(VK_MBUTTON);
+}
+
+void FObjViewerViewportClient::EnsureInputController()
+{
+	if (!InputController)
 	{
-		OrbitDistance -= ScrollNotches * OrbitDistance * 0.1f;
-		OrbitDistance = Clamp(OrbitDistance, 0.1f, 500.0f);
+		InputController = std::make_unique<FObjViewerViewportController>(this);
 	}
+}
+
+void FObjViewerViewportClient::EnsureInputContextStack()
+{
+	if (bInputContextStackInitialized)
+	{
+		return;
+	}
+
+	CommandInputContext = std::make_unique<FObjViewerCommandInputContext>(this, &DispatchDeltaTime);
+	NavigationInputContext = std::make_unique<FObjViewerNavigationInputContext>(this, &DispatchDeltaTime);
+	InputContextStack.clear();
+	InputContextStack.push_back(CommandInputContext.get());
+	InputContextStack.push_back(NavigationInputContext.get());
+	bInputContextStackInitialized = true;
 }
 
 void FObjViewerViewportClient::SetViewportRect(float X, float Y, float Width, float Height)
@@ -149,4 +210,18 @@ void FObjViewerViewportClient::RenderViewportImage()
 	ImVec2 Max(ViewportX + ViewportWidth, ViewportY + ViewportHeight);
 
 	DrawList->AddImage((ImTextureID)Viewport->GetSRV(), Min, Max);
+}
+
+bool FObjViewerViewportClient::GetViewportRect(FRect& OutRect) const
+{
+	if (ViewportWidth <= 0.0f || ViewportHeight <= 0.0f)
+	{
+		return false;
+	}
+
+	OutRect.X = ViewportX;
+	OutRect.Y = ViewportY;
+	OutRect.Width = ViewportWidth;
+	OutRect.Height = ViewportHeight;
+	return true;
 }

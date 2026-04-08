@@ -5,7 +5,6 @@
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Profiling/MemoryStats.h"
 #include "ImGui/imgui.h"
-#include "Component/GizmoComponent.h"
 #include "Editor/Viewport/ViewportCamera.h"
 #include "GameFramework/StaticMeshActor.h"
 

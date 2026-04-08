@@ -1,7 +1,6 @@
 ﻿#include "Editor/Subsystem/OverlayStatSystem.h"
 
 #include "Editor/EditorEngine.h"
-#include "Profiling/Stats.h"
 #include "Engine/Profiling/Timer.h"
 
 TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& Editor) const
@@ -20,22 +19,6 @@ TArray<FOverlayStatGroup> FOverlayStatSystem::BuildGroups(const UEditorEngine& E
 		{
 			char Buffer[128] = {};
 			snprintf(Buffer, sizeof(Buffer), "FPS : %.1f (%.2f ms)", FPS, MS);
-			Group.Lines.push_back(FString(Buffer));
-		}
-
-		// 발제 필수 HUD 형식: Picking Time <ms> ms : Num Attempts <N> : Accumulated Time <ms> ms
-		// Algorithm 기준: Picking.Ray.Algorithm
-		{
-			FStatEntry RayAlgorithm = {};
-			FStatManager::Get().GetStat("Picking.Ray.Algorithm", RayAlgorithm);
-			const double LastMs = RayAlgorithm.LastTime * 1000.0;
-			const uint64 Count = RayAlgorithm.Count;
-			const double TotalMs = RayAlgorithm.TotalTime * 1000.0;
-
-			char Buffer[256] = {};
-			snprintf(Buffer, sizeof(Buffer),
-				"Picking Time %.8f ms : Num Attempts %llu : Accumulated Time %.8f ms",
-				LastMs, static_cast<unsigned long long>(Count), TotalMs);
 			Group.Lines.push_back(FString(Buffer));
 		}
 
