@@ -79,5 +79,6 @@ private:
 	FOverlayStatSystem OverlayStatSystem;
 	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
+	UGameViewportClient* PIEViewportClient = nullptr;
 	bool bPIEEnabled = false;
 };

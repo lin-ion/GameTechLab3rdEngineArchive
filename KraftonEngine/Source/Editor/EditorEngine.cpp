@@ -2,6 +2,7 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/LevelSaveManager.h"
+#include "Engine/Viewport/GameViewportClient.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Level.h"
 #include "Editor/EditorRenderPipeline.h"
@@ -56,6 +57,8 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 
 	// Editor render pipeline
 	SetRenderPipeline(std::make_unique<FEditorRenderPipeline>(this, Renderer));
+
+	ResetViewport();
 }
 
 void UEditorEngine::Shutdown()
@@ -196,13 +199,16 @@ void UEditorEngine::StartPIE()
 	WorldList.push_back(PIEWorldContext);
 	SetActiveWorld(WorldList.back().ContextHandle);
 
-	SelectionManager.SetWorld(GetWorld());
+	SelectionManager.SetWorld(WorldList.back().World);
 
 	// AActor::BeginPlay()
 	PIEWorldContext.World->InitWorld();
 	PIEWorldContext.World->BeginPlay();
 	
 	bPIEEnabled = true;
+
+	// ViewportClient 전환
+	SetActiveViewportSubClientForWorldType(EWorldType::PIE);
 }
 
 void UEditorEngine::EndPIE()
@@ -214,15 +220,19 @@ void UEditorEngine::EndPIE()
 	{
 		SelectionManager.ClearSelection();
 
-		// Revert ActiveWorldContext to EditorWorldContext FIRST
+		// 1. WorldContext를 에디터로 복구
 		FWorldContext* EditorContext = GetEditorWorldContext();
 		if (EditorContext)
 		{
 			SetActiveWorld(EditorContext->ContextHandle);
-			// This will trigger Gizmo->SetWorld, which safely unregisters from PIEWorld while it's still alive
+			// SelectionManager의 선택 대상을 에디터 월드로 복구
 			SelectionManager.SetWorld(GetWorld());
 		}
 
+		// 2. ViewportClient 및 레이어 원상 복구
+		SetActiveViewportSubClientForWorldType(EWorldType::Editor);
+
+		// 3. PIE 월드 정리
 		PIEContext->World->EndPlay();
 		auto WorldListIter = find_if(WorldList.begin(), WorldList.end(), 
 			[PIEContext](const FWorldContext& a) 
@@ -351,6 +361,15 @@ bool UEditorEngine::ResetViewportSubClient(FViewport* InViewport)
 		return false;
 	}
 
+	// 레이어 제거 및 월드 포인터 복구
+	// NOTE: 이 시점에서 World가 이미 Reset된 상태혀야 함.
+	auto Found = InputTargetHosts.find(InViewport);
+	if (Found != InputTargetHosts.end())
+	{
+		Found->second.RemoveLayerClient(DefaultClient);
+	}
+	DefaultClient->SetWorld(GetWorld());
+
 	return SetViewportSubClient(InViewport, DefaultClient);
 }
 
@@ -365,8 +384,32 @@ bool UEditorEngine::SetViewportSubClientForWorldType(FViewport* InViewport, EWor
 	{
 	case EWorldType::Editor:
 		return ResetViewportSubClient(InViewport);
+	case EWorldType::PIE:
+	{
+		if (!PIEViewportClient)
+		{
+			PIEViewportClient = UObjectManager::Get().CreateObject<UGameViewportClient>();
+		}
+		PIEViewportClient->SetViewport(InViewport);
+
+		// 기존 레벨 에디터 클라이언트를 ViewportHost의 레이어로 추가
+		// => PIE 모드에서도 에디터 기능(기즈모, 선택 등) 유지
+		FLevelEditorViewportClient* EditorVC = FindLevelViewportClientByViewport(InViewport);
+		if (EditorVC)
+		{
+			EditorVC->SetWorld(GetWorld());
+			
+			FViewportHostClient& Host = InputTargetHosts[InViewport];
+			Host.SetActiveSubClient(PIEViewportClient);
+			Host.AddLayerClient(EditorVC);
+			InViewport->SetClient(&Host);
+			return true;
+		}
+
+		return SetViewportSubClient(InViewport, PIEViewportClient);
+	}
 	default:
-		// PIE/Game specific client is not wired yet.
+		// Game specific client is not wired yet.
 		return false;
 	}
 }
