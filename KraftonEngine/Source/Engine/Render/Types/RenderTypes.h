@@ -24,6 +24,7 @@ enum class EMeshShape
 	Sphere,
 	Plane,
 	Quad,
+	SpriteQuad,		// FTextureVertex 기반 UV 쿼드 (Billboard 전용)
 	TransGizmo,
 	RotGizmo,
 	ScaleGizmo,
@@ -32,8 +33,8 @@ enum class EMeshShape
 enum class ERenderPass : uint32
 {
 	Opaque,
-	Font,			// TextRenderComponent → FontBatcher 경유
-	SubUV,			// SubUVComponent     → SubUVBatcher 경유
+	Font,			// DEPRECATED: TextRenderComponent → FontBatcher 경유
+	SubUV,			// DEPRECATED: SubUVComponent     → SubUVBatcher 경유
 	Translucent,
 	SelectionMask,
 	Editor,
@@ -41,6 +42,7 @@ enum class ERenderPass : uint32
 	PostProcess,
 	GizmoOuter,
 	GizmoInner,
-	OverlayFont,
+	OverlayFont,	// DEPRECATED
+	Billboard,		// BillboardComponent → FBillboardProxy 직접 드로우
 	MAX
 };

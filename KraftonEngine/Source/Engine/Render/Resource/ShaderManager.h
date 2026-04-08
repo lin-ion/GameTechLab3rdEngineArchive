@@ -11,10 +11,11 @@ enum class EShaderType : uint32
 	Editor,
 	StaticMesh,
 	OutlinePostProcess,
-	Font,
-	OverlayFont,
-	SubUV,
+	Font,			// DEPRECATED
+	OverlayFont,	// DEPRECATED
+	SubUV,			// DEPRECATED
 	Picking,
+	Billboard,
 	MAX,
 };
 

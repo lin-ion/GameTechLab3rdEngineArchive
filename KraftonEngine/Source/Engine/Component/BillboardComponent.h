@@ -1,6 +1,7 @@
 #pragma once
 #include "PrimitiveComponent.h"
-#include "Render/Resource/MeshBufferManager.h"
+
+class UTexture2D;
 
 class UBillboardComponent : public UPrimitiveComponent
 {
@@ -9,17 +10,21 @@ public:
 
 	void TickComponent(float DeltaTime) override;
 
-	void SetBillboardEnabled(bool bEnable) { bIsBillboard = bEnable; }
+	void        SetSprite(UTexture2D* NewSprite) { Sprite = NewSprite; }
+	UTexture2D* GetSprite() const { return Sprite; }
 
-	// 주어진 카메라 방향으로 빌보드 월드 행렬을 계산 (per-view 렌더링용)
-	FMatrix ComputeBillboardMatrix(const FVector& CameraForward) const;
+	FMeshBuffer*       GetMeshBuffer() const override;
+	const FMeshData*   GetMeshData()   const override;
+	FPrimitiveProxy*   CreateProxy()   override;
+	void               UpdateWorldAABB() const override;
 
-	FMeshBuffer* GetMeshBuffer() const override { return &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::Quad); }
-	const FMeshData* GetMeshData() const override { return &FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad); }
-	
-	FPrimitiveProxy* CreateProxy() override;
+private:
+	UTexture2D* Sprite = nullptr;
 
-protected:
-	bool bIsBillboard = true;
+	float U  = 0.0f;
+	float UL = 1.0f;
+	float V  = 0.0f;
+	float VL = 1.0f;
+
+	bool  bIsScreenSizeScaled = false;
 };
-

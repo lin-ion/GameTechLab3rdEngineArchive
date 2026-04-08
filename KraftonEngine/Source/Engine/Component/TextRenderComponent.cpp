@@ -8,7 +8,29 @@
 #include "Render/Resource/ShaderManager.h"
 #include "Render/Pipeline/PrimitiveProxy.h"
 
-IMPLEMENT_CLASS(UTextRenderComponent, UBillboardComponent)
+IMPLEMENT_CLASS(UTextRenderComponent, UPrimitiveComponent)
+
+// TextRenderComponent 전용 빌보드 행렬 계산
+static FMatrix ComputeBillboardMatrix(
+	const FVector& CameraForward,
+	const FVector& WorldScale,
+	const FVector& WorldLocation)
+{
+	FVector Forward = (CameraForward * -1.0f).Normalized();
+	FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
+	if (std::abs(Forward.Dot(WorldUp)) > 0.99f)
+		WorldUp = FVector(0.0f, 1.0f, 0.0f);
+
+	const FVector Right = WorldUp.Cross(Forward).Normalized();
+	const FVector Up    = Forward.Cross(Right).Normalized();
+
+	FMatrix Rot;
+	Rot.SetAxes(Forward, Right, Up);
+
+	return FMatrix::MakeScaleMatrix(WorldScale)
+		* Rot
+		* FMatrix::MakeTranslationMatrix(WorldLocation);
+}
 
 class FTextRenderProxy : public FPrimitiveProxy
 {
@@ -82,6 +104,16 @@ FPrimitiveProxy* UTextRenderComponent::CreateProxy()
 	return new FTextRenderProxy(this);
 }
 
+FMeshBuffer* UTextRenderComponent::GetMeshBuffer() const
+{
+	return &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::Quad);
+}
+
+const FMeshData* UTextRenderComponent::GetMeshData() const
+{
+	return &FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad);
+}
+
 void UTextRenderComponent::SetFont(const FName& InFontName)
 {
 	FontName = InFontName;
@@ -107,7 +139,7 @@ void UTextRenderComponent::UpdateWorldAABB() const
 bool UTextRenderComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT)
 {
 	// Ray 방향으로 빌보드 행렬을 계산 (CachedWorldMatrix는 active 카메라 기준이라 다른 뷰포트에서 틀림)
-	FMatrix PerRayBillboard = ComputeBillboardMatrix(Ray.Direction);
+	FMatrix PerRayBillboard = ComputeBillboardMatrix(Ray.Direction, GetWorldScale(), GetWorldLocation());
 	FMatrix OutlineWorldMatrix = CalculateOutlineMatrix(PerRayBillboard);
 	FMatrix InvWorldMatrix = OutlineWorldMatrix.GetInverse();
 

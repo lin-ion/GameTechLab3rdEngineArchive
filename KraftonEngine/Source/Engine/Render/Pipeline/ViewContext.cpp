@@ -56,6 +56,7 @@ void FViewContext::AddCommand(ERenderPass Pass, const FRenderCommand& InCommand)
 	Queue.MeshBuffers.push_back(InCommand.MeshBuffer);
 	Queue.Shaders.push_back(InCommand.Shader);
 	Queue.FirstSRVs.push_back(InCommand.SectionDraws.empty() ? nullptr : InCommand.SectionDraws[0].DiffuseSRV);
+	Queue.SpriteSRVs.push_back(InCommand.SpriteSRV);
 	Queue.PickingIds.push_back(InCommand.PickingId);
 	Queue.Constants.push_back(InCommand.PerObjectConstants);
 	Queue.ExtraCBs.push_back(InCommand.ExtraCB);

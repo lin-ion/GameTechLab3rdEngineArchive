@@ -44,7 +44,7 @@ struct FObjMaterialInfo
 	int32 illum; // illumination model
 };
 
-// 블렌더 스타일 Forward 축 선택
+// TODO: 좌표계를 정의하기 위해서는 ForwardAxis와 UpAxis가 모두 필요함.
 enum class EForwardAxis : uint8
 {
 	X, NegX,   // +X, -X
