@@ -17,8 +17,8 @@ public:
 	float CameraRotationSpeed = 60.f;
 	float CameraZoomSpeed = 300.f;
 	bool bEnableCameraSmoothing = true;
-	float CameraMoveSmoothSpeed = 10.0f;
-	float CameraRotateSmoothSpeed = 12.0f;
+	float CameraMoveSmoothSpeed = 4.0f;
+	float CameraRotateSmoothSpeed = 2.0f;
 	FVector InitViewPos = FVector(10, 0, 5);
 	FVector InitLookAt = FVector(0, 0, 0);
 

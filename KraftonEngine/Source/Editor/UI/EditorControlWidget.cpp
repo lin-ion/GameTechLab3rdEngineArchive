@@ -3,7 +3,6 @@
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Profiling/Timer.h"
-#include "Engine/Profiling/MemoryStats.h"
 #include "ImGui/imgui.h"
 #include "Editor/Viewport/ViewportCamera.h"
 #include "GameFramework/StaticMeshActor.h"
