@@ -16,6 +16,10 @@ private:
 	bool DeleteSelectedActors();
 	bool SelectAllActors();
 	bool ToggleGizmoCoordinateSpace();
+	bool NewLevel();
+	bool LoadLevel();
+	bool SaveLevel();
+	bool SaveLevelAs();
 
 private:
 	FEditorViewportClient* Owner = nullptr;

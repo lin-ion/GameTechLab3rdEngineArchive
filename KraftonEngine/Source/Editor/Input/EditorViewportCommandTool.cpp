@@ -3,8 +3,10 @@
 #include "Editor/Input/EditorViewportController.h"
 #include "Editor/Input/EditorViewportInputMapping.h"
 #include "Editor/Input/EditorNavigationTool.h"
+#include "Editor/EditorEngine.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Editor/Viewport/EditorViewportClient.h"
+#include "Engine/Runtime/Engine.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 
@@ -33,7 +35,11 @@ bool FEditorViewportCommandTool::HandleInput(float DeltaTime)
 		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::ToggleGizmoCoordinateSpace),
 		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::FocusSelection),
 		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::DeleteSelection),
-		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::SelectAll)
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::SelectAll),
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::NewLevel),
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::LoadLevel),
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::SaveLevel),
+		static_cast<int32>(EditorViewportInputMapping::EEditorViewportAction::SaveLevelAs)
 	};
 
 	int32 TriggeredCommandActionId = 0;
@@ -62,6 +68,14 @@ bool FEditorViewportCommandTool::HandleInput(float DeltaTime)
 		return DeleteSelectedActors();
 	case EditorViewportInputMapping::EEditorViewportAction::SelectAll:
 		return SelectAllActors();
+	case EditorViewportInputMapping::EEditorViewportAction::NewLevel:
+		return NewLevel();
+	case EditorViewportInputMapping::EEditorViewportAction::LoadLevel:
+		return LoadLevel();
+	case EditorViewportInputMapping::EEditorViewportAction::SaveLevel:
+		return SaveLevel();
+	case EditorViewportInputMapping::EEditorViewportAction::SaveLevelAs:
+		return SaveLevelAs();
 	default:
 		return false;
 	}
@@ -161,4 +175,34 @@ bool FEditorViewportCommandTool::SelectAllActors()
 	}
 
 	return bSelectedAny;
+}
+
+bool FEditorViewportCommandTool::NewLevel()
+{
+	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+	if (!EditorEngine)
+	{
+		return false;
+	}
+
+	EditorEngine->NewLevel();
+	return true;
+}
+
+bool FEditorViewportCommandTool::LoadLevel()
+{
+	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+	return EditorEngine ? EditorEngine->LoadLevelWithDialog() : false;
+}
+
+bool FEditorViewportCommandTool::SaveLevel()
+{
+	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+	return EditorEngine ? EditorEngine->SaveLevel() : false;
+}
+
+bool FEditorViewportCommandTool::SaveLevelAs()
+{
+	UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+	return EditorEngine ? EditorEngine->SaveLevelAsWithDialog() : false;
 }

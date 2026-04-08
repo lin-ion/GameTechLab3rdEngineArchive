@@ -311,6 +311,8 @@ void FLevelViewportLayout::EndLayoutTransition()
 	TransitionStartRatios.clear();
 	TransitionTargetRatios.clear();
 	bSuppressLastSplitLayoutUpdate = false;
+	bUseCoverTransitionToOnePane = false;
+	bUseCoverTransitionFromOnePane = false;
 }
 
 void FLevelViewportLayout::BeginCurrentLayoutCollapsePhase()
@@ -358,9 +360,17 @@ void FLevelViewportLayout::BeginTargetLayoutExpandPhase()
 	TransitionFocusSlot = (std::max)(0, (std::min)((std::max)(0, TargetSlotCount - 1), TransitionFocusSlot));
 
 	CollectSplitterRatios(TransitionTargetRatios);
-	ApplyFocusCollapseRecursive(RootSplitter, TransitionFocusSlot);
-	CollectSplitterRatios(TransitionStartRatios);
-	ApplySplitterRatios(TransitionStartRatios);
+	if (bUseCoverTransitionFromOnePane)
+	{
+		// 분할 슬롯은 시작 프레임부터 최종 배치로 두고, 포커스 뷰포트 오버레이 축소로 전환한다.
+		TransitionStartRatios = TransitionTargetRatios;
+	}
+	else
+	{
+		ApplyFocusCollapseRecursive(RootSplitter, TransitionFocusSlot);
+		CollectSplitterRatios(TransitionStartRatios);
+		ApplySplitterRatios(TransitionStartRatios);
+	}
 
 	LayoutTransitionState = ELayoutTransitionState::ExpandingTarget;
 	LayoutTransitionElapsed = 0.0f;
@@ -382,15 +392,26 @@ void FLevelViewportLayout::TickLayoutTransition(float DeltaTime)
 	LayoutTransitionElapsed += DeltaTime;
 	float T = Clamp(LayoutTransitionElapsed / LayoutTransitionDuration, 0.0f, 1.0f);
 	const float SmoothT = T * T * (3.0f - 2.0f * T);
+	const bool bCoverToOnePane =
+		bUseCoverTransitionToOnePane
+		&& LayoutTransitionState == ELayoutTransitionState::CollapsingCurrent
+		&& PendingTargetLayout == EViewportLayout::OnePane;
+	const bool bCoverFromOnePane =
+		bUseCoverTransitionFromOnePane
+		&& LayoutTransitionState == ELayoutTransitionState::ExpandingTarget
+		&& PendingTargetLayout != EViewportLayout::OnePane;
 
-	TArray<float> InterpolatedRatios;
-	const size_t Count = (std::min)(TransitionStartRatios.size(), TransitionTargetRatios.size());
-	InterpolatedRatios.resize(Count);
-	for (size_t i = 0; i < Count; ++i)
+	if (!bCoverToOnePane && !bCoverFromOnePane)
 	{
-		InterpolatedRatios[i] = TransitionStartRatios[i] + (TransitionTargetRatios[i] - TransitionStartRatios[i]) * SmoothT;
+		TArray<float> InterpolatedRatios;
+		const size_t Count = (std::min)(TransitionStartRatios.size(), TransitionTargetRatios.size());
+		InterpolatedRatios.resize(Count);
+		for (size_t i = 0; i < Count; ++i)
+		{
+			InterpolatedRatios[i] = TransitionStartRatios[i] + (TransitionTargetRatios[i] - TransitionStartRatios[i]) * SmoothT;
+		}
+		ApplySplitterRatios(InterpolatedRatios);
 	}
-	ApplySplitterRatios(InterpolatedRatios);
 
 	if (T < 1.0f)
 	{
@@ -426,6 +447,14 @@ void FLevelViewportLayout::StartAnimatedLayoutTransition(EViewportLayout NewLayo
 	}
 
 	PendingTargetLayout = NewLayout;
+	if (NewLayout != EViewportLayout::OnePane)
+	{
+		bUseCoverTransitionToOnePane = false;
+	}
+	else
+	{
+		bUseCoverTransitionFromOnePane = false;
+	}
 	if (CurrentLayout == EViewportLayout::OnePane && bIsTemporaryOnePane && NewLayout != EViewportLayout::OnePane)
 	{
 		const int32 TargetMaxSlot = (std::max)(0, GetSlotCount(NewLayout) - 1);
@@ -746,10 +775,14 @@ void FLevelViewportLayout::ToggleViewportSplit()
 
 	if (CurrentLayout == EViewportLayout::OnePane)
 	{
+		bUseCoverTransitionToOnePane = false;
+		bUseCoverTransitionFromOnePane = bIsTemporaryOnePane;
 		SetLayoutAnimated(LastSplitLayout == EViewportLayout::OnePane ? EViewportLayout::FourPanes2x2 : LastSplitLayout);
 	}
 	else
 	{
+		bUseCoverTransitionToOnePane = true;
+		bUseCoverTransitionFromOnePane = false;
 		bRequestPreserveSplitOnOnePane = true;
 		SetLayoutAnimated(EViewportLayout::OnePane);
 	}
@@ -774,6 +807,15 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 		const int32 OnePaneSlotIndex = (CurrentLayout == EViewportLayout::OnePane && bIsTemporaryOnePane)
 			? (std::max)(0, (std::min)(TemporaryOnePaneSourceSlot, static_cast<int32>(LevelViewportClients.size()) - 1))
 			: 0;
+		const bool bCoverToOnePane =
+			bUseCoverTransitionToOnePane
+			&& LayoutTransitionState == ELayoutTransitionState::CollapsingCurrent
+			&& PendingTargetLayout == EViewportLayout::OnePane;
+		const bool bCoverFromOnePane =
+			bUseCoverTransitionFromOnePane
+			&& LayoutTransitionState == ELayoutTransitionState::ExpandingTarget
+			&& PendingTargetLayout != EViewportLayout::OnePane;
+		const bool bRenderViewportOverlayUI = !bCoverToOnePane;
 
 		// SSplitter 레이아웃 계산
 		if (RootSplitter)
@@ -797,16 +839,18 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			}
 		}
 
-		// 각 뷰포트 패인 상단에 툴바 오버레이 렌더
-		for (int32 i = 0; i < ActiveSlotCount; ++i)
+		// 토글/레이아웃 전환 중에는 패인 오버레이 UI를 숨겨 UI 침범을 방지한다.
+		for (int32 i = 0; bRenderViewportOverlayUI && i < ActiveSlotCount; ++i)
 		{
 			const int32 SlotIndex = (CurrentLayout == EViewportLayout::OnePane) ? OnePaneSlotIndex : i;
 			RenderPaneToolbar(SlotIndex);
 		}
 
-		RenderActiveViewportStatOverlay();
+		if (bRenderViewportOverlayUI)
+		{
+			RenderActiveViewportStatOverlay();
+		}
 
-		// 분할 바 렌더 (재귀 수집)
 		if (RootSplitter)
 		{
 			TArray<SSplitter*> AllSplitters;
@@ -823,6 +867,54 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 					ImVec2(Bar.X + Bar.Width, Bar.Y + Bar.Height),
 					BarColor);
 			}
+		}
+
+		// cover 전환 뷰포트는 splitter 위에 그려 자연스럽게 보이도록 마지막에 오버레이 렌더한다.
+		if (bCoverToOnePane
+			&& TransitionFocusSlot >= 0
+			&& TransitionFocusSlot < static_cast<int32>(LevelViewportClients.size())
+			&& TransitionFocusSlot < MaxViewportSlots
+			&& ViewportWindows[TransitionFocusSlot]
+			&& LevelViewportClients[TransitionFocusSlot]
+			&& LevelViewportClients[TransitionFocusSlot]->GetViewport()
+			&& LevelViewportClients[TransitionFocusSlot]->GetViewport()->GetSRV())
+		{
+			const FRect& FromRect = ViewportWindows[TransitionFocusSlot]->GetRect();
+			const float T = Clamp(LayoutTransitionElapsed / LayoutTransitionDuration, 0.0f, 1.0f);
+			const float SmoothT = T * T * (3.0f - 2.0f * T);
+
+			const float L = FromRect.X + (ContentRect.X - FromRect.X) * SmoothT;
+			const float TT = FromRect.Y + (ContentRect.Y - FromRect.Y) * SmoothT;
+			const float R = (FromRect.X + FromRect.Width) + ((ContentRect.X + ContentRect.Width) - (FromRect.X + FromRect.Width)) * SmoothT;
+			const float B = (FromRect.Y + FromRect.Height) + ((ContentRect.Y + ContentRect.Height) - (FromRect.Y + FromRect.Height)) * SmoothT;
+
+			ImGui::GetWindowDrawList()->AddImage(
+				(ImTextureID)LevelViewportClients[TransitionFocusSlot]->GetViewport()->GetSRV(),
+				ImVec2(L, TT),
+				ImVec2(R, B));
+		}
+		else if (bCoverFromOnePane
+			&& TransitionFocusSlot >= 0
+			&& TransitionFocusSlot < static_cast<int32>(LevelViewportClients.size())
+			&& TransitionFocusSlot < MaxViewportSlots
+			&& ViewportWindows[TransitionFocusSlot]
+			&& LevelViewportClients[TransitionFocusSlot]
+			&& LevelViewportClients[TransitionFocusSlot]->GetViewport()
+			&& LevelViewportClients[TransitionFocusSlot]->GetViewport()->GetSRV())
+		{
+			const FRect& ToRect = ViewportWindows[TransitionFocusSlot]->GetRect();
+			const float T = Clamp(LayoutTransitionElapsed / LayoutTransitionDuration, 0.0f, 1.0f);
+			const float SmoothT = T * T * (3.0f - 2.0f * T);
+
+			const float L = ContentRect.X + (ToRect.X - ContentRect.X) * SmoothT;
+			const float TT = ContentRect.Y + (ToRect.Y - ContentRect.Y) * SmoothT;
+			const float R = (ContentRect.X + ContentRect.Width) + ((ToRect.X + ToRect.Width) - (ContentRect.X + ContentRect.Width)) * SmoothT;
+			const float B = (ContentRect.Y + ContentRect.Height) + ((ToRect.Y + ToRect.Height) - (ContentRect.Y + ContentRect.Height)) * SmoothT;
+
+			ImGui::GetWindowDrawList()->AddImage(
+				(ImTextureID)LevelViewportClients[TransitionFocusSlot]->GetViewport()->GetSRV(),
+				ImVec2(L, TT),
+				ImVec2(R, B));
 		}
 
 		// 입력 처리

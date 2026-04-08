@@ -9,6 +9,7 @@
 class FRenderer;
 class UEditorEngine;
 class FWindowsWindow;
+struct ImFont;
 
 class FEditorMainPanel
 {
@@ -21,13 +22,36 @@ public:
 	bool IsCapturingKeyboard() const { return bWantCaptureKeyboard; }
 
 private:
+	void RenderMainMenuBar();
+	void RenderPIEToolbar();
+	void RenderDockSpace();
+	void RenderEditorDebugPanel();
+	void RenderShortcutOverlay();
+	void RenderFooterOverlay(float DeltaTime);
+	void RenderConsoleDrawer();
+
+private:
 	FWindowsWindow* Window = nullptr;
 	UEditorEngine* EditorEngine = nullptr;
 	FEditorConsoleWidget ConsoleWidget;
 	FEditorControlWidget ControlWidget;
 	FEditorPropertyWidget PropertyWidget;
-	FEditorLevelWidget SceneWidget;
+	FEditorLevelWidget LevelWidget;
 	FEditorStatWidget StatWidget;
+	bool bConsoleDrawerVisible = false;
+	bool bBringConsoleDrawerToFrontNextFrame = false;
+	bool bFocusConsoleInputNextFrame = false;
+	bool bFocusConsoleButtonNextFrame = false;
+	int32 ConsoleBacktickCycleState = 0; // 0: none, 1: input focus, 2: drawer open + input focus
+	bool bShowControlPanel = true;
+	bool bShowLevelPanel = true;
+	bool bShowPropertyPanel = true;
+	bool bShowEditorDebugPanel = false;
+	bool bShowStatPanel = false;
+	bool bShowShortcutOverlay = false;
 	bool bWantCaptureMouse = false;
 	bool bWantCaptureKeyboard = false;
+	float ConsoleDrawerAnim = 0.0f;
+	ImFont* FooterFont = nullptr;
+	ImFont* FooterBoldFont = nullptr;
 };
