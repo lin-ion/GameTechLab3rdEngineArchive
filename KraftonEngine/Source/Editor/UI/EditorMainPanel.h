@@ -25,7 +25,8 @@ private:
 	void RenderMainMenuBar();
 	void RenderDockSpace();
 	void RenderShortcutOverlay();
-	void RenderFooterOverlay();
+	void RenderFooterOverlay(float DeltaTime);
+	void RenderConsoleDrawer();
 
 private:
 	FWindowsWindow* Window = nullptr;
@@ -35,7 +36,11 @@ private:
 	FEditorPropertyWidget PropertyWidget;
 	FEditorLevelWidget LevelWidget;
 	FEditorStatWidget StatWidget;
-	bool bShowConsolePanel = true;
+	bool bConsoleDrawerVisible = false;
+	bool bBringConsoleDrawerToFrontNextFrame = false;
+	bool bFocusConsoleInputNextFrame = false;
+	bool bFocusConsoleButtonNextFrame = false;
+	int32 ConsoleBacktickCycleState = 0; // 0: none, 1: input focus, 2: drawer open + input focus
 	bool bShowControlPanel = true;
 	bool bShowLevelPanel = true;
 	bool bShowPropertyPanel = true;
@@ -43,6 +48,7 @@ private:
 	bool bShowShortcutOverlay = false;
 	bool bWantCaptureMouse = false;
 	bool bWantCaptureKeyboard = false;
+	float ConsoleDrawerAnim = 0.0f;
 	ImFont* FooterFont = nullptr;
 	ImFont* FooterBoldFont = nullptr;
 };

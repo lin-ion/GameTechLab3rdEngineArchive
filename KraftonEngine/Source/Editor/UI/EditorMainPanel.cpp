@@ -63,10 +63,6 @@ void FEditorMainPanel::Render(float DeltaTime)
 	{
 		EditorEngine->RenderViewportUI(DeltaTime);
 	}
-	if (bShowConsolePanel)
-	{
-		ConsoleWidget.Render(DeltaTime);
-	}
 	if (bShowControlPanel)
 	{
 		ControlWidget.Render(DeltaTime);
@@ -84,8 +80,37 @@ void FEditorMainPanel::Render(float DeltaTime)
 		StatWidget.Render(DeltaTime);
 	}
 
+	float EffectiveDeltaTime = DeltaTime;
+	if (EffectiveDeltaTime <= 0.0f)
+	{
+		EffectiveDeltaTime = ImGui::GetIO().DeltaTime;
+		if (EffectiveDeltaTime <= 0.0f)
+		{
+			EffectiveDeltaTime = 1.0f / 60.0f;
+		}
+	}
+	const float TargetAnim = bConsoleDrawerVisible ? 1.0f : 0.0f;
+	const float AnimSpeed = 8.0f;
+	if (ConsoleDrawerAnim < TargetAnim)
+	{
+		ConsoleDrawerAnim += EffectiveDeltaTime * AnimSpeed;
+		if (ConsoleDrawerAnim > 1.0f)
+		{
+			ConsoleDrawerAnim = 1.0f;
+		}
+	}
+	else if (ConsoleDrawerAnim > TargetAnim)
+	{
+		ConsoleDrawerAnim -= EffectiveDeltaTime * AnimSpeed;
+		if (ConsoleDrawerAnim < 0.0f)
+		{
+			ConsoleDrawerAnim = 0.0f;
+		}
+	}
+
 	RenderShortcutOverlay();
-	RenderFooterOverlay();
+	RenderConsoleDrawer();
+	RenderFooterOverlay(DeltaTime);
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
 
 
@@ -101,7 +126,7 @@ void FEditorMainPanel::RenderDockSpace()
 		return;
 	}
 
-	constexpr float FooterHeight = 24.0f;
+	constexpr float FooterHeight = 32.0f;
 	const ImVec2 DockPos = MainViewport->WorkPos;
 	const ImVec2 DockSize(
 		MainViewport->WorkSize.x,
@@ -185,7 +210,22 @@ void FEditorMainPanel::RenderMainMenuBar()
 
 	if (ImGui::BeginMenu("View"))
 	{
-		ImGui::MenuItem("Console", nullptr, &bShowConsolePanel);
+		const bool bMenuConsoleDrawerVisible = bConsoleDrawerVisible;
+		if (ImGui::MenuItem("Console Drawer", nullptr, bMenuConsoleDrawerVisible))
+		{
+			bConsoleDrawerVisible = !bConsoleDrawerVisible;
+			if (bConsoleDrawerVisible)
+			{
+				ConsoleBacktickCycleState = 2;
+				bBringConsoleDrawerToFrontNextFrame = true;
+				bFocusConsoleInputNextFrame = true;
+			}
+			else
+			{
+				ConsoleBacktickCycleState = 0;
+				bFocusConsoleButtonNextFrame = true;
+			}
+		}
 		ImGui::MenuItem("Control", nullptr, &bShowControlPanel);
 		ImGui::MenuItem("Level Manager", nullptr, &bShowLevelPanel);
 		ImGui::MenuItem("Property", nullptr, &bShowPropertyPanel);
@@ -335,8 +375,66 @@ void FEditorMainPanel::RenderShortcutOverlay()
 	ImGui::PopStyleColor(3);
 }
 
-void FEditorMainPanel::RenderFooterOverlay()
+void FEditorMainPanel::RenderConsoleDrawer()
 {
+	constexpr float FooterHeight = 32.0f;
+	constexpr float DrawerMaxHeight = 320.0f;
+	if (ConsoleDrawerAnim <= 0.001f)
+	{
+		return;
+	}
+
+	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+	const ImVec2 OverlayPos = MainViewport ? MainViewport->WorkPos : ImVec2(0.0f, 0.0f);
+	const ImVec2 OverlaySize = MainViewport ? MainViewport->WorkSize : ImGui::GetIO().DisplaySize;
+	const float DrawerHeight = DrawerMaxHeight * ConsoleDrawerAnim;
+	if (DrawerHeight <= 1.0f)
+	{
+		return;
+	}
+
+	ImGui::SetNextWindowPos(
+		ImVec2(OverlayPos.x, OverlayPos.y + OverlaySize.y - FooterHeight - DrawerHeight),
+		ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(OverlaySize.x, DrawerHeight), ImGuiCond_Always);
+	if (MainViewport)
+	{
+		ImGui::SetNextWindowViewport(MainViewport->ID);
+	}
+
+	const ImGuiWindowFlags DrawerFlags =
+		ImGuiWindowFlags_NoDecoration
+		| ImGuiWindowFlags_NoDocking
+		| ImGuiWindowFlags_NoSavedSettings
+		| ImGuiWindowFlags_NoMove
+		| ImGuiWindowFlags_NoResize
+		| ImGuiWindowFlags_NoNav
+		| ImGuiWindowFlags_NoFocusOnAppearing;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.06f, 0.97f));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.20f, 0.23f, 1.0f));
+	if (bBringConsoleDrawerToFrontNextFrame)
+	{
+		ImGui::SetNextWindowFocus();
+		bBringConsoleDrawerToFrontNextFrame = false;
+	}
+	if (ImGui::Begin("##EditorConsoleDrawer", nullptr, DrawerFlags))
+	{
+		ConsoleWidget.RenderDrawerToolbar();
+		ImGui::Separator();
+		ConsoleWidget.RenderLogContents(0.0f);
+	}
+	ImGui::End();
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(3);
+}
+
+void FEditorMainPanel::RenderFooterOverlay(float DeltaTime)
+{
+	(void)DeltaTime;
+
 	if (!EditorEngine)
 	{
 		return;
@@ -364,10 +462,8 @@ void FEditorMainPanel::RenderFooterOverlay()
 		| ImGuiWindowFlags_NoSavedSettings
 		| ImGuiWindowFlags_NoMove
 		| ImGuiWindowFlags_NoResize
-		| ImGuiWindowFlags_NoInputs
 		| ImGuiWindowFlags_NoNav
-		| ImGuiWindowFlags_NoFocusOnAppearing
-		| ImGuiWindowFlags_NoBringToFrontOnFocus;
+		| ImGuiWindowFlags_NoFocusOnAppearing;
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 4.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
@@ -376,14 +472,37 @@ void FEditorMainPanel::RenderFooterOverlay()
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.83f, 0.83f, 0.86f, 1.0f));
 	if (ImGui::Begin("##EditorStatusBar", nullptr, FooterFlags))
 	{
-		float CenteredTextY = (FooterHeight - ImGui::GetTextLineHeight()) * 0.5f;
+		if (ImGui::IsKeyPressed(ImGuiKey_GraveAccent, false))
+		{
+			switch (ConsoleBacktickCycleState)
+			{
+			case 0:
+				ConsoleBacktickCycleState = 1;
+				bConsoleDrawerVisible = false;
+				bFocusConsoleInputNextFrame = true;
+				break;
+			case 1:
+				ConsoleBacktickCycleState = 2;
+				bConsoleDrawerVisible = true;
+				bBringConsoleDrawerToFrontNextFrame = true;
+				bFocusConsoleInputNextFrame = true;
+				break;
+			default:
+				ConsoleBacktickCycleState = 0;
+				bConsoleDrawerVisible = false;
+				bFocusConsoleInputNextFrame = false;
+				bFocusConsoleButtonNextFrame = true;
+				break;
+			}
+		}
+
+		float CenteredTextY = (FooterHeight - ImGui::GetFrameHeight()) * 0.5f;
 		if (CenteredTextY < 0.0f)
 		{
 			CenteredTextY = 0.0f;
 		}
 		ImGui::SetCursorPosY(CenteredTextY);
 
-		// Left section: persistent level status.
 		if (EditorEngine->HasCurrentLevelFilePath())
 		{
 			ImGui::Text("Level: %s", EditorEngine->GetCurrentLevelFilePath().c_str());
@@ -393,13 +512,48 @@ void FEditorMainPanel::RenderFooterOverlay()
 			ImGui::TextUnformatted("Level: Unsaved");
 		}
 
-		// Right section: transient level operation log (right-aligned pivot).
+		const bool bDrawerOpen = ConsoleDrawerAnim > 0.5f;
+		ImGui::SameLine(0.0f, 16.0f);
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.45f, 0.48f, 1.0f));
+		ImGui::TextUnformatted("|");
+		ImGui::PopStyleColor();
+		ImGui::SameLine(0.0f, 14.0f);
+		if (bFocusConsoleButtonNextFrame)
+		{
+			ImGui::SetKeyboardFocusHere();
+			bFocusConsoleButtonNextFrame = false;
+		}
+		if (ImGui::Button(bDrawerOpen ? "Console v" : "Console ^"))
+		{
+			bConsoleDrawerVisible = !bConsoleDrawerVisible;
+			if (bConsoleDrawerVisible)
+			{
+				ConsoleBacktickCycleState = 2;
+				bBringConsoleDrawerToFrontNextFrame = true;
+				bFocusConsoleInputNextFrame = true;
+			}
+			else
+			{
+				ConsoleBacktickCycleState = 0;
+				bFocusConsoleButtonNextFrame = true;
+			}
+		}
+
+		ImGui::SameLine();
+		const float InputWidth = OverlaySize.x * (bDrawerOpen ? 0.35f : 0.175f);
+		ConsoleWidget.RenderInputLine("##FooterConsoleInput", InputWidth, bFocusConsoleInputNextFrame);
+		if (bFocusConsoleInputNextFrame)
+		{
+			ConsoleBacktickCycleState = bConsoleDrawerVisible ? 2 : 1;
+		}
+		bFocusConsoleInputNextFrame = false;
+
 		if (!ActiveLogs.empty())
 		{
 			const FString& LatestLog = ActiveLogs.back();
 			const float LogWidth = ImGui::CalcTextSize(LatestLog.c_str()).x;
 			const float RightAlignedX = OverlaySize.x - ImGui::GetStyle().WindowPadding.x - LogWidth;
-			float TargetX = ImGui::GetCursorPosX() + 12.0f;
+			float TargetX = ImGui::GetCursorPosX() + 8.0f;
 			if (RightAlignedX > TargetX)
 			{
 				TargetX = RightAlignedX;
