@@ -95,6 +95,16 @@ public:
 					Bus.AddCommand(ERenderPass::SelectionMask, MaskCmd);
 				}
 			}
+
+			if (Bus.GetShowFlags().bBoundingVolume)
+			{
+				FAABBEntry Entry = {};
+				FBoundingBox Box = TextComp->GetWorldBoundingBox();
+				Entry.AABB.Min = Box.Min;
+				Entry.AABB.Max = Box.Max;
+				Entry.AABB.Color = FColor::White();
+				Bus.AddAABBEntry(std::move(Entry));
+			}
 		}
 	}
 };

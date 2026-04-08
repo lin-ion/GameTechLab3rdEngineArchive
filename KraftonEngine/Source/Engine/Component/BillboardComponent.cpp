@@ -1,4 +1,5 @@
-#include "BillboardComponent.h"
+﻿#include "BillboardComponent.h"
+#include "Collision/RayUtils.h"
 #include "Math/Matrix.h"
 #include "Render/Resource/MeshBufferManager.h"
 #include "Render/Resource/ShaderManager.h"
@@ -43,9 +44,18 @@ public:
 			MaskCmd.PerObjectConstants = FPerObjectConstants::FromWorldMatrix(BillboardMatrix);
 			View.AddCommand(ERenderPass::SelectionMask, MaskCmd);
 		}
+
+		if (bSelected && View.GetShowFlags().bBoundingVolume)
+		{
+			FAABBEntry Entry = {};
+			FBoundingBox Box = Billboard->GetWorldBoundingBox();
+			Entry.AABB.Min = Box.Min;
+			Entry.AABB.Max = Box.Max;
+			Entry.AABB.Color = FColor::White();
+			View.AddAABBEntry(std::move(Entry));
+		}
 	}
 
-private:
 	static FMatrix ComputeBillboardMatrix(
 		const FVector& CameraForward,
 		const FVector& WorldScale,
@@ -84,7 +94,7 @@ FMeshBuffer* UBillboardComponent::GetMeshBuffer() const
 const FMeshData* UBillboardComponent::GetMeshData() const
 {
 	// SpriteQuad 는 FTextureVertex 기반이므로 FMeshData(FVertex) 접근 불가 — nullptr 반환
-	return nullptr;
+	return &FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad);
 }
 
 void UBillboardComponent::TickComponent(float DeltaTime)
@@ -95,6 +105,7 @@ void UBillboardComponent::TickComponent(float DeltaTime)
 
 void UBillboardComponent::UpdateWorldAABB() const
 {
+	// TODO: 아직 계산 검증 안 됨
 	const float   NewScale    = std::max({ GetWorldScale().X, GetWorldScale().Y, GetWorldScale().Z });
 	const FVector WorldCenter = GetWorldLocation();
 	const FVector Extent(NewScale, NewScale, NewScale);
@@ -103,54 +114,15 @@ void UBillboardComponent::UpdateWorldAABB() const
 	WorldAABBMaxLocation = WorldCenter + Extent;
 }
 
-// TODO: ComputeBillboardMatrixForRay 랑 LineTraceComponent 는 한번 정리해야함
-static FMatrix ComputeBillboardMatrixForRay(
-	const FVector& RayDirection,
-	const FVector& WorldScale,
-	const FVector& WorldLocation)
-{
-	FVector Forward = (RayDirection * -1.0f).Normalized();
-	FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
-	if (std::abs(Forward.Dot(WorldUp)) > 0.99f)
-		WorldUp = FVector(0.0f, 1.0f, 0.0f);
-
-	const FVector Right = WorldUp.Cross(Forward).Normalized();
-	const FVector Up    = Forward.Cross(Right).Normalized();
-
-	FMatrix Rot;
-	Rot.SetAxes(Forward, Right, Up);
-
-	return FMatrix::MakeScaleMatrix(WorldScale) * Rot * FMatrix::MakeTranslationMatrix(WorldLocation);
-}
-
 bool UBillboardComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT)
 {
-	// Ray 방향으로 빌보드 행렬을 계산
-	FMatrix BillboardWorldMatrix = ComputeBillboardMatrixForRay(Ray.Direction, GetWorldScale(), GetWorldLocation());
-	FMatrix InvWorldMatrix = BillboardWorldMatrix.GetInverse();
-
-	FRay LocalRay;
-	LocalRay.Origin = InvWorldMatrix.TransformPositionWithW(Ray.Origin);
-	LocalRay.Direction = InvWorldMatrix.TransformVector(Ray.Direction).Normalized();
-
-	// 빌보드는 X축 평면(YZ 평면)에 위치한다고 가정 (ComputeBillboardMatrix의 axes 설정 기준)
-	if (std::abs(LocalRay.Direction.X) < 1e-6f) return false;
-
-	float t = -LocalRay.Origin.X / LocalRay.Direction.X;
-	if (t < 0.0f) return false;
-
-	FVector LocalHitPos = LocalRay.Origin + LocalRay.Direction * t;
-
-	// SpriteQuad의 크기가 -0.5 ~ 0.5 라고 가정
-	if (LocalHitPos.Y >= -0.5f && LocalHitPos.Y <= 0.5f &&
-		LocalHitPos.Z >= -0.5f && LocalHitPos.Z <= 0.5f)
+	// TODO: AABB 대신, 더 정확한 검사 도입
+	if (true)
 	{
-		FVector WorldHitPos = BillboardWorldMatrix.TransformPositionWithW(LocalHitPos);
-		OutHitResult.Distance = (WorldHitPos - Ray.Origin).Length();
 		OutHitResult.HitComponent = this;
-		OutHitResult.bHit = true;
-		return true;
+		OutHitResult.WorldHitLocation = GetWorldLocation();
+		OutHitResult.WorldNormal = (Ray.Origin - GetWorldLocation()).Normalized();
+		OutHitResult.Distance = (GetWorldLocation() - Ray.Origin).Length();
 	}
-
-	return false;
+	return true;
 }
