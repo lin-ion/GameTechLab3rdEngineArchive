@@ -158,6 +158,14 @@ void USceneComponent::UpdateWorldMatrix() const
 	}
 
 	bTransformDirty = false;
+
+	for (auto* Child : ChildComponents)
+	{
+		if (Child)
+		{
+			Child->UpdateWorldMatrix();
+		}
+	}
 }
 
 void USceneComponent::AddWorldOffset(const FVector& WorldDelta)
