@@ -6,6 +6,9 @@
 #include "ImGui/imgui.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/BillboardComponent.h"
+#include "Component/TextRenderComponent.h"
+#include "Texture/Texture2D.h"
 #include "Component/SceneComponent.h"
 #include "Core/PropertyTypes.h"
 #include "Resource/ResourceManager.h"
@@ -308,6 +311,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 		ImGui::OpenPopup("AddComponentPopup");
 	}
 
+	// TODO: 코드 중복성 제거
 	if (ImGui::BeginPopup("AddComponentPopup"))
 	{
 		if (ImGui::Selectable("Static Mesh Component"))
@@ -316,6 +320,43 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 			if (Actor->GetRootComponent())
 			{
 				NewComp->AttachToComponent(Actor->GetRootComponent());
+				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+				NewComp->SetStaticMesh(FObjManager::LoadObjStaticMesh("Data/BasicShape/Cube.OBJ", Device));
+			}
+			else
+			{
+				Actor->SetRootComponent(NewComp);
+			}
+			SelectedComponent = NewComp;
+			bActorSelected = false;
+		}
+
+		if (ImGui::Selectable("Billboard Component"))
+		{
+			UBillboardComponent* NewComp = Actor->AddComponent<UBillboardComponent>();
+			if (Actor->GetRootComponent())
+			{
+				NewComp->AttachToComponent(Actor->GetRootComponent());
+				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+				UTexture2D* NewSprite = UTexture2D::LoadFromFile("Asset/Editor/Icon/Pawn_64x.png", Device);
+				NewComp->SetSprite(NewSprite);
+			}
+			else
+			{
+				Actor->SetRootComponent(NewComp);
+			}
+			SelectedComponent = NewComp;
+			bActorSelected = false;
+		}
+
+		if (ImGui::Selectable("Text Render Component"))
+		{
+			UTextRenderComponent* NewComp = Actor->AddComponent<UTextRenderComponent>();
+			if (Actor->GetRootComponent())
+			{
+				NewComp->AttachToComponent(Actor->GetRootComponent());
+				NewComp->SetText("TEXT");
+				NewComp->SetFont(FName("Default"));
 			}
 			else
 			{
