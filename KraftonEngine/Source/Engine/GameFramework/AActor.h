@@ -80,7 +80,7 @@ public:
 	void SetVisible(bool Visible) { bVisible = Visible; }
 	
 	bool IsTickInEditor() const { return bTickInEditor; }
-	void SetTickInEditor(bool bTickInEditor) { bTickInEditor = bTickInEditor; }
+	void SetTickInEditor(bool TickEnable) { bTickInEditor = TickEnable; }
 
 	virtual void RegisterAllComponents();
 	virtual void UnregisterAllComponents();
