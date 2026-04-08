@@ -7,6 +7,7 @@
 #include "Texture/Texture2D.h"
 #include "Core/PropertyTypes.h"
 #include "Engine/Runtime/Engine.h"
+#include "GameFramework/AActor.h"
 
 class FBillboardProxy : public FPrimitiveProxy
 {
@@ -19,8 +20,17 @@ public:
 
 	void SubmitRenderCommand(FViewContext& View) override
 	{
+		if (IsDirty())
+		{
+			UpdateProxy();
+			bIsDirty = false;
+		}
+
 		UBillboardComponent* Billboard = static_cast<UBillboardComponent*>(Owner);
 		if (!Billboard->IsVisible()) return;
+
+		// Billboard proxy bypasses base SubmitRenderCommand path, so keep occlusion bounds in sync here.
+		RefreshOcclusionCache();
 
 		FMeshBuffer* Buffer = Billboard->GetMeshBuffer();
 		if (!Buffer || !Buffer->IsValid()) return;
@@ -35,8 +45,19 @@ public:
 		Cmd.Shader                = FShaderManager::Get().GetShader(EShaderType::Billboard);
 		Cmd.PerObjectConstants    = FPerObjectConstants::FromWorldMatrix(BillboardMatrix);
 		Cmd.SpriteSRV             = Billboard->GetSprite() ? Billboard->GetSprite()->GetSRV() : nullptr;
-		Cmd.PickingId             = GetId();
-		View.AddCommand(ERenderPass::Billboard, Cmd);
+		if (AActor* ActorOwner = Billboard->GetOwner())
+		{
+			Cmd.PickingId = ActorOwner->GetUUID();
+		}
+		else
+		{
+			Cmd.PickingId = Billboard->GetUUID();
+		}
+		const ERenderPass BillboardPass =
+			Billboard->IsVisualizationComponent()
+			? ERenderPass::VisualizationBillboard
+			: ERenderPass::Billboard;
+		View.AddCommand(BillboardPass, Cmd);
 
 		if (bSelected && Billboard->SupportsOutline())
 		{

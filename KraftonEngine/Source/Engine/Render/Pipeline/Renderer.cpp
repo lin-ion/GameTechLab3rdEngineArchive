@@ -168,6 +168,7 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 	const ERenderPass PickPasses[] = {
 		ERenderPass::Opaque,
 		ERenderPass::Billboard,
+		ERenderPass::VisualizationBillboard,
 		ERenderPass::GizmoOuter,
 		ERenderPass::GizmoInner
 	};
@@ -178,7 +179,7 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 
 	for (ERenderPass Pass : PickPasses)
 	{
-		if (Pass == ERenderPass::Billboard)
+		if (Pass == ERenderPass::Billboard || Pass == ERenderPass::VisualizationBillboard)
 		{
 			Device.SetDepthStencilState(EDepthStencilState::Default);
 			Device.SetRasterizerState(ERasterizerState::SolidNoCull);
@@ -211,13 +212,13 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 			}
 
 			FShader* ActivePickingShader = PickingShader;
-			if (Pass == ERenderPass::Billboard && BillboardPickingShader)
+			if ((Pass == ERenderPass::Billboard || Pass == ERenderPass::VisualizationBillboard) && BillboardPickingShader)
 			{
 				ActivePickingShader = BillboardPickingShader;
 			}
 			ActivePickingShader->Bind(Context);
 
-			if (Pass == ERenderPass::Billboard && ActivePickingShader == BillboardPickingShader)
+			if ((Pass == ERenderPass::Billboard || Pass == ERenderPass::VisualizationBillboard) && ActivePickingShader == BillboardPickingShader)
 			{
 				ID3D11ShaderResourceView* SpriteSRV = Queue.SpriteSRVs[Idx];
 				if (!SpriteSRV)
@@ -245,7 +246,7 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 
 			DrawCommandFromSoA(Context, Queue, Idx);
 
-			if (Pass == ERenderPass::Billboard && ActivePickingShader == BillboardPickingShader)
+			if ((Pass == ERenderPass::Billboard || Pass == ERenderPass::VisualizationBillboard) && ActivePickingShader == BillboardPickingShader)
 			{
 				ID3D11ShaderResourceView* NullSRV = nullptr;
 				Context->PSSetShaderResources(0, 1, &NullSRV);
@@ -569,6 +570,7 @@ void FRenderer::InitializePassRenderStates()
 	S[(uint32)E::Grid] = { EDepthStencilState::Default,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_LINELIST,     false };
 	S[(uint32)E::GizmoOuter] = { EDepthStencilState::GizmoOutside, EBlendState::Opaque,     ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
 	S[(uint32)E::GizmoInner] = { EDepthStencilState::GizmoInside,  EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
+	S[(uint32)E::VisualizationBillboard] = { EDepthStencilState::DepthReadOnly, EBlendState::AlphaBlend, ERasterizerState::SolidNoCull, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
 	S[(uint32)E::Font] = { EDepthStencilState::Default,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, true };
 	S[(uint32)E::OverlayFont] = { EDepthStencilState::NoDepth,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
 	S[(uint32)E::SubUV]     = { EDepthStencilState::Default,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, true  };

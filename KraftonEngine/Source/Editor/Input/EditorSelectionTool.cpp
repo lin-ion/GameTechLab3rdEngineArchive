@@ -71,7 +71,9 @@ bool FEditorSelectionTool::HandleInput(float DeltaTime)
 	}
 
 	const bool bSelectionClickTriggered =
-		EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::GizmoPrimaryReleased);
+		EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::SelectPrimaryReleased)
+		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::SelectToggleReleased)
+		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::SelectAddReleased);
 	if (!bSelectionClickTriggered)
 	{
 		return bConsumedByPending;
@@ -165,10 +167,8 @@ void FEditorSelectionTool::HandleSelectionClick(const FRay& Ray, float LocalMous
 	if (PickingMode == EPickingMode::IDBuffer)
 	{
 		CancelPendingIdPickReadback();
-		IdPickState.bCtrlHeld =
-			EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::CtrlModifierDown);
-		IdPickState.bShiftHeld =
-			EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::ShiftModifierDown);
+		IdPickState.bCtrlHeld = Owner->InputContext.Frame.IsCtrlDown();
+		IdPickState.bShiftHeld = Owner->InputContext.Frame.IsShiftDown();
 		const float MaxX = (Owner->Viewport && Owner->Viewport->GetWidth() > 0)
 			? static_cast<float>(Owner->Viewport->GetWidth() - 1) : 0.0f;
 		const float MaxY = (Owner->Viewport && Owner->Viewport->GetHeight() > 0)
@@ -181,10 +181,8 @@ void FEditorSelectionTool::HandleSelectionClick(const FRay& Ray, float LocalMous
 		return;
 	}
 
-	const bool bCtrlHeld =
-		EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::CtrlModifierDown);
-	const bool bShiftHeld =
-		EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::ShiftModifierDown);
+	const bool bCtrlHeld = Owner->InputContext.Frame.IsCtrlDown();
+	const bool bShiftHeld = Owner->InputContext.Frame.IsShiftDown();
 	const float MaxX = (Owner->Viewport && Owner->Viewport->GetWidth() > 0)
 		? static_cast<float>(Owner->Viewport->GetWidth() - 1) : 0.0f;
 	const float MaxY = (Owner->Viewport && Owner->Viewport->GetHeight() > 0)

@@ -574,7 +574,6 @@ void FLevelViewportLayoutUI::RenderViewportUI(FLevelViewportLayout& Layout, floa
 					}
 					ImGui::EndPopup();
 				}
-				ImGui::PopStyleVar();
 			}
 		}
 	}
@@ -965,7 +964,8 @@ void FLevelViewportLayoutUI::RenderPaneToolbar(FLevelViewportLayout& Layout, int
 					{
 						ImGui::SameLine(0.0f, 6.0f);
 
-						if (bEnabled)
+						const bool bWasEnabledForStyle = bEnabled;
+						if (bWasEnabledForStyle)
 						{
 							ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.24f, 0.43f, 0.30f, 1.0f));
 							ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.50f, 0.36f, 1.0f));
@@ -979,7 +979,7 @@ void FLevelViewportLayoutUI::RenderPaneToolbar(FLevelViewportLayout& Layout, int
 							bEnabled = !bEnabled;
 						}
 
-						if (bEnabled)
+						if (bWasEnabledForStyle)
 						{
 							ImGui::PopStyleColor(3);
 						}
@@ -1076,21 +1076,91 @@ void FLevelViewportLayoutUI::RenderPaneToolbar(FLevelViewportLayout& Layout, int
 
 				if (ImGui::BeginPopup(OverflowPopupID))
 				{
-					if (ImGui::MenuItem("Perspective"))
+					if (ImGui::BeginMenu("Viewport Type"))
 					{
-						ImGui::OpenPopup(VTPopupID);
+						for (int32 t = 0; t < static_cast<int32>(IM_ARRAYSIZE(ViewportTypeNames)); ++t)
+						{
+							const bool bSelected = (t == CurrentTypeIdx);
+							if (ImGui::MenuItem(ViewportTypeNames[t], nullptr, bSelected))
+							{
+								VC->SetViewportType(static_cast<ELevelViewportType>(t));
+							}
+						}
+						ImGui::EndMenu();
 					}
-					if (bOnePane && ImGui::MenuItem("Camera Speed"))
+
+					if (bOnePane && ImGui::BeginMenu("Camera Speed"))
 					{
-						ImGui::OpenPopup(CameraPopupID);
+						float CameraSpeed = Settings.CameraSpeed * RuntimeMultiplier;
+						if (ImGui::SliderFloat("Speed", &CameraSpeed, FEditorNavigationTool::GetMinCameraSpeedValue(), FEditorNavigationTool::GetMaxCameraSpeedValue(), "%.1fx"))
+						{
+							Settings.CameraSpeed = CameraSpeed;
+							if (NavTool)
+							{
+								NavTool->SetRuntimeCameraSpeedMultiplier(1.0f);
+							}
+						}
+						ImGui::EndMenu();
 					}
-					if (ImGui::MenuItem("Settings"))
+
+					if (ImGui::BeginMenu("Settings"))
 					{
-						ImGui::OpenPopup(SettingsPopupID);
+						ImGui::Text("View Mode");
+						int32 CurrentMode = static_cast<int32>(Opts.ViewMode);
+						ImGui::RadioButton("Lit", &CurrentMode, static_cast<int32>(EViewMode::Lit));
+						ImGui::SameLine();
+						ImGui::RadioButton("Unlit", &CurrentMode, static_cast<int32>(EViewMode::Unlit));
+						ImGui::SameLine();
+						ImGui::RadioButton("Wireframe", &CurrentMode, static_cast<int32>(EViewMode::Wireframe));
+						Opts.ViewMode = static_cast<EViewMode>(CurrentMode);
+
+						ImGui::Separator();
+						ImGui::Text("Show");
+						ImGui::Checkbox("Primitives", &Opts.ShowFlags.bPrimitives);
+						ImGui::Checkbox("BillboardText", &Opts.ShowFlags.bBillboardText);
+						ImGui::Checkbox("Grid", &Opts.ShowFlags.bGrid);
+						ImGui::Checkbox("Gizmo", &Opts.ShowFlags.bGizmo);
+						ImGui::Checkbox("Bounding Volume", &Opts.ShowFlags.bBoundingVolume);
+
+						ImGui::Separator();
+						ImGui::Text("Grid");
+						ImGui::SliderFloat("Spacing", &Opts.GridSpacing, 0.1f, 10.0f, "%.1f");
+						ImGui::SliderInt("Half Line Count", &Opts.GridHalfLineCount, 10, 500);
+
+						ImGui::Separator();
+						ImGui::Text("Camera");
+						ImGui::SliderFloat("Move Sensitivity", &Opts.CameraMoveSensitivity, 0.1f, 5.0f, "%.1f");
+						ImGui::SliderFloat("Rotate Sensitivity", &Opts.CameraRotateSensitivity, 0.1f, 5.0f, "%.1f");
+						ImGui::EndMenu();
 					}
-					if (ImGui::MenuItem("Layout"))
+
+					if (ImGui::BeginMenu("Layout"))
 					{
-						ImGui::OpenPopup(LayoutPopupID);
+						constexpr int32 LayoutCount = static_cast<int32>(EViewportLayout::MAX);
+						static const char* LayoutNames[LayoutCount] =
+						{
+							"One Pane",
+							"Two Panes (Horizontal)",
+							"Two Panes (Vertical)",
+							"Three Panes (Left)",
+							"Three Panes (Right)",
+							"Three Panes (Top)",
+							"Three Panes (Bottom)",
+							"Four Panes (2x2)",
+							"Four Panes (Left)",
+							"Four Panes (Right)",
+							"Four Panes (Top)",
+							"Four Panes (Bottom)"
+						};
+						for (int32 i = 0; i < LayoutCount; ++i)
+						{
+							const bool bSelected = (static_cast<EViewportLayout>(i) == Layout.CurrentLayout);
+							if (ImGui::MenuItem(LayoutNames[i], nullptr, bSelected))
+							{
+								Layout.SetLayout(static_cast<EViewportLayout>(i));
+							}
+						}
+						ImGui::EndMenu();
 					}
 					const char* ToggleLabel = (Layout.CurrentLayout == EViewportLayout::OnePane) ? "Split" : "Merge";
 					if (ImGui::MenuItem(ToggleLabel))
@@ -1253,5 +1323,5 @@ void FLevelViewportLayoutUI::RenderPaneToolbar(FLevelViewportLayout& Layout, int
 	}
 	ImGui::End();
 	ImGui::PopStyleColor(4);
-	ImGui::PopStyleVar(3);
+	ImGui::PopStyleVar(4);
 }

@@ -37,6 +37,10 @@ void UPrimitiveComponent::OnRegister()
 		Proxy = CreateProxy();
 	}
 
+	// 등록 직후 frustum/octree가 이 컴포넌트를 읽을 수 있으므로
+	// transform 변경이 없던 컴포넌트도 최소 1회 AABB를 보장한다.
+	UpdateWorldAABB();
+
 	ULevel* Level = GetLevel();
 	if (Proxy && Level)
 	{
@@ -124,5 +128,8 @@ void UPrimitiveComponent::UpdateWorldMatrix() const
 	{
 		Level->GetRenderProxy().MarkSpatialIndexDirty();
 	}
-	Proxy->MarkDirty();
+	if (Proxy)
+	{
+		Proxy->MarkDirty();
+	}
 }

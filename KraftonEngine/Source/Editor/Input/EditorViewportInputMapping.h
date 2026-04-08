@@ -19,6 +19,9 @@ namespace EditorViewportInputMapping
         GizmoPrimaryPressed,
         GizmoPrimaryDown,
         GizmoPrimaryReleased,
+        SelectPrimaryReleased,
+        SelectToggleReleased,
+        SelectAddReleased,
         CtrlModifierDown,
         ShiftModifierDown,
         AltModifierDown,
@@ -60,6 +63,11 @@ namespace EditorViewportInputMapping
             { static_cast<int32>(EEditorViewportAction::GizmoPrimaryPressed), EInputBindingTrigger::Pressed, { VK_LBUTTON, false, false, false }, EInputEventType::KeyPressed },
             { static_cast<int32>(EEditorViewportAction::GizmoPrimaryDown), EInputBindingTrigger::Down, { VK_LBUTTON, false, false, false }, EInputEventType::KeyPressed },
             { static_cast<int32>(EEditorViewportAction::GizmoPrimaryReleased), EInputBindingTrigger::Released, { VK_LBUTTON, false, false, false }, EInputEventType::KeyReleased },
+
+            // Selection click variants
+            { static_cast<int32>(EEditorViewportAction::SelectPrimaryReleased), EInputBindingTrigger::Released, { VK_LBUTTON, false, false, false }, EInputEventType::KeyReleased, 10 },
+            { static_cast<int32>(EEditorViewportAction::SelectToggleReleased), EInputBindingTrigger::Released, { VK_LBUTTON, true, false, false }, EInputEventType::KeyReleased, 20 },
+            { static_cast<int32>(EEditorViewportAction::SelectAddReleased), EInputBindingTrigger::Released, { VK_LBUTTON, false, false, true }, EInputEventType::KeyReleased, 20 },
 
             { static_cast<int32>(EEditorViewportAction::CtrlModifierDown), EInputBindingTrigger::Down, { VK_CONTROL, true, false, false }, EInputEventType::KeyPressed },
             { static_cast<int32>(EEditorViewportAction::ShiftModifierDown), EInputBindingTrigger::Down, { VK_SHIFT, false, false, true }, EInputEventType::KeyPressed },

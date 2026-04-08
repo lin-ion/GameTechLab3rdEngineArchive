@@ -41,6 +41,7 @@ enum class ERenderPass : uint32
 	Grid,
 	PostProcess,
 	Billboard,		// BillboardComponent → FBillboardProxy 직접 드로우
+	VisualizationBillboard, // Editor visualization billboard (e.g. Empty Actor icon)
 	GizmoOuter,
 	GizmoInner,
 	OverlayFont,	// DEPRECATED

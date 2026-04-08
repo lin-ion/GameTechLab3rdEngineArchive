@@ -9,6 +9,7 @@
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/BillboardComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Mesh/StaticMesh.h"
@@ -835,7 +836,20 @@ void FWorldRenderProxy::RebuildSpatialIndexIfDirty(bool bTrackInsertedStats, boo
 		}
 
 		Owner->GetWorldMatrix();
-		const FBoundingBox Bounds = Owner->GetWorldBoundingBox();
+		Owner->UpdateWorldAABB();
+		FBoundingBox Bounds = Owner->GetWorldBoundingBox();
+
+		// Billboard 계열은 SceneComponent attach/dirty 타이밍 영향으로
+		// cached AABB가 일시적으로 원점에 남는 케이스가 있어,
+		// spatial index 구축 시 월드 위치 기반 bounds를 직접 사용한다.
+		if (Owner->IsA<UBillboardComponent>())
+		{
+			const FVector WorldScale = Owner->GetWorldScale();
+			const float ExtentScalar = (std::max)({ std::abs(WorldScale.X), std::abs(WorldScale.Y), std::abs(WorldScale.Z), 0.01f });
+			const FVector Center = Owner->GetWorldLocation();
+			const FVector Extent(ExtentScalar, ExtentScalar, ExtentScalar);
+			Bounds = FBoundingBox(Center - Extent, Center + Extent);
+		}
 
 		if (FrustumSpatialIndex) FrustumSpatialIndex->Insert(Proxy, Bounds);
 		if (RaySpatialIndex)

@@ -1,5 +1,7 @@
 ﻿#include "SceneComponent.h"
 #include "Object/ObjectFactory.h"
+#include "Component/PrimitiveComponent.h"
+#include "GameFramework/Level.h"
 
 IMPLEMENT_CLASS(USceneComponent, UActorComponent)
 
@@ -98,6 +100,11 @@ void USceneComponent::SetParent(USceneComponent* NewParent)
 			ParentComponent->ChildComponents.push_back(this);
 		}
 	}
+
+	// Parent 변경 시 기존 CachedWorldMatrix는 더 이상 유효하지 않다.
+	// 즉시 재계산하지 않더라도, 다음 GetWorldMatrix 경로에서 정확한 월드행렬/AABB가 계산되도록 dirty 전파.
+	MarkTransformDirty();
+	UpdateWorldMatrix();
 }
 
 void USceneComponent::AddChild(USceneComponent* NewChild)
@@ -229,6 +236,14 @@ void USceneComponent::SetRelativeScale(const FVector& NewScale)
 void USceneComponent::MarkTransformDirty()
 {
 	bTransformDirty = true;
+	if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(this))
+	{
+		Primitive->MarkRenderStateDirty();
+		if (ULevel* Level = Primitive->GetLevel())
+		{
+			Level->GetRenderProxy().MarkSpatialIndexDirty();
+		}
+	}
 	for (auto* Child : ChildComponents)
 	{
 		Child->MarkTransformDirty();

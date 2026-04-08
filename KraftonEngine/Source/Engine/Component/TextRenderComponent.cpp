@@ -46,8 +46,15 @@ public:
 
 	void SubmitRenderCommand(FViewContext& Bus) override
 	{
+		if (IsDirty())
+		{
+			UpdateProxy();
+			bIsDirty = false;
+		}
+
 		UTextRenderComponent* TextComp = static_cast<UTextRenderComponent*>(Owner);
 		if (!TextComp || !TextComp->IsVisible()) return;
+		RefreshOcclusionCache();
 
 		const FFontResource* Font = TextComp->GetFont();
 		const FString& Text = TextComp->GetText();
