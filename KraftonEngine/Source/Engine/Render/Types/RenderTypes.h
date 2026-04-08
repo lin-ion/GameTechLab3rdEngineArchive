@@ -40,9 +40,9 @@ enum class ERenderPass : uint32
 	Editor,
 	Grid,
 	PostProcess,
+	Billboard,		// BillboardComponent → FBillboardProxy 직접 드로우
 	GizmoOuter,
 	GizmoInner,
 	OverlayFont,	// DEPRECATED
-	Billboard,		// BillboardComponent → FBillboardProxy 직접 드로우
 	MAX
 };
