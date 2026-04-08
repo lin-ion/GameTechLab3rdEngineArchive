@@ -396,11 +396,11 @@ bool UGameViewportClient::HandlePlayerInput(float DeltaTime)
 	if (MoveInput.Length() > 0.0f)
 	{
 		MoveInput = MoveInput.Normalized();
-		MoveInput.X *= -1.0f;
-		MoveInput.Y *= -1.0f;
 		const float MoveSpeed = 0.3;
-		FVector FlatForward = PIEPlayerCamera->GetForwardVector();
-		FVector FlatRight = PIEPlayerCamera->GetRightVector();
+		FVector FlatForward = PIEPlayerActor->GetActorForward();
+		FVector FlatRight = PIEPlayerActor->GetRootComponent()
+			? PIEPlayerActor->GetRootComponent()->GetRightVector()
+			: PIEPlayerCamera->GetRightVector();
 		FlatForward.Z = 0.0f;
 		FlatRight.Z = 0.0f;
 		if (FlatForward.Length() > 0.0f)

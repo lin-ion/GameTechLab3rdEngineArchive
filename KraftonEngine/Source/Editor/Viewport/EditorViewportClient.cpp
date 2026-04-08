@@ -234,6 +234,22 @@ void FEditorViewportClient::Tick(float DeltaTime)
 	}
 }
 
+void FEditorViewportClient::TickPIEOutlineFlashOnly(float DeltaTime)
+{
+	if (!bPIEOutlineFlashActive)
+	{
+		return;
+	}
+
+	PIEOutlineFlashElapsed += DeltaTime;
+	const float TotalDuration = PIEOutlineFlashHoldDuration + PIEOutlineFlashFadeDuration;
+	if (PIEOutlineFlashElapsed >= TotalDuration)
+	{
+		bPIEOutlineFlashActive = false;
+		PIEOutlineFlashElapsed = 0.0f;
+	}
+}
+
 bool FEditorViewportClient::ProcessInput(FViewportInputContext& Context)
 {
 	InputContext = Context;

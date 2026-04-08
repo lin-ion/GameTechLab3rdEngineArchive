@@ -289,6 +289,7 @@ void UEditorEngine::Tick(float DeltaTime)
 		{
 			// Possessed PIE 동안 엔트리 에디터 카메라 로직을 중지해
 			// PIE 카메라 동기화와 충돌하지 않도록 한다.
+			VC->TickPIEOutlineFlashOnly(DeltaTime);
 			continue;
 		}
 		VC->Tick(DeltaTime);

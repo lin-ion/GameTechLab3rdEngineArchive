@@ -52,6 +52,7 @@ public:
 	FViewportCamera* GetCamera() const { return Camera.get(); }
 
 	void Tick(float DeltaTime);
+	void TickPIEOutlineFlashOnly(float DeltaTime);
 	bool ProcessInput(FViewportInputContext& Context) override;
 	bool WantsRelativeMouseMode(const FViewportInputContext& Context, POINT& OutRestoreScreenPos) const override;
 	FEditorViewportController* GetInputController() { EnsureInputController(); return InputController.get(); }
