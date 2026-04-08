@@ -105,9 +105,9 @@ private:
 	FEditorFooterLogSystem FooterLogSystem;
 	EPickingMode PickingMode = EPickingMode::IDBuffer;
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
+	UGameViewportClient* PIEViewportClient = nullptr;
+	bool bPIEEnabled = false;
 
 	TArray<FPlaceActorDesc> PlaceableActors;
 	FString CurrentLevelFilePath;
-
-	bool bPIEEnabled = false;
 };

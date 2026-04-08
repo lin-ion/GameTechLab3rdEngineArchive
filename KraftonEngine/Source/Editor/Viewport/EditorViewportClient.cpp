@@ -48,6 +48,10 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 		}
 	}
 	ResetIdPickingState();
+	if (InputController)
+	{
+		InputController->ResetInputState();
+	}
 }
 
 void FEditorViewportClient::CreateCamera()
