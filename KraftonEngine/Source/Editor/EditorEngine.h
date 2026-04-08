@@ -29,6 +29,12 @@ struct FPlaceActorDesc
 class UEditorEngine : public UEngine
 {
 public:
+	enum class EPIEControlMode : uint8
+	{
+		Possessed,
+		Ejected
+	};
+
 	DECLARE_CLASS(UEditorEngine, UEngine)
 
 	UEditorEngine() = default;
@@ -60,6 +66,11 @@ public:
 	
 	void StartPIE();
 	void EndPIE();
+	bool TogglePIEControlMode();
+	bool EnterPIEPossessedMode();
+	bool EnterPIEEjectedMode();
+	EPIEControlMode GetPIEControlMode() const { return PIEControlMode; }
+	FLevelEditorViewportClient* GetPIEEntryViewportClient() const { return PIEEntryEditorViewportClient; }
 
 	FEditorSettings& GetSettings() { return FEditorSettings::Get(); }
 	const FEditorSettings& GetSettings() const { return FEditorSettings::Get(); }
@@ -96,6 +107,7 @@ public:
 	FViewportClient* GetActiveViewportSubClient() const;
 
 private:
+	bool ApplyPIEControlMode(FViewport* InViewport, EPIEControlMode InMode);
 	FViewportClient* ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const override;
 	void PruneInputTargetHosts();
 	FLevelEditorViewportClient* FindLevelViewportClientByViewport(FViewport* InViewport) const;
@@ -108,6 +120,9 @@ private:
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
 	UGameViewportClient* PIEViewportClient = nullptr;
 	bool bPIEEnabled = false;
+	EPIEControlMode PIEControlMode = EPIEControlMode::Possessed;
+	FViewport* PIEEntryViewport = nullptr;
+	FLevelEditorViewportClient* PIEEntryEditorViewportClient = nullptr;
 
 	TArray<FPlaceActorDesc> PlaceableActors;
 	FString CurrentLevelFilePath;

@@ -776,7 +776,14 @@ void FLevelViewportLayoutUI::RenderPaneToolbar(FLevelViewportLayout& Layout, int
 			char SettingsPopupID[64];
 			snprintf(SettingsPopupID, sizeof(SettingsPopupID), "SettingsPopup_%d", SlotIndex);
 
-			if (Layout.bPIEViewportMode)
+			const bool bPossessedPIEMode =
+				Layout.bPIEViewportMode
+				&& Layout.Editor
+				&& Layout.Editor->IsPIEEnabled()
+				&& Layout.Editor->GetPIEControlMode() == UEditorEngine::EPIEControlMode::Possessed
+				&& VC == Layout.PIEFocusedViewportClient;
+
+			if (bPossessedPIEMode)
 			{
 				const float ShowFlagButtonWidth = CalcButtonWidth("ShowFlag", EViewportToolbarIcon::Setting, true);
 				const float ShowFlagButtonX = ImGui::GetWindowContentRegionMax().x - ShowFlagButtonWidth;
