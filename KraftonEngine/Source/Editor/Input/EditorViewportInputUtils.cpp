@@ -13,18 +13,20 @@ bool EditorViewportInputUtils::IsLeftNavigationDragActive(const FViewportInputCo
 	return false;
 
 	/*
-	if (!Context.Frame.IsDown(VK_LBUTTON) && !Context.Frame.bLeftDragEnded)
+	if (!Context.Frame.IsDown(VK_LBUTTON) && !Context.WasPointerDragEnded(EPointerButton::Left))
 	{
 		return false;
 	}
 
-	if (Context.Frame.bLeftDragStarted || Context.Frame.bLeftDragging || Context.Frame.bLeftDragEnded)
+	FPointerGesture LeftGesture;
+	if (Context.GetPointerGesture(EPointerButton::Left, LeftGesture)
+		&& (LeftGesture.bStarted || LeftGesture.bActive || LeftGesture.bEnded))
 	{
 		return true;
 	}
 
-	const LONG DragX = Context.Frame.LeftDragVector.x;
-	const LONG DragY = Context.Frame.LeftDragVector.y;
+	const LONG DragX = LeftGesture.TotalDelta.x;
+	const LONG DragY = LeftGesture.TotalDelta.y;
 	return (DragX * DragX + DragY * DragY) >= (EditorNavigationDragThreshold * EditorNavigationDragThreshold);
 	*/
 }

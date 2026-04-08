@@ -8,6 +8,7 @@
 #include "Editor/UI/EditorMainPanel.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Selection/SelectionManager.h"
+#include "Viewport/ViewportClient.h"
 
 class FTransformGizmo;
 class FLevelEditorViewportClient;
@@ -51,9 +52,24 @@ public:
 	void SetPickingMode(EPickingMode InMode);
 	EPickingMode GetPickingMode() const { return PickingMode; }
 
+	// PIE preparation: swap viewport sub-client through host client.
+	bool SetViewportSubClient(FViewport* InViewport, FViewportClient* InSubClient);
+	bool ResetViewportSubClient(FViewport* InViewport);
+	bool SetViewportSubClientForWorldType(FViewport* InViewport, EWorldType InWorldType);
+	FViewportClient* GetViewportSubClient(FViewport* InViewport) const;
+	bool SetActiveViewportSubClient(FViewportClient* InSubClient);
+	bool ResetActiveViewportSubClient();
+	bool SetActiveViewportSubClientForWorldType(EWorldType InWorldType);
+	FViewportClient* GetActiveViewportSubClient() const;
+
 private:
+	FViewportClient* ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const override;
+	void PruneInputTargetHosts();
+	FLevelEditorViewportClient* FindLevelViewportClientByViewport(FViewport* InViewport) const;
+
 	FSelectionManager SelectionManager;
 	FEditorMainPanel MainPanel;
 	FOverlayStatSystem OverlayStatSystem;
 	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
+	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
 };

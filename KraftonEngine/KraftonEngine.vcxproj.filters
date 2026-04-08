@@ -176,6 +176,18 @@
     <ClCompile Include="Source\Editor\Input\EditorViewportController.cpp">
       <Filter>Source\Editor\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorViewportCommandTool.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorGizmoTool.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorSelectionTool.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorNavigationTool.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Input\EditorViewportIdPickCoordinator.cpp">
       <Filter>Source\Editor\Input</Filter>
     </ClCompile>
@@ -516,6 +528,18 @@
       <Filter>Source\Editor\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Input\EditorViewportController.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorViewportCommandTool.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorGizmoTool.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorSelectionTool.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorNavigationTool.h">
       <Filter>Source\Editor\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Input\EditorViewportIdPickCoordinator.h">

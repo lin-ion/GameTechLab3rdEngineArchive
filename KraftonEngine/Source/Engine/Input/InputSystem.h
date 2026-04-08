@@ -12,6 +12,7 @@ class InputSystem : public TSingleton<InputSystem>
 public:
 	void Tick();
 	const FInputFrame& GetFrame() const { return CurrentFrame; }
+	const TArray<FInputEvent>& GetEvents() const { return CurrentEvents; }
 
 	void AddScrollDelta(int Delta) { ScrollDelta += Delta; }
 	void AddRawMouseDelta(int32 DeltaX, int32 DeltaY) { PendingRawDeltaX += DeltaX; PendingRawDeltaY += DeltaY; }
@@ -52,6 +53,7 @@ private:
 
 	uint64 FrameCounter = 0;
 	FInputFrame CurrentFrame{};
+	TArray<FInputEvent> CurrentEvents;
 
 	static constexpr int DRAG_THRESHOLD = 5;
 

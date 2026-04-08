@@ -10,6 +10,7 @@
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Object/ObjectFactory.h"
 #include "Mesh/ObjManager.h"
+#include "Viewport/Viewport.h"
 
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
@@ -56,6 +57,7 @@ void UEditorEngine::Shutdown()
 
 	// 뷰포트 레이아웃 해제
 	ViewportLayout.Release();
+	InputTargetHosts.clear();
 
 	// 엔진 공통 해제 (Renderer, D3D 등)
 	UEngine::Shutdown();
@@ -72,6 +74,7 @@ void UEditorEngine::Tick(float DeltaTime)
 {
 	MainPanel.Update();
 	SetImGuiInputCapture(MainPanel.IsCapturingMouse(), MainPanel.IsCapturingKeyboard());
+	PruneInputTargetHosts();
 
 	ClearInputTargets();
 	for (FLevelEditorViewportClient* VC : ViewportLayout.GetLevelViewportClients())
@@ -85,6 +88,11 @@ void UEditorEngine::Tick(float DeltaTime)
 		if (!VP)
 		{
 			continue;
+		}
+
+		if (FViewportClient* HostClient = ResolveInputTargetClient(VP, VC))
+		{
+			VP->SetClient(HostClient);
 		}
 
 		RegisterInputTarget(
@@ -188,4 +196,178 @@ void UEditorEngine::ClearWorlds()
 	UObjectManager::Get().ClearNameCounters();
 
 	ViewportLayout.DestroyAllCameras();
+}
+
+FViewportClient* UEditorEngine::ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const
+{
+	if (!InViewport || !InClient)
+	{
+		return nullptr;
+	}
+
+	auto Found = InputTargetHosts.find(InViewport);
+	if (Found == InputTargetHosts.end())
+	{
+		Found = InputTargetHosts.emplace(InViewport, FViewportHostClient()).first;
+	}
+
+	FViewportHostClient& Host = Found->second;
+	if (!Host.GetActiveSubClient())
+	{
+		Host.SetActiveSubClient(InClient);
+	}
+	return &Host;
+}
+
+void UEditorEngine::PruneInputTargetHosts()
+{
+	TSet<FViewport*> LiveViewports;
+	for (FLevelEditorViewportClient* VC : ViewportLayout.GetLevelViewportClients())
+	{
+		if (VC && VC->GetViewport())
+		{
+			LiveViewports.insert(VC->GetViewport());
+		}
+	}
+
+	for (auto It = InputTargetHosts.begin(); It != InputTargetHosts.end();)
+	{
+		if (LiveViewports.find(It->first) == LiveViewports.end())
+		{
+			It = InputTargetHosts.erase(It);
+		}
+		else
+		{
+			++It;
+		}
+	}
+}
+
+FLevelEditorViewportClient* UEditorEngine::FindLevelViewportClientByViewport(FViewport* InViewport) const
+{
+	if (!InViewport)
+	{
+		return nullptr;
+	}
+
+	for (FLevelEditorViewportClient* VC : ViewportLayout.GetLevelViewportClients())
+	{
+		if (VC && VC->GetViewport() == InViewport)
+		{
+			return VC;
+		}
+	}
+
+	return nullptr;
+}
+
+bool UEditorEngine::SetViewportSubClient(FViewport* InViewport, FViewportClient* InSubClient)
+{
+	if (!InViewport || !InSubClient)
+	{
+		return false;
+	}
+
+	FViewportHostClient& Host = InputTargetHosts[InViewport];
+	Host.SetActiveSubClient(InSubClient);
+	InViewport->SetClient(&Host);
+	return true;
+}
+
+bool UEditorEngine::ResetViewportSubClient(FViewport* InViewport)
+{
+	if (!InViewport)
+	{
+		return false;
+	}
+
+	FLevelEditorViewportClient* DefaultClient = FindLevelViewportClientByViewport(InViewport);
+	if (!DefaultClient)
+	{
+		return false;
+	}
+
+	return SetViewportSubClient(InViewport, DefaultClient);
+}
+
+bool UEditorEngine::SetViewportSubClientForWorldType(FViewport* InViewport, EWorldType InWorldType)
+{
+	if (!InViewport)
+	{
+		return false;
+	}
+
+	switch (InWorldType)
+	{
+	case EWorldType::Editor:
+		return ResetViewportSubClient(InViewport);
+	default:
+		// PIE/Game specific client is not wired yet.
+		return false;
+	}
+}
+
+FViewportClient* UEditorEngine::GetViewportSubClient(FViewport* InViewport) const
+{
+	if (!InViewport)
+	{
+		return nullptr;
+	}
+
+	auto Found = InputTargetHosts.find(InViewport);
+	if (Found != InputTargetHosts.end())
+	{
+		return Found->second.GetActiveSubClient();
+	}
+
+	if (FLevelEditorViewportClient* DefaultClient = FindLevelViewportClientByViewport(InViewport))
+	{
+		return DefaultClient;
+	}
+
+	return nullptr;
+}
+
+bool UEditorEngine::SetActiveViewportSubClient(FViewportClient* InSubClient)
+{
+	FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport();
+	if (!ActiveVC)
+	{
+		return false;
+	}
+
+	return SetViewportSubClient(ActiveVC->GetViewport(), InSubClient);
+}
+
+bool UEditorEngine::ResetActiveViewportSubClient()
+{
+	FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport();
+	if (!ActiveVC)
+	{
+		return false;
+	}
+
+	return ResetViewportSubClient(ActiveVC->GetViewport());
+}
+
+bool UEditorEngine::SetActiveViewportSubClientForWorldType(EWorldType InWorldType)
+{
+	FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport();
+	if (!ActiveVC)
+	{
+		return false;
+	}
+
+	return SetViewportSubClientForWorldType(ActiveVC->GetViewport(), InWorldType);
+}
+
+FViewportClient* UEditorEngine::GetActiveViewportSubClient() const
+{
+	FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport();
+	if (!ActiveVC)
+	{
+		return nullptr;
+	}
+
+	return GetViewportSubClient(ActiveVC->GetViewport());
 }

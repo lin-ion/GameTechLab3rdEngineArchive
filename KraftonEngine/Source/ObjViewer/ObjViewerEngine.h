@@ -29,6 +29,9 @@ public:
 	void RenderUI(float DeltaTime);
 
 private:
+	FViewportClient* ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const override;
+
 	FObjViewerPanel Panel;
+	mutable FViewportHostClient ViewportHostClient;
 	FObjViewerViewportClient ViewportClient;
 };

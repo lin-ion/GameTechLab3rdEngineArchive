@@ -1,5 +1,7 @@
 #include "Editor/Input/EditorViewportController.h"
 
+#include "Editor/Input/EditorViewportCommandTool.h"
+#include "Editor/Input/EditorNavigationTool.h"
 #include "Editor/Viewport/EditorViewportClient.h"
 
 namespace
@@ -31,6 +33,7 @@ FEditorViewportController::FEditorViewportController(FEditorViewportClient* InOw
 	if (Owner)
 	{
 		ActiveMode = CreateMode(EEditorViewportModeType::Select, Owner);
+		ViewportCommandTool = std::make_unique<FEditorViewportCommandTool>(Owner, this);
 		NavigationTool = std::make_unique<FEditorNavigationTool>(Owner);
 	}
 }
@@ -78,33 +81,14 @@ bool FEditorViewportController::CycleMode()
 	return SetMode(NextModeType);
 }
 
-bool FEditorViewportController::HandleCommandInput(float DeltaTime)
+bool FEditorViewportController::HandleViewportCommandInput(float DeltaTime)
 {
-	if (!Owner)
+	if (!Owner || !ViewportCommandTool)
 	{
 		return false;
 	}
 
-	(void)DeltaTime;
-	if (Owner->InputContext.bImGuiCapturedKeyboard)
-	{
-		return false;
-	}
-
-	if (Owner->InputContext.Frame.IsReleased(VK_TAB))
-	{
-		if (CycleMode())
-		{
-			return true;
-		}
-	}
-
-	if (Owner->InputContext.Frame.IsReleased(VK_SPACE) && Owner->TryCycleGizmoMode())
-	{
-		return true;
-	}
-
-	return false;
+	return ViewportCommandTool->HandleInput(DeltaTime);
 }
 
 bool FEditorViewportController::HandleGizmoInput(float DeltaTime)
@@ -146,6 +130,28 @@ bool FEditorViewportController::IsNavigationInputActiveNow() const
 
 	const FEditorNavigationTool* NavTool = static_cast<const FEditorNavigationTool*>(NavigationTool.get());
 	return NavTool->IsInputActiveNow();
+}
+
+void FEditorViewportController::TickNavigationSmoothing(float DeltaTime)
+{
+	if (!NavigationTool)
+	{
+		return;
+	}
+
+	FEditorNavigationTool* NavTool = static_cast<FEditorNavigationTool*>(NavigationTool.get());
+	NavTool->TickSmoothing(DeltaTime);
+}
+
+void FEditorViewportController::SyncNavigationFromCamera()
+{
+	if (!NavigationTool)
+	{
+		return;
+	}
+
+	FEditorNavigationTool* NavTool = static_cast<FEditorNavigationTool*>(NavigationTool.get());
+	NavTool->SyncFromCamera();
 }
 
 bool FEditorViewportController::HasPendingIdPickRequest() const

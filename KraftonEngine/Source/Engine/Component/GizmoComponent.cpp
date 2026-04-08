@@ -558,6 +558,12 @@ void UGizmoComponent::SetWorldSpace(bool bWorldSpace)
 	UpdateGizmoTransform();
 }
 
+void UGizmoComponent::ToggleWorldSpace()
+{
+	bIsWorldSpace = !bIsWorldSpace;
+	UpdateGizmoTransform();
+}
+
 
 void UGizmoComponent::UpdateAxisMask(ELevelViewportType ViewportType)
 {

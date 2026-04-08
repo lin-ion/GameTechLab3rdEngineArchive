@@ -3,6 +3,8 @@
 #include <memory>
 #include "Core/CoreTypes.h"
 #include "Core/RayTypes.h"
+#include "Editor/Input/EditorGizmoTool.h"
+#include "Editor/Input/EditorSelectionTool.h"
 #include "Editor/Input/EditorViewportTools.h"
 
 class FEditorViewportClient;

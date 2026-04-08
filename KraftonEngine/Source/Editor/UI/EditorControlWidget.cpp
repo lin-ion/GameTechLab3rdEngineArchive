@@ -1,5 +1,6 @@
 ﻿#include "Editor/UI/EditorControlWidget.h"
 #include "Editor/EditorEngine.h"
+#include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Render/Pipeline/OcclusionManager.h"
 #include "Engine/Profiling/Timer.h"
@@ -91,11 +92,18 @@ void FEditorControlWidget::Render(float DeltaTime)
 
 	// Camera
 	FViewportCamera* Camera = EditorEngine->GetCamera();
+	FLevelEditorViewportClient* ActiveVC = EditorEngine->GetActiveViewport();
 	if (!Camera)
 	{
 		ImGui::End();
 		return;
 	}
+
+	FEditorSettings& Settings = FEditorSettings::Get();
+	ImGui::Checkbox("Enable Camera Smoothing", &Settings.bEnableCameraSmoothing);
+	ImGui::DragFloat("Move Lerp Strength", &Settings.CameraMoveSmoothSpeed, 0.1f, 0.01f, 100.0f, "%.2f");
+	ImGui::DragFloat("Rotate Lerp Strength", &Settings.CameraRotateSmoothSpeed, 0.1f, 0.01f, 100.0f, "%.2f");
+	ImGui::Separator();
 
 	float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
 	if (ImGui::DragFloat("Camera FOV", &CameraFOV_Deg, 0.5f, 1.0f, 90.0f))
@@ -114,6 +122,10 @@ void FEditorControlWidget::Render(float DeltaTime)
 	if (ImGui::DragFloat3("Camera Location", CameraLocation, 0.1f))
 	{
 		Camera->SetWorldLocation(FVector(CameraLocation[0], CameraLocation[1], CameraLocation[2]));
+		if (ActiveVC && ActiveVC->GetInputController())
+		{
+			ActiveVC->GetInputController()->SyncNavigationFromCamera();
+		}
 	}
 
 	FRotator CamRot = Camera->GetRelativeRotation();
@@ -121,6 +133,10 @@ void FEditorControlWidget::Render(float DeltaTime)
 	if (ImGui::DragFloat3("Camera Rotation", CameraRotation, 0.1f))
 	{
 		Camera->SetRelativeRotation(FRotator(CameraRotation[1], CameraRotation[2], Clamp(CameraRotation[0], CamRot.Roll, CamRot.Roll)));
+		if (ActiveVC && ActiveVC->GetInputController())
+		{
+			ActiveVC->GetInputController()->SyncNavigationFromCamera();
+		}
 	}
 
 	ImGui::End();

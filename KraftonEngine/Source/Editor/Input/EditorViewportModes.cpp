@@ -1,7 +1,5 @@
 #include "Editor/Input/EditorViewportModes.h"
 
-#include "Editor/Input/EditorViewportTools.h"
-
 FEditorSelectMode::FEditorSelectMode(FEditorViewportClient* InOwner)
 	: Owner(InOwner)
 {

@@ -1,8 +1,8 @@
 ﻿#include "Editor/Viewport/EditorViewportClient.h"
 
-#include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/EditorEngine.h"
 #include "Editor/Input/EditorViewportInputContexts.h"
+#include "Editor/Input/EditorViewportInputMapping.h"
 #include "Editor/Input/EditorViewportInputUtils.h"
 #include "Editor/Input/EditorViewportController.h"
 #include "Editor/Settings/EditorSettings.h"
@@ -15,6 +15,8 @@
 #include "Editor/Gizmo/TransformGizmo.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "ImGui/imgui.h"
+#include "Math/MathUtils.h"
+#include <algorithm>
 
 void FEditorViewportClient::Initialize(FWindowsWindow* InWindow)
 {
@@ -64,6 +66,11 @@ void FEditorViewportClient::ResetCamera()
 	if (!Camera || !Settings) return;
 	Camera->SetWorldLocation(Settings->InitViewPos);
 	Camera->LookAt(Settings->InitLookAt);
+	EnsureInputController();
+	if (InputController)
+	{
+		InputController->SyncNavigationFromCamera();
+	}
 }
 
 void FEditorViewportClient::SetViewportType(ELevelViewportType NewType)
@@ -124,6 +131,11 @@ void FEditorViewportClient::SetViewportType(ELevelViewportType NewType)
 
 	Camera->SetRelativeLocation(Position);
 	Camera->SetRelativeRotation(Rotation);
+	EnsureInputController();
+	if (InputController)
+	{
+		InputController->SyncNavigationFromCamera();
+	}
 }
 
 void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
@@ -148,6 +160,11 @@ void FEditorViewportClient::Tick(float DeltaTime)
 {
 	if (!bHasInputContext)
 	{
+		EnsureInputController();
+		if (InputController)
+		{
+			InputController->TickNavigationSmoothing(DeltaTime);
+		}
 		return;
 	}
 
@@ -195,6 +212,10 @@ void FEditorViewportClient::Tick(float DeltaTime)
 	}
 
 	bHasInputContext = false;
+	if (InputController)
+	{
+		InputController->TickNavigationSmoothing(DeltaTime);
+	}
 }
 
 bool FEditorViewportClient::ProcessInput(FViewportInputContext& Context)
@@ -229,8 +250,11 @@ bool FEditorViewportClient::WantsRelativeMouseMode(const FViewportInputContext& 
 		return false;
 	}
 
-	const bool bResult = Context.Frame.IsDown(VK_RBUTTON)
-		|| Context.Frame.IsDown(VK_MBUTTON)
+	const bool bResult = EditorViewportInputMapping::IsTriggered(Context, EditorViewportInputMapping::EEditorViewportAction::NavLookRightDown)
+		|| EditorViewportInputMapping::IsTriggered(Context, EditorViewportInputMapping::EEditorViewportAction::NavLookMiddleDown)
+		|| EditorViewportInputMapping::IsTriggered(Context, EditorViewportInputMapping::EEditorViewportAction::NavOrbitAltLeftDown)
+		|| EditorViewportInputMapping::IsTriggered(Context, EditorViewportInputMapping::EEditorViewportAction::NavDollyAltRightDown)
+		|| EditorViewportInputMapping::IsTriggered(Context, EditorViewportInputMapping::EEditorViewportAction::NavPanAltMiddleDown)
 		|| bLeftRelativeDrag;
 	return bResult;
 }
@@ -250,16 +274,27 @@ void FEditorViewportClient::EnsureInputContextStack()
 		return;
 	}
 
-	CommandInputContext = std::make_unique<FEditorCommandInputContext>(this, &DispatchDeltaTime);
+	ViewportCommandContext = std::make_unique<FViewportCommandContext>(this, &DispatchDeltaTime);
 	GizmoInputContext = std::make_unique<FEditorGizmoInputContext>(this, &DispatchDeltaTime);
 	SelectionInputContext = std::make_unique<FEditorSelectionInputContext>(this, &DispatchDeltaTime);
 	NavigationInputContext = std::make_unique<FEditorNavigationInputContext>(this, &DispatchDeltaTime);
 
 	InputContextStack.clear();
-	InputContextStack.push_back(CommandInputContext.get());
+	InputContextStack.push_back(ViewportCommandContext.get());
 	InputContextStack.push_back(GizmoInputContext.get());
 	InputContextStack.push_back(SelectionInputContext.get());
 	InputContextStack.push_back(NavigationInputContext.get());
+	std::sort(
+		InputContextStack.begin(),
+		InputContextStack.end(),
+		[](IInputContext* Lhs, IInputContext* Rhs)
+		{
+			if (!Lhs || !Rhs)
+			{
+				return Lhs != nullptr;
+			}
+			return Lhs->GetPriority() > Rhs->GetPriority();
+		});
 	bInputContextStackInitialized = true;
 }
 
@@ -277,12 +312,37 @@ bool FEditorViewportClient::TryCycleGizmoMode()
 void FEditorViewportClient::ResetIdPickingState()
 {
 	EndDeferredSpatialIndexInvalidation();
+	EndSelectionMarquee();
 	EnsureInputController();
 	if (InputController)
 	{
 		InputController->ResetIdPickingState();
 		InputController->ResetInputState();
 	}
+}
+
+void FEditorViewportClient::BeginSelectionMarquee(const POINT& InLocalStart, bool bInAdditive)
+{
+	bSelectionMarqueeActive = true;
+	bSelectionMarqueeAdditive = bInAdditive;
+	SelectionMarqueeStartLocal = InLocalStart;
+	SelectionMarqueeCurrentLocal = InLocalStart;
+}
+
+void FEditorViewportClient::UpdateSelectionMarquee(const POINT& InLocalCurrent)
+{
+	if (!bSelectionMarqueeActive)
+	{
+		return;
+	}
+
+	SelectionMarqueeCurrentLocal = InLocalCurrent;
+}
+
+void FEditorViewportClient::EndSelectionMarquee()
+{
+	bSelectionMarqueeActive = false;
+	bSelectionMarqueeAdditive = false;
 }
 
 void FEditorViewportClient::BeginDeferredSpatialIndexInvalidation()
@@ -369,5 +429,21 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 	if (bIsActiveViewport)
 	{
 		DrawList->AddRect(Min, Max, IM_COL32(255, 200, 0, 200), 0.0f, 0, 2.0f);
+	}
+
+	if (bSelectionMarqueeActive)
+	{
+		const float StartX = R.X + static_cast<float>(SelectionMarqueeStartLocal.x);
+		const float StartY = R.Y + static_cast<float>(SelectionMarqueeStartLocal.y);
+		const float CurrentX = R.X + static_cast<float>(SelectionMarqueeCurrentLocal.x);
+		const float CurrentY = R.Y + static_cast<float>(SelectionMarqueeCurrentLocal.y);
+		const float Left = (std::min)(StartX, CurrentX);
+		const float Top = (std::min)(StartY, CurrentY);
+		const float Right = (std::max)(StartX, CurrentX);
+		const float Bottom = (std::max)(StartY, CurrentY);
+		const ImU32 FillColor = IM_COL32(255, 255, 255, 48);
+		const ImU32 BorderColor = IM_COL32(255, 255, 255, 210);
+		DrawList->AddRectFilled(ImVec2(Left, Top), ImVec2(Right, Bottom), FillColor);
+		DrawList->AddRect(ImVec2(Left, Top), ImVec2(Right, Bottom), BorderColor, 0.0f, 0, 1.5f);
 	}
 }

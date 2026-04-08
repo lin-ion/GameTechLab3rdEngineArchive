@@ -118,6 +118,27 @@ void FTransformGizmo::SetNextMode()
 	}
 }
 
+void FTransformGizmo::SetWorldSpace(bool bWorldSpace)
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->SetWorldSpace(bWorldSpace);
+	}
+}
+
+bool FTransformGizmo::IsWorldSpace() const
+{
+	return GizmoComponent ? GizmoComponent->IsWorldSpace() : true;
+}
+
+void FTransformGizmo::ToggleCoordinateSpace()
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->ToggleWorldSpace();
+	}
+}
+
 void FTransformGizmo::SetTarget(AActor* NewTarget)
 {
 	if (GizmoComponent)

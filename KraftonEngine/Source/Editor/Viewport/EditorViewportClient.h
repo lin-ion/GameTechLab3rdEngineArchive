@@ -20,10 +20,11 @@ class FViewport;
 class FEditorViewportClient : public FViewportClient
 {
 	friend class FEditorViewportController;
+	friend class FEditorViewportCommandTool;
 	friend class FEditorGizmoTool;
 	friend class FEditorSelectionTool;
 	friend class FEditorNavigationTool;
-	friend class FEditorCommandInputContext;
+	friend class FViewportCommandContext;
 	friend class FEditorGizmoInputContext;
 	friend class FEditorSelectionInputContext;
 	friend class FEditorNavigationInputContext;
@@ -83,8 +84,14 @@ private:
 
 public:
 	void ResetIdPickingState();
+	void BeginSelectionMarquee(const POINT& InLocalStart, bool bInAdditive);
+	void UpdateSelectionMarquee(const POINT& InLocalCurrent);
+	void EndSelectionMarquee();
+	bool HasSelectionMarquee() const { return bSelectionMarqueeActive; }
+	bool IsSelectionMarqueeAdditive() const { return bSelectionMarqueeAdditive; }
+	const POINT& GetSelectionMarqueeStartLocal() const { return SelectionMarqueeStartLocal; }
+	const POINT& GetSelectionMarqueeCurrentLocal() const { return SelectionMarqueeCurrentLocal; }
 
-private:
 	FViewport* Viewport = nullptr;
 	SWindow* LayoutWindow = nullptr;
 	FWindowsWindow* Window = nullptr;
@@ -109,8 +116,13 @@ private:
 	std::unique_ptr<FEditorViewportController> InputController;
 	bool bInputContextStackInitialized = false;
 	TArray<IInputContext*> InputContextStack;
-	std::unique_ptr<IInputContext> CommandInputContext;
+	std::unique_ptr<IInputContext> ViewportCommandContext;
 	std::unique_ptr<IInputContext> GizmoInputContext;
 	std::unique_ptr<IInputContext> SelectionInputContext;
 	std::unique_ptr<IInputContext> NavigationInputContext;
+
+	bool bSelectionMarqueeActive = false;
+	bool bSelectionMarqueeAdditive = false;
+	POINT SelectionMarqueeStartLocal = { 0, 0 };
+	POINT SelectionMarqueeCurrentLocal = { 0, 0 };
 };

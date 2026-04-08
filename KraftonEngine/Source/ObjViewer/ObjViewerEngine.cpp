@@ -33,12 +33,13 @@ void UObjViewerEngine::Init(FWindowsWindow* InWindow)
 	ViewportClient.Initialize(InWindow);
 	ViewportClient.CreateCamera();
 	ViewportClient.ResetCamera();
+	ViewportHostClient.SetActiveSubClient(&ViewportClient);
 
 	FViewport* VP = new FViewport();
 	VP->Initialize(Renderer.GetFD3DDevice().GetDevice(),
 		static_cast<uint32>(InWindow->GetWidth()),
 		static_cast<uint32>(InWindow->GetHeight()));
-	VP->SetClient(&ViewportClient);
+	VP->SetClient(&ViewportHostClient);
 	ViewportClient.SetViewport(VP);
 
 	// ObjViewer 전용 렌더 파이프라인
@@ -47,6 +48,7 @@ void UObjViewerEngine::Init(FWindowsWindow* InWindow)
 
 void UObjViewerEngine::Shutdown()
 {
+	ViewportHostClient.SetActiveSubClient(nullptr);
 	ViewportClient.Release();
 	Panel.Release();
 
@@ -147,4 +149,16 @@ void UObjViewerEngine::ImportObjWithOptions(const FString& ObjPath, const FImpor
 	// 리프레시 + 카메라 리셋
 	FObjManager::ScanObjSourceFiles();
 	ViewportClient.ResetCamera();
+}
+
+FViewportClient* UObjViewerEngine::ResolveInputTargetClient(FViewport* InViewport, FViewportClient* InClient) const
+{
+	(void)InViewport;
+	if (InClient == &ViewportClient)
+	{
+		return &ViewportHostClient;
+	}
+
+	// ObjViewer app keeps one representative client per viewport.
+	return InClient;
 }

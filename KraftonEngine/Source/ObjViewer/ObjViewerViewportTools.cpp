@@ -1,5 +1,6 @@
 #include "ObjViewer/ObjViewerViewportTools.h"
 
+#include "ObjViewer/ObjViewerInputMapping.h"
 #include "ObjViewer/ObjViewerViewportClient.h"
 #include "Math/MathUtils.h"
 
@@ -36,7 +37,11 @@ bool FObjViewerNavigationTool::HandleInput(float DeltaTime)
 		return false;
 	}
 
-	if (Owner->InputContext.Frame.IsDown(VK_RBUTTON))
+	const bool bLookRightDown = ObjViewerInputMapping::IsTriggered(Owner->InputContext, ObjViewerInputMapping::EObjViewerAction::LookRightDown);
+	const bool bPanMiddleDown = ObjViewerInputMapping::IsTriggered(Owner->InputContext, ObjViewerInputMapping::EObjViewerAction::PanMiddleDown);
+	const bool bZoomWheel = ObjViewerInputMapping::IsTriggered(Owner->InputContext, ObjViewerInputMapping::EObjViewerAction::ZoomWheel);
+
+	if (bLookRightDown)
 	{
 		const float DeltaX = static_cast<float>(Owner->InputContext.MouseLocalDelta.x);
 		const float DeltaY = static_cast<float>(Owner->InputContext.MouseLocalDelta.y);
@@ -45,7 +50,7 @@ bool FObjViewerNavigationTool::HandleInput(float DeltaTime)
 		Owner->OrbitPitch = Clamp(Owner->OrbitPitch, -89.0f, 89.0f);
 	}
 
-	if (Owner->InputContext.Frame.IsDown(VK_MBUTTON))
+	if (bPanMiddleDown)
 	{
 		const float DeltaX = static_cast<float>(Owner->InputContext.MouseLocalDelta.x);
 		const float DeltaY = static_cast<float>(Owner->InputContext.MouseLocalDelta.y);
@@ -56,14 +61,11 @@ bool FObjViewerNavigationTool::HandleInput(float DeltaTime)
 	}
 
 	const float ScrollNotches = Owner->InputContext.Frame.WheelNotches;
-	if (ScrollNotches != 0.0f)
+	if (bZoomWheel && ScrollNotches != 0.0f)
 	{
 		Owner->OrbitDistance -= ScrollNotches * Owner->OrbitDistance * 0.1f;
 		Owner->OrbitDistance = Clamp(Owner->OrbitDistance, 0.1f, 500.0f);
 	}
 
-	const bool bMouseInput = Owner->InputContext.Frame.IsDown(VK_RBUTTON)
-		|| Owner->InputContext.Frame.IsDown(VK_MBUTTON)
-		|| (Owner->InputContext.Frame.WheelNotches != 0.0f);
-	return bMouseInput;
+	return bLookRightDown || bPanMiddleDown || bZoomWheel;
 }

@@ -1,8 +1,36 @@
 #include "Engine/Input/InputRouter.h"
 
-#include "Editor/UI/EditorConsoleWidget.h"
 #include "Engine/Input/InputSystem.h"
 #include "Viewport/ViewportClient.h"
+#include <algorithm>
+
+namespace
+{
+bool IsMouseButtonKey(int32 VK)
+{
+    return (VK == VK_LBUTTON) || (VK == VK_RBUTTON) || (VK == VK_MBUTTON)
+        || (VK == VK_XBUTTON1) || (VK == VK_XBUTTON2);
+}
+
+bool IsMousePointerButton(EPointerButton Button)
+{
+    return Button == EPointerButton::Left
+        || Button == EPointerButton::Right
+        || Button == EPointerButton::Middle;
+}
+
+bool HasPointerPressedEvent(const TArray<FInputEvent>& Events)
+{
+    for (const FInputEvent& Event : Events)
+    {
+        if (Event.Type == EInputEventType::KeyPressed && IsMouseButtonKey(Event.Key))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+}
 
 void FInputRouter::SetOwnerWindow(HWND InOwnerWindow)
 {
@@ -46,7 +74,9 @@ void FInputRouter::Tick()
     InputSystem::Get().Tick();
     InputSystem& Input = InputSystem::Get();
     const FInputFrame& Frame = Input.GetFrame();
+    const TArray<FInputEvent>& Events = Input.GetEvents();
     FInputFrame RoutedFrame = Frame;
+    TArray<FInputEvent> RoutedEvents = Events;
     const bool bRelativeMouseMode = Input.IsRelativeMouseMode();
 
     if (!OwnerWindow || Targets.empty())
@@ -96,8 +126,7 @@ void FInputRouter::Tick()
 
     HoveredViewport = HoveredEntry ? HoveredEntry->Viewport : nullptr;
 
-    bool bAnyPointerPressed =
-        Frame.IsPressed(VK_LBUTTON) || Frame.IsPressed(VK_RBUTTON) || Frame.IsPressed(VK_MBUTTON);
+    bool bAnyPointerPressed = HasPointerPressedEvent(RoutedEvents);
     bool bAnyPointerDown =
         Frame.IsDown(VK_LBUTTON) || Frame.IsDown(VK_RBUTTON) || Frame.IsDown(VK_MBUTTON)
         || Frame.bLeftDragging || Frame.bRightDragging;
@@ -188,16 +217,26 @@ void FInputRouter::Tick()
     {
         for (int32 VK = 0; VK < 256; ++VK)
         {
-            const bool bIsMouseButton =
-                (VK == VK_LBUTTON) || (VK == VK_RBUTTON) || (VK == VK_MBUTTON)
-                || (VK == VK_XBUTTON1) || (VK == VK_XBUTTON2);
+            const bool bIsMouseButton = IsMouseButtonKey(VK);
             if (!bIsMouseButton)
             {
                 RoutedFrame.KeyDown[VK] = false;
-                RoutedFrame.KeyPressed[VK] = false;
-                RoutedFrame.KeyReleased[VK] = false;
             }
         }
+
+        RoutedEvents.erase(
+            std::remove_if(
+                RoutedEvents.begin(),
+                RoutedEvents.end(),
+                [](const FInputEvent& Event)
+                {
+                    if (Event.Type == EInputEventType::KeyPressed || Event.Type == EInputEventType::KeyReleased)
+                    {
+                        return !IsMouseButtonKey(Event.Key);
+                    }
+                    return false;
+                }),
+            RoutedEvents.end());
     }
 
     const bool bBlockMouseForImGui = bImGuiCaptureMouse && (CapturedViewport == nullptr) && (HoveredEntry == nullptr);
@@ -206,12 +245,8 @@ void FInputRouter::Tick()
         RoutedFrame.MouseDelta.x = 0;
         RoutedFrame.MouseDelta.y = 0;
         RoutedFrame.WheelNotches = 0.0f;
-        RoutedFrame.bLeftDragStarted = false;
         RoutedFrame.bLeftDragging = false;
-        RoutedFrame.bLeftDragEnded = false;
-        RoutedFrame.bRightDragStarted = false;
         RoutedFrame.bRightDragging = false;
-        RoutedFrame.bRightDragEnded = false;
         RoutedFrame.LeftDragVector = { 0, 0 };
         RoutedFrame.RightDragVector = { 0, 0 };
 
@@ -219,15 +254,37 @@ void FInputRouter::Tick()
         for (int32 MouseVk : MouseVks)
         {
             RoutedFrame.KeyDown[MouseVk] = false;
-            RoutedFrame.KeyPressed[MouseVk] = false;
-            RoutedFrame.KeyReleased[MouseVk] = false;
         }
+
+        RoutedEvents.erase(
+            std::remove_if(
+                RoutedEvents.begin(),
+                RoutedEvents.end(),
+                [](const FInputEvent& Event)
+                {
+                    if (Event.Type == EInputEventType::WheelScrolled)
+                    {
+                        return true;
+                    }
+                    if (Event.Type == EInputEventType::PointerDragStarted || Event.Type == EInputEventType::PointerDragEnded)
+                    {
+                        return IsMousePointerButton(Event.PointerButton);
+                    }
+                    if ((Event.Type == EInputEventType::KeyPressed || Event.Type == EInputEventType::KeyReleased)
+                        && IsMouseButtonKey(Event.Key))
+                    {
+                        return true;
+                    }
+                    return false;
+                }),
+            RoutedEvents.end());
     }
 
     RoutedFrame.MouseScreenPos = MouseScreenPos;
 
     FViewportInputContext Context;
     Context.Frame = RoutedFrame;
+    Context.Events = std::move(RoutedEvents);
     Context.TargetViewport = TargetEntry->Viewport;
     Context.TargetClient = TargetEntry->Client;
     Context.Domain = TargetEntry->Domain;
