@@ -124,4 +124,5 @@ void UPrimitiveComponent::UpdateWorldMatrix() const
 	{
 		Level->GetRenderProxy().MarkSpatialIndexDirty();
 	}
+	Proxy->MarkDirty();
 }

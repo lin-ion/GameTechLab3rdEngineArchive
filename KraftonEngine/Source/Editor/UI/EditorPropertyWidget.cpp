@@ -245,7 +245,11 @@ void FEditorPropertyWidget::RenderActorProperties(AActor* PrimaryActor, const TA
 			FVector Delta = FVector(PosArray[0], PosArray[1], PosArray[2]) - Pos;
 			for (AActor* Actor : SelectedActors)
 			{
-				if (Actor) Actor->AddActorWorldOffset(Delta);
+				if (Actor)
+				{
+					Actor->AddActorWorldOffset(Delta);
+					Actor->GetRootComponent()->UpdateWorldMatrix();
+				}
 			}
 			EditorEngine->GetGizmo()->UpdateGizmoTransform();
 		}
@@ -271,6 +275,7 @@ void FEditorPropertyWidget::RenderActorProperties(AActor* PrimaryActor, const TA
 						{
 							FRotator Other = Root->GetCachedEditRotator();
 							Root->SetRelativeRotation(Other + Delta);
+							Root->UpdateWorldMatrix();
 						}
 					}
 				}
@@ -283,7 +288,11 @@ void FEditorPropertyWidget::RenderActorProperties(AActor* PrimaryActor, const TA
 			FVector Delta = FVector(ScaleArray[0], ScaleArray[1], ScaleArray[2]) - Scale;
 			for (AActor* Actor : SelectedActors)
 			{
-				if (Actor) Actor->SetActorScale(Actor->GetActorScale() + Delta);
+				if (Actor)
+				{
+					Actor->SetActorScale(Actor->GetActorScale() + Delta);
+					Actor->GetRootComponent()->UpdateWorldMatrix();
+				}
 			}
 		}
 
@@ -498,7 +507,7 @@ void FEditorPropertyWidget::RenderComponentProperties()
 	// 프로퍼티 직접 편집 후 월드 행렬 갱신
 	if (SelectedComponent->IsA<USceneComponent>())
 	{
-		static_cast<USceneComponent*>(SelectedComponent)->MarkTransformDirty();
+		static_cast<USceneComponent*>(SelectedComponent)->UpdateWorldMatrix();
 	}
 }
 
@@ -546,6 +555,10 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor>& Pr
 	{
 		float* Val = static_cast<float*>(Prop.ValuePtr);
 		bChanged = ImGui::DragFloat3(Prop.Name.c_str(), Val, Prop.Speed);
+		if (bChanged && SelectedComponent && SelectedComponent->IsA<USceneComponent>())
+		{
+			static_cast<USceneComponent*>(SelectedComponent)->MarkTransformDirty();
+		}
 		break;
 	}
 	case EPropertyType::Rotator:

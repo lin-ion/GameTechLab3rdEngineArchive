@@ -177,13 +177,13 @@ void UGizmoComponent::TranslateTarget(float DragAmount)
 			}
 
 			Actor->AddActorWorldOffset(ConstrainedDelta);
-			Actor->GetRootComponent()->UpdateWorldMatrix();
+			Actor->GetRootComponent()->MarkTransformDirty();
 		}
 	}
 	else
 	{
 		TargetActor->AddActorWorldOffset(ConstrainedDelta);
-		TargetActor->GetRootComponent()->UpdateWorldMatrix();
+		TargetActor->GetRootComponent()->MarkTransformDirty();
 	}
 }
 
@@ -229,7 +229,7 @@ void UGizmoComponent::RotateTarget(float DragAmount)
 			const FVector Pivot = GetWorldLocation();
 			const FVector Offset = Root->GetWorldLocation() - Pivot;
 			Root->SetWorldLocation(Pivot + DeltaQuat.RotateVector(Offset));
-			Root->UpdateWorldMatrix();
+			Root->MarkTransformDirty();
 		};
 
 	if (AllSelectedActors)
@@ -262,7 +262,7 @@ void UGizmoComponent::ScaleTarget(float DragAmount)
 			case 2: NewScale.Z += ScaleDelta; break;
 			}
 			Actor->SetActorScale(NewScale);
-			Actor->GetRootComponent()->UpdateWorldMatrix();
+			Actor->GetRootComponent()->MarkTransformDirty();
 		};
 
 	if (AllSelectedActors)
