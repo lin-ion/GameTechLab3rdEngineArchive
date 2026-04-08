@@ -30,6 +30,9 @@ private:
 	void CreateScaleGizmo();
 	void CreateQuad();
 
+	// GPU 버퍼만 생성 (Sprite용)
+	void CreateSpriteQuad(ID3D11Device* InDevice);
+
 	// CPU 메시 데이터
 	TMap<EMeshShape, FMeshData> MeshDataMap;
 

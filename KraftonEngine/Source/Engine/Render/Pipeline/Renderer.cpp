@@ -343,12 +343,18 @@ void FRenderer::ExecuteDefaultPass(const FPassQueueSoA& Queue, const FViewContex
 		}
 
 		// StaticMesh: 섹션별 SRV 바인딩 + 분할 드로우
+		// Billboard: SpriteSRV t0 바인딩 후 단일 드로우
 		if (SectionCount > 0)
 		{
 			DrawStaticMeshSectionsFromSoA(Context, Queue, Idx, GlobalSections);
 		}
 		else
 		{
+			if (ID3D11ShaderResourceView* SpriteSRV = Queue.SpriteSRVs[Idx])
+			{
+				Context->PSSetShaderResources(0, 1, &SpriteSRV);
+				Context->PSSetSamplers(0, 1, &Resources.DefaultSampler);
+			}
 			DrawCommandFromSoA(Context, Queue, Idx);
 		}
 	}
@@ -527,7 +533,8 @@ void FRenderer::InitializePassRenderStates()
 	S[(uint32)E::GizmoInner] = { EDepthStencilState::GizmoInside,  EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
 	S[(uint32)E::Font] = { EDepthStencilState::Default,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, true };
 	S[(uint32)E::OverlayFont] = { EDepthStencilState::NoDepth,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
-	S[(uint32)E::SubUV] = { EDepthStencilState::Default,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, true };
+	S[(uint32)E::SubUV]     = { EDepthStencilState::Default,      EBlendState::AlphaBlend, ERasterizerState::SolidBackCull,  D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, true  };
+	S[(uint32)E::Billboard] = { EDepthStencilState::Default,      EBlendState::AlphaBlend, ERasterizerState::SolidNoCull,    D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
 }
 
 // ============================================================

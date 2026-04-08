@@ -7,11 +7,13 @@ void FMeshBufferManager::Initialize(ID3D11Device* InDevice)
 
 	CreatePrimitiveMeshData();
 
-	// CPU 메시 데이터 → GPU 버퍼 업로드
-	for (auto& [Type, Data] : MeshDataMap)
+	// FVertex 기반 메시 → GPU 버퍼 업로드
+	for (auto& [Shape, Data] : MeshDataMap)
 	{
-		MeshBufferMap[Type].Create(InDevice, Data);
+		MeshBufferMap[Shape].Create(InDevice, Data);
 	}
+
+	CreateSpriteQuad(InDevice);
 
 	bIsInitialized = true;
 }
@@ -338,6 +340,21 @@ void FMeshBufferManager::CreateTranslationGizmo()
 			indices.push_back(baseCenterIndex); indices.push_back(next + 2); indices.push_back(curr + 2);
 		}
 	}
+}
+
+void FMeshBufferManager::CreateSpriteQuad(ID3D11Device* InDevice)
+{
+	// FTextureVertex 기반 UV 쿼드 — FMeshData(FVertex) 와 호환되지 않으므로 GPU 버퍼만 생성
+	TMeshData<FTextureVertex> Data;
+	Data.Vertices =
+	{
+		{ FVector(0.0f, -0.5f,  0.5f), FVector2(0.0f, 0.0f) }, // 좌상
+		{ FVector(0.0f,  0.5f,  0.5f), FVector2(1.0f, 0.0f) }, // 우상
+		{ FVector(0.0f,  0.5f, -0.5f), FVector2(1.0f, 1.0f) }, // 우하
+		{ FVector(0.0f, -0.5f, -0.5f), FVector2(0.0f, 1.0f) }, // 좌하
+	};
+	Data.Indices = { 0, 1, 2, 0, 2, 3 };
+	MeshBufferMap[EMeshShape::SpriteQuad].Create(InDevice, Data);
 }
 
 void FMeshBufferManager::CreatePlane()

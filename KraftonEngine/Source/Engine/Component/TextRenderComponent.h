@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BillboardComponent.h"
+#include "PrimitiveComponent.h"
 #include "Core/ResourceTypes.h"
 #include "Object/FName.h"
 
@@ -30,7 +30,7 @@ enum class ETextVAlign : int32
 // 텍스트를 월드 공간에 빌보드로 렌더링하는 컴포넌트.
 // PrimitiveComponent를 상속받아 RenderCollector에 자동으로 감지됩니다.
 // MeshBuffer를 사용하지 않으며, FontBatcher가 드로우콜을 처리합니다.
-class UTextRenderComponent : public UBillboardComponent
+class UTextRenderComponent : public UPrimitiveComponent
 {
 public:
 	DECLARE_CLASS(UTextRenderComponent, UPrimitiveComponent)
@@ -81,6 +81,10 @@ public:
 	ETextVAlign GetVerticalAlignment() const { return VAlign; }
 
 	class FPrimitiveProxy* CreateProxy() override;
+
+	// FontBatcher는 MeshBuffer를 쓰지 않지만, 선택 아웃라인(SelectionMask)에서 Quad를 사용
+	FMeshBuffer* GetMeshBuffer() const override;
+	const FMeshData* GetMeshData() const override;
 
 	//Collision
 	void UpdateWorldAABB() const override;

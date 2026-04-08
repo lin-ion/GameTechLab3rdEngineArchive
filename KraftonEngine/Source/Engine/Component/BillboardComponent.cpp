@@ -1,10 +1,8 @@
-﻿#include "BillboardComponent.h"
-#include "GameFramework/World.h"
-#include "Editor/Viewport/ViewportCamera.h"
+#include "BillboardComponent.h"
+#include "Render/Resource/MeshBufferManager.h"
 #include "Render/Resource/ShaderManager.h"
-
 #include "Render/Pipeline/PrimitiveProxy.h"
-#include "Render/Pipeline/WorldRenderProxy.h"
+#include "Texture/Texture2D.h"
 
 class FBillboardProxy : public FPrimitiveProxy
 {
@@ -18,38 +16,58 @@ public:
 	void SubmitRenderCommand(FViewContext& View) override
 	{
 		UBillboardComponent* Billboard = static_cast<UBillboardComponent*>(Owner);
+		if (!Billboard->IsVisible()) return;
+
 		FMeshBuffer* Buffer = Billboard->GetMeshBuffer();
 		if (!Buffer || !Buffer->IsValid()) return;
 
-		FMatrix PerViewMatrix = Billboard->ComputeBillboardMatrix(View.GetCameraForward());
+		const FMatrix BillboardMatrix = FBillboardProxy::ComputeBillboardMatrix(
+			View.GetCameraForward(),
+			Billboard->GetWorldScale(),
+			Billboard->GetWorldLocation());
 
-		// Draw Opaque
-		FRenderCommand Cmd = {};
-		Cmd.PerObjectConstants = FPerObjectConstants::FromWorldMatrix(PerViewMatrix);
-		Cmd.Shader = FShaderManager::Get().GetShader(EShaderType::Primitive);
-		Cmd.MeshBuffer = Buffer;
-		View.AddCommand(ERenderPass::Opaque, Cmd);
+		FRenderCommand Cmd        = {};
+		Cmd.MeshBuffer            = Buffer;
+		Cmd.Shader                = FShaderManager::Get().GetShader(EShaderType::Billboard);
+		Cmd.PerObjectConstants    = FPerObjectConstants::FromWorldMatrix(BillboardMatrix);
+		Cmd.SpriteSRV             = Billboard->GetSprite() ? Billboard->GetSprite()->GetSRV() : nullptr;
+		Cmd.PickingId             = GetId();
+		View.AddCommand(ERenderPass::Billboard, Cmd);
 
-		if (bSelected)
+		if (bSelected && Billboard->SupportsOutline())
 		{
-			if (Owner->SupportsOutline())
-			{
-				View.AddCommand(ERenderPass::SelectionMask, Cmd);
-			}
-
-			if (View.GetShowFlags().bBoundingVolume)
-			{
-				FAABBEntry Entry = {};
-				FBoundingBox Box = Owner->GetWorldBoundingBox();
-				Entry.AABB.Min = Box.Min;
-				Entry.AABB.Max = Box.Max;
-				Entry.AABB.Color = FColor::White();
-				View.AddAABBEntry(std::move(Entry));
-			}
+			FRenderCommand MaskCmd    = {};
+			MaskCmd.MeshBuffer        = Buffer;
+			MaskCmd.Shader            = FShaderManager::Get().GetShader(EShaderType::Primitive);
+			MaskCmd.PerObjectConstants = FPerObjectConstants::FromWorldMatrix(BillboardMatrix);
+			View.AddCommand(ERenderPass::SelectionMask, MaskCmd);
 		}
+	}
+
+private:
+	static FMatrix ComputeBillboardMatrix(
+		const FVector& CameraForward,
+		const FVector& WorldScale,
+		const FVector& WorldLocation)
+	{
+		FVector Forward = (CameraForward * -1.0f).Normalized();
+		FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
+		if (std::abs(Forward.Dot(WorldUp)) > 0.99f)
+			WorldUp = FVector(0.0f, 1.0f, 0.0f);
+
+		const FVector Right = WorldUp.Cross(Forward).Normalized();
+		const FVector Up    = Forward.Cross(Right).Normalized();
+
+		FMatrix Rot;
+		Rot.SetAxes(Forward, Right, Up);
+
+		return FMatrix::MakeScaleMatrix(WorldScale)
+			* Rot
+			* FMatrix::MakeTranslationMatrix(WorldLocation);
 	}
 };
 
+// ============================================================
 DEFINE_CLASS(UBillboardComponent, UPrimitiveComponent)
 
 FPrimitiveProxy* UBillboardComponent::CreateProxy()
@@ -57,33 +75,29 @@ FPrimitiveProxy* UBillboardComponent::CreateProxy()
 	return new FBillboardProxy(this);
 }
 
+FMeshBuffer* UBillboardComponent::GetMeshBuffer() const
+{
+	return &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::SpriteQuad);
+}
+
+const FMeshData* UBillboardComponent::GetMeshData() const
+{
+	// SpriteQuad 는 FTextureVertex 기반이므로 FMeshData(FVertex) 접근 불가 — nullptr 반환
+	return nullptr;
+}
+
 void UBillboardComponent::TickComponent(float DeltaTime)
 {
-	if (!GetOwner() || !GetOwner()->GetWorld()) return;
-
-	// Billboard 행렬은 Render Proxy에서 View별로 계산되므로,
-	// 여기서는 단순히 위치와 스케일만 반영된 행렬을 갱신하거나 AABB만 업데이트합니다.
-	// CachedWorldMatrix = FMatrix::MakeScaleMatrix(GetWorldScale()) * FMatrix::MakeTranslationMatrix(GetWorldLocation());
-
+	// if (!GetOwner() || !GetOwner()->GetWorld()) return;
 	UpdateWorldAABB();
 }
 
-FMatrix UBillboardComponent::ComputeBillboardMatrix(const FVector& CameraForward) const
+void UBillboardComponent::UpdateWorldAABB() const
 {
-	// TickComponent와 동일한 로직
-	FVector Forward = (CameraForward * -1.0f).Normalized();
-	FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
+	const float   NewScale    = std::max({ GetWorldScale().X, GetWorldScale().Y, GetWorldScale().Z });
+	const FVector WorldCenter = GetWorldLocation();
+	const FVector Extent(NewScale, NewScale, NewScale);
 
-	if (std::abs(Forward.Dot(WorldUp)) > 0.99f)
-	{
-		WorldUp = FVector(0.0f, 1.0f, 0.0f);
-	}
-
-	FVector Right = WorldUp.Cross(Forward).Normalized();
-	FVector Up = Forward.Cross(Right).Normalized();
-
-	FMatrix RotMatrix;
-	RotMatrix.SetAxes(Forward, Right, Up);
-
-	return FMatrix::MakeScaleMatrix(GetWorldScale()) * RotMatrix * FMatrix::MakeTranslationMatrix(GetWorldLocation());
+	WorldAABBMinLocation = WorldCenter - Extent;
+	WorldAABBMaxLocation = WorldCenter + Extent;
 }

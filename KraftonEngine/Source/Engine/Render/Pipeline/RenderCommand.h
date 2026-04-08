@@ -197,6 +197,9 @@ struct FRenderCommand
 	FPerObjectConstants PerObjectConstants = {};	// b1 (공통)
 	uint32 PickingId = 0;
 
+	// Sprite 텍스처 SRV (Billboard 패스 전용, nullptr이면 미사용)
+	ID3D11ShaderResourceView* SpriteSRV = nullptr;
+
 	// StaticMesh 섹션별 드로우 정보
 	TArray<FMeshSectionDraw> SectionDraws;
 
@@ -210,7 +213,8 @@ struct FPassQueueSoA
 	// High-frequency data (tightly packed for sorting/binding)
 	TArray<FMeshBuffer*> MeshBuffers;
 	TArray<FShader*>     Shaders;
-	TArray<ID3D11ShaderResourceView*> FirstSRVs;
+	TArray<ID3D11ShaderResourceView*> FirstSRVs;   // StaticMesh 섹션 경로 전용
+	TArray<ID3D11ShaderResourceView*> SpriteSRVs;  // Billboard 패스 전용 (nullptr이면 미사용)
 	TArray<uint32>       PickingIds;
 
 	// Per-object data
@@ -232,6 +236,7 @@ struct FPassQueueSoA
 		MeshBuffers.clear();
 		Shaders.clear();
 		FirstSRVs.clear();
+		SpriteSRVs.clear();
 		PickingIds.clear();
 		Constants.clear();
 		SectionStart.clear();
@@ -246,6 +251,7 @@ struct FPassQueueSoA
 		TArray<FMeshBuffer*>().swap(MeshBuffers);
 		TArray<FShader*>().swap(Shaders);
 		TArray<ID3D11ShaderResourceView*>().swap(FirstSRVs);
+		TArray<ID3D11ShaderResourceView*>().swap(SpriteSRVs);
 		TArray<uint32>().swap(PickingIds);
 		TArray<FPerObjectConstants>().swap(Constants);
 		TArray<uint32>().swap(SectionStart);

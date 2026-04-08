@@ -24,10 +24,12 @@ public:
 	const TArray<FMeshSectionDraw>& GetGlobalSectionDraws() const { return GlobalSectionDraws; }
 	uint32 GetPassSectionOffset(ERenderPass Pass) const { return PassSectionOffsets[(uint32)Pass]; }
 
-	// Batcher 패스용 — 타입 안전한 전용 큐
+	// DEPRECATED: Batcher 패스용 큐 (Font/SubUV/OverlayFont)
 	void AddFontEntry(FFontEntry&& Entry);
 	void AddOverlayFontEntry(FFontEntry&& Entry);
 	void AddSubUVEntry(FSubUVEntry&& Entry);
+
+	// 범용 큐
 	void AddAABBEntry(FAABBEntry&& Entry);
 	void AddGridProxy(FGridProxy&& Proxy);
 
@@ -89,10 +91,12 @@ private:
 	TArray<FMeshSectionDraw> GlobalSectionDraws;
 	uint32 PassSectionOffsets[(uint32)ERenderPass::MAX] = {};
 
-	// Batcher 패스 큐
+	// DEPRECATED: Batcher 패스 큐 (Font/SubUV/OverlayFont)
 	TArray<FFontEntry>  FontEntries;
 	TArray<FFontEntry>  OverlayFontEntries;
 	TArray<FSubUVEntry> SubUVEntries;
+
+	// 범용 큐
 	TArray<FAABBEntry>  AABBEntries;
 	TArray<FGridProxy>  GridProxies;
 	TArray<FPrimitiveProxy*> CandidateProxies;
