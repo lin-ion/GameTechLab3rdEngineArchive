@@ -479,17 +479,14 @@ void FEditorPropertyWidget::RenderComponentProperties()
 			|| Name == "Scale";
 		};
 
-	// Pass 1: Transform 프로퍼티 먼저 (Root가 아닐 때만)
+	// Pass 1: Transform 프로퍼티 먼저
 	// Transform 변경은 배열 재할당을 일으키지 않으므로 break 불필요
-	if (!bIsRoot)
+	for (int32 i = 0; i < (int32)Props.size(); ++i)
 	{
-		for (int32 i = 0; i < (int32)Props.size(); ++i)
-		{
-			if (IsTransformProp(Props[i].Name))
-				RenderPropertyWidget(Props, i);
-		}
-		ImGui::Separator();
+		if (IsTransformProp(Props[i].Name))
+			RenderPropertyWidget(Props, i);
 	}
+	ImGui::Separator();
 
 	// Pass 2: 나머지 프로퍼티
 	// StaticMeshRef 변경은 OverrideMaterialPaths 재할당을 유발하므로 Props 포인터가
