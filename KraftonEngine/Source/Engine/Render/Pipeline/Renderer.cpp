@@ -677,4 +677,8 @@ void FRenderer::DrawPostProcessOutline(const FViewContext& Bus, ID3D11DeviceCont
 
 	// 7) DSV 재바인딩 (후속 패스에서 뎁스 사용)
 	Context->OMSetRenderTargets(1, &RTV, DSV);
+
+	// 8) 렌더러 캐시 초기화 (이후 패스에서 상태 어긋남 방지)
+	LastBoundMeshBuffer = nullptr;
+	LastBoundShader = nullptr;
 }
