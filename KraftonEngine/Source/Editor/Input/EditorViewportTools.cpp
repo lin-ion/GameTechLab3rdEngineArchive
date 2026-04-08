@@ -98,10 +98,16 @@ bool FEditorGizmoTool::HandleInput(float DeltaTime)
 		if (bGizmoHit)
 		{
 			Owner->Gizmo->SetPressedOnHandle(true);
+			if (!Owner->Gizmo->IsHolding())
+			{
+				Owner->BeginDeferredSpatialIndexInvalidation();
+				Owner->Gizmo->SetHolding(true);
+			}
+			Owner->Gizmo->UpdateDrag(Ray);
 			bConsumed = true;
 		}
 	}
-	else if (Owner->InputContext.Frame.bLeftDragging)
+	else if (Owner->InputContext.Frame.IsDown(VK_LBUTTON))
 	{
 		const bool bGizmoDragActive = Owner->Gizmo->IsPressedOnHandle() || Owner->Gizmo->IsHolding();
 		if (bGizmoDragActive)
@@ -119,22 +125,13 @@ bool FEditorGizmoTool::HandleInput(float DeltaTime)
 			}
 		}
 	}
-	else if (Owner->InputContext.Frame.bLeftDragEnded)
-	{
-		if (Owner->Gizmo->IsPressedOnHandle() || Owner->Gizmo->IsHolding())
-		{
-			bConsumed = true;
-			Owner->EndDeferredSpatialIndexInvalidation();
-			Owner->Gizmo->DragEnd();
-		}
-	}
 	else if (Owner->InputContext.Frame.IsReleased(VK_LBUTTON))
 	{
 		if (Owner->Gizmo->IsPressedOnHandle() || Owner->Gizmo->IsHolding())
 		{
 			bConsumed = true;
 			Owner->EndDeferredSpatialIndexInvalidation();
-			Owner->Gizmo->SetPressedOnHandle(false);
+			Owner->Gizmo->DragEnd();
 		}
 	}
 
