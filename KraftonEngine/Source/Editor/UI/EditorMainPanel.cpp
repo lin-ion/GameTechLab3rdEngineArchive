@@ -205,7 +205,8 @@ void FEditorMainPanel::RenderPIEToolbar()
 		ImGui::SetCursorPos(ImVec2(StartX, StartY));
 		if (ImGui::InvisibleButton("##PIEStartButton", ImVec2(IconButtonSize, IconButtonSize)))
 		{
-			// Debug layout only. No behavior is wired yet.
+			if (!EditorEngine->IsPIEEnabled())
+				EditorEngine->StartPIE();
 		}
 		{
 			const ImVec2 Min = ImGui::GetItemRectMin();
@@ -228,7 +229,8 @@ void FEditorMainPanel::RenderPIEToolbar()
 		ImGui::SameLine(0.0f, Gap);
 		if (ImGui::InvisibleButton("##PIEStopButton", ImVec2(IconButtonSize, IconButtonSize)))
 		{
-			// Debug layout only. No behavior is wired yet.
+			if (EditorEngine->IsPIEEnabled())
+				EditorEngine->EndPIE();
 		}
 		{
 			const ImVec2 Min = ImGui::GetItemRectMin();

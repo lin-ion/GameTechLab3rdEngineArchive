@@ -64,7 +64,7 @@ public:
 	FEditorSettings& GetSettings() { return FEditorSettings::Get(); }
 	const FEditorSettings& GetSettings() const { return FEditorSettings::Get(); }
 
-	bool GetPIEEnabled() const { return bPIEEnabled; }
+	bool IsPIEEnabled() const { return bPIEEnabled; }
 	
 	FWorldContext* GetEditorWorldContext();
 	
