@@ -2,7 +2,6 @@
 #include "Editor/EditorEngine.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
-#include "Render/Pipeline/OcclusionManager.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Profiling/MemoryStats.h"
 #include "ImGui/imgui.h"
@@ -15,7 +14,6 @@ void FEditorControlWidget::Initialize(UEditorEngine* InEditorEngine)
 {
 	FEditorWidget::Initialize(InEditorEngine);
 	SelectedPrimitiveType = 0;
-	SelectedPickingMode = static_cast<int32>(EditorEngine ? EditorEngine->GetPickingMode() : EPickingMode::IDBuffer);
 }
 
 void FEditorControlWidget::Render(float DeltaTime)
@@ -63,33 +61,6 @@ void FEditorControlWidget::Render(float DeltaTime)
 
 	SEPARATOR();
 
-	SelectedPickingMode = static_cast<int32>(EditorEngine->GetPickingMode());
-	if (ImGui::Combo("Picking Mode", &SelectedPickingMode, PickingModeTypes, IM_ARRAYSIZE(PickingModeTypes)))
-	{
-		EditorEngine->SetPickingMode(static_cast<EPickingMode>(SelectedPickingMode));
-	}
-
-	SEPARATOR();
-
-	// Occlusion Culling
-	if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetActiveViewport())
-	{
-		auto& ShowFlags = ActiveVC->GetRenderOptions().ShowFlags;
-		ImGui::Checkbox("Occlusion Culling", &ShowFlags.bOcclusionCulling);
-		ImGui::Checkbox("Show HZB Debug", &ShowFlags.bShowHZB);
-
-		if (ShowFlags.bOcclusionCulling)
-		{
-			uint32 Total = FOcclusionManager::Get().GetTotalCandidates();
-			uint32 Culled = FOcclusionManager::Get().GetOccludedCount();
-			ImGui::Text("Total Proxies: %u", Total);
-			ImGui::Text("Culled Proxies: %u", Culled);
-			ImGui::Text("Rendered Proxies: %u", Total - Culled);
-		}
-	}
-
-	SEPARATOR();
-
 	// Camera
 	FViewportCamera* Camera = EditorEngine->GetCamera();
 	FLevelEditorViewportClient* ActiveVC = EditorEngine->GetActiveViewport();
@@ -97,24 +68,6 @@ void FEditorControlWidget::Render(float DeltaTime)
 	{
 		ImGui::End();
 		return;
-	}
-
-	FEditorSettings& Settings = FEditorSettings::Get();
-	ImGui::Checkbox("Enable Camera Smoothing", &Settings.bEnableCameraSmoothing);
-	ImGui::DragFloat("Move Lerp Strength", &Settings.CameraMoveSmoothSpeed, 0.1f, 0.01f, 100.0f, "%.2f");
-	ImGui::DragFloat("Rotate Lerp Strength", &Settings.CameraRotateSmoothSpeed, 0.1f, 0.01f, 100.0f, "%.2f");
-	ImGui::Separator();
-
-	float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
-	if (ImGui::DragFloat("Camera FOV", &CameraFOV_Deg, 0.5f, 1.0f, 90.0f))
-	{
-		Camera->SetFOV(CameraFOV_Deg * DEG_TO_RAD);
-	}
-
-	float OrthoWidth = Camera->GetOrthoWidth();
-	if (ImGui::DragFloat("Ortho Width", &OrthoWidth, 0.1f, 0.1f, 1000.0f))
-	{
-		Camera->SetOrthoWidth(Clamp(OrthoWidth, 0.1f, 1000.0f));
 	}
 
 	FVector CamPos = Camera->GetWorldLocation();

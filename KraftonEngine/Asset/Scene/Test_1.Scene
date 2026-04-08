@@ -1,8 +1,8 @@
 {
   "Actors" : [],
   "ClassName" : "UWorld",
-  "ContextHandle" : "Default",
-  "ContextName" : "Default",
+  "ContextHandle" : "NewLevel",
+  "ContextName" : "New Level",
   "Name" : "Test_1",
   "PerspectiveCamera" : {
     "FOV" : 60.000000,

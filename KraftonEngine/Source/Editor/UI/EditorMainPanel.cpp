@@ -1,7 +1,10 @@
 ﻿#include "Editor/UI/EditorMainPanel.h"
 
 #include "Editor/EditorEngine.h"
+#include "Editor/Selection/PickingTypes.h"
+#include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
+#include "Editor/Viewport/ViewportCamera.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Platform/Paths.h"
 #include "GameFramework/World.h"
@@ -9,6 +12,7 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
+#include "Render/Pipeline/OcclusionManager.h"
 
 #include "Render/Pipeline/Renderer.h"
 
@@ -56,6 +60,7 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ImGui::NewFrame();
 
 	RenderMainMenuBar();
+	RenderPIEToolbar();
 	RenderDockSpace();
 
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
@@ -79,6 +84,7 @@ void FEditorMainPanel::Render(float DeltaTime)
 	{
 		StatWidget.Render(DeltaTime);
 	}
+	RenderEditorDebugPanel();
 
 	float EffectiveDeltaTime = DeltaTime;
 	if (EffectiveDeltaTime <= 0.0f)
@@ -126,11 +132,12 @@ void FEditorMainPanel::RenderDockSpace()
 		return;
 	}
 
+	constexpr float PIEBarHeight = 60.0f;
 	constexpr float FooterHeight = 32.0f;
-	const ImVec2 DockPos = MainViewport->WorkPos;
+	const ImVec2 DockPos(MainViewport->WorkPos.x, MainViewport->WorkPos.y + PIEBarHeight);
 	const ImVec2 DockSize(
 		MainViewport->WorkSize.x,
-		(MainViewport->WorkSize.y > FooterHeight) ? (MainViewport->WorkSize.y - FooterHeight) : 0.0f);
+		(MainViewport->WorkSize.y > (FooterHeight + PIEBarHeight)) ? (MainViewport->WorkSize.y - FooterHeight - PIEBarHeight) : 0.0f);
 
 	ImGui::SetNextWindowPos(DockPos);
 	ImGui::SetNextWindowSize(DockSize);
@@ -154,6 +161,94 @@ void FEditorMainPanel::RenderDockSpace()
 	const ImGuiID DockSpaceId = ImGui::GetID("MainDockSpace");
 	ImGui::DockSpace(DockSpaceId, ImVec2(0.0f, 0.0f));
 	ImGui::End();
+}
+
+void FEditorMainPanel::RenderPIEToolbar()
+{
+	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+	if (!MainViewport)
+	{
+		return;
+	}
+
+	constexpr float PIEBarHeight = 60.0f;
+	const ImVec2 BarPos = MainViewport->WorkPos;
+	const ImVec2 BarSize(MainViewport->WorkSize.x, PIEBarHeight);
+
+	ImGui::SetNextWindowPos(BarPos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(BarSize, ImGuiCond_Always);
+	ImGui::SetNextWindowViewport(MainViewport->ID);
+
+	const ImGuiWindowFlags BarFlags =
+		ImGuiWindowFlags_NoDecoration
+		| ImGuiWindowFlags_NoDocking
+		| ImGuiWindowFlags_NoSavedSettings
+		| ImGuiWindowFlags_NoMove
+		| ImGuiWindowFlags_NoResize
+		| ImGuiWindowFlags_NoNav
+		| ImGuiWindowFlags_NoFocusOnAppearing;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.11f, 0.11f, 0.12f, 0.98f));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.19f, 0.19f, 0.22f, 1.0f));
+
+	if (ImGui::Begin("##EditorPIEToolbar", nullptr, BarFlags))
+	{
+		const float IconButtonSize = 36.0f;
+		const float Gap = 10.0f;
+		const float GroupWidth = IconButtonSize * 2.0f + Gap;
+		const float StartX = (BarSize.x - GroupWidth) * 0.5f;
+		const float StartY = (PIEBarHeight - IconButtonSize) * 0.5f;
+
+		ImGui::SetCursorPos(ImVec2(StartX, StartY));
+		if (ImGui::InvisibleButton("##PIEStartButton", ImVec2(IconButtonSize, IconButtonSize)))
+		{
+			// Debug layout only. No behavior is wired yet.
+		}
+		{
+			const ImVec2 Min = ImGui::GetItemRectMin();
+			const ImVec2 Max = ImGui::GetItemRectMax();
+			const bool bHovered = ImGui::IsItemHovered();
+			const ImU32 Bg = ImGui::GetColorU32(bHovered ? ImVec4(0.20f, 0.26f, 0.20f, 1.0f) : ImVec4(0.16f, 0.20f, 0.16f, 1.0f));
+			const ImU32 Border = ImGui::GetColorU32(ImVec4(0.30f, 0.36f, 0.30f, 1.0f));
+			const ImU32 Icon = ImGui::GetColorU32(ImVec4(0.52f, 0.92f, 0.56f, 1.0f));
+			ImDrawList* DrawList = ImGui::GetWindowDrawList();
+			DrawList->AddRectFilled(Min, Max, Bg, 6.0f);
+			DrawList->AddRect(Min, Max, Border, 6.0f);
+			const ImVec2 C((Min.x + Max.x) * 0.5f, (Min.y + Max.y) * 0.5f);
+			DrawList->AddTriangleFilled(
+				ImVec2(C.x - 5.0f, C.y - 8.0f),
+				ImVec2(C.x - 5.0f, C.y + 8.0f),
+				ImVec2(C.x + 9.0f, C.y),
+				Icon);
+		}
+
+		ImGui::SameLine(0.0f, Gap);
+		if (ImGui::InvisibleButton("##PIEStopButton", ImVec2(IconButtonSize, IconButtonSize)))
+		{
+			// Debug layout only. No behavior is wired yet.
+		}
+		{
+			const ImVec2 Min = ImGui::GetItemRectMin();
+			const ImVec2 Max = ImGui::GetItemRectMax();
+			const bool bHovered = ImGui::IsItemHovered();
+			const ImU32 Bg = ImGui::GetColorU32(bHovered ? ImVec4(0.26f, 0.20f, 0.20f, 1.0f) : ImVec4(0.20f, 0.16f, 0.16f, 1.0f));
+			const ImU32 Border = ImGui::GetColorU32(ImVec4(0.38f, 0.30f, 0.30f, 1.0f));
+			const ImU32 Icon = ImGui::GetColorU32(ImVec4(0.92f, 0.48f, 0.48f, 1.0f));
+			ImDrawList* DrawList = ImGui::GetWindowDrawList();
+			DrawList->AddRectFilled(Min, Max, Bg, 6.0f);
+			DrawList->AddRect(Min, Max, Border, 6.0f);
+			const ImVec2 IconMin(Min.x + 10.0f, Min.y + 10.0f);
+			const ImVec2 IconMax(Max.x - 10.0f, Max.y - 10.0f);
+			DrawList->AddRectFilled(IconMin, IconMax, Icon, 2.0f);
+		}
+	}
+	ImGui::End();
+
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(3);
 }
 
 void FEditorMainPanel::RenderMainMenuBar()
@@ -231,6 +326,11 @@ void FEditorMainPanel::RenderMainMenuBar()
 		ImGui::MenuItem("Property", nullptr, &bShowPropertyPanel);
 		ImGui::EndMenu();
 	}
+	if (ImGui::BeginMenu("Settings"))
+	{
+		ImGui::MenuItem("Editor Debug", nullptr, &bShowEditorDebugPanel);
+		ImGui::EndMenu();
+	}
 
 	if (ImGui::BeginMenu("Help"))
 	{
@@ -242,6 +342,77 @@ void FEditorMainPanel::RenderMainMenuBar()
 	}
 
 	ImGui::EndMainMenuBar();
+}
+
+void FEditorMainPanel::RenderEditorDebugPanel()
+{
+	if (!bShowEditorDebugPanel || !EditorEngine)
+	{
+		return;
+	}
+
+	static const char* PickingModeTypes[2] = { "Ray-Triangle (BVH)", "ID Picking" };
+	int32 SelectedPickingMode = static_cast<int32>(EditorEngine->GetPickingMode());
+
+	ImGui::SetNextWindowSize(ImVec2(420.0f, 220.0f), ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin("Editor Debug", &bShowEditorDebugPanel))
+	{
+		ImGui::End();
+		return;
+	}
+
+	if (ImGui::Combo("Picking Mode", &SelectedPickingMode, PickingModeTypes, IM_ARRAYSIZE(PickingModeTypes)))
+	{
+		EditorEngine->SetPickingMode(static_cast<EPickingMode>(SelectedPickingMode));
+	}
+
+	ImGui::Separator();
+
+	if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetActiveViewport())
+	{
+		auto& ShowFlags = ActiveVC->GetRenderOptions().ShowFlags;
+		ImGui::Checkbox("Occlusion Culling", &ShowFlags.bOcclusionCulling);
+		ImGui::Checkbox("Show HZB Debug", &ShowFlags.bShowHZB);
+
+		if (ShowFlags.bOcclusionCulling)
+		{
+			uint32 Total = FOcclusionManager::Get().GetTotalCandidates();
+			uint32 Culled = FOcclusionManager::Get().GetOccludedCount();
+			ImGui::Text("Total Proxies: %u", Total);
+			ImGui::Text("Culled Proxies: %u", Culled);
+			ImGui::Text("Rendered Proxies: %u", Total - Culled);
+		}
+	}
+	
+	FEditorSettings& Settings = FEditorSettings::Get();
+	ImGui::Checkbox("Enable Camera Smoothing", &Settings.bEnableCameraSmoothing);
+	ImGui::DragFloat("Move Lerp Strength", &Settings.CameraMoveSmoothSpeed, 0.1f, 0.01f, 100.0f, "%.2f");
+	ImGui::DragFloat("Rotate Lerp Strength", &Settings.CameraRotateSmoothSpeed, 0.1f, 0.01f, 100.0f, "%.2f");
+	ImGui::Separator();
+
+	FViewportCamera* Camera = EditorEngine->GetCamera();
+	if (!Camera)
+	{
+		ImGui::End();
+		return;
+	}
+
+	// float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
+	// if (ImGui::DragFloat("Camera Zoom", &CameraFOV_Deg, 0.5f, 1.0f, 90.0f))
+	// {
+	// 	Camera->SetFOV(CameraFOV_Deg * DEG_TO_RAD);
+	// }
+	
+	if (Camera->IsOrthogonal())
+	{
+		float OrthoWidth = Camera->GetOrthoWidth();
+		if (ImGui::DragFloat("Ortho Width", &OrthoWidth, 0.1f, 0.1f, 1000.0f))
+		{
+			Camera->SetOrthoWidth(Clamp(OrthoWidth, 0.1f, 1000.0f));
+		}	
+	}
+
+	ImGui::End();
 }
 
 void FEditorMainPanel::RenderShortcutOverlay()
@@ -365,6 +536,7 @@ void FEditorMainPanel::RenderShortcutOverlay()
 	DrawShortcutSection("▼ Editor", "ShortcutTable_Editor", {
 		{ "Delete", "선택된 Actor 삭제" },
 		{ "Tab", "Editor Mode 순환" },
+	{ "Backtick(`)", "Console Mode 순환" },
 	});
 
 	ImGui::Separator();

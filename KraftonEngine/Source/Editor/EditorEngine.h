@@ -81,7 +81,7 @@ private:
 	FEditorMainPanel MainPanel;
 	FOverlayStatSystem OverlayStatSystem;
 	FEditorFooterLogSystem FooterLogSystem;
-	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
+	EPickingMode PickingMode = EPickingMode::IDBuffer;
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
 	FString CurrentLevelFilePath;
 };

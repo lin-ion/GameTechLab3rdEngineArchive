@@ -23,7 +23,7 @@ void FEditorLevelWidget::Render(float DeltaTime)
 
 	ImGui::SetNextWindowSize(ImVec2(400.0f, 350.0f), ImGuiCond_Once);
 
-	ImGui::Begin("Jungle Level Manager");
+	ImGui::Begin("Outliner");
 
 	// New Level
 	// if (ImGui::Button("New Level"))
@@ -38,7 +38,7 @@ void FEditorLevelWidget::Render(float DeltaTime)
 	// 	ImGui::Text("New Level created");
 	// }
 
-	SEPARATOR();
+	// SEPARATOR();
 
 	// Actor Outliner
 	UWorld* World = EditorEngine->GetWorld();

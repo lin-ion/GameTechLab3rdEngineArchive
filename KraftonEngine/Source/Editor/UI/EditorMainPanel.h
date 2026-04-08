@@ -23,7 +23,9 @@ public:
 
 private:
 	void RenderMainMenuBar();
+	void RenderPIEToolbar();
 	void RenderDockSpace();
+	void RenderEditorDebugPanel();
 	void RenderShortcutOverlay();
 	void RenderFooterOverlay(float DeltaTime);
 	void RenderConsoleDrawer();
@@ -44,6 +46,7 @@ private:
 	bool bShowControlPanel = true;
 	bool bShowLevelPanel = true;
 	bool bShowPropertyPanel = true;
+	bool bShowEditorDebugPanel = false;
 	bool bShowStatPanel = false;
 	bool bShowShortcutOverlay = false;
 	bool bWantCaptureMouse = false;
