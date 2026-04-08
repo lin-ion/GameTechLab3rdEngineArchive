@@ -10,7 +10,8 @@ public:
 
 	void TickComponent(float DeltaTime) override;
 
-	void        SetSprite(UTexture2D* NewSprite) { Sprite = NewSprite; }
+	void SetSprite(UTexture2D* NewSprite);
+
 	UTexture2D* GetSprite() const { return Sprite; }
 
 	FMeshBuffer*       GetMeshBuffer() const override;
@@ -19,8 +20,12 @@ public:
 	// void               UpdateWorldAABB() const override;
 	// bool               LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT) override;
 
+	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
+	void PostEditProperty(const char* PropertyName) override;
+
 private:
 	UTexture2D* Sprite = nullptr;
+	FString SpritePath = "None";
 
 	float U  = 0.0f;
 	float UL = 1.0f;

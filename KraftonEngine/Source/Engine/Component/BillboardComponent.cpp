@@ -5,6 +5,8 @@
 #include "Render/Resource/ShaderManager.h"
 #include "Render/Pipeline/PrimitiveProxy.h"
 #include "Texture/Texture2D.h"
+#include "Core/PropertyTypes.h"
+#include "Engine/Runtime/Engine.h"
 
 class FBillboardProxy : public FPrimitiveProxy
 {
@@ -103,6 +105,12 @@ void UBillboardComponent::TickComponent(float DeltaTime)
 	UpdateWorldAABB();
 }
 
+void UBillboardComponent::SetSprite(UTexture2D* NewSprite)
+{
+	Sprite = NewSprite;
+	SpritePath = NewSprite ? NewSprite->GetSourcePath() : "None";
+}
+
 // void UBillboardComponent::UpdateWorldAABB() const
 // {
 // 	// TODO: 아직 계산 검증 안 됨
@@ -126,3 +134,27 @@ void UBillboardComponent::TickComponent(float DeltaTime)
 // 	}
 // 	return true;
 // }
+
+
+void UBillboardComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
+{
+	UPrimitiveComponent::GetEditableProperties(OutProps);
+	OutProps.push_back({ "Sprite", EPropertyType::TextureRef, &SpritePath });
+}
+
+void UBillboardComponent::PostEditProperty(const char* PropertyName)
+{
+	if (strcmp(PropertyName, "Sprite") == 0)
+	{
+		if (SpritePath.empty() || SpritePath == "None")
+		{
+			SetSprite(nullptr);
+		}
+		else
+		{
+			ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+			UTexture2D* Loaded = UTexture2D::LoadFromFile(SpritePath, Device);
+			SetSprite(Loaded);
+		}
+	}
+}

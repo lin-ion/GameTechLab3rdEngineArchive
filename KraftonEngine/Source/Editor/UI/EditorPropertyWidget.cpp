@@ -6,6 +6,9 @@
 #include "ImGui/imgui.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/BillboardComponent.h"
+#include "Component/TextRenderComponent.h"
+#include "Texture/Texture2D.h"
 #include "Component/SceneComponent.h"
 #include "Core/PropertyTypes.h"
 #include "Resource/ResourceManager.h"
@@ -317,6 +320,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 		ImGui::OpenPopup("AddComponentPopup");
 	}
 
+	// TODO: 코드 중복성 제거
 	if (ImGui::BeginPopup("AddComponentPopup"))
 	{
 		if (ImGui::Selectable("Static Mesh Component"))
@@ -325,6 +329,43 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 			if (Actor->GetRootComponent())
 			{
 				NewComp->AttachToComponent(Actor->GetRootComponent());
+				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+				NewComp->SetStaticMesh(FObjManager::LoadObjStaticMesh("Data/BasicShape/Cube.OBJ", Device));
+			}
+			else
+			{
+				Actor->SetRootComponent(NewComp);
+			}
+			SelectedComponent = NewComp;
+			bActorSelected = false;
+		}
+
+		if (ImGui::Selectable("Billboard Component"))
+		{
+			UBillboardComponent* NewComp = Actor->AddComponent<UBillboardComponent>();
+			if (Actor->GetRootComponent())
+			{
+				NewComp->AttachToComponent(Actor->GetRootComponent());
+				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+				UTexture2D* NewSprite = UTexture2D::LoadFromFile("Asset/Editor/Icon/Pawn_64x.png", Device);
+				NewComp->SetSprite(NewSprite);
+			}
+			else
+			{
+				Actor->SetRootComponent(NewComp);
+			}
+			SelectedComponent = NewComp;
+			bActorSelected = false;
+		}
+
+		if (ImGui::Selectable("Text Render Component"))
+		{
+			UTextRenderComponent* NewComp = Actor->AddComponent<UTextRenderComponent>();
+			if (Actor->GetRootComponent())
+			{
+				NewComp->AttachToComponent(Actor->GetRootComponent());
+				NewComp->SetText("TEXT");
+				NewComp->SetFont(FName("Default"));
 			}
 			else
 			{
@@ -709,6 +750,48 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor>& Pr
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 		ImGui::TextUnformatted(SlotName.c_str());
 		ImGui::PopStyleColor();
+		break;
+	}
+	// TODO: 꼭 리팩토링 하기.
+	case EPropertyType::TextureRef:
+	{
+		FString* Val = static_cast<FString*>(Prop.ValuePtr);
+
+		// 하드코딩된 아이콘 목록
+		static const FString IconPaths[] = {
+			"Asset/Editor/Icon/EmptyActor_256x.png",
+			"Asset/Editor/Icon/Pawn_64x.png",
+			"Asset/Editor/Icon/PointLight_64x.png",
+			"Asset/Editor/Icon/SpotLight_64x.png",
+		};
+		static const char* IconLabels[] = {
+			"EmptyActor_256x",
+			"Pawn_64x",
+			"PointLight_64x",
+			"SpotLight_64x",
+		};
+		static constexpr int32 IconCount = 4;
+
+		FString Preview = (*Val == "None" || Val->empty()) ? "None" : GetStemFromPath(*Val);
+
+		ImGui::Text("%s", Prop.Name.c_str());
+		ImGui::SameLine(120);
+		ImGui::SetNextItemWidth(-1);
+
+		if (ImGui::BeginCombo("##Sprite", Preview.c_str()))
+		{
+			for (int32 i = 0; i < IconCount; ++i)
+			{
+				bool bSelected = (*Val == IconPaths[i]);
+				if (ImGui::Selectable(IconLabels[i], bSelected))
+				{
+					*Val = IconPaths[i];
+					bChanged = true;
+				}
+				if (bSelected) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
 		break;
 	}
 	case EPropertyType::Name:
