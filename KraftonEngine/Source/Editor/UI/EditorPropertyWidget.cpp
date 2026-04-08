@@ -329,12 +329,14 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 			if (Actor->GetRootComponent())
 			{
 				NewComp->AttachToComponent(Actor->GetRootComponent());
+				NewComp->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 				NewComp->SetStaticMesh(FObjManager::LoadObjStaticMesh("Data/BasicShape/Cube.OBJ", Device));
 			}
 			else
 			{
 				Actor->SetRootComponent(NewComp);
+				NewComp->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 			}
 			SelectedComponent = NewComp;
 			bActorSelected = false;
@@ -346,6 +348,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 			if (Actor->GetRootComponent())
 			{
 				NewComp->AttachToComponent(Actor->GetRootComponent());
+				NewComp->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 				UTexture2D* NewSprite = UTexture2D::LoadFromFile("Asset/Editor/Icon/Pawn_64x.png", Device);
 				NewComp->SetSprite(NewSprite);
@@ -353,6 +356,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 			else
 			{
 				Actor->SetRootComponent(NewComp);
+				NewComp->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 			}
 			SelectedComponent = NewComp;
 			bActorSelected = false;
@@ -364,12 +368,14 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 			if (Actor->GetRootComponent())
 			{
 				NewComp->AttachToComponent(Actor->GetRootComponent());
+				NewComp->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 				NewComp->SetText("TEXT");
 				NewComp->SetFont(FName("Default"));
 			}
 			else
 			{
 				Actor->SetRootComponent(NewComp);
+				NewComp->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 			}
 			SelectedComponent = NewComp;
 			bActorSelected = false;
