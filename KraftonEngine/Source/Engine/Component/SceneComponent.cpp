@@ -68,6 +68,8 @@ void USceneComponent::DuplicateSubObjects()
 
 	for (auto ChildComp : ChildComponents)
 	{
+		if (ChildComp->IsVisualizationComponent()) continue;
+
 		auto Duplicated = ChildComp->Duplicate();
 		Duplicated->ParentComponent = this;
 		NewChildCompList.push_back(Duplicated);
