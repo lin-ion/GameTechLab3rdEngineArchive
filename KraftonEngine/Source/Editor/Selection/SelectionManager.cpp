@@ -37,6 +37,8 @@ void FSelectionManager::SetWorld(UWorld* InWorld)
 	SelectedActors.clear();
 	PrimarySelection = nullptr;
 	Gizmo->SetWorld(InWorld);
+
+	SyncGizmo();
 }
 
 void FSelectionManager::Select(AActor* Actor)

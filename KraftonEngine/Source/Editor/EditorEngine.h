@@ -48,10 +48,17 @@ public:
 	const FString& GetCurrentLevelFilePath() const { return CurrentLevelFilePath; }
 	bool HasCurrentLevelFilePath() const { return !CurrentLevelFilePath.empty(); }
 	TArray<FString> GetActiveFooterLogMessages() const;
+	
+	void StartPIE();
+	void EndPIE();
 
 	FEditorSettings& GetSettings() { return FEditorSettings::Get(); }
 	const FEditorSettings& GetSettings() const { return FEditorSettings::Get(); }
 
+	bool GetPIEEnabled() const { return bPIEEnabled; }
+	
+	FWorldContext* GetEditorWorldContext();
+	
 	FSelectionManager& GetSelectionManager() { return SelectionManager; }
 
 	void RenderUI(float DeltaTime);
@@ -84,4 +91,6 @@ private:
 	EPickingMode PickingMode = EPickingMode::IDBuffer;
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
 	FString CurrentLevelFilePath;
+	
+	bool bPIEEnabled = false;
 };

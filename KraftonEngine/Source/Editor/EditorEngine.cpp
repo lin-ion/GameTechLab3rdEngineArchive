@@ -133,6 +133,18 @@ bool OpenLevelFileDialog(bool bSave, FString& OutFilePath, const FString& InSugg
 
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
+FWorldContext* UEditorEngine::GetEditorWorldContext()
+{
+	for (auto& Ctx : WorldList)
+	{
+		if (Ctx.WorldType == EWorldType::Editor)
+		{
+			return &Ctx;
+		}
+	}
+	return nullptr;
+}
+
 void UEditorEngine::Init(FWindowsWindow* InWindow)
 {
 	// 엔진 공통 초기화 (Renderer, D3D, 싱글턴 등)
@@ -295,6 +307,58 @@ void UEditorEngine::NewLevel()
 	FooterLogSystem.Push("New Level created");
 
 	ResetViewport();
+}
+
+void UEditorEngine::StartPIE()
+{
+	FWorldContext* Context = GetEditorWorldContext();
+	FWorldContext PIEWorldContext = Context->Duplicate();
+	PIEWorldContext.WorldType = EWorldType::PIE;
+	
+	WorldList.push_back(PIEWorldContext);
+	SetActiveWorld(WorldList.back().ContextHandle);
+
+	SelectionManager.SetWorld(GetWorld());
+
+	// AActor::BeginPlay()
+	PIEWorldContext.World->InitWorld();
+	PIEWorldContext.World->BeginPlay();
+	
+	bPIEEnabled = true;
+}
+
+void UEditorEngine::EndPIE()
+{
+	UWorld* PIEWorld = GetWorld();
+	// Get PIE world context
+	FWorldContext* PIEContext = GetWorldContextFromWorld(PIEWorld);
+	if (PIEContext && PIEContext->WorldType == EWorldType::PIE)
+	{
+		SelectionManager.ClearSelection();
+
+		// Revert ActiveWorldContext to EditorWorldContext FIRST
+		FWorldContext* EditorContext = GetEditorWorldContext();
+		if (EditorContext)
+		{
+			SetActiveWorld(EditorContext->ContextHandle);
+			// This will trigger Gizmo->SetWorld, which safely unregisters from PIEWorld while it's still alive
+			SelectionManager.SetWorld(GetWorld());
+		}
+
+		PIEContext->World->EndPlay();
+		auto WorldListIter = find_if(WorldList.begin(), WorldList.end(), 
+			[PIEContext](const FWorldContext& a) 
+			{
+				return a.ContextHandle == PIEContext->ContextHandle;
+			});
+		if (WorldListIter != WorldList.end())
+		{
+			UObjectManager::Get().DestroyObject(PIEContext->World);
+			WorldList.erase(WorldListIter);
+		}
+	}
+	
+	bPIEEnabled = false;
 }
 
 void UEditorEngine::ClearWorlds()
