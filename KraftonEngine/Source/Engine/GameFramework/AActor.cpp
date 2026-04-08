@@ -10,7 +10,11 @@ AActor::~AActor()
 {
 	for (auto* Comp : OwnedComponents)
 	{
-		UObjectManager::Get().DestroyObject(Comp);
+		if (Comp)
+		{
+			Comp->OnUnregister();
+			UObjectManager::Get().DestroyObject(Comp);
+		}
 	}
 
 	OwnedComponents.clear();
@@ -85,6 +89,9 @@ void AActor::RegisterComponent(UActorComponent* Comp)
 void AActor::RemoveComponent(UActorComponent* Component)
 {
 	if (!Component) return;
+
+	// 컴포넌트 해제 (렌더링 프록시 등 정리)
+	Component->OnUnregister();
 
 	auto it = std::find(OwnedComponents.begin(), OwnedComponents.end(), Component);
 	if (it != OwnedComponents.end()) {

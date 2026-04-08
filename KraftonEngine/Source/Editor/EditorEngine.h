@@ -10,12 +10,21 @@
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Viewport/ViewportClient.h"
+#include <functional>
 
 class FTransformGizmo;
 class FLevelEditorViewportClient;
 class FEditorViewportClient;
 class FOverlayStatSystem;
 class FViewportCamera;
+
+// 액터 배치 UI에서 사용할 액터 등록 구조체
+struct FPlaceActorDesc
+{
+	FString Name; // 액터 이름 (예: "Cube", "Point Light")
+	FString Category; // 아직은 "Basic" 만 존재
+	std::function<AActor*(UWorld*)> SpawnFunc; // 에디터에서 직접 액터를 생성하는 경우에 호출되는 함수.
+};
 
 class UEditorEngine : public UEngine
 {
@@ -69,6 +78,12 @@ public:
 	void SetPickingMode(EPickingMode InMode);
 	EPickingMode GetPickingMode() const { return PickingMode; }
 
+	void SetupVisualization(AActor* Actor);
+
+	// Placement
+	const TArray<FPlaceActorDesc>& GetPlaceableActors() const { return PlaceableActors; }
+	void RegisterPlaceableActor(const FPlaceActorDesc& Desc) { PlaceableActors.push_back(Desc); }
+
 	// PIE preparation: swap viewport sub-client through host client.
 	bool SetViewportSubClient(FViewport* InViewport, FViewportClient* InSubClient);
 	bool ResetViewportSubClient(FViewport* InViewport);
@@ -90,7 +105,9 @@ private:
 	FEditorFooterLogSystem FooterLogSystem;
 	EPickingMode PickingMode = EPickingMode::IDBuffer;
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
+
+	TArray<FPlaceActorDesc> PlaceableActors;
 	FString CurrentLevelFilePath;
-	
+
 	bool bPIEEnabled = false;
 };

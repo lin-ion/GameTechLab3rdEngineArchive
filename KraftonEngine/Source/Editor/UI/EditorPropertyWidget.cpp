@@ -302,6 +302,31 @@ void FEditorPropertyWidget::RenderActorProperties(AActor* PrimaryActor, const TA
 void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 {
 	ImGui::Text("Components");
+	ImGui::SameLine();
+	if (ImGui::Button("+ Add"))
+	{
+		ImGui::OpenPopup("AddComponentPopup");
+	}
+
+	if (ImGui::BeginPopup("AddComponentPopup"))
+	{
+		if (ImGui::Selectable("Static Mesh Component"))
+		{
+			UStaticMeshComponent* NewComp = Actor->AddComponent<UStaticMeshComponent>();
+			if (Actor->GetRootComponent())
+			{
+				NewComp->AttachToComponent(Actor->GetRootComponent());
+			}
+			else
+			{
+				Actor->SetRootComponent(NewComp);
+			}
+			SelectedComponent = NewComp;
+			bActorSelected = false;
+		}
+		ImGui::EndPopup();
+	}
+
 	ImGui::Separator();
 
 	USceneComponent* Root = Actor->GetRootComponent();
@@ -312,30 +337,55 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 	}
 
 	// Non-scene ActorComponents
+	TArray<UActorComponent*> ComponentsToRemove;
 	for (UActorComponent* Comp : Actor->GetComponents())
 	{
 		if (!Comp) continue;
+		if (Comp->IsVisualizationComponent()) continue;
 		if (Comp->IsA<USceneComponent>()) continue;
 
 		FString Name = Comp->GetFName();
 		if (Name.empty()) Name = Comp->GetTypeInfo()->name;
 
-		ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+		ImGui::PushID(Comp);
+		ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
 		if (!bActorSelected && SelectedComponent == Comp)
 			Flags |= ImGuiTreeNodeFlags_Selected;
 
-		ImGui::TreeNodeEx(Comp, Flags, "[%s] %s", Comp->GetTypeInfo()->name, Name.c_str());
+		bool bOpen = ImGui::TreeNodeEx(Comp, Flags, "[%s] %s", Comp->GetTypeInfo()->name, Name.c_str());
 		if (ImGui::IsItemClicked())
 		{
 			SelectedComponent = Comp;
 			bActorSelected = false;
 		}
+
+		// 컴포넌트 우클릭 메뉴
+		if (ImGui::BeginPopupContextItem())
+		{
+			// TODO: Support DELETE key for removal
+			if (ImGui::MenuItem("Delete"))
+			{
+				ComponentsToRemove.push_back(Comp);
+			}
+			ImGui::EndPopup();
+		}
+
+		ImGui::PopID();
+	}
+
+	for (auto Comp : ComponentsToRemove)
+	{
+		if (SelectedComponent == Comp) SelectedComponent = nullptr;
+		Actor->RemoveComponent(Comp);
 	}
 }
 
 void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent* Comp)
 {
 	if (!Comp) return;
+	if (Comp->IsVisualizationComponent()) return;
+
+	ImGui::PushID(Comp);
 
 	FString Name = Comp->GetFName();
 	if (Name.empty()) Name = Comp->GetTypeInfo()->name;
@@ -343,7 +393,7 @@ void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent* Comp)
 	const auto& Children = Comp->GetChildren();
 	bool bHasChildren = !Children.empty();
 
-	ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen;
+	ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
 	if (!bHasChildren)
 		Flags |= ImGuiTreeNodeFlags_Leaf;
 	if (!bActorSelected && SelectedComponent == Comp)
@@ -363,6 +413,27 @@ void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent* Comp)
 		bActorSelected = false;
 	}
 
+	// 컴포넌트 우클릭 메뉴 (루트가 아닌 경우에만)
+	bool bDeleted = false;
+	if (!bIsRoot && ImGui::BeginPopupContextItem())
+	{
+		// TODO: Support DELETE key for removal
+		if (ImGui::MenuItem("Delete"))
+		{
+			if (SelectedComponent == Comp) SelectedComponent = nullptr;
+			Comp->GetOwner()->RemoveComponent(Comp);
+			bDeleted = true;
+		}
+		ImGui::EndPopup();
+	}
+
+	if (bDeleted)
+	{
+		ImGui::PopID();
+		if (bOpen) ImGui::TreePop();
+		return;
+	}
+
 	if (bOpen)
 	{
 		for (USceneComponent* Child : Children)
@@ -371,6 +442,8 @@ void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent* Comp)
 		}
 		ImGui::TreePop();
 	}
+
+	ImGui::PopID();
 }
 
 void FEditorPropertyWidget::RenderComponentProperties()

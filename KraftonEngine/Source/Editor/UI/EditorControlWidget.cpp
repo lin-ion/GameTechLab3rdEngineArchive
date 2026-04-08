@@ -12,7 +12,6 @@
 void FEditorControlWidget::Initialize(UEditorEngine* InEditorEngine)
 {
 	FEditorWidget::Initialize(InEditorEngine);
-	SelectedPrimitiveType = 0;
 }
 
 void FEditorControlWidget::Render(float DeltaTime)
@@ -43,36 +42,30 @@ void FEditorControlWidget::Render(float DeltaTime)
 			EditorEngine->EndPIE();
 		}
 	}
-	
-	// Spawn
-	ImGui::Combo("Primitive", &SelectedPrimitiveType, PrimitiveTypes, IM_ARRAYSIZE(PrimitiveTypes));
 
-	if (ImGui::Button("Spawn"))
+	// Spawn
+	if (ImGui::Button("Place Actors"))
+	{
+		ImGui::OpenPopup("PlaceActorsPopup");
+	}
+	if (ImGui::BeginPopup("PlaceActorsPopup"))
 	{
 		UWorld* World = EditorEngine->GetWorld();
-		for (int32 i = 0; i < NumberOfSpawnedActors; i++)
+		const auto& Placeables = EditorEngine->GetPlaceableActors();
+
+		for (const auto& Desc : Placeables)
 		{
-			switch (SelectedPrimitiveType)
+			if (ImGui::Selectable(Desc.Name.c_str()))
 			{
-			case 0: // Cube
-			{
-				AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
-				Actor->SetActorLocation(CurSpawnPoint);
-				Actor->InitDefaultComponents("Data/BasicShape/Cube.OBJ");
-				break;
-			}
-			case 1: // Sphere
-			{
-				AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
-				Actor->SetActorLocation(CurSpawnPoint);
-				Actor->InitDefaultComponents("Data/BasicShape/Sphere.OBJ");
-				break;
-			}
+				AActor* SpawnedActor = Desc.SpawnFunc(World);
+				if (SpawnedActor)
+				{
+					SpawnedActor->SetActorLocation(CurSpawnPoint);
+					EditorEngine->SetupVisualization(SpawnedActor);
+				}
 			}
 		}
-		NumberOfSpawnedActors = 1;
 	}
-	ImGui::InputInt("Number of Spawn", &NumberOfSpawnedActors, 1, 10);
 
 	SEPARATOR();
 

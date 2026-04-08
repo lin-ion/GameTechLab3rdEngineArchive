@@ -118,6 +118,7 @@ json::JSON FLevelSaveManager::SerializeWorld(UWorld* World, const FWorldContext&
 
 		for (UActorComponent* Comp : Actor->GetComponents()) {
 			if (!Comp) continue;
+			if (Comp->IsVisualizationComponent()) continue;
 			if (!Comp->IsA<UStaticMeshComponent>()) continue;
 
 			UStaticMeshComponent* S = static_cast<UStaticMeshComponent*>(Comp);
@@ -179,7 +180,7 @@ json::JSON FLevelSaveManager::SerializeActor(AActor* Actor)
 	a[SceneKeys::Visible] = Actor->IsVisible();
 
 	// RootComponent 트리 직렬화
-	if (Actor->GetRootComponent()) {
+	if (Actor->GetRootComponent() && !Actor->GetRootComponent()->IsVisualizationComponent()) {
 		a[SceneKeys::RootComponent] = SerializeLevelComponentTree(Actor->GetRootComponent());
 	}
 
@@ -187,6 +188,7 @@ json::JSON FLevelSaveManager::SerializeActor(AActor* Actor)
 	JSON NonScene = json::Array();
 	for (UActorComponent* Comp : Actor->GetComponents()) {
 		if (!Comp) continue;
+		if (Comp->IsVisualizationComponent()) continue;
 		if (Comp->IsA<USceneComponent>()) continue;
 
 		JSON c = json::Object();
@@ -209,6 +211,7 @@ json::JSON FLevelSaveManager::SerializeLevelComponentTree(USceneComponent* Comp)
 	JSON Children = json::Array();
 	for (USceneComponent* Child : Comp->GetChildren()) {
 		if (!Child) continue;
+		if (Child->IsVisualizationComponent()) continue;
 		Children.append(SerializeLevelComponentTree(Child));
 	}
 	c[SceneKeys::Children] = Children;

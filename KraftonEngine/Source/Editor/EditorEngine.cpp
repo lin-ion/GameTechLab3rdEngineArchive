@@ -11,6 +11,11 @@
 #include "Object/ObjectFactory.h"
 #include "Mesh/ObjManager.h"
 #include "Viewport/Viewport.h"
+#include "Component/BillboardComponent.h"
+#include "Component/TextRenderComponent.h"
+#include "Component/SceneComponent.h"
+#include "Engine/GameFramework/StaticMeshActor.h"
+#include "Texture/Texture2D.h"
 
 #include <commdlg.h>
 #include <shellapi.h>
@@ -149,9 +154,23 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 {
 	// 엔진 공통 초기화 (Renderer, D3D, 싱글턴 등)
 	UEngine::Init(InWindow);
-	
+
 	FObjManager::ScanMeshAssets();
 	FObjManager::ScanMaterialAssets();
+
+	// Register Default Placeable Actors
+	RegisterPlaceableActor({ "Empty Actor", "Basic", [](UWorld* W) {
+		AActor* A = W->SpawnActor<AActor>();
+		USceneComponent* Root = A->AddComponent<USceneComponent>();
+		A->SetRootComponent(Root);
+		return A;
+	} });
+
+	RegisterPlaceableActor({ "Cube", "Basic", [](UWorld* W) {
+		AStaticMeshActor* A = W->SpawnActor<AStaticMeshActor>();
+		A->InitDefaultComponents("Data/BasicShape/Cube.OBJ");
+		return static_cast<AActor*>(A);
+	} });
 
 	// 에디터 전용 초기화
 	FEditorSettings::Get().LoadFromFile(FEditorSettings::GetDefaultSettingsPath());
@@ -700,4 +719,71 @@ FViewportClient* UEditorEngine::GetActiveViewportSubClient() const
 	}
 
 	return GetViewportSubClient(ActiveVC->GetViewport());
+}
+
+// TODO: 여기에 있어선 안되는 함수..
+void UEditorEngine::SetupVisualization(AActor* Actor)
+{
+	if (!Actor) return;
+
+	ID3D11Device* Device = GetRenderer().GetFD3DDevice().GetDevice();
+	USceneComponent* Root = Actor->GetRootComponent();
+
+	// 1. UUID 텍스트 주입 (액터당 하나, 루트에 부착)
+	if (Root)
+	{
+		bool bHasUUIDText = false;
+		for (auto Comp : Actor->GetComponents())
+		{
+			if (Comp->IsVisualizationComponent() && Comp->IsA<UTextRenderComponent>())
+			{
+				bHasUUIDText = true;
+				break;
+			}
+		}
+
+		if (!bHasUUIDText)
+		{
+			UTextRenderComponent* TextComp = Actor->AddComponent<UTextRenderComponent>();
+			TextComp->SetIsVisualizationComponent(true);
+			TextComp->SetRelativeLocation(FVector(0.0f, 0.0f, 1.3f));
+			TextComp->SetText("UUID : " + TextComp->GetOwnerUUIDToString());
+			TextComp->AttachToComponent(Root);
+			TextComp->SetFont(FName("Default"));
+		}
+	}
+
+	// 2. 컴포넌트 단위 빌보드 주입 (Billboard는 SceneComponent에 무조건 붙는 친구)
+	// AddComponent 호출 시 OwnedComponents가 변경되므로 스냅샷으로 순회
+	TArray<UActorComponent*> CompSnapshot = Actor->GetComponents();
+	for (auto Comp : CompSnapshot)
+	{
+		USceneComponent* SceneComp = Cast<USceneComponent>(Comp);
+		if (!SceneComp || SceneComp->IsVisualizationComponent()) continue;
+
+		// 렌더링 개체가 아닌 순수 SceneComponent인 경우에만 아이콘 표시
+		if (!SceneComp->IsA<UPrimitiveComponent>())
+		{
+			bool bAlreadyHasBillboard = false;
+			for (auto Child : SceneComp->GetChildren())
+			{
+				if (Child->IsVisualizationComponent() && Child->IsA<UBillboardComponent>())
+				{
+					bAlreadyHasBillboard = true;
+					break;
+				}
+			}
+
+			if (!bAlreadyHasBillboard)
+			{
+				UBillboardComponent* BillboardComp = Actor->AddComponent<UBillboardComponent>();
+				BillboardComp->SetIsVisualizationComponent(true);
+				BillboardComp->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+				BillboardComp->AttachToComponent(SceneComp);
+
+				UTexture2D* ActorIcon = UTexture2D::LoadFromFile("Asset/Editor/Icon/EmptyActor_256x.png", Device);
+				BillboardComp->SetSprite(ActorIcon);
+			}
+		}
+	}
 }
