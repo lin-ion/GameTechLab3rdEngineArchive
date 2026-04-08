@@ -162,9 +162,15 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 	UpdateFrameBuffer(Context, InRenderBus);
 
 	FShader* PickingShader = FShaderManager::Get().GetShader(EShaderType::Picking);
+	FShader* BillboardPickingShader = FShaderManager::Get().GetShader(EShaderType::BillboardPicking);
 	if (!PickingShader) return;
 
-	const ERenderPass PickPasses[] = { ERenderPass::Opaque, ERenderPass::GizmoOuter, ERenderPass::GizmoInner };
+	const ERenderPass PickPasses[] = {
+		ERenderPass::Opaque,
+		ERenderPass::Billboard,
+		ERenderPass::GizmoOuter,
+		ERenderPass::GizmoInner
+	};
 	Device.SetDepthStencilState(EDepthStencilState::Default);
 	Device.SetBlendState(EBlendState::Opaque);
 	Device.SetRasterizerState(ERasterizerState::SolidBackCull);
@@ -172,6 +178,16 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 
 	for (ERenderPass Pass : PickPasses)
 	{
+		if (Pass == ERenderPass::Billboard)
+		{
+			Device.SetDepthStencilState(EDepthStencilState::Default);
+			Device.SetRasterizerState(ERasterizerState::SolidNoCull);
+		}
+		else
+		{
+			Device.SetRasterizerState(ERasterizerState::SolidBackCull);
+		}
+
 		if (Pass == ERenderPass::GizmoInner)
 		{
 			Device.SetDepthStencilState(EDepthStencilState::GizmoInside);
@@ -194,7 +210,23 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 				continue;
 			}
 
-			PickingShader->Bind(Context);
+			FShader* ActivePickingShader = PickingShader;
+			if (Pass == ERenderPass::Billboard && BillboardPickingShader)
+			{
+				ActivePickingShader = BillboardPickingShader;
+			}
+			ActivePickingShader->Bind(Context);
+
+			if (Pass == ERenderPass::Billboard && ActivePickingShader == BillboardPickingShader)
+			{
+				ID3D11ShaderResourceView* SpriteSRV = Queue.SpriteSRVs[Idx];
+				if (!SpriteSRV)
+				{
+					continue;
+				}
+				Context->PSSetShaderResources(0, 1, &SpriteSRV);
+				Context->PSSetSamplers(0, 1, &Resources.DefaultSampler);
+			}
 
 			Resources.PerObjectConstantBuffer.Update(Context, &Queue.Constants[Idx], sizeof(FPerObjectConstants));
 			{
@@ -212,6 +244,12 @@ void FRenderer::RenderPicking(const FViewContext& InRenderBus, FViewport* InView
 			}
 
 			DrawCommandFromSoA(Context, Queue, Idx);
+
+			if (Pass == ERenderPass::Billboard && ActivePickingShader == BillboardPickingShader)
+			{
+				ID3D11ShaderResourceView* NullSRV = nullptr;
+				Context->PSSetShaderResources(0, 1, &NullSRV);
+			}
 		}
 	}
 }

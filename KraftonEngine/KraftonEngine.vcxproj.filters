@@ -138,6 +138,9 @@
     <FxCompile Include="Shaders\Picking.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\BillboardPicking.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\Primitive.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>

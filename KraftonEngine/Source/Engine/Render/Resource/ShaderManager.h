@@ -15,6 +15,7 @@ enum class EShaderType : uint32
 	OverlayFont,	// DEPRECATED
 	SubUV,			// DEPRECATED
 	Picking,
+	BillboardPicking,
 	Billboard,
 	MAX,
 };

@@ -103,26 +103,26 @@ void UBillboardComponent::TickComponent(float DeltaTime)
 	UpdateWorldAABB();
 }
 
-void UBillboardComponent::UpdateWorldAABB() const
-{
-	// TODO: 아직 계산 검증 안 됨
-	const float   NewScale    = std::max({ GetWorldScale().X, GetWorldScale().Y, GetWorldScale().Z });
-	const FVector WorldCenter = GetWorldLocation();
-	const FVector Extent(NewScale, NewScale, NewScale);
-
-	WorldAABBMinLocation = WorldCenter - Extent;
-	WorldAABBMaxLocation = WorldCenter + Extent;
-}
-
-bool UBillboardComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT)
-{
-	// TODO: AABB 대신, 더 정확한 검사 도입
-	if (true)
-	{
-		OutHitResult.HitComponent = this;
-		OutHitResult.WorldHitLocation = GetWorldLocation();
-		OutHitResult.WorldNormal = (Ray.Origin - GetWorldLocation()).Normalized();
-		OutHitResult.Distance = (GetWorldLocation() - Ray.Origin).Length();
-	}
-	return true;
-}
+// void UBillboardComponent::UpdateWorldAABB() const
+// {
+// 	// TODO: 아직 계산 검증 안 됨
+// 	const float   NewScale    = std::max({ GetWorldScale().X, GetWorldScale().Y, GetWorldScale().Z });
+// 	const FVector WorldCenter = GetWorldLocation();
+// 	const FVector Extent(NewScale, NewScale, NewScale);
+//
+// 	WorldAABBMinLocation = WorldCenter - Extent;
+// 	WorldAABBMaxLocation = WorldCenter + Extent;
+// }
+//
+// bool UBillboardComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT)
+// {
+// 	// TODO: AABB 대신, 더 정확한 검사 도입
+// 	if (true)
+// 	{
+// 		OutHitResult.HitComponent = this;
+// 		OutHitResult.WorldHitLocation = GetWorldLocation();
+// 		OutHitResult.WorldNormal = (Ray.Origin - GetWorldLocation()).Normalized();
+// 		OutHitResult.Distance = (GetWorldLocation() - Ray.Origin).Length();
+// 	}
+// 	return true;
+// }

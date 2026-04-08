@@ -16,8 +16,8 @@ public:
 	FMeshBuffer*       GetMeshBuffer() const override;
 	const FMeshData*   GetMeshData()   const override;
 	FPrimitiveProxy*   CreateProxy()   override;
-	void               UpdateWorldAABB() const override;
-	bool               LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT) override;
+	// void               UpdateWorldAABB() const override;
+	// bool               LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult, float InClosestT) override;
 
 private:
 	UTexture2D* Sprite = nullptr;
