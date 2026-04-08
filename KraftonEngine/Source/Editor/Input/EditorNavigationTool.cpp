@@ -77,7 +77,7 @@ bool FEditorNavigationTool::HandleInput(float DeltaTime)
 
 		if (bAltDollyFrame)
 		{
-			const float DollyScale = 0.08f * CameraSpeed;
+			const float DollyScale = 0.001f * CameraSpeed;
 			AddCameraMoveInputLocal(FVector(-MouseDeltaY * DollyScale, 0.0f, 0.0f));
 		}
 
