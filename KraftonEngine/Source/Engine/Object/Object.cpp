@@ -10,6 +10,14 @@ UObject::UObject()
 	GUObjectArray.push_back(this);
 }
 
+UObject::UObject(const UObject& Other)
+{
+	ObjectName = Other.ObjectName;
+	UUID = UUIDGenerator::GenUUID();
+	InternalIndex = static_cast<uint32>(GUObjectArray.size());
+	GUObjectArray.push_back(this);
+}
+
 UObject::~UObject()
 {
 	uint32 LastIndex = static_cast<uint32>(GUObjectArray.size() - 1);

@@ -64,10 +64,12 @@ USceneComponent::~USceneComponent()
 void USceneComponent::DuplicateSubObjects()
 {
 	TArray<USceneComponent*> NewChildCompList;
+	NewChildCompList.reserve(ChildComponents.size());
+
 	for (auto ChildComp : ChildComponents)
 	{
 		auto Duplicated = ChildComp->Duplicate();
-		Duplicated->SetParent(this);
+		Duplicated->ParentComponent = this;
 		NewChildCompList.push_back(Duplicated);
 	}
 	ChildComponents = NewChildCompList;

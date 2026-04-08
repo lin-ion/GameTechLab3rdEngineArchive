@@ -12,6 +12,13 @@ ULevel::ULevel()
 	RenderProxy = std::make_unique<FWorldRenderProxy>();
 }
 
+ULevel::ULevel(const ULevel& Other)
+{
+	OwningWorld = Other.OwningWorld;
+	Actors = Other.Actors;
+	RenderProxy = std::make_unique<FWorldRenderProxy>();
+}
+
 ULevel::~ULevel()
 {
 	EndPlay();
@@ -23,11 +30,14 @@ void ULevel::DuplicateSubObjects()
 	NewActors.reserve(Actors.size());
 	for (AActor* Actor : Actors)
 	{
-		AActor* DuplicatedActor = static_cast<AActor*>(Actor->Duplicate());
+		AActor* DuplicatedActor = Actor->Duplicate();
 		DuplicatedActor->SetWorld(OwningWorld);
 		DuplicatedActor->SetLevel(this);
 		NewActors.push_back(DuplicatedActor);
 	}
+	
+	Actors = NewActors;
+
 	// Create new FWorldRenderProxy & Rebuild 
 	RenderProxy = std::make_unique<FWorldRenderProxy>();
 	for (AActor* Actor : Actors)

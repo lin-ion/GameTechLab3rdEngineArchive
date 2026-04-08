@@ -13,6 +13,18 @@
 
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
+FWorldContext* UEditorEngine::GetEditorWorldContext()
+{
+	for (auto& Ctx : WorldList)
+	{
+		if (Ctx.WorldType == EWorldType::Editor)
+		{
+			return &Ctx;
+		}
+	}
+	return nullptr;
+}
+
 void UEditorEngine::Init(FWindowsWindow* InWindow)
 {
 	// 엔진 공통 초기화 (Renderer, D3D, 싱글턴 등)
@@ -165,6 +177,56 @@ void UEditorEngine::NewLevel()
 	SetActiveWorld(Ctx.ContextHandle);
 
 	ResetViewport();
+}
+
+void UEditorEngine::StartPIE()
+{
+	FWorldContext* Context = GetEditorWorldContext();
+	FWorldContext PIEWorldContext = Context->Duplicate();
+	PIEWorldContext.WorldType = EWorldType::PIE;
+	
+	WorldList.push_back(PIEWorldContext);
+	SetActiveWorld(WorldList.back().ContextHandle);
+
+	SelectionManager.SetWorld(GetWorld());
+
+	// AActor::BeginPlay()
+	PIEWorldContext.World->InitWorld();
+	PIEWorldContext.World->BeginPlay();
+	
+	bPIEEnabled = true;
+}
+
+void UEditorEngine::EndPIE()
+{
+	UWorld* World = GetWorld();
+	// Get PIE world context
+	FWorldContext* Context = GetWorldContextFromWorld(World);
+	if (Context && Context->WorldType == EWorldType::PIE)
+	{
+		SelectionManager.ClearSelection();
+
+		Context->World->EndPlay();
+		auto WorldListIter = find_if(WorldList.begin(), WorldList.end(), 
+			[Context](const FWorldContext& a) 
+			{
+				return a.ContextHandle == Context->ContextHandle;
+			});
+		if (WorldListIter != WorldList.end())
+		{
+			UObjectManager::Get().DestroyObject(Context->World);
+			WorldList.erase(WorldListIter);
+		}
+	}
+	// Revert ActiveWorldContext to EditorWorldContext;
+	FWorldContext* EditorContext = GetEditorWorldContext();
+	if (EditorContext)
+	{
+		SetActiveWorld(EditorContext->ContextHandle);
+		SelectionManager.SetWorld(GetWorld());
+	}
+	
+	bPIEEnabled = false;
 }
 
 void UEditorEngine::ClearWorlds()
