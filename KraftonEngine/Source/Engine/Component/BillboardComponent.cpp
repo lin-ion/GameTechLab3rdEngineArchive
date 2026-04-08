@@ -61,29 +61,9 @@ void UBillboardComponent::TickComponent(float DeltaTime)
 {
 	if (!GetOwner() || !GetOwner()->GetWorld()) return;
 
-	// const FViewportCamera* ActiveCamera = GetOwner()->GetWorld()->GetActiveCamera();
-	// 빌드 오류로 인해 임시로 강제 실패 처리.
-	// 재구현 필요
-	const FViewportCamera* ActiveCamera = nullptr;
-	if (!ActiveCamera) return;
-
-	FVector WorldLocation = GetWorldLocation();
-	FVector CameraForward = ActiveCamera->GetForwardVector().Normalized();
-	FVector Forward = CameraForward * -1;
-	FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
-
-	if (std::abs(Forward.Dot(WorldUp)) > 0.99f)
-	{
-		WorldUp = FVector(0.0f, 1.0f, 0.0f); // 임시 Up축 변경
-	}
-
-	FVector Right = WorldUp.Cross(Forward).Normalized();
-	FVector Up = Forward.Cross(Right).Normalized();
-
-	FMatrix RotMatrix;
-	RotMatrix.SetAxes(Forward, Right, Up);
-
-	CachedWorldMatrix = FMatrix::MakeScaleMatrix(GetWorldScale()) * RotMatrix * FMatrix::MakeTranslationMatrix(WorldLocation);
+	// Billboard 행렬은 Render Proxy에서 View별로 계산되므로,
+	// 여기서는 단순히 위치와 스케일만 반영된 행렬을 갱신하거나 AABB만 업데이트합니다.
+	// CachedWorldMatrix = FMatrix::MakeScaleMatrix(GetWorldScale()) * FMatrix::MakeTranslationMatrix(GetWorldLocation());
 
 	UpdateWorldAABB();
 }

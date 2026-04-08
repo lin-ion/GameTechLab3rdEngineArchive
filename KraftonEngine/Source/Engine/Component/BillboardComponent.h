@@ -16,7 +16,7 @@ public:
 
 	FMeshBuffer* GetMeshBuffer() const override { return &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::Quad); }
 	const FMeshData* GetMeshData() const override { return &FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad); }
-	
+
 	FPrimitiveProxy* CreateProxy() override;
 
 protected:
