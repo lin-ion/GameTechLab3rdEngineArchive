@@ -38,10 +38,17 @@ public:
 	void ResetViewport();
 	void CloseLevel();
 	void NewLevel();
+	
+	void StartPIE();
+	void EndPIE();
 
 	FEditorSettings& GetSettings() { return FEditorSettings::Get(); }
 	const FEditorSettings& GetSettings() const { return FEditorSettings::Get(); }
 
+	bool GetPIEEnabled() const { return bPIEEnabled; }
+	
+	FWorldContext* GetEditorWorldContext();
+	
 	FSelectionManager& GetSelectionManager() { return SelectionManager; }
 
 	void RenderUI(float DeltaTime);
@@ -72,4 +79,5 @@ private:
 	FOverlayStatSystem OverlayStatSystem;
 	EPickingMode PickingMode = EPickingMode::RayTriangleBVH;
 	mutable TMap<FViewport*, FViewportHostClient> InputTargetHosts;
+	bool bPIEEnabled = false;
 };

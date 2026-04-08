@@ -3,16 +3,31 @@
 #include "Profiling/MemoryStats.h"
 #include "Object/FName.h"
 #include "Core/Singleton.h"
+#include "UI/EditorConsoleWidget.h"
 
 #define DECLARE_CLASS(ClassName, ParentClass)                          \
     static const FTypeInfo s_TypeInfo;                                 \
     const FTypeInfo* GetTypeInfo() const override {                    \
         return &s_TypeInfo;                                            \
     }                                                                  \
-	ClassName* Duplicate() override {								   \
-		UObject* Duplicated = Duplicate();							   \
-		return dynamic_cast<ClassName*>(Duplicated);				   \
-	}
+	ClassName* Duplicate() override {                                  \
+        ClassName* Duplicated = SafeDuplicate(this);                   \
+        if (Duplicated) {                                              \
+            Duplicated->DuplicateSubObjects();                         \
+        }                                                              \
+        return Duplicated;                                             \
+    }
+    
+template <typename T>
+T* SafeDuplicate(const T* Instance) {
+    if constexpr (std::is_copy_constructible_v<T>) {
+        return new T(*Instance);
+    } else {
+        // 복사 생성자가 없는 경우 처리 (nullptr 반환 혹은 Assert)
+    	UE_LOG("T does not have copy constructor");
+        return nullptr; 
+    }
+}
 
 #define DEFINE_CLASS(ClassName, ParentClass)                           \
     const FTypeInfo ClassName::s_TypeInfo = {                          \
@@ -50,6 +65,7 @@ class UObject
 {
 public:
 	UObject();
+	UObject(const UObject& Other);
 	virtual ~UObject();
 
 	uint32 GetUUID() const { return UUID; }
@@ -98,7 +114,7 @@ public:
 	bool IsA() const { return GetTypeInfo()->IsA(&T::s_TypeInfo); }
 	
 	template<typename T>
-	T* As() { return this->IsA<T>() ? nullptr : static_cast<T*>(this); }
+	T* As() { return this->IsA<T>() ? static_cast<T*>(this) : nullptr; }
 
 	static const FTypeInfo s_TypeInfo;
 

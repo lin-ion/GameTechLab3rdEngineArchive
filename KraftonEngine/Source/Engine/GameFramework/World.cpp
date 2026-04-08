@@ -32,9 +32,10 @@ UWorld::~UWorld()
 
 void UWorld::DuplicateSubObjects()
 {
-	// Active level만 복제, Persistent level은 공유
-	ActiveLevel = static_cast<ULevel*>(ActiveLevel->Duplicate());
+	ActiveLevel = ActiveLevel->Duplicate();
 	ActiveLevel->SetWorld(this);
+	PersistentLevel = PersistentLevel->Duplicate();
+	PersistentLevel->SetWorld(this);
 }
 
 void UWorld::DestroyActor(AActor* Actor)

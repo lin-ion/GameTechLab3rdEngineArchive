@@ -1,8 +1,7 @@
 #pragma once
 #include "Core/CoreTypes.h"
 #include "Object/FName.h"
-
-class UWorld;
+#include "World.h"
 
 enum class EWorldType : uint32
 {
@@ -18,4 +17,14 @@ struct FWorldContext
     UWorld* World = nullptr;
     FString ContextName;
     FName ContextHandle;
+	
+	FWorldContext Duplicate()
+	{
+		FWorldContext Duplicated;
+		Duplicated.WorldType = WorldType;
+		Duplicated.World = World->Duplicate();
+		Duplicated.ContextName = ContextName + "_PIE";
+		Duplicated.ContextHandle = FName(Duplicated.ContextName);
+		return Duplicated;
+	}
 };

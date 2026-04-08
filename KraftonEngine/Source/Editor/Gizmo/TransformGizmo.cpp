@@ -39,6 +39,17 @@ void FTransformGizmo::SetWorld(UWorld* InWorld)
 		return;
 	}
 
+	// EnsureProxyRegistered에서 새 WorldRenderProxy에 등록하기 전에 기존 WorldRenderProxy에서 제거 
+	// => 모든 WorldRenderProxy에 걸쳐 1개만 존재하도록
+	UWorld* OldWorld = GizmoComponent->GetWorld();
+	if (OldWorld && OldWorld != InWorld)
+	{
+		if (ULevel* OldLevel = OldWorld->GetPersistentLevel())
+		{
+			OldLevel->GetRenderProxy().RemoveProxy(GizmoComponent->GetProxy());
+		}
+	}
+ 
 	GizmoComponent->Deactivate();
 	GizmoComponent->SetExplicitWorld(InWorld);
 	if (InWorld)
