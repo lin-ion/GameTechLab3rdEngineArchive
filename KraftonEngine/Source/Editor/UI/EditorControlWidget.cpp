@@ -65,6 +65,7 @@ void FEditorControlWidget::Render(float DeltaTime)
 				}
 			}
 		}
+		ImGui::EndPopup();
 	}
 
 	SEPARATOR();
