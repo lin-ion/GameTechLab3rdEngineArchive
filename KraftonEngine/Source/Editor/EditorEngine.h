@@ -83,6 +83,7 @@ public:
 	// Placement
 	const TArray<FPlaceActorDesc>& GetPlaceableActors() const { return PlaceableActors; }
 	void RegisterPlaceableActor(const FPlaceActorDesc& Desc) { PlaceableActors.push_back(Desc); }
+	AActor* SpawnPlaceableActor(int32 PlaceableIndex, const FVector& SpawnLocation);
 
 	// PIE preparation: swap viewport sub-client through host client.
 	bool SetViewportSubClient(FViewport* InViewport, FViewportClient* InSubClient);

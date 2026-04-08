@@ -13,6 +13,7 @@ class FWindowsWindow;
 class FRenderer;
 class UWorld;
 class UEditorEngine;
+class FLevelViewportLayoutUI;
 
 // 뷰포트 레이아웃 종류 (12가지, UE 동일)
 enum class EViewportLayout : uint8
@@ -74,10 +75,16 @@ public:
 	void SetWorld(UWorld* InWorld);
 	void ResetViewport(UWorld* InWorld);
 	void DestroyAllCameras();
+	void BeginPIEViewportMode();
+	void EndPIEViewportMode();
 
 	static int32 GetSlotCount(EViewportLayout Layout);
+	
+	FRenderer * GetRenderer() { return RendererPtr; }
 
 private:
+	friend class FLevelViewportLayoutUI;
+
 	enum class ELayoutTransitionState : uint8
 	{
 		None,
@@ -124,6 +131,8 @@ private:
 
 	SSplitter* DraggingSplitter = nullptr;
 	bool bMouseOverViewport = false;
+	bool bPIEViewportMode = false;
+	FLevelEditorViewportClient* PIEFocusedViewportClient = nullptr;
 
 	// 레이아웃 아이콘 SRV (EViewportLayout::MAX 개)
 	ID3D11ShaderResourceView* LayoutIcons[static_cast<int>(EViewportLayout::MAX)] = {};

@@ -1,11 +1,9 @@
 ﻿#include "Editor/UI/EditorControlWidget.h"
 #include "Editor/EditorEngine.h"
-#include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Profiling/Timer.h"
 #include "ImGui/imgui.h"
 #include "Editor/Viewport/ViewportCamera.h"
-#include "GameFramework/StaticMeshActor.h"
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
 
@@ -26,31 +24,6 @@ void FEditorControlWidget::Render(float DeltaTime)
 	ImGui::SetNextWindowSize(ImVec2(500.0f, 480.0f), ImGuiCond_Once);
 
 	ImGui::Begin("Jungle Control Panel");
-
-	// Spawn
-	if (ImGui::Button("Place Actors"))
-	{
-		ImGui::OpenPopup("PlaceActorsPopup");
-	}
-	if (ImGui::BeginPopup("PlaceActorsPopup"))
-	{
-		UWorld* World = EditorEngine->GetWorld();
-		const auto& Placeables = EditorEngine->GetPlaceableActors();
-
-		for (const auto& Desc : Placeables)
-		{
-			if (ImGui::Selectable(Desc.Name.c_str()))
-			{
-				AActor* SpawnedActor = Desc.SpawnFunc(World);
-				if (SpawnedActor)
-				{
-					SpawnedActor->SetActorLocation(CurSpawnPoint);
-					EditorEngine->SetupVisualization(SpawnedActor);
-				}
-			}
-		}
-		ImGui::EndPopup();
-	}
 
 	SEPARATOR();
 

@@ -1,7 +1,8 @@
-#include "Editor/Input/EditorNavigationTool.h"
+﻿#include "Editor/Input/EditorNavigationTool.h"
 
 #include "Editor/Input/EditorViewportInputMapping.h"
 #include "Editor/Input/EditorViewportInputUtils.h"
+#include "Editor/Gizmo/TransformGizmo.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/EditorViewportClient.h"
@@ -25,7 +26,9 @@ bool FEditorNavigationTool::HandleInput(float DeltaTime)
 	}
 
 	const bool bWasActive = IsInputActiveNow();
-	const bool bLeftDragLookFrame = EditorViewportInputUtils::IsLeftNavigationDragActive(Owner->InputContext);
+	const bool bLeftDragLookRaw = EditorViewportInputUtils::IsLeftNavigationDragActive(Owner->InputContext);
+	const bool bGizmoDragging = Owner->Gizmo && (Owner->Gizmo->IsHolding() || Owner->Gizmo->IsPressedOnHandle());
+	const bool bLeftDragLookFrame = bLeftDragLookRaw && !bGizmoDragging;
 	const bool bAltOrbitFrame =
 		EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavOrbitAltLeftDown);
 	const bool bAltDollyFrame =
@@ -47,16 +50,32 @@ bool FEditorNavigationTool::HandleInput(float DeltaTime)
 	const float CameraSpeed = GetEffectiveCameraSpeed() * MoveSensitivity;
 	const float MouseDeltaX = static_cast<float>(Owner->InputContext.Frame.MouseDelta.x);
 	const float MouseDeltaY = static_cast<float>(Owner->InputContext.Frame.MouseDelta.y);
-	const bool bAdjustSpeedFrame = bRightLookFrame && Owner->InputContext.Frame.WheelNotches != 0.0f;
+	const float ScrollNotches = Owner->InputContext.Frame.WheelNotches;
+	const bool bAdjustSpeedFrame = bRightLookFrame && ScrollNotches != 0.0f;
 	if (bAdjustSpeedFrame)
 	{
-		AdjustRuntimeCameraSpeed(Owner->InputContext.Frame.WheelNotches);
+		AdjustRuntimeCameraSpeed(ScrollNotches);
+	}
+	const bool bWheelDollyFrame =
+		ScrollNotches != 0.0f
+		&& !bAdjustSpeedFrame
+		&& EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavWheelScroll);
+	constexpr float WheelDollyVirtualMouseDelta = 50.0f;
+	float DollyInputY = 0.0f;
+	if (bAltDollyFrame)
+	{
+		DollyInputY += MouseDeltaY;
+	}
+	if (bWheelDollyFrame)
+	{
+		// Reuse the same dolly path as Alt+RMB by feeding a small virtual mouse delta.
+		DollyInputY += -ScrollNotches * WheelDollyVirtualMouseDelta;
 	}
 
 	if (!bIsOrtho)
 	{
 		FVector Move = FVector(0, 0, 0);
-		const bool bAllowKeyboardFlyMove = bRightLookFrame && !bKeyboardNavigationBlocked;
+		const bool bAllowKeyboardFlyMove = (bRightLookFrame || bLeftDragLookFrame) && !bKeyboardNavigationBlocked;
 		if (bAllowKeyboardFlyMove)
 		{
 			if (EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavMoveForward)) Move.X += CameraSpeed;
@@ -72,13 +91,13 @@ bool FEditorNavigationTool::HandleInput(float DeltaTime)
 		if (bPanFrame)
 		{
 			const float PanScale = 0.03f * MoveSensitivity;
-			AddCameraMoveInputLocal(FVector(0.0f, -MouseDeltaX * PanScale, MouseDeltaY * PanScale));
+			AddCameraMoveInputLocal(FVector(0.0f, MouseDeltaX * PanScale, -MouseDeltaY * PanScale));
 		}
 
-		if (bAltDollyFrame)
+		if (DollyInputY != 0.0f)
 		{
 			const float DollyScale = 0.001f * CameraSpeed;
-			AddCameraMoveInputLocal(FVector(-MouseDeltaY * DollyScale, 0.0f, 0.0f));
+			AddCameraMoveInputLocal(FVector(-DollyInputY * DollyScale, 0.0f, 0.0f));
 		}
 
 		if (bAltOrbitFrame)
@@ -92,6 +111,8 @@ bool FEditorNavigationTool::HandleInput(float DeltaTime)
 				}
 			}
 			OrbitCameraAroundPivot(Pivot, MouseDeltaX, MouseDeltaY, Owner->RenderOptions.CameraRotateSensitivity);
+			Owner->Camera->SetWorldLocation(CameraTargetLocation);
+			Owner->Camera->SetRelativeRotation(CameraTargetRotation);
 		}
 
 		FVector Rotation = FVector(0, 0, 0);
@@ -129,9 +150,9 @@ bool FEditorNavigationTool::HandleInput(float DeltaTime)
 			AddCameraMoveInputLocal(FVector(0, -MouseDeltaX * PanScale, MouseDeltaY * PanScale));
 		}
 
-		if (bAltDollyFrame)
+		if (DollyInputY != 0.0f)
 		{
-			const float NextOrthoWidth = Owner->Camera->GetOrthoWidth() + MouseDeltaY * CameraState.OrthoWidth * 0.003f;
+			const float NextOrthoWidth = Owner->Camera->GetOrthoWidth() + DollyInputY * CameraState.OrthoWidth * 0.003f;
 			Owner->Camera->SetOrthoWidth(Clamp(NextOrthoWidth, 0.1f, 5000.0f));
 		}
 	}
@@ -146,12 +167,15 @@ bool FEditorNavigationTool::IsInputActiveNow() const
 		return false;
 	}
 
+	const bool bGizmoDragging = Owner->Gizmo && (Owner->Gizmo->IsHolding() || Owner->Gizmo->IsPressedOnHandle());
+	const bool bLeftNavigationActive = EditorViewportInputUtils::IsLeftNavigationDragActive(Owner->InputContext) && !bGizmoDragging;
+
 	return EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavLookRightDown)
 		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavLookMiddleDown)
 		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavOrbitAltLeftDown)
 		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavDollyAltRightDown)
 		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavPanAltMiddleDown)
-		|| EditorViewportInputUtils::IsLeftNavigationDragActive(Owner->InputContext)
+		|| bLeftNavigationActive
 		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavMoveForward)
 		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavMoveLeft)
 		|| EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavMoveBackward)
@@ -313,6 +337,10 @@ void FEditorNavigationTool::AddCameraRotateInput(float DeltaYaw, float DeltaPitc
 	{
 		SyncCameraTargetFromCurrent();
 	}
+	
+	constexpr float PsuedoScale = 0.65f;
+	DeltaYaw *= PsuedoScale;
+	DeltaPitch *= PsuedoScale;
 
 	CameraTargetRotation.Yaw += DeltaYaw;
 	CameraTargetRotation.Pitch = Clamp(CameraTargetRotation.Pitch + DeltaPitch, -89.9f, 89.9f);
@@ -361,12 +389,31 @@ void FEditorNavigationTool::AdjustRuntimeCameraSpeed(float WheelNotches)
 		return;
 	}
 
+	const float BaseSpeed = Owner && Owner->Settings
+		? Owner->Settings->CameraSpeed
+		: FEditorSettings::Get().CameraSpeed;
+	const float SafeBaseSpeed = (BaseSpeed > 0.0001f) ? BaseSpeed : 0.0001f;
+	const float MinMultiplier = GetMinCameraSpeedValue() / SafeBaseSpeed;
+	const float MaxMultiplier = GetMaxCameraSpeedValue() / SafeBaseSpeed;
 	const float Step = 0.1f;
-	RuntimeCameraSpeedMultiplier = Clamp(RuntimeCameraSpeedMultiplier + WheelNotches * Step, 0.2f, 5.0f);
+	RuntimeCameraSpeedMultiplier = Clamp(RuntimeCameraSpeedMultiplier + WheelNotches * Step, MinMultiplier, MaxMultiplier);
+}
+
+void FEditorNavigationTool::SetRuntimeCameraSpeedMultiplier(float InMultiplier)
+{
+	const float BaseSpeed = Owner && Owner->Settings
+		? Owner->Settings->CameraSpeed
+		: FEditorSettings::Get().CameraSpeed;
+	const float SafeBaseSpeed = (BaseSpeed > 0.0001f) ? BaseSpeed : 0.0001f;
+	const float MinMultiplier = GetMinCameraSpeedValue() / SafeBaseSpeed;
+	const float MaxMultiplier = GetMaxCameraSpeedValue() / SafeBaseSpeed;
+	RuntimeCameraSpeedMultiplier = Clamp(InMultiplier, MinMultiplier, MaxMultiplier);
 }
 
 float FEditorNavigationTool::GetEffectiveCameraSpeed() const
 {
-	const float BaseSpeed = Owner && Owner->Settings ? Owner->Settings->CameraSpeed : 10.0f;
+	const float BaseSpeed = Owner && Owner->Settings
+		? Owner->Settings->CameraSpeed
+		: FEditorSettings::Get().CameraSpeed;
 	return BaseSpeed * RuntimeCameraSpeedMultiplier;
 }

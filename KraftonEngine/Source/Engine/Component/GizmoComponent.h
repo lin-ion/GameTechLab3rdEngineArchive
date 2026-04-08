@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "PrimitiveComponent.h"
 #include "Core/CoreTypes.h"
@@ -65,6 +65,18 @@ public:
 	void SetWorldSpace(bool bWorldSpace);
 	bool IsWorldSpace() const { return bIsWorldSpace; }
 	void ToggleWorldSpace();
+	void SetTranslateSnapEnabled(bool bEnabled);
+	bool IsTranslateSnapEnabled() const { return bTranslateSnapEnabled; }
+	void SetTranslateSnapValue(float InValue);
+	float GetTranslateSnapValue() const { return TranslateSnapValue; }
+	void SetRotateSnapEnabled(bool bEnabled);
+	bool IsRotateSnapEnabled() const { return bRotateSnapEnabled; }
+	void SetRotateSnapValueDegrees(float InDegrees);
+	float GetRotateSnapValueDegrees() const { return RotateSnapValueDegrees; }
+	void SetScaleSnapEnabled(bool bEnabled);
+	bool IsScaleSnapEnabled() const { return bScaleSnapEnabled; }
+	void SetScaleSnapValue(float InValue);
+	float GetScaleSnapValue() const { return ScaleSnapValue; }
 
 
 	//UActorComponent Override
@@ -104,4 +116,13 @@ private:
 	bool bPressedOnHandle = false;
 	const FMeshData* MeshData = nullptr;
 	uint32 AxisMask = 0x7; // 비트 0=X, 1=Y, 2=Z — 기본 전부 표시
+	bool bTranslateSnapEnabled = false;
+	bool bRotateSnapEnabled = false;
+	bool bScaleSnapEnabled = false;
+	float TranslateSnapValue = 1.0f;
+	float RotateSnapValueDegrees = 5.0f;
+	float ScaleSnapValue = 0.1f;
+	float TranslateSnapAccumulator = 0.0f;
+	float RotateSnapAccumulator = 0.0f;
+	float ScaleSnapAccumulator = 0.0f;
 };

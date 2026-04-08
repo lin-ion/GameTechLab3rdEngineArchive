@@ -10,6 +10,8 @@
 #include "GameFramework/World.h"
 #include "Render/Pipeline/WorldRenderProxy.h"
 
+#include <cmath>
+
 class FGizmoProxy : public FPrimitiveProxy
 {
 public:
@@ -141,16 +143,73 @@ bool UGizmoComponent::IntersectRayAxis(const FRay& Ray, FVector AxisEnd, float& 
 
 void UGizmoComponent::HandleDrag(float DragAmount)
 {
+	float AppliedDragAmount = DragAmount;
+	auto CalcStepCount = [](float Value) -> int32
+	{
+		if (Value >= 0.0f)
+		{
+			return static_cast<int32>(std::floor(Value));
+		}
+		return static_cast<int32>(std::ceil(Value));
+	};
 	switch (CurMode)
 	{
 	case EGizmoMode::Translate:
-		TranslateTarget(DragAmount);
+		if (bTranslateSnapEnabled)
+		{
+			const float Step = TranslateSnapValue > 0.0001f ? TranslateSnapValue : 0.0001f;
+			TranslateSnapAccumulator += DragAmount;
+			const int32 StepCount = CalcStepCount(TranslateSnapAccumulator / Step);
+			if (StepCount == 0)
+			{
+				return;
+			}
+			AppliedDragAmount = Step * static_cast<float>(StepCount);
+			TranslateSnapAccumulator -= AppliedDragAmount;
+		}
 		break;
 	case EGizmoMode::Rotate:
-		RotateTarget(DragAmount);
+		if (bRotateSnapEnabled)
+		{
+			const float Step = (RotateSnapValueDegrees > 0.0001f ? RotateSnapValueDegrees : 0.0001f) * DEG_TO_RAD;
+			RotateSnapAccumulator += DragAmount;
+			const int32 StepCount = CalcStepCount(RotateSnapAccumulator / Step);
+			if (StepCount == 0)
+			{
+				return;
+			}
+			AppliedDragAmount = Step * static_cast<float>(StepCount);
+			RotateSnapAccumulator -= AppliedDragAmount;
+		}
 		break;
 	case EGizmoMode::Scale:
-		ScaleTarget(DragAmount);
+		if (bScaleSnapEnabled)
+		{
+			const float Step = ScaleSnapValue > 0.0001f ? ScaleSnapValue : 0.0001f;
+			ScaleSnapAccumulator += DragAmount;
+			const int32 StepCount = CalcStepCount(ScaleSnapAccumulator / Step);
+			if (StepCount == 0)
+			{
+				return;
+			}
+			AppliedDragAmount = Step * static_cast<float>(StepCount);
+			ScaleSnapAccumulator -= AppliedDragAmount;
+		}
+		break;
+	default:
+		break;
+	}
+
+	switch (CurMode)
+	{
+	case EGizmoMode::Translate:
+		TranslateTarget(AppliedDragAmount);
+		break;
+	case EGizmoMode::Rotate:
+		RotateTarget(AppliedDragAmount);
+		break;
+	case EGizmoMode::Scale:
+		ScaleTarget(AppliedDragAmount);
 		break;
 	default:
 		break;
@@ -476,8 +535,68 @@ void UGizmoComponent::UpdateDrag(const FRay& Ray)
 void UGizmoComponent::DragEnd()
 {
 	bIsFirstFrameOfDrag = true;
+	TranslateSnapAccumulator = 0.0f;
+	RotateSnapAccumulator = 0.0f;
+	ScaleSnapAccumulator = 0.0f;
 	SetHolding(false);
 	SetPressedOnHandle(false);
+}
+
+void UGizmoComponent::SetTranslateSnapEnabled(bool bEnabled)
+{
+	bTranslateSnapEnabled = bEnabled;
+	if (!bTranslateSnapEnabled)
+	{
+		TranslateSnapAccumulator = 0.0f;
+	}
+}
+
+void UGizmoComponent::SetTranslateSnapValue(float InValue)
+{
+	const float NextValue = InValue > 0.0001f ? InValue : 0.0001f;
+	if (std::fabs(TranslateSnapValue - NextValue) > 0.0001f)
+	{
+		TranslateSnapValue = NextValue;
+		TranslateSnapAccumulator = 0.0f;
+	}
+}
+
+void UGizmoComponent::SetRotateSnapEnabled(bool bEnabled)
+{
+	bRotateSnapEnabled = bEnabled;
+	if (!bRotateSnapEnabled)
+	{
+		RotateSnapAccumulator = 0.0f;
+	}
+}
+
+void UGizmoComponent::SetRotateSnapValueDegrees(float InDegrees)
+{
+	const float NextValue = InDegrees > 0.0001f ? InDegrees : 0.0001f;
+	if (std::fabs(RotateSnapValueDegrees - NextValue) > 0.0001f)
+	{
+		RotateSnapValueDegrees = NextValue;
+		RotateSnapAccumulator = 0.0f;
+	}
+}
+
+void UGizmoComponent::SetScaleSnapEnabled(bool bEnabled)
+{
+	bScaleSnapEnabled = bEnabled;
+	if (!bScaleSnapEnabled)
+	{
+		ScaleSnapAccumulator = 0.0f;
+	}
+}
+
+void UGizmoComponent::SetScaleSnapValue(float InValue)
+{
+	const float NextValue = InValue > 0.0001f ? InValue : 0.0001f;
+	if (std::fabs(ScaleSnapValue - NextValue) > 0.0001f)
+	{
+		ScaleSnapValue = NextValue;
+		ScaleSnapAccumulator = 0.0f;
+	}
 }
 
 void UGizmoComponent::SetNextMode()

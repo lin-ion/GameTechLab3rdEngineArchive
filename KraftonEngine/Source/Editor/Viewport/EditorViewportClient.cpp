@@ -162,6 +162,17 @@ void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
 
 void FEditorViewportClient::Tick(float DeltaTime)
 {
+	if (bPIEOutlineFlashActive)
+	{
+		PIEOutlineFlashElapsed += DeltaTime;
+		const float TotalDuration = PIEOutlineFlashHoldDuration + PIEOutlineFlashFadeDuration;
+		if (PIEOutlineFlashElapsed >= TotalDuration)
+		{
+			bPIEOutlineFlashActive = false;
+			PIEOutlineFlashElapsed = 0.0f;
+		}
+	}
+
 	if (!bHasInputContext)
 	{
 		EnsureInputController();
@@ -178,7 +189,8 @@ void FEditorViewportClient::Tick(float DeltaTime)
 
 	const bool bPrioritizeNavigation =
 		InputContext.bRelativeMouseMode
-		&& EditorViewportInputUtils::IsLeftNavigationDragActive(InputContext);
+		&& EditorViewportInputUtils::IsLeftNavigationDragActive(InputContext)
+		&& !(Gizmo && (Gizmo->IsHolding() || Gizmo->IsPressedOnHandle()));
 
 	if (bPrioritizeNavigation)
 	{
@@ -232,7 +244,24 @@ bool FEditorViewportClient::ProcessInput(FViewportInputContext& Context)
 bool FEditorViewportClient::WantsRelativeMouseMode(const FViewportInputContext& Context, POINT& OutRestoreScreenPos) const
 {
 	OutRestoreScreenPos = Context.Frame.MouseScreenPos;
-	const bool bLeftRelativeDrag = EditorViewportInputUtils::IsLeftNavigationDragActive(Context);
+	bool bGizmoBlocksLeftRelativeDrag = Gizmo && (Gizmo->IsHolding() || Gizmo->IsPressedOnHandle());
+	if (!bGizmoBlocksLeftRelativeDrag
+		&& Gizmo
+		&& Camera
+		&& Viewport
+		&& Context.Frame.IsDown(VK_LBUTTON))
+	{
+		const float LocalMouseX = static_cast<float>(Context.MouseLocalPos.x);
+		const float LocalMouseY = static_cast<float>(Context.MouseLocalPos.y);
+		const float VPWidth = static_cast<float>(Viewport->GetWidth());
+		const float VPHeight = static_cast<float>(Viewport->GetHeight());
+		const FRay MouseRay = Camera->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
+
+		FHitResult GizmoHit{};
+		bGizmoBlocksLeftRelativeDrag = Gizmo->Raycast(MouseRay, GizmoHit);
+	}
+
+	const bool bLeftRelativeDrag = EditorViewportInputUtils::IsLeftNavigationDragActive(Context) && !bGizmoBlocksLeftRelativeDrag;
 
 	if (!Camera || !Viewport)
 	{
@@ -416,7 +445,7 @@ void FEditorViewportClient::UpdateLayoutRect()
 	}
 }
 
-void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
+void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport, bool bDrawActiveOutline)
 {
 	if (!Viewport || !Viewport->GetSRV()) return;
 
@@ -426,13 +455,27 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 	ImDrawList* DrawList = ImGui::GetWindowDrawList();
 	ImVec2 Min(R.X, R.Y);
 	ImVec2 Max(R.X + R.Width, R.Y + R.Height);
+	constexpr float ToolbarBorderOffsetY = 34.0f;
+	const ImVec2 OutlineMin(R.X, R.Y + ToolbarBorderOffsetY);
 
 	DrawList->AddImage((ImTextureID)Viewport->GetSRV(), Min, Max);
 
 	// 활성 뷰포트 테두리 강조
-	if (bIsActiveViewport)
+	if (bIsActiveViewport && bDrawActiveOutline)
 	{
-		DrawList->AddRect(Min, Max, IM_COL32(255, 200, 0, 200), 0.0f, 0, 2.0f);
+		DrawList->AddRect(OutlineMin, Max, IM_COL32(255, 200, 0, 200), 0.0f, 0, 2.0f);
+	}
+
+	if (bPIEOutlineFlashActive && PIEOutlineFlashFadeDuration > 0.0f)
+	{
+		float Alpha01 = 1.0f;
+		if (PIEOutlineFlashElapsed > PIEOutlineFlashHoldDuration)
+		{
+			const float FadeElapsed = PIEOutlineFlashElapsed - PIEOutlineFlashHoldDuration;
+			Alpha01 = 1.0f - Clamp(FadeElapsed / PIEOutlineFlashFadeDuration, 0.0f, 1.0f);
+		}
+		const int32 Alpha = static_cast<int32>(Alpha01 * 255.0f);
+		DrawList->AddRect(OutlineMin, Max, IM_COL32(80, 255, 120, Alpha), 0.0f, 0, 3.0f);
 	}
 
 	if (bSelectionMarqueeActive)
@@ -450,4 +493,18 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 		DrawList->AddRectFilled(ImVec2(Left, Top), ImVec2(Right, Bottom), FillColor);
 		DrawList->AddRect(ImVec2(Left, Top), ImVec2(Right, Bottom), BorderColor, 0.0f, 0, 1.5f);
 	}
+}
+
+void FEditorViewportClient::TriggerPIEStartOutlineFlash(float HoldSeconds, float FadeSeconds)
+{
+	PIEOutlineFlashHoldDuration = HoldSeconds > 0.0f ? HoldSeconds : 1.0f;
+	PIEOutlineFlashFadeDuration = FadeSeconds > 0.0f ? FadeSeconds : 2.0f;
+	PIEOutlineFlashElapsed = 0.0f;
+	bPIEOutlineFlashActive = true;
+}
+
+void FEditorViewportClient::ClearPIEStartOutlineFlash()
+{
+	bPIEOutlineFlashActive = false;
+	PIEOutlineFlashElapsed = 0.0f;
 }

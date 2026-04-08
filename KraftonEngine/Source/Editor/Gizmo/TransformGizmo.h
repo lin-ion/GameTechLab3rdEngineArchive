@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Core/RayTypes.h"
@@ -28,6 +28,18 @@ public:
 	void SetWorldSpace(bool bWorldSpace);
 	bool IsWorldSpace() const;
 	void ToggleCoordinateSpace();
+	void SetTranslateSnapEnabled(bool bEnabled);
+	bool IsTranslateSnapEnabled() const;
+	void SetTranslateSnapValue(float InValue);
+	float GetTranslateSnapValue() const;
+	void SetRotateSnapEnabled(bool bEnabled);
+	bool IsRotateSnapEnabled() const;
+	void SetRotateSnapValueDegrees(float InValue);
+	float GetRotateSnapValueDegrees() const;
+	void SetScaleSnapEnabled(bool bEnabled);
+	bool IsScaleSnapEnabled() const;
+	void SetScaleSnapValue(float InValue);
+	float GetScaleSnapValue() const;
 
 	void SetTarget(AActor* NewTarget);
 	void SetSelectedActors(const TArray<AActor*>* InSelectedActors);

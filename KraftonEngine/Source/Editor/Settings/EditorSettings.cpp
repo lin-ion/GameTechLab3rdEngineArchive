@@ -150,6 +150,15 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 		std::istreambuf_iterator<char>());
 
 	JSON Root = JSON::Load(Content);
+	if (!Root.hasKey(Key::Viewport))
+	{
+		const FString WrappedContent = "{" + Content + "}";
+		JSON WrappedRoot = JSON::Load(WrappedContent);
+		if (WrappedRoot.hasKey(Key::Viewport))
+		{
+			Root = WrappedRoot;
+		}
+	}
 
 	// Viewport
 	if (Root.hasKey(Key::Viewport))

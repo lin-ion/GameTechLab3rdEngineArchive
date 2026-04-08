@@ -333,6 +333,8 @@ void UEditorEngine::NewLevel()
 
 void UEditorEngine::StartPIE()
 {
+	ViewportLayout.BeginPIEViewportMode();
+
 	FWorldContext* Context = GetEditorWorldContext();
 	FWorldContext PIEWorldContext = Context->Duplicate();
 	PIEWorldContext.WorldType = EWorldType::PIE;
@@ -388,6 +390,7 @@ void UEditorEngine::EndPIE()
 	}
 	
 	bPIEEnabled = false;
+	ViewportLayout.EndPIEViewportMode();
 }
 
 void UEditorEngine::ClearWorlds()
@@ -762,6 +765,26 @@ FViewportClient* UEditorEngine::GetActiveViewportSubClient() const
 	}
 
 	return GetViewportSubClient(ActiveVC->GetViewport());
+}
+
+AActor* UEditorEngine::SpawnPlaceableActor(int32 PlaceableIndex, const FVector& SpawnLocation)
+{
+	UWorld* World = GetWorld();
+	if (!World || PlaceableIndex < 0 || PlaceableIndex >= static_cast<int32>(PlaceableActors.size()))
+	{
+		return nullptr;
+	}
+
+	const FPlaceActorDesc& Desc = PlaceableActors[PlaceableIndex];
+	AActor* SpawnedActor = Desc.SpawnFunc(World);
+	if (!SpawnedActor)
+	{
+		return nullptr;
+	}
+
+	SpawnedActor->SetActorLocation(SpawnLocation);
+	SetupVisualization(SpawnedActor);
+	return SpawnedActor;
 }
 
 // TODO: 여기에 있어선 안되는 함수..

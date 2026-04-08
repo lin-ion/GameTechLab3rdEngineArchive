@@ -229,6 +229,7 @@
     <ClCompile Include="Source\Editor\UI\EditorWidget.cpp" />
     <ClCompile Include="Source\Editor\Viewport\EditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayout.cpp" />
+    <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayoutUI.cpp" />
     <ClCompile Include="Source\Editor\Viewport\ViewportCamera.cpp" />
     <ClCompile Include="Source\Engine\Collision\RayUtils.cpp" />
     <ClCompile Include="Source\Engine\Component\ActorComponent.cpp" />
@@ -353,6 +354,7 @@
     <ClInclude Include="Source\Editor\UI\EditorWidget.h" />
     <ClInclude Include="Source\Editor\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Viewport\FLevelViewportLayout.h" />
+    <ClInclude Include="Source\Editor\Viewport\FLevelViewportLayoutUI.h" />
     <ClInclude Include="Source\Editor\Viewport\LevelEditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Viewport\ViewportCamera.h" />
     <ClInclude Include="Source\Engine\Collision\PickingTuning.h" />
@@ -552,6 +554,18 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Camera.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Menu.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Rotate.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Rotate_Snap.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Scale.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Scale_Snap.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Select.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Setting.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Translate.png" />
+    <Content Include="Asset\Editor\Icon\ViewportToolBar\Translate_Snap.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

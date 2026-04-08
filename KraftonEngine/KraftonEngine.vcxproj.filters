@@ -239,6 +239,9 @@
     <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayout.cpp">
       <Filter>Source\Editor\Viewport</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayoutUI.cpp">
+      <Filter>Source\Editor\Viewport</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Viewport\ViewportCamera.cpp">
       <Filter>Source\Editor\Viewport</Filter>
     </ClCompile>
@@ -597,6 +600,9 @@
       <Filter>Source\Editor\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Viewport\FLevelViewportLayout.h">
+      <Filter>Source\Editor\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Viewport\FLevelViewportLayoutUI.h">
       <Filter>Source\Editor\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Viewport\LevelEditorViewportClient.h">
