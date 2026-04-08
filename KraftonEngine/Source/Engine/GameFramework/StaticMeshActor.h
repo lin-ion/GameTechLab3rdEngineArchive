@@ -4,6 +4,7 @@
 
 class UStaticMeshComponent;
 class UTextRenderComponent;
+class UBillboardComponent;
 
 class AStaticMeshActor : public AActor
 {
@@ -16,4 +17,5 @@ public:
 private:
 	UStaticMeshComponent* StaticMeshComponent = nullptr;
 	UTextRenderComponent* TextRenderComponent = nullptr;
+	UBillboardComponent* BillboardComponent = nullptr;
 };
