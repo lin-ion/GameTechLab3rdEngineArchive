@@ -351,24 +351,14 @@ void USceneComponent::Rotate(float DeltaYaw, float DeltaPitch)
 	// Camera-style rotation:
 	// - Yaw around world up (+Z)
 	// - Pitch around current local right (+Y)
-	FQuat Current = RelativeTransform.Rotation.GetNormalized();
-
-	if (fabsf(DeltaYaw) > EPSILON)
-	{
-		const FQuat YawQuat = FQuat::FromAxisAngle(FVector(0.0f, 0.0f, 1.0f), DeltaYaw * DEG_TO_RAD);
-		Current = (YawQuat * Current).GetNormalized();
-	}
-
-	if (fabsf(DeltaPitch) > EPSILON)
-	{
-		const FVector RightAxis = Current.GetRightVector().Normalized();
-		const FQuat PitchQuat = FQuat::FromAxisAngle(RightAxis, DeltaPitch * DEG_TO_RAD);
-		Current = (PitchQuat * Current).GetNormalized();
-	}
-
-	FRotator Rot = Current.ToRotator();
-	Rot.Pitch = Clamp(Rot.Pitch, -89.9f, 89.9f);
+	
+	// Convert current rotation to Euler to easily clamp Pitch and avoid flipping/singularity issues
+	FRotator Rot = RelativeTransform.Rotation.ToRotator();
+	
+	Rot.Yaw += DeltaYaw;
+	Rot.Pitch = Clamp(Rot.Pitch + DeltaPitch, -89.9f, 89.9f);
 	Rot.Roll = 0.0f;
+	
 	SetRelativeRotation(Rot);
 }
 

@@ -37,8 +37,11 @@ FRotator FQuat::ToRotator() const
 	// Yaw (Z축)
 	if (fabsf(SinPitch) > 0.9999f)
 	{
+		// Gimbal lock 상태(Pitch ≈ ±90°): Roll과 Yaw가 축 하나로 합쳐진다.
+		// Roll=0으로 고정하면 Yaw = 2*atan2(Z, W) 로 복원된다.
+		// (ZYX 쿼터니언에서 Roll=0일 때 z=CP*sin(Yaw/2), w=CP*cos(Yaw/2))
 		Rot.Roll = 0.0f;
-		Rot.Yaw = atan2f(-2.0f * (X * Y - W * Z), 1.0f - 2.0f * (Y * Y + Z * Z)) * Rad2Deg;
+		Rot.Yaw = atan2f(Z, W) * 2.0f * Rad2Deg;
 	}
 	else
 	{

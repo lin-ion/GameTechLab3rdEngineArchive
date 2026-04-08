@@ -9,9 +9,9 @@ void FFontBatcher::Create(ID3D11Device* InDevice)
 	CreateBuffers(InDevice, 1024, sizeof(FTextureVertex), 1536);
 	if (!Device) return;
 
-	// Sampler — Point 필터 (폰트는 선명하게)
+	// Sampler — Linear 필터 (확대/축소 시 앤티앨리어싱)
 	D3D11_SAMPLER_DESC sampDesc = {};
-	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;

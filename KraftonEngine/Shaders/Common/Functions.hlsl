@@ -26,7 +26,7 @@ float3 ApplyWireframe(float3 baseColor)
 // 폰트 아틀라스 배경 디스카드 판정
 bool ShouldDiscardFontPixel(float sampledRed)
 {
-    return sampledRed < 0.1f;
+    return sampledRed < 0.3f;
 }
 
 #endif // FUNCTIONS_HLSL

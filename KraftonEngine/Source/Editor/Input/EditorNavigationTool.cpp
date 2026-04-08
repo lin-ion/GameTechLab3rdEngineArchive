@@ -131,9 +131,10 @@ bool FEditorNavigationTool::HandleInput(float DeltaTime)
 		const bool bLookInputDown = bMouseLookFrame && !bAltDollyFrame && !bPanFrame && !bAltOrbitFrame;
 		if (bLookInputDown)
 		{
-			MouseRotation.Y += MouseDeltaX * MouseRotationSpeed;
-			MouseRotation.Z += MouseDeltaY * MouseRotationSpeed;
-			MouseRotation.Y = Clamp(MouseRotation.Y, -89.0f, 89.0f);
+			MouseRotation.Y += MouseDeltaX * MouseRotationSpeed; // Yaw
+			MouseRotation.Z += MouseDeltaY * MouseRotationSpeed; // Pitch
+			// Yaw (Y) should NOT be clamped to 89. Clipping Y and Z together was reported as a bug.
+			// Only Pitch (Z) is clamped.
 			MouseRotation.Z = Clamp(MouseRotation.Z, -89.0f, 89.0f);
 		}
 
