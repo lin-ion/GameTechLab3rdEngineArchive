@@ -742,6 +742,48 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor>& Pr
 		ImGui::PopStyleColor();
 		break;
 	}
+	// TODO: 꼭 리팩토링 하기.
+	case EPropertyType::TextureRef:
+	{
+		FString* Val = static_cast<FString*>(Prop.ValuePtr);
+
+		// 하드코딩된 아이콘 목록
+		static const FString IconPaths[] = {
+			"Asset/Editor/Icon/EmptyActor_256x.png",
+			"Asset/Editor/Icon/Pawn_64x.png",
+			"Asset/Editor/Icon/PointLight_64x.png",
+			"Asset/Editor/Icon/SpotLight_64x.png",
+		};
+		static const char* IconLabels[] = {
+			"EmptyActor_256x",
+			"Pawn_64x",
+			"PointLight_64x",
+			"SpotLight_64x",
+		};
+		static constexpr int32 IconCount = 4;
+
+		FString Preview = (*Val == "None" || Val->empty()) ? "None" : GetStemFromPath(*Val);
+
+		ImGui::Text("%s", Prop.Name.c_str());
+		ImGui::SameLine(120);
+		ImGui::SetNextItemWidth(-1);
+
+		if (ImGui::BeginCombo("##Sprite", Preview.c_str()))
+		{
+			for (int32 i = 0; i < IconCount; ++i)
+			{
+				bool bSelected = (*Val == IconPaths[i]);
+				if (ImGui::Selectable(IconLabels[i], bSelected))
+				{
+					*Val = IconPaths[i];
+					bChanged = true;
+				}
+				if (bSelected) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		break;
+	}
 	case EPropertyType::Name:
 	{
 		FName* Val = static_cast<FName*>(Prop.ValuePtr);

@@ -31,6 +31,8 @@ void AActor::DuplicateSubObjects()
 
 	for (UActorComponent* OldComp : OwnedComponents)
 	{
+		if (OldComp->IsVisualizationComponent()) continue;
+
 		UActorComponent* NewComp = OldComp->Duplicate();
 		NewComp->SetOwner(this);
 		NewComponents.push_back(NewComp);
