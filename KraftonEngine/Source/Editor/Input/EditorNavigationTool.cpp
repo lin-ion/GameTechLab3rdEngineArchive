@@ -219,6 +219,21 @@ void FEditorNavigationTool::FocusOnTarget(const FVector& Target, float DesiredDi
 		SyncCameraTargetFromCurrent();
 	}
 
+	if (Owner->Camera->IsOrthogonal())
+	{
+		// Ortho focus must behave like panning only: keep current rotation/depth.
+		const FQuat TargetQuat = FQuat::FromRotator(CameraTargetRotation).GetNormalized();
+		const FVector Forward = TargetQuat.GetForwardVector().Normalized();
+		const FVector Right = TargetQuat.GetRightVector().Normalized();
+		const FVector Up = TargetQuat.GetUpVector().Normalized();
+
+		const FVector ToTarget = Target - CameraTargetLocation;
+		const float PanRight = ToTarget.Dot(Right);
+		const float PanUp = ToTarget.Dot(Up);
+		CameraTargetLocation = CameraTargetLocation + Right * PanRight + Up * PanUp;
+		return;
+	}
+
 	FVector ToCamera = CameraTargetLocation - Target;
 	float Distance = ToCamera.Length();
 	if (Distance < 1.0f)
