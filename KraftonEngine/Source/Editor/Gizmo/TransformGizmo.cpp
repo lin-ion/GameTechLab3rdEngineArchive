@@ -1,4 +1,4 @@
-#include "Editor/Gizmo/TransformGizmo.h"
+﻿#include "Editor/Gizmo/TransformGizmo.h"
 
 #include "Collision/RayUtils.h"
 #include "Component/GizmoComponent.h"
@@ -148,6 +148,84 @@ void FTransformGizmo::ToggleCoordinateSpace()
 	{
 		GizmoComponent->ToggleWorldSpace();
 	}
+}
+
+void FTransformGizmo::SetTranslateSnapEnabled(bool bEnabled)
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->SetTranslateSnapEnabled(bEnabled);
+	}
+}
+
+bool FTransformGizmo::IsTranslateSnapEnabled() const
+{
+	return GizmoComponent ? GizmoComponent->IsTranslateSnapEnabled() : false;
+}
+
+void FTransformGizmo::SetTranslateSnapValue(float InValue)
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->SetTranslateSnapValue(InValue);
+	}
+}
+
+float FTransformGizmo::GetTranslateSnapValue() const
+{
+	return GizmoComponent ? GizmoComponent->GetTranslateSnapValue() : 1.0f;
+}
+
+void FTransformGizmo::SetRotateSnapEnabled(bool bEnabled)
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->SetRotateSnapEnabled(bEnabled);
+	}
+}
+
+bool FTransformGizmo::IsRotateSnapEnabled() const
+{
+	return GizmoComponent ? GizmoComponent->IsRotateSnapEnabled() : false;
+}
+
+void FTransformGizmo::SetRotateSnapValueDegrees(float InValue)
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->SetRotateSnapValueDegrees(InValue);
+	}
+}
+
+float FTransformGizmo::GetRotateSnapValueDegrees() const
+{
+	return GizmoComponent ? GizmoComponent->GetRotateSnapValueDegrees() : 5.0f;
+}
+
+void FTransformGizmo::SetScaleSnapEnabled(bool bEnabled)
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->SetScaleSnapEnabled(bEnabled);
+	}
+}
+
+bool FTransformGizmo::IsScaleSnapEnabled() const
+{
+	return GizmoComponent ? GizmoComponent->IsScaleSnapEnabled() : false;
+}
+
+void FTransformGizmo::SetScaleSnapValue(float InValue)
+{
+	if (GizmoComponent)
+	{
+		GizmoComponent->SetScaleSnapValue(InValue);
+	}
+}
+
+float FTransformGizmo::GetScaleSnapValue() const
+{
+	return GizmoComponent ? GizmoComponent->GetScaleSnapValue() : 0.1f;
 }
 
 void FTransformGizmo::SetTarget(AActor* NewTarget)

@@ -30,6 +30,9 @@ public:
 
 	inline bool IsActive() { return bIsActive; }
 
+	inline bool IsVisualizationComponent() const { return bIsVisualizationComponent; }
+	inline void SetIsVisualizationComponent(bool bInIsVisualizationComponent) { bIsVisualizationComponent = bInIsVisualizationComponent; }
+
 	void SetOwner(AActor* Actor) { Owner = Actor; }
 	AActor* GetOwner() const { return Owner; }
 
@@ -53,6 +56,7 @@ private:
 	bool bIsActive = true;
 	bool bAutoActivate = true;
 	bool bCanEverTick = true;
+	bool bIsVisualizationComponent = false;
 };
 
 

@@ -13,6 +13,7 @@
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "Render/Pipeline/OcclusionManager.h"
+#include "WICTextureLoader.h"
 
 #include "Render/Pipeline/Renderer.h"
 
@@ -27,6 +28,41 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 	IO.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 	IO.MouseDrawCursor = false;
 
+	ImGuiStyle& Style = ImGui::GetStyle();
+	Style.WindowRounding = 6.0f;
+	Style.FrameRounding = 6.0f;
+	Style.GrabRounding = 6.0f;
+	Style.PopupRounding = 6.0f;
+	Style.TabRounding = 6.0f;
+	Style.ScrollbarRounding = 6.0f;
+	Style.WindowBorderSize = 1.0f;
+	Style.FrameBorderSize = 0.0f;
+
+	Style.Colors[ImGuiCol_Text] = ImVec4(0.93f, 0.94f, 0.96f, 1.0f);
+	Style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.52f, 0.56f, 0.62f, 1.0f);
+	Style.Colors[ImGuiCol_WindowBg] = ImVec4(0.08f, 0.09f, 0.11f, 1.0f);
+	Style.Colors[ImGuiCol_ChildBg] = ImVec4(0.10f, 0.11f, 0.14f, 1.0f);
+	Style.Colors[ImGuiCol_PopupBg] = ImVec4(0.10f, 0.11f, 0.13f, 0.98f);
+	Style.Colors[ImGuiCol_Border] = ImVec4(0.20f, 0.23f, 0.27f, 1.0f);
+	Style.Colors[ImGuiCol_FrameBg] = ImVec4(0.17f, 0.19f, 0.22f, 1.0f);
+	Style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.21f, 0.24f, 0.29f, 1.0f);
+	Style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.16f, 0.30f, 0.53f, 1.0f);
+	Style.Colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.10f, 0.12f, 1.0f);
+	Style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.10f, 0.12f, 0.15f, 1.0f);
+	Style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.11f, 0.12f, 0.15f, 1.0f);
+	Style.Colors[ImGuiCol_Button] = ImVec4(0.20f, 0.22f, 0.26f, 0.95f);
+	Style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.25f, 0.29f, 0.35f, 1.0f);
+	Style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.16f, 0.30f, 0.53f, 1.0f);
+	Style.Colors[ImGuiCol_Header] = ImVec4(0.19f, 0.22f, 0.27f, 1.0f);
+	Style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.23f, 0.28f, 0.35f, 1.0f);
+	Style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.16f, 0.30f, 0.53f, 1.0f);
+	Style.Colors[ImGuiCol_Tab] = ImVec4(0.14f, 0.16f, 0.20f, 1.0f);
+	Style.Colors[ImGuiCol_TabHovered] = ImVec4(0.22f, 0.26f, 0.33f, 1.0f);
+	Style.Colors[ImGuiCol_TabActive] = ImVec4(0.16f, 0.30f, 0.53f, 1.0f);
+	Style.Colors[ImGuiCol_CheckMark] = ImVec4(0.32f, 0.61f, 0.93f, 1.0f);
+	Style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.32f, 0.61f, 0.93f, 1.0f);
+	Style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.39f, 0.69f, 0.97f, 1.0f);
+
 	Window = InWindow;
 	EditorEngine = InEditorEngine;
 
@@ -35,6 +71,9 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 
 	ImGui_ImplWin32_Init((void*)InWindow->GetHWND());
 	ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());
+
+	const std::wstring AddActorIconPath = FPaths::Combine(FPaths::RootDir(), L"Asset/Editor/Icon/ViewportToolBar/Add_Actor.png");
+	DirectX::CreateWICTextureFromFile(InRenderer.GetFD3DDevice().GetDevice(), AddActorIconPath.c_str(), nullptr, &AddActorIconSRV);
 
 	ConsoleWidget.Initialize(InEditorEngine);
 	ControlWidget.Initialize(InEditorEngine);
@@ -47,6 +86,11 @@ void FEditorMainPanel::Release()
 {
 	ConsoleWidget.Clear();
 	FEditorConsoleWidget::ClearHistory();
+	if (AddActorIconSRV)
+	{
+		AddActorIconSRV->Release();
+		AddActorIconSRV = nullptr;
+	}
 
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
@@ -191,24 +235,113 @@ void FEditorMainPanel::RenderEditorToolbar()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.11f, 0.11f, 0.12f, 0.98f));
-	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.19f, 0.19f, 0.22f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.13f, 0.14f, 0.17f, 0.98f));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.30f, 0.33f, 0.39f, 1.0f));
 
 	if (ImGui::Begin("##EditorToolbar", nullptr, BarFlags))
 	{
-		const bool bPIEEnabled = EditorEngine ? EditorEngine->GetPIEEnabled() : false;
+		const bool bPIEEnabled = EditorEngine ? EditorEngine->IsPIEEnabled() : false;
+		const bool bAddActorEnabled = !bPIEEnabled;
 		const bool bStartEnabled = !bPIEEnabled;
 		const bool bStopEnabled = bPIEEnabled;
 
-		const float IconButtonSize = 30.0f;
-		const float Gap = 10.0f;
-		const float GroupWidth = IconButtonSize * 2.0f + Gap;
-		const float StartX = (BarSize.x - GroupWidth) * 0.5f;
-		const float StartY = (EditorToolBarHeight - IconButtonSize) * 0.5f;
+		const float AddActorButtonSize = 30.0f;
+		const float PieButtonSize = 24.0f;
+		const float AddActorToPIEGap = 36.0f;
+		const float LeftMargin = 10.0f;
+		const float ControlCenterY = EditorToolBarHeight * 0.5f;
+		const float AddActorStartY = ControlCenterY - AddActorButtonSize * 0.5f;
+		const float PieStartY = ControlCenterY - PieButtonSize * 0.5f;
 
-		ImGui::SetCursorPos(ImVec2(StartX, StartY));
+		auto GetDefaultSpawnLocation = [this]() -> FVector
+		{
+			if (!EditorEngine)
+			{
+				return FVector(0.0f, 0.0f, 0.0f);
+			}
+
+			FLevelEditorViewportClient* ActiveVC = EditorEngine->GetActiveViewport();
+			FViewportCamera* Camera = ActiveVC ? ActiveVC->GetCamera() : EditorEngine->GetCamera();
+			if (!Camera)
+			{
+				return FVector(0.0f, 0.0f, 0.0f);
+			}
+
+			return Camera->GetWorldLocation() + Camera->GetForwardVector() * 10.0f;
+		};
+
+		ImGui::SetCursorPos(ImVec2(LeftMargin, AddActorStartY));
+		if (!bAddActorEnabled) ImGui::BeginDisabled();
+		const bool bAddActorClicked = ImGui::InvisibleButton("##PIEAddActorButton", ImVec2(AddActorButtonSize, AddActorButtonSize));
+		if (!bAddActorEnabled) ImGui::EndDisabled();
+		{
+			const ImVec2 Min = ImGui::GetItemRectMin();
+			const ImVec2 Max = ImGui::GetItemRectMax();
+			const bool bHovered = bAddActorEnabled && ImGui::IsItemHovered();
+			const ImU32 Bg = ImGui::GetColorU32(
+				bAddActorEnabled
+				? (bHovered ? ImVec4(0.29f, 0.31f, 0.39f, 1.0f) : ImVec4(0.23f, 0.25f, 0.33f, 1.0f))
+				: ImVec4(0.18f, 0.19f, 0.22f, 1.0f));
+			const ImU32 Border = ImGui::GetColorU32(bAddActorEnabled ? ImVec4(0.40f, 0.44f, 0.58f, 1.0f) : ImVec4(0.29f, 0.31f, 0.36f, 1.0f));
+			ImDrawList* DrawList = ImGui::GetWindowDrawList();
+			DrawList->AddRectFilled(Min, Max, Bg, 6.0f);
+			DrawList->AddRect(Min, Max, Border, 6.0f);
+
+			if (AddActorIconSRV)
+			{
+				const float Padding = 6.0f;
+				DrawList->AddImage((ImTextureID)AddActorIconSRV, ImVec2(Min.x + Padding, Min.y + Padding), ImVec2(Max.x - Padding, Max.y - Padding));
+			}
+			else
+			{
+				const ImVec2 C((Min.x + Max.x) * 0.5f, (Min.y + Max.y) * 0.5f);
+				DrawList->AddLine(ImVec2(C.x - 6.0f, C.y), ImVec2(C.x + 6.0f, C.y), ImGui::GetColorU32(ImVec4(0.72f, 0.85f, 0.95f, 1.0f)), 2.0f);
+				DrawList->AddLine(ImVec2(C.x, C.y - 6.0f), ImVec2(C.x, C.y + 6.0f), ImGui::GetColorU32(ImVec4(0.72f, 0.85f, 0.95f, 1.0f)), 2.0f);
+			}
+		}
+		if (bAddActorEnabled && bAddActorClicked)
+		{
+			ImGui::OpenPopup("##PIEBarPlaceActorPopup");
+		}
+		if (ImGui::BeginPopup("##PIEBarPlaceActorPopup"))
+		{
+			if (EditorEngine)
+			{
+				const TArray<FPlaceActorDesc>& Placeables = EditorEngine->GetPlaceableActors();
+				for (int32 i = 0; i < static_cast<int32>(Placeables.size()); ++i)
+				{
+					if (ImGui::Selectable(Placeables[i].Name.c_str()))
+					{
+						EditorEngine->SpawnPlaceableActor(i, GetDefaultSpawnLocation());
+					}
+				}
+			}
+			ImGui::EndPopup();
+		}
+
+		ImGui::SameLine(0.0f, AddActorToPIEGap);
+		const ImVec2 PIEGroupCursor = ImGui::GetCursorScreenPos();
+		const float PIEGroupPaddingX = 10.0f;
+		const float PIEGroupPaddingY = 4.0f;
+		const float PIEGroupSpacing = 6.0f;
+		const float PIEGroupWidth = PIEGroupPaddingX * 2.0f + PieButtonSize * 2.0f + PIEGroupSpacing;
+		const float PIEGroupHeight = PieButtonSize + PIEGroupPaddingY * 2.0f;
+		const ImVec2 PIEGroupMin(PIEGroupCursor.x, ImGui::GetWindowPos().y + ControlCenterY - PIEGroupHeight * 0.5f);
+		const ImVec2 PIEGroupMax(PIEGroupMin.x + PIEGroupWidth, PIEGroupMin.y + PIEGroupHeight);
+		ImGui::GetWindowDrawList()->AddRectFilled(PIEGroupMin, PIEGroupMax, ImGui::GetColorU32(ImVec4(0.27f, 0.29f, 0.34f, 1.0f)), 4.0f);
+		ImGui::GetWindowDrawList()->AddRect(PIEGroupMin, PIEGroupMax, ImGui::GetColorU32(ImVec4(0.39f, 0.42f, 0.48f, 1.0f)), 4.0f);
+		const float MidX = PIEGroupMin.x + PIEGroupPaddingX + PieButtonSize + PIEGroupSpacing * 0.5f;
+		ImGui::GetWindowDrawList()->AddLine(
+			ImVec2(MidX, PIEGroupMin.y + 4.0f),
+			ImVec2(MidX, PIEGroupMax.y - 4.0f),
+			ImGui::GetColorU32(ImVec4(0.45f, 0.48f, 0.55f, 0.9f)),
+			1.0f);
+		ImGui::SetCursorPos(ImVec2(
+			PIEGroupMin.x - ImGui::GetWindowPos().x + PIEGroupPaddingX,
+			PieStartY));
+
 		if (!bStartEnabled) ImGui::BeginDisabled();
-		const bool bStartClicked = ImGui::InvisibleButton("##PIEStartButton", ImVec2(IconButtonSize, IconButtonSize));
+		const bool bStartClicked = ImGui::InvisibleButton("##PIEStartButton", ImVec2(PieButtonSize, PieButtonSize));
 		if (!bStartEnabled) ImGui::EndDisabled();
 		{
 			const ImVec2 Min = ImGui::GetItemRectMin();
@@ -221,13 +354,14 @@ void FEditorMainPanel::RenderEditorToolbar()
 			const ImU32 Border = ImGui::GetColorU32(bStartEnabled ? ImVec4(0.30f, 0.36f, 0.30f, 1.0f) : ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
 			const ImU32 Icon = ImGui::GetColorU32(bStartEnabled ? ImVec4(0.52f, 0.92f, 0.56f, 1.0f) : ImVec4(0.45f, 0.45f, 0.47f, 1.0f));
 			ImDrawList* DrawList = ImGui::GetWindowDrawList();
-			DrawList->AddRectFilled(Min, Max, Bg, 6.0f);
-			DrawList->AddRect(Min, Max, Border, 6.0f);
+			DrawList->AddRectFilled(Min, Max, Bg, 2.0f);
+			DrawList->AddRect(Min, Max, Border, 2.0f);
 			const ImVec2 C((Min.x + Max.x) * 0.5f, (Min.y + Max.y) * 0.5f);
+			const float IconScale = PieButtonSize / 30.0f;
 			DrawList->AddTriangleFilled(
-				ImVec2(C.x - 5.0f, C.y - 8.0f),
-				ImVec2(C.x - 5.0f, C.y + 8.0f),
-				ImVec2(C.x + 9.0f, C.y),
+				ImVec2(C.x - 5.0f * IconScale, C.y - 8.0f * IconScale),
+				ImVec2(C.x - 5.0f * IconScale, C.y + 8.0f * IconScale),
+				ImVec2(C.x + 9.0f * IconScale, C.y),
 				Icon);
 		}
 		if (bStartEnabled && bStartClicked && EditorEngine)
@@ -235,9 +369,11 @@ void FEditorMainPanel::RenderEditorToolbar()
 			EditorEngine->StartPIE();
 		}
 
-		ImGui::SameLine(0.0f, Gap);
+		ImGui::SetCursorPos(ImVec2(
+			PIEGroupMin.x - ImGui::GetWindowPos().x + PIEGroupPaddingX + PieButtonSize + PIEGroupSpacing,
+			PieStartY));
 		if (!bStopEnabled) ImGui::BeginDisabled();
-		const bool bStopClicked = ImGui::InvisibleButton("##PIEStopButton", ImVec2(IconButtonSize, IconButtonSize));
+		const bool bStopClicked = ImGui::InvisibleButton("##PIEStopButton", ImVec2(PieButtonSize, PieButtonSize));
 		if (!bStopEnabled) ImGui::EndDisabled();
 		{
 			const ImVec2 Min = ImGui::GetItemRectMin();
@@ -250,10 +386,12 @@ void FEditorMainPanel::RenderEditorToolbar()
 			const ImU32 Border = ImGui::GetColorU32(bStopEnabled ? ImVec4(0.38f, 0.30f, 0.30f, 1.0f) : ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
 			const ImU32 Icon = ImGui::GetColorU32(bStopEnabled ? ImVec4(0.92f, 0.48f, 0.48f, 1.0f) : ImVec4(0.45f, 0.45f, 0.47f, 1.0f));
 			ImDrawList* DrawList = ImGui::GetWindowDrawList();
-			DrawList->AddRectFilled(Min, Max, Bg, 6.0f);
-			DrawList->AddRect(Min, Max, Border, 6.0f);
-			const ImVec2 IconMin(Min.x + 10.0f, Min.y + 10.0f);
-			const ImVec2 IconMax(Max.x - 10.0f, Max.y - 10.0f);
+			DrawList->AddRectFilled(Min, Max, Bg, 2.0f);
+			DrawList->AddRect(Min, Max, Border, 2.0f);
+			const float StopSquareSize = PieButtonSize * 0.5f;
+			const float IconInset = (PieButtonSize - StopSquareSize) * 0.5f;
+			const ImVec2 IconMin(Min.x + IconInset, Min.y + IconInset);
+			const ImVec2 IconMax(Max.x - IconInset, Max.y - IconInset);
 			DrawList->AddRectFilled(IconMin, IconMax, Icon, 2.0f);
 		}
 		if (bStopEnabled && bStopClicked && EditorEngine)

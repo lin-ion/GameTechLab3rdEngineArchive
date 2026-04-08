@@ -36,6 +36,35 @@ public:
 		return UObjectManager::Get().FindByUUID(PickingId);
 	}
 
+	static UObject* ResolveObjectFromPickingIdInWorld(uint32 PickingId, UWorld* World)
+	{
+		if (PickingId == 0u || !World)
+		{
+			return nullptr;
+		}
+
+		// 같은 UUID를 가진 객체가 여러 월드에 존재할 수 있으므로 (PIE 시 월드 복제), 지정된 월드 내에서 먼저 찾기
+		for (AActor* Actor : World->GetActors())
+		{
+			if (Actor && Actor->GetUUID() == PickingId)
+			{
+				return Actor;
+			}
+			
+			// 컴포넌트 레벨에서도 확인이 필요한 경우 (Gizmo 등)
+			for (UActorComponent* Comp : Actor->GetComponents())
+			{
+				if (Comp && Comp->GetUUID() == PickingId)
+				{
+					return Comp;
+				}
+			}
+		}
+
+		// 월드 내에 없으면 전역 검색 (fallback)
+		return ResolveObjectFromPickingId(PickingId);
+	}
+
 	static bool PickGizmo(UPrimitiveComponent* Gizmo, const FRay& Ray, EPickingMode Mode, FHitResult& OutHit, uint32* OutPickingId = nullptr)
 	{
 		if (!Gizmo)

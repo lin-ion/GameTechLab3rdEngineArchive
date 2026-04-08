@@ -10,6 +10,7 @@ class FRenderer;
 class UEditorEngine;
 class FWindowsWindow;
 struct ImFont;
+struct ID3D11ShaderResourceView;
 
 class FEditorMainPanel
 {
@@ -57,4 +58,5 @@ private:
 	
 	ImFont* FooterFont = nullptr;
 	ImFont* FooterBoldFont = nullptr;
+	ID3D11ShaderResourceView* AddActorIconSRV = nullptr;
 };

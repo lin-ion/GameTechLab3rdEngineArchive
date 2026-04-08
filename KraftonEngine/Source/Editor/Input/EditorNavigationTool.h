@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Editor/Input/EditorViewportTools.h"
 #include "Math/Rotator.h"
@@ -15,6 +15,10 @@ public:
 	void TickSmoothing(float DeltaTime);
 	void FocusOnTarget(const FVector& Target, float DesiredDistance = -1.0f);
 	void SyncFromCamera();
+	float GetRuntimeCameraSpeedMultiplier() const { return RuntimeCameraSpeedMultiplier; }
+	void SetRuntimeCameraSpeedMultiplier(float InMultiplier);
+	static constexpr float GetMinCameraSpeedValue() { return 0.1f; }
+	static constexpr float GetMaxCameraSpeedValue() { return 32.0f; }
 
 private:
 	void SyncCameraTargetFromCurrent();

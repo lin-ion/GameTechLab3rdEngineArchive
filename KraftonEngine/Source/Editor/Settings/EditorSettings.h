@@ -13,7 +13,7 @@ class FEditorSettings : public TSingleton<FEditorSettings>
 
 public:
 	// Viewport
-	float CameraSpeed = 10.f;
+	float CameraSpeed = 5.f;
 	float CameraRotationSpeed = 60.f;
 	float CameraZoomSpeed = 300.f;
 	bool bEnableCameraSmoothing = true;

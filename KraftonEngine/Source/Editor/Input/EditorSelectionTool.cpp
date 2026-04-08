@@ -114,7 +114,7 @@ bool FEditorSelectionTool::ProcessPendingIdPickResult()
 		return true;
 	}
 
-	UObject* PickedObject = FPickingService::ResolveObjectFromPickingId(IdPickState.PickedObjectId);
+	UObject* PickedObject = FPickingService::ResolveObjectFromPickingIdInWorld(IdPickState.PickedObjectId, Owner->World);
 	AActor* PickedActor = Cast<AActor>(PickedObject);
 	if (!PickedActor)
 	{
@@ -197,7 +197,7 @@ void FEditorSelectionTool::HandleSelectionClick(const FRay& Ray, float LocalMous
 		&& ClickX == CachedRayPickX
 		&& ClickY == CachedRayPickY)
 	{
-		AActor* CachedActor = Cast<AActor>(FPickingService::ResolveObjectFromPickingId(CachedRayPickedActorId));
+		AActor* CachedActor = Cast<AActor>(FPickingService::ResolveObjectFromPickingIdInWorld(CachedRayPickedActorId, Owner->World));
 		if (CachedActor && CachedActor->IsVisible())
 		{
 			Owner->SelectionManager->Select(CachedActor);

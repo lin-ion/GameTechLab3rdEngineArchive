@@ -4,14 +4,12 @@
 #include "Engine/Profiling/Timer.h"
 #include "ImGui/imgui.h"
 #include "Editor/Viewport/ViewportCamera.h"
-#include "GameFramework/StaticMeshActor.h"
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
 
 void FEditorControlWidget::Initialize(UEditorEngine* InEditorEngine)
 {
 	FEditorWidget::Initialize(InEditorEngine);
-	SelectedPrimitiveType = 0;
 }
 
 void FEditorControlWidget::Render(float DeltaTime)
@@ -26,36 +24,6 @@ void FEditorControlWidget::Render(float DeltaTime)
 	ImGui::SetNextWindowSize(ImVec2(500.0f, 480.0f), ImGuiCond_Once);
 
 	ImGui::Begin("Jungle Control Panel");
-
-	// Spawn
-	ImGui::Combo("Primitive", &SelectedPrimitiveType, PrimitiveTypes, IM_ARRAYSIZE(PrimitiveTypes));
-
-	if (ImGui::Button("Spawn"))
-	{
-		UWorld* World = EditorEngine->GetWorld();
-		for (int32 i = 0; i < NumberOfSpawnedActors; i++)
-		{
-			switch (SelectedPrimitiveType)
-			{
-			case 0: // Cube
-			{
-				AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
-				Actor->SetActorLocation(CurSpawnPoint);
-				Actor->InitDefaultComponents("Data/BasicShape/Cube.OBJ");
-				break;
-			}
-			case 1: // Sphere
-			{
-				AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
-				Actor->SetActorLocation(CurSpawnPoint);
-				Actor->InitDefaultComponents("Data/BasicShape/Sphere.OBJ");
-				break;
-			}
-			}
-		}
-		NumberOfSpawnedActors = 1;
-	}
-	ImGui::InputInt("Number of Spawn", &NumberOfSpawnedActors, 1, 10);
 
 	SEPARATOR();
 
