@@ -199,31 +199,33 @@ void UEditorEngine::StartPIE()
 
 void UEditorEngine::EndPIE()
 {
-	UWorld* World = GetWorld();
+	UWorld* PIEWorld = GetWorld();
 	// Get PIE world context
-	FWorldContext* Context = GetWorldContextFromWorld(World);
-	if (Context && Context->WorldType == EWorldType::PIE)
+	FWorldContext* PIEContext = GetWorldContextFromWorld(PIEWorld);
+	if (PIEContext && PIEContext->WorldType == EWorldType::PIE)
 	{
 		SelectionManager.ClearSelection();
 
-		Context->World->EndPlay();
+		// Revert ActiveWorldContext to EditorWorldContext FIRST
+		FWorldContext* EditorContext = GetEditorWorldContext();
+		if (EditorContext)
+		{
+			SetActiveWorld(EditorContext->ContextHandle);
+			// This will trigger Gizmo->SetWorld, which safely unregisters from PIEWorld while it's still alive
+			SelectionManager.SetWorld(GetWorld());
+		}
+
+		PIEContext->World->EndPlay();
 		auto WorldListIter = find_if(WorldList.begin(), WorldList.end(), 
-			[Context](const FWorldContext& a) 
+			[PIEContext](const FWorldContext& a) 
 			{
-				return a.ContextHandle == Context->ContextHandle;
+				return a.ContextHandle == PIEContext->ContextHandle;
 			});
 		if (WorldListIter != WorldList.end())
 		{
-			UObjectManager::Get().DestroyObject(Context->World);
+			UObjectManager::Get().DestroyObject(PIEContext->World);
 			WorldList.erase(WorldListIter);
 		}
-	}
-	// Revert ActiveWorldContext to EditorWorldContext;
-	FWorldContext* EditorContext = GetEditorWorldContext();
-	if (EditorContext)
-	{
-		SetActiveWorld(EditorContext->ContextHandle);
-		SelectionManager.SetWorld(GetWorld());
 	}
 	
 	bPIEEnabled = false;

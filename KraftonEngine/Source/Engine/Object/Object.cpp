@@ -13,7 +13,8 @@ UObject::UObject()
 UObject::UObject(const UObject& Other)
 {
 	ObjectName = Other.ObjectName;
-	UUID = UUIDGenerator::GenUUID();
+	// 원본 오브젝트와 UUID는 공유하되 GUObjectArray 상에서의 Index는 새로 할당
+	UUID = Other.UUID;
 	InternalIndex = static_cast<uint32>(GUObjectArray.size());
 	GUObjectArray.push_back(this);
 }
