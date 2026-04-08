@@ -311,6 +311,8 @@ void UEditorEngine::NewLevel()
 
 void UEditorEngine::StartPIE()
 {
+	ViewportLayout.BeginPIEViewportMode();
+
 	FWorldContext* Context = GetEditorWorldContext();
 	FWorldContext PIEWorldContext = Context->Duplicate();
 	PIEWorldContext.WorldType = EWorldType::PIE;
@@ -359,6 +361,7 @@ void UEditorEngine::EndPIE()
 	}
 	
 	bPIEEnabled = false;
+	ViewportLayout.EndPIEViewportMode();
 }
 
 void UEditorEngine::ClearWorlds()

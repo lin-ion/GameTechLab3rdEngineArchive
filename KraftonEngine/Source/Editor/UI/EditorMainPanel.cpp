@@ -60,7 +60,7 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ImGui::NewFrame();
 
 	RenderMainMenuBar();
-	RenderPIEToolbar();
+	RenderEditorToolbar();
 	RenderDockSpace();
 
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
@@ -132,12 +132,12 @@ void FEditorMainPanel::RenderDockSpace()
 		return;
 	}
 
-	constexpr float PIEBarHeight = 60.0f;
+	constexpr float EditorToolBarHeight = 40.0f;
 	constexpr float FooterHeight = 32.0f;
-	const ImVec2 DockPos(MainViewport->WorkPos.x, MainViewport->WorkPos.y + PIEBarHeight);
+	const ImVec2 DockPos(MainViewport->WorkPos.x, MainViewport->WorkPos.y + EditorToolBarHeight);
 	const ImVec2 DockSize(
 		MainViewport->WorkSize.x,
-		(MainViewport->WorkSize.y > (FooterHeight + PIEBarHeight)) ? (MainViewport->WorkSize.y - FooterHeight - PIEBarHeight) : 0.0f);
+		(MainViewport->WorkSize.y > (FooterHeight + EditorToolBarHeight)) ? (MainViewport->WorkSize.y - FooterHeight - EditorToolBarHeight) : 0.0f);
 
 	ImGui::SetNextWindowPos(DockPos);
 	ImGui::SetNextWindowSize(DockSize);
@@ -163,7 +163,7 @@ void FEditorMainPanel::RenderDockSpace()
 	ImGui::End();
 }
 
-void FEditorMainPanel::RenderPIEToolbar()
+void FEditorMainPanel::RenderEditorToolbar()
 {
 	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
 	if (!MainViewport)
@@ -171,9 +171,9 @@ void FEditorMainPanel::RenderPIEToolbar()
 		return;
 	}
 
-	constexpr float PIEBarHeight = 60.0f;
+	constexpr float EditorToolBarHeight = 40.0f;
 	const ImVec2 BarPos = MainViewport->WorkPos;
-	const ImVec2 BarSize(MainViewport->WorkSize.x, PIEBarHeight);
+	const ImVec2 BarSize(MainViewport->WorkSize.x, EditorToolBarHeight);
 
 	ImGui::SetNextWindowPos(BarPos, ImGuiCond_Always);
 	ImGui::SetNextWindowSize(BarSize, ImGuiCond_Always);
@@ -194,26 +194,32 @@ void FEditorMainPanel::RenderPIEToolbar()
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.11f, 0.11f, 0.12f, 0.98f));
 	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.19f, 0.19f, 0.22f, 1.0f));
 
-	if (ImGui::Begin("##EditorPIEToolbar", nullptr, BarFlags))
+	if (ImGui::Begin("##EditorToolbar", nullptr, BarFlags))
 	{
-		const float IconButtonSize = 36.0f;
+		const bool bPIEEnabled = EditorEngine ? EditorEngine->GetPIEEnabled() : false;
+		const bool bStartEnabled = !bPIEEnabled;
+		const bool bStopEnabled = bPIEEnabled;
+
+		const float IconButtonSize = 30.0f;
 		const float Gap = 10.0f;
 		const float GroupWidth = IconButtonSize * 2.0f + Gap;
 		const float StartX = (BarSize.x - GroupWidth) * 0.5f;
-		const float StartY = (PIEBarHeight - IconButtonSize) * 0.5f;
+		const float StartY = (EditorToolBarHeight - IconButtonSize) * 0.5f;
 
 		ImGui::SetCursorPos(ImVec2(StartX, StartY));
-		if (ImGui::InvisibleButton("##PIEStartButton", ImVec2(IconButtonSize, IconButtonSize)))
-		{
-			// Debug layout only. No behavior is wired yet.
-		}
+		if (!bStartEnabled) ImGui::BeginDisabled();
+		const bool bStartClicked = ImGui::InvisibleButton("##PIEStartButton", ImVec2(IconButtonSize, IconButtonSize));
+		if (!bStartEnabled) ImGui::EndDisabled();
 		{
 			const ImVec2 Min = ImGui::GetItemRectMin();
 			const ImVec2 Max = ImGui::GetItemRectMax();
-			const bool bHovered = ImGui::IsItemHovered();
-			const ImU32 Bg = ImGui::GetColorU32(bHovered ? ImVec4(0.20f, 0.26f, 0.20f, 1.0f) : ImVec4(0.16f, 0.20f, 0.16f, 1.0f));
-			const ImU32 Border = ImGui::GetColorU32(ImVec4(0.30f, 0.36f, 0.30f, 1.0f));
-			const ImU32 Icon = ImGui::GetColorU32(ImVec4(0.52f, 0.92f, 0.56f, 1.0f));
+			const bool bHovered = bStartEnabled && ImGui::IsItemHovered();
+			const ImU32 Bg = ImGui::GetColorU32(
+				bStartEnabled
+				? (bHovered ? ImVec4(0.20f, 0.26f, 0.20f, 1.0f) : ImVec4(0.16f, 0.20f, 0.16f, 1.0f))
+				: ImVec4(0.14f, 0.14f, 0.15f, 1.0f));
+			const ImU32 Border = ImGui::GetColorU32(bStartEnabled ? ImVec4(0.30f, 0.36f, 0.30f, 1.0f) : ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
+			const ImU32 Icon = ImGui::GetColorU32(bStartEnabled ? ImVec4(0.52f, 0.92f, 0.56f, 1.0f) : ImVec4(0.45f, 0.45f, 0.47f, 1.0f));
 			ImDrawList* DrawList = ImGui::GetWindowDrawList();
 			DrawList->AddRectFilled(Min, Max, Bg, 6.0f);
 			DrawList->AddRect(Min, Max, Border, 6.0f);
@@ -224,25 +230,35 @@ void FEditorMainPanel::RenderPIEToolbar()
 				ImVec2(C.x + 9.0f, C.y),
 				Icon);
 		}
+		if (bStartEnabled && bStartClicked && EditorEngine)
+		{
+			EditorEngine->StartPIE();
+		}
 
 		ImGui::SameLine(0.0f, Gap);
-		if (ImGui::InvisibleButton("##PIEStopButton", ImVec2(IconButtonSize, IconButtonSize)))
-		{
-			// Debug layout only. No behavior is wired yet.
-		}
+		if (!bStopEnabled) ImGui::BeginDisabled();
+		const bool bStopClicked = ImGui::InvisibleButton("##PIEStopButton", ImVec2(IconButtonSize, IconButtonSize));
+		if (!bStopEnabled) ImGui::EndDisabled();
 		{
 			const ImVec2 Min = ImGui::GetItemRectMin();
 			const ImVec2 Max = ImGui::GetItemRectMax();
-			const bool bHovered = ImGui::IsItemHovered();
-			const ImU32 Bg = ImGui::GetColorU32(bHovered ? ImVec4(0.26f, 0.20f, 0.20f, 1.0f) : ImVec4(0.20f, 0.16f, 0.16f, 1.0f));
-			const ImU32 Border = ImGui::GetColorU32(ImVec4(0.38f, 0.30f, 0.30f, 1.0f));
-			const ImU32 Icon = ImGui::GetColorU32(ImVec4(0.92f, 0.48f, 0.48f, 1.0f));
+			const bool bHovered = bStopEnabled && ImGui::IsItemHovered();
+			const ImU32 Bg = ImGui::GetColorU32(
+				bStopEnabled
+				? (bHovered ? ImVec4(0.26f, 0.20f, 0.20f, 1.0f) : ImVec4(0.20f, 0.16f, 0.16f, 1.0f))
+				: ImVec4(0.14f, 0.14f, 0.15f, 1.0f));
+			const ImU32 Border = ImGui::GetColorU32(bStopEnabled ? ImVec4(0.38f, 0.30f, 0.30f, 1.0f) : ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
+			const ImU32 Icon = ImGui::GetColorU32(bStopEnabled ? ImVec4(0.92f, 0.48f, 0.48f, 1.0f) : ImVec4(0.45f, 0.45f, 0.47f, 1.0f));
 			ImDrawList* DrawList = ImGui::GetWindowDrawList();
 			DrawList->AddRectFilled(Min, Max, Bg, 6.0f);
 			DrawList->AddRect(Min, Max, Border, 6.0f);
 			const ImVec2 IconMin(Min.x + 10.0f, Min.y + 10.0f);
 			const ImVec2 IconMax(Max.x - 10.0f, Max.y - 10.0f);
 			DrawList->AddRectFilled(IconMin, IconMax, Icon, 2.0f);
+		}
+		if (bStopEnabled && bStopClicked && EditorEngine)
+		{
+			EditorEngine->EndPIE();
 		}
 	}
 	ImGui::End();
@@ -396,12 +412,12 @@ void FEditorMainPanel::RenderEditorDebugPanel()
 		ImGui::End();
 		return;
 	}
-
-	// float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
-	// if (ImGui::DragFloat("Camera Zoom", &CameraFOV_Deg, 0.5f, 1.0f, 90.0f))
-	// {
-	// 	Camera->SetFOV(CameraFOV_Deg * DEG_TO_RAD);
-	// }
+	
+	float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
+	if (ImGui::DragFloat("Camera Zoom", &CameraFOV_Deg, 0.5f, 1.0f, 90.0f))
+	{
+		Camera->SetFOV(CameraFOV_Deg * DEG_TO_RAD);
+	}
 	
 	if (Camera->IsOrthogonal())
 	{

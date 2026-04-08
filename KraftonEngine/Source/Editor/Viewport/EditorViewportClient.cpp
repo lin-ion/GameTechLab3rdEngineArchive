@@ -158,6 +158,17 @@ void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
 
 void FEditorViewportClient::Tick(float DeltaTime)
 {
+	if (bPIEOutlineFlashActive)
+	{
+		PIEOutlineFlashElapsed += DeltaTime;
+		const float TotalDuration = PIEOutlineFlashHoldDuration + PIEOutlineFlashFadeDuration;
+		if (PIEOutlineFlashElapsed >= TotalDuration)
+		{
+			bPIEOutlineFlashActive = false;
+			PIEOutlineFlashElapsed = 0.0f;
+		}
+	}
+
 	if (!bHasInputContext)
 	{
 		EnsureInputController();
@@ -412,7 +423,7 @@ void FEditorViewportClient::UpdateLayoutRect()
 	}
 }
 
-void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
+void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport, bool bDrawActiveOutline)
 {
 	if (!Viewport || !Viewport->GetSRV()) return;
 
@@ -426,9 +437,21 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 	DrawList->AddImage((ImTextureID)Viewport->GetSRV(), Min, Max);
 
 	// 활성 뷰포트 테두리 강조
-	if (bIsActiveViewport)
+	if (bIsActiveViewport && bDrawActiveOutline)
 	{
 		DrawList->AddRect(Min, Max, IM_COL32(255, 200, 0, 200), 0.0f, 0, 2.0f);
+	}
+
+	if (bPIEOutlineFlashActive && PIEOutlineFlashFadeDuration > 0.0f)
+	{
+		float Alpha01 = 1.0f;
+		if (PIEOutlineFlashElapsed > PIEOutlineFlashHoldDuration)
+		{
+			const float FadeElapsed = PIEOutlineFlashElapsed - PIEOutlineFlashHoldDuration;
+			Alpha01 = 1.0f - Clamp(FadeElapsed / PIEOutlineFlashFadeDuration, 0.0f, 1.0f);
+		}
+		const int32 Alpha = static_cast<int32>(Alpha01 * 255.0f);
+		DrawList->AddRect(Min, Max, IM_COL32(80, 255, 120, Alpha), 0.0f, 0, 3.0f);
 	}
 
 	if (bSelectionMarqueeActive)
@@ -446,4 +469,18 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 		DrawList->AddRectFilled(ImVec2(Left, Top), ImVec2(Right, Bottom), FillColor);
 		DrawList->AddRect(ImVec2(Left, Top), ImVec2(Right, Bottom), BorderColor, 0.0f, 0, 1.5f);
 	}
+}
+
+void FEditorViewportClient::TriggerPIEStartOutlineFlash(float HoldSeconds, float FadeSeconds)
+{
+	PIEOutlineFlashHoldDuration = HoldSeconds > 0.0f ? HoldSeconds : 1.0f;
+	PIEOutlineFlashFadeDuration = FadeSeconds > 0.0f ? FadeSeconds : 2.0f;
+	PIEOutlineFlashElapsed = 0.0f;
+	bPIEOutlineFlashActive = true;
+}
+
+void FEditorViewportClient::ClearPIEStartOutlineFlash()
+{
+	bPIEOutlineFlashActive = false;
+	PIEOutlineFlashElapsed = 0.0f;
 }

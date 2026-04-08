@@ -3,7 +3,6 @@
 #include "Editor/Input/EditorViewportInputMapping.h"
 #include "Editor/EditorEngine.h"
 #include "Editor/Gizmo/TransformGizmo.h"
-#include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/EditorViewportClient.h"
 #include "Engine/Runtime/Engine.h"
 #include "GameFramework/World.h"
@@ -16,6 +15,8 @@ FEditorGizmoTool::FEditorGizmoTool(FEditorViewportClient* InOwner)
 
 bool FEditorGizmoTool::HandleInput(float DeltaTime)
 {
+	(void)DeltaTime;
+
 	if (!Owner)
 	{
 		return false;
@@ -42,30 +43,6 @@ bool FEditorGizmoTool::HandleInput(float DeltaTime)
 	if (Owner->InputContext.bImGuiCapturedMouse && !Owner->InputContext.bCaptured && !Owner->Gizmo->IsHolding())
 	{
 		return true;
-	}
-
-	const float ZoomSpeed = Owner->Settings ? Owner->Settings->CameraZoomSpeed : 300.f;
-	const float ScrollNotches = Owner->InputContext.Frame.WheelNotches;
-	const bool bRmbSpeedAdjustFrame =
-		ScrollNotches != 0.0f
-		&& EditorViewportInputMapping::IsTriggered(Owner->InputContext, EditorViewportInputMapping::EEditorViewportAction::NavLookRightDown);
-	if (ScrollNotches != 0.0f)
-	{
-		if (!bRmbSpeedAdjustFrame)
-		{
-			bConsumed = true;
-			if (Owner->Camera->IsOrthogonal())
-			{
-				const float NewWidth = Owner->Camera->GetOrthoWidth() - ScrollNotches * ZoomSpeed * DeltaTime;
-				Owner->Camera->SetOrthoWidth(Clamp(NewWidth, 0.1f, 1000.0f));
-			}
-			else
-			{
-				constexpr float FovStep = 2.0f * DEG_TO_RAD;
-				const float NewFOV = Owner->Camera->GetFOV() - ScrollNotches * FovStep;
-				Owner->Camera->SetFOV(Clamp(NewFOV, 1.f * DEG_TO_RAD, 90.0f * DEG_TO_RAD));
-			}
-		}
 	}
 
 	const float LocalMouseX = static_cast<float>(Owner->InputContext.MouseLocalPos.x);

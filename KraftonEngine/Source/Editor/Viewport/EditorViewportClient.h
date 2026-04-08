@@ -72,8 +72,10 @@ public:
 	void UpdateLayoutRect();
 
 	// ImDrawList에 자신의 SRV를 SWindow Rect 위치에 렌더 (활성 테두리 포함)
-	void RenderViewportImage(bool bIsActiveViewport);
+	void RenderViewportImage(bool bIsActiveViewport, bool bDrawActiveOutline = true);
 	const FRect& GetViewportScreenRect() const { return ViewportScreenRect; }
+	void TriggerPIEStartOutlineFlash(float HoldSeconds = 1.0f, float FadeSeconds = 2.0f);
+	void ClearPIEStartOutlineFlash();
 
 private:
 	void EnsureInputController();
@@ -125,4 +127,8 @@ public:
 	bool bSelectionMarqueeAdditive = false;
 	POINT SelectionMarqueeStartLocal = { 0, 0 };
 	POINT SelectionMarqueeCurrentLocal = { 0, 0 };
+	bool bPIEOutlineFlashActive = false;
+	float PIEOutlineFlashElapsed = 0.0f;
+	float PIEOutlineFlashHoldDuration = 0.5f;
+	float PIEOutlineFlashFadeDuration = 1.0f;
 };

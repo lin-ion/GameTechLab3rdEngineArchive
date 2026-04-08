@@ -1,6 +1,5 @@
 ﻿#include "Editor/UI/EditorControlWidget.h"
 #include "Editor/EditorEngine.h"
-#include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Profiling/Timer.h"
 #include "ImGui/imgui.h"
@@ -28,22 +27,6 @@ void FEditorControlWidget::Render(float DeltaTime)
 
 	ImGui::Begin("Jungle Control Panel");
 
-	// PIE
-	if (!EditorEngine->GetPIEEnabled())
-	{
-		if (ImGui::Button("Start PIE"))
-		{
-			EditorEngine->StartPIE();
-		}
-	}
-	else
-	{
-		if (ImGui::Button("Stop PIE"))
-		{
-			EditorEngine->EndPIE();
-		}
-	}
-	
 	// Spawn
 	ImGui::Combo("Primitive", &SelectedPrimitiveType, PrimitiveTypes, IM_ARRAYSIZE(PrimitiveTypes));
 
