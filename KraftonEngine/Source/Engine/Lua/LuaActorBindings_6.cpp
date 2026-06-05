@@ -32,6 +32,22 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
         }
     );
     World.set_function(
+        "SpawnEmitterAtLocation",
+        [](const FString& TemplatePath, const FVector& Location, sol::optional<FVector> Rotation, sol::optional<bool> bActivate) -> UParticleSystemComponent*
+        {
+            if (!GEngine) return nullptr;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return nullptr;
+            return FGameplayStatics::SpawnEmitterAtLocation(
+                W,
+                TemplatePath,
+                Location,
+                FRotator(Rotation.value_or(FVector(0, 0, 0))),
+                bActivate.value_or(true)
+            );
+        }
+    );
+    World.set_function(
         "SpawnPawn",
         [](const FString& ClassName, sol::optional<FVector> Location, sol::optional<FVector> Rotation, sol::optional<FVector> Scale, sol::optional<bool> bPossess) -> APawn*
         {

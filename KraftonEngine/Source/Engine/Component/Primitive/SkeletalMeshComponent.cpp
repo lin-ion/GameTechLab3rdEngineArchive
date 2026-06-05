@@ -3143,6 +3143,21 @@ void USkeletalMeshComponent::Serialize(FArchive& Ar)
 
 }
 
+void USkeletalMeshComponent::OnPostLoad(FArchive& Ar)
+{
+    Super::OnPostLoad(Ar);
+
+    if (AnimationMode == EAnimationMode::AnimationCustom && IsValid(AnimInstance))
+    {
+        AnimInstance->SetOuter(this);
+        AnimInstance->SetOwningComponent(this);
+        AnimInstance->NativeInitializeAnimation();
+        return;
+    }
+
+    InitializeAnimation();
+}
+
 bool USkeletalMeshComponent::EvaluateAnimInstance(float DeltaTime)
 {
     if (!IsValid(this) || IsPendingKill()) return false;
