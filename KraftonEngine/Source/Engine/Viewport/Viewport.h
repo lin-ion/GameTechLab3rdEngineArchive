@@ -82,7 +82,7 @@ private:
 	ID3D11ShaderResourceView* DepthCopySRV = nullptr;		// t16: SceneDepth
 	ID3D11ShaderResourceView* StencilCopySRV = nullptr;	// t19: Stencil
 
-	// SceneColor 복사본 — FXAA 등 PostProcess에서 최종 화면을 읽기 위한 CopyResource 대상
+	// HDR SceneColor 복사본 — FXAA 등 PostProcess에서 최종 화면을 읽기 위한 CopyResource 대상
 	ID3D11Texture2D* SceneColorCopyTexture = nullptr;
 	ID3D11ShaderResourceView* SceneColorCopySRV = nullptr;
 
@@ -91,7 +91,7 @@ private:
 	ID3D11RenderTargetView* CoCRTV = nullptr;
 	ID3D11ShaderResourceView* CoCSRV = nullptr;
 
-	// DoF layer RTs — background color and foreground color+alpha mask
+	// HDR DoF layer RTs — background color and foreground color+alpha mask
 	ID3D11Texture2D* DoFBackgroundTexture = nullptr;
 	ID3D11RenderTargetView* DoFBackgroundRTV = nullptr;
 	ID3D11ShaderResourceView* DoFBackgroundSRV = nullptr;

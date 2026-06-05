@@ -705,6 +705,13 @@ void FViewportToolbar::RenderShowFlags(const FToolbarRenderState& State)
 		ImGui::SliderFloat("DoF Bokeh Intensity", &RenderOptions.DoFBokehIntensity, 0.0f, 4.0f, "%.2f");
 		ImGui::Checkbox("FXAA", &RenderOptions.ShowFlags.bFXAA);
 		ImGui::Checkbox("Gamma Correction", &RenderOptions.ShowFlags.bGammaCorrection);
+		if (RenderOptions.ShowFlags.bGammaCorrection)
+		{
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("Exposure", &RenderOptions.Exposure, 0.0f, 5.0f, "%.2f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("Gamma", &RenderOptions.Gamma, 1.0f, 3.0f, "%.2f");
+		}
 		ImGui::Checkbox("View Light Culling", &RenderOptions.ShowFlags.bViewLightCulling);
 		ImGui::Checkbox("Visualize 2.5D Culling", &RenderOptions.ShowFlags.bVisualize25DCulling);
 		ImGui::Checkbox("Show Shadow Frustum", &RenderOptions.ShowFlags.bShowShadowFrustum);
