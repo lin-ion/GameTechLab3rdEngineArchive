@@ -33,6 +33,24 @@ PS_Input_Shadow VS_StaticMesh(VS_Input_PNCTT input)
     return output;
 }
 
+PS_Input_Shadow VS_InstancedStaticMesh(VS_Input_InstancedPNCTT input)
+{
+    PS_Input_Shadow output;
+
+    float4x4 InstanceModel = float4x4(
+        input.instanceRow0,
+        input.instanceRow1,
+        input.instanceRow2,
+        input.instanceRow3);
+    float4x4 WorldModel = mul(InstanceModel, Model);
+
+    float4 worldPos = mul(float4(input.position, 1.0f), WorldModel);
+    float4 clipPos = mul(worldPos, LightViewProj);
+    output.position = clipPos;
+    output.depth = clipPos.z / clipPos.w;
+    return output;
+}
+
 PS_Input_Shadow VS_SkeletalMesh(VS_Input_PNCTTBB input)
 {
     PS_Input_Shadow output;

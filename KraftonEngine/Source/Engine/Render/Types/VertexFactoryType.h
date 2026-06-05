@@ -18,6 +18,7 @@ enum class EVertexFactoryType : uint8
 	Auto = 0,        // 미지정 — 메시 경로에서 bSkeletal/bGPUSkinning 로 로컬 결정
 	StaticMesh,
 	SkeletalMesh,
+	InstancedStaticMesh,
 	ParticleSprite,
 	ParticleMesh,
 	ParticleBeam,

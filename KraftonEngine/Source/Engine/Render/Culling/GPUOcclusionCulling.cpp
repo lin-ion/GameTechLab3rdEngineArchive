@@ -409,7 +409,9 @@ void FGPUOcclusionCulling::BeginGatherAABB(uint32 ExpectedCount)
 
 void FGPUOcclusionCulling::GatherAABB(FPrimitiveSceneProxy* Proxy)
 {
-	if (!Proxy || Proxy->HasProxyFlag(EPrimitiveProxyFlags::NeverCull)) return;
+	if (!Proxy ||
+		Proxy->HasProxyFlag(EPrimitiveProxyFlags::NeverCull) ||
+		Proxy->HasProxyFlag(EPrimitiveProxyFlags::SkipOcclusion)) return;
 
 	auto& curProxies = StagingProxies[WriteIndex];
 	uint32 pos = PreGatherWritePos;
@@ -460,7 +462,9 @@ void FGPUOcclusionCulling::DispatchOcclusionTest(
 			for (uint32 i = 0; i < visCount; i++)
 			{
 				FPrimitiveSceneProxy* Proxy = VisibleProxies[i];
-				if (!Proxy || Proxy->HasProxyFlag(EPrimitiveProxyFlags::NeverCull)) continue;
+				if (!Proxy ||
+					Proxy->HasProxyFlag(EPrimitiveProxyFlags::NeverCull) ||
+					Proxy->HasProxyFlag(EPrimitiveProxyFlags::SkipOcclusion)) continue;
 
 				curProxies[writePos] = Proxy;
 				if (Proxy->GetProxyId() > maxId) maxId = Proxy->GetProxyId();

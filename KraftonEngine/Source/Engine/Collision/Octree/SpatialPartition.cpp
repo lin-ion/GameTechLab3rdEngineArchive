@@ -368,6 +368,33 @@ void FSpatialPartition::UpdateActor(AActor* Actor)
 	}
 }
 
+void FSpatialPartition::UpdatePrimitiveImmediate(UPrimitiveComponent* Primitive)
+{
+	if (!IsValid(Primitive))
+	{
+		return;
+	}
+
+	RemoveSinglePrimitive(Primitive);
+
+	if (!Primitive->IsVisible())
+	{
+		return;
+	}
+
+	const FBoundingBox PrimitiveBounds = Primitive->GetWorldBoundingBox();
+	EnsureRootContains(PrimitiveBounds);
+	if (!Octree)
+	{
+		return;
+	}
+
+	if (!Octree->Insert(Primitive))
+	{
+		InsertPrimitive(Primitive);
+	}
+}
+
 void FSpatialPartition::QueryFrustumAllPrimitive(const FConvexVolume& ConvexVolume, TArray<UPrimitiveComponent*>& OutPrimitives) const
 {
 	if (Octree)

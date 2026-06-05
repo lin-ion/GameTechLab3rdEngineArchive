@@ -1139,6 +1139,25 @@ MaterialSurfaceVSOutput VS(VS_Input_PNCTT input)
     return output;
 }
 
+MaterialSurfaceVSOutput VS_InstancedStaticMesh(VS_Input_InstancedPNCTT input)
+{
+    MaterialSurfaceVSOutput output;
+    float4x4 InstanceModel = float4x4(
+        input.instanceRow0,
+        input.instanceRow1,
+        input.instanceRow2,
+        input.instanceRow3);
+    float4x4 WorldModel = mul(InstanceModel, Model);
+
+    float4 worldPos = mul(float4(input.position, 1.0f), WorldModel);
+    output.worldPos = worldPos.xyz;
+    output.position = mul(mul(worldPos, View), Projection);
+    output.normal = normalize(mul(input.normal, (float3x3)WorldModel));
+    output.color = input.color * input.instanceColor;
+    output.texcoord = input.texcoord;
+    return output;
+}
+
 )";
         if (!bTransparentSurfacePass)
         {
