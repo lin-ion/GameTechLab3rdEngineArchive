@@ -1166,6 +1166,9 @@
     <ClCompile Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.cpp">
       <Filter>Source\Engine\Component\Debug</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
@@ -2545,6 +2548,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.h">
       <Filter>Source\Engine\Component\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
