@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Object/Object.h"
 #include "Object/Ptr/WeakObjectPtr.h"
 #include "Core/Types/RayTypes.h"
@@ -168,9 +168,9 @@ private:
     IPOVProvider*                     EditorPOVProvider   = nullptr;
     EWorldType                        WorldType           = EWorldType::Editor;
     bool                              bHasBegunPlay       = false;
-	    bool                              bHasRoutedPostBeginPlay = false;
-	    bool                              bHasRoutedPostStartMatch = false;
-	    bool                              bHasRoutedPlayerCameraReady = false;
+	bool                              bHasRoutedPostBeginPlay = false;
+	bool                              bHasRoutedPostStartMatch = false;
+	bool                              bHasRoutedPlayerCameraReady = false;
     bool                              bPaused             = false;
     float                             GameTimeSeconds     = 0.0f;
     bool                              bWorldDestroyRouted = false;

@@ -650,6 +650,12 @@ void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext&
 		{
 			continue;
 		}
+		// 캐시 컴포넌트 포인터 재연결 — load 경로는 InitDefaultComponents/PostDuplicate 를
+		// 거치지 않으므로, deserialize 로 복원된 컴포넌트 트리에서 액터의 타입별 캐시
+		// (StaticMeshComponent / Mesh / CapsuleComponent 등) 를 다시 잡아준다. duplicate 경로
+		// (AActor::Duplicate)와 동일한 PostDuplicate 를 호출. 이 시점엔 RootComponent 와 모든
+		// 컴포넌트가 복원 완료라 GetRootComponent()/GetComponentByClass() 기반 재발견이 안전하다.
+		Actor->PostDuplicate();
 
 		for (UActorComponent* Component : Actor->GetComponents())
 		{
