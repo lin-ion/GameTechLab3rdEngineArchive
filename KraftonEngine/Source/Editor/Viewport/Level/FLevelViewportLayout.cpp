@@ -1741,7 +1741,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Lua Character", EViewportPlaceActorType::LuaCharacter);
 		PlaceActorMenuItem("Wheeled Vehicle", EViewportPlaceActorType::WheeledVehicle);
 		PlaceActorMenuItem("Particle System",       EViewportPlaceActorType::ParticleSystem);
-		PlaceActorMenuItem("ISM Validation", EViewportPlaceActorType::InstancedStaticMeshValidation);
+		PlaceActorMenuItem("Debug ISM Validation", EViewportPlaceActorType::InstancedStaticMeshValidation);
 
 		// Game 모듈이 등록한 액터들 (예: ACarPawn). 등록 순서대로 표시.
 		const auto& RegistryEntries = FActorPlacementRegistry::Get().GetEntries();

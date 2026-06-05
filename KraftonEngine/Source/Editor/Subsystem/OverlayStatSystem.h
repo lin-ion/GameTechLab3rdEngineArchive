@@ -35,6 +35,7 @@ public:
 	void ShowParticles(bool bEnable = true) { bShowParticles = bEnable; }
 	void ShowPhysics(bool bEnable = true) { bShowPhysics = bEnable; }
 	void ShowClothCollision(bool bEnable = true) { bShowClothCollision = bEnable; }
+	void ShowBulletHell(bool bEnable = true) { bShowBulletHell = bEnable; }
 	bool ToggleFPS() { bShowFPS = !bShowFPS; return bShowFPS; }
 	bool ToggleMemory() { bShowMemory = !bShowMemory; return bShowMemory; }
 	bool ToggleShadow() { bShowShadow = !bShowShadow; return bShowShadow; }
@@ -42,6 +43,7 @@ public:
 	bool ToggleParticles() { bShowParticles = !bShowParticles; return bShowParticles; }
 	bool TogglePhysics() { bShowPhysics = !bShowPhysics; return bShowPhysics; }
 	bool ToggleClothCollision() { bShowClothCollision = !bShowClothCollision; return bShowClothCollision; }
+	bool ToggleBulletHell() { bShowBulletHell = !bShowBulletHell; return bShowBulletHell; }
 	void RecordPickingAttempt(double ElapsedMs);
 	void HideAll()
 	{
@@ -53,6 +55,7 @@ public:
 		bShowParticles = false;
 		bShowPhysics = false;
 		bShowClothCollision = false;
+		bShowBulletHell = false;
 	}
 
 	const FOverlayStatLayout& GetLayout() const { return Layout; }
@@ -71,6 +74,7 @@ private:
 	void BuildParticleLines(TArray<FString>& OutLines) const;
 	void BuildPhysicsLines(const UEditorEngine& Editor, TArray<FString>& OutLines) const;
 	void BuildClothCollisionLines(TArray<FString>& OutLines) const;
+	void BuildBulletHellLines(TArray<FString>& OutLines) const;
 
 	bool bShowFPS = false;
 	bool bShowPickingTime = false; // WM_LBUTTONDOWN , VK_LBUTTON 입력 시점이 아닌 오브젝트 충돌 판정에 걸린 시간을 측정합니다.
@@ -80,6 +84,7 @@ private:
 	bool bShowParticles = false;
 	bool bShowPhysics = false;
 	bool bShowClothCollision = false;
+	bool bShowBulletHell = false;
 	double LastPickingTimeMs = 0.0;
 	double AccumulatedPickingTimeMs = 0.0;
 	uint32 PickingAttemptCount = 0;
