@@ -219,6 +219,8 @@ def scan_files(project_dir: Path) -> dict[str, list[str]]:
             for fname in sorted(filenames):
                 full = Path(dirpath) / fname
                 rel = full.relative_to(project_dir)
+                if rel.parts[:2] == ("Shaders", "Generated"):
+                    continue
                 rel_str = str(rel).replace("/", "\\")
                 ext = full.suffix.lower()
 

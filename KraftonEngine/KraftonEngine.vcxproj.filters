@@ -16,12 +16,6 @@
     <Filter Include="Shaders\Editor">
       <UniqueIdentifier>{f3afd37d-e427-b6e6-d610-351b0cbf0f39}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\Generated">
-      <UniqueIdentifier>{89cde20b-0d22-3693-892a-01ff6973b7f3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Shaders\Generated\Materials">
-      <UniqueIdentifier>{3de592bd-0830-b23c-449c-06a97393139e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shaders\Geometry">
       <UniqueIdentifier>{a95f0cc6-e11f-2881-9524-de9a7fdc530e}</UniqueIdentifier>
     </Filter>
@@ -689,48 +683,6 @@
     </FxCompile>
     <FxCompile Include="Shaders\Editor\ViewModeMesh.hlsl">
       <Filter>Shaders\Editor</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\AdditiveDecal_Decal.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\AdditiveDecal_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\AdditiveMat_Decal.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\AdditiveMat_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\DefaultDecal_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\JungleMenu_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\NewMaterial_1_Decal.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\NewMaterial_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\Wood_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\acc.002_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\b0.002_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\e.002_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\m.002_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Materials\water_Surface.hlsl">
-      <Filter>Shaders\Generated\Materials</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Geometry\Decal.hlsl">
       <Filter>Shaders\Geometry</Filter>
