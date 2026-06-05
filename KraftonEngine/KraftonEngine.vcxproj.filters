@@ -22,12 +22,6 @@
     <Filter Include="Shaders\Generated\Materials">
       <UniqueIdentifier>{3de592bd-0830-b23c-449c-06a97393139e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\Generated\Preview">
-      <UniqueIdentifier>{06e64ccf-c33d-546a-03f7-b51d5cb948fd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Shaders\Generated\Preview\Materials">
-      <UniqueIdentifier>{c3c91e2a-ea29-bc50-1a55-9eae5443bc0f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shaders\Geometry">
       <UniqueIdentifier>{a95f0cc6-e11f-2881-9524-de9a7fdc530e}</UniqueIdentifier>
     </Filter>
@@ -188,7 +182,7 @@
       <UniqueIdentifier>{2872cca9-e20a-a7f4-7251-8819c7443392}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Component\Gameplay">
-      <UniqueIdentifier>{1e13e2f5-b035-4de0-8cdb-7aa0a6f4b202}</UniqueIdentifier>
+      <UniqueIdentifier>{b6945427-6dac-b3ea-f1ae-54a598844c79}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Component\Input">
       <UniqueIdentifier>{358e161e-2bd5-5db1-9e14-9bfb5d4671f1}</UniqueIdentifier>
@@ -711,10 +705,16 @@
     <FxCompile Include="Shaders\Generated\Materials\DefaultDecal_Surface.hlsl">
       <Filter>Shaders\Generated\Materials</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\Generated\Materials\JungleMenu_Surface.hlsl">
+      <Filter>Shaders\Generated\Materials</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\Generated\Materials\NewMaterial_1_Decal.hlsl">
       <Filter>Shaders\Generated\Materials</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Generated\Materials\NewMaterial_Surface.hlsl">
+      <Filter>Shaders\Generated\Materials</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Generated\Materials\Wood_Surface.hlsl">
       <Filter>Shaders\Generated\Materials</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Generated\Materials\acc.002_Surface.hlsl">
@@ -731,9 +731,6 @@
     </FxCompile>
     <FxCompile Include="Shaders\Generated\Materials\water_Surface.hlsl">
       <Filter>Shaders\Generated\Materials</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Generated\Preview\Materials\acc.002_Surface.hlsl">
-      <Filter>Shaders\Generated\Preview\Materials</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Geometry\Decal.hlsl">
       <Filter>Shaders\Geometry</Filter>
@@ -1475,6 +1472,24 @@
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
       <Filter>Source\Engine\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Lua\LuaActorBindings_1.cpp">
+      <Filter>Source\Engine\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Lua\LuaActorBindings_2.cpp">
+      <Filter>Source\Engine\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Lua\LuaActorBindings_3.cpp">
+      <Filter>Source\Engine\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Lua\LuaActorBindings_4.cpp">
+      <Filter>Source\Engine\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Lua\LuaActorBindings_5.cpp">
+      <Filter>Source\Engine\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Lua\LuaActorBindings_6.cpp">
+      <Filter>Source\Engine\Lua</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Lua\LuaDebugManager.cpp">
       <Filter>Source\Engine\Lua</Filter>
     </ClCompile>
@@ -1783,6 +1798,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\StartupProfiler.cpp">
       <Filter>Source\Engine\Profiling</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Profiling\Stats\ClothCollisionStats.cpp">
+      <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\Stats\MemoryStats.cpp">
       <Filter>Source\Engine\Profiling\Stats</Filter>
@@ -2606,6 +2624,9 @@
     <ClInclude Include="Source\Engine\Component\Primitive\HeightFogComponent.h">
       <Filter>Source\Engine\Component\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Primitive\RagdollReactionPolicy.h">
+      <Filter>Source\Engine\Component\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Component\Primitive\SkeletalMeshComponent.h">
       <Filter>Source\Engine\Component\Primitive</Filter>
     </ClInclude>
@@ -2851,6 +2872,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
       <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Lua\LuaActorBindings.internal.h">
+      <Filter>Source\Engine\Lua</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Lua\LuaDebugManager.h">
       <Filter>Source\Engine\Lua</Filter>
@@ -3286,6 +3310,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\StartupProfiler.h">
       <Filter>Source\Engine\Profiling</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Profiling\Stats\ClothCollisionStats.h">
+      <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\Stats\MemoryStats.h">
       <Filter>Source\Engine\Profiling\Stats</Filter>

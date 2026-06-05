@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/Types/CoreTypes.h"
 #include "Engine/Platform/DirectoryWatcher.h"
@@ -52,6 +52,14 @@ private:
 	static void RegisterMathBindings(sol::state& Lua);
 	static void RegisterReflectionBindings(sol::state& Lua);
 	static void RegisterActorBindings(sol::state& Lua);
+	// RegisterActorBindings 본문을 순서 보존 분할한 sub-function들(LuaActorBindings_*.cpp).
+	// 동일 sol::state 위에 원본과 같은 순서로 new_usertype를 호출한다. 정의는 각 1개 TU(ODR).
+	static void RegisterActorBindings_1(sol::state& Lua);
+	static void RegisterActorBindings_2(sol::state& Lua);
+	static void RegisterActorBindings_3(sol::state& Lua);
+	static void RegisterActorBindings_4(sol::state& Lua);
+	static void RegisterActorBindings_5(sol::state& Lua);
+	static void RegisterActorBindings_6(sol::state& Lua);
 	static void RegisterUIBindings(sol::state& Lua);
 
 	static void OnScriptsChanged(const TSet<FString>& ChangedFiles);
