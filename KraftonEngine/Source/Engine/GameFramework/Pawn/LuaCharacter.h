@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "GameFramework/Pawn/Character.h"
 #include "Object/Ptr/WeakObjectPtr.h"
@@ -36,6 +36,7 @@ public:
 	}
 
 	void PostDuplicate() override;
+	void OnPostLoad(FArchive& Ar) override;
 
 	ULuaScriptComponent* GetLuaScriptComponent() const { return LuaScriptComponent; }
 	USpringArmComponent* GetSpringArm()          const { return SpringArm; }

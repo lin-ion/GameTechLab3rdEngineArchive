@@ -72,6 +72,7 @@ public:
 	virtual void InitDefaultComponents(const FString& SkeletalMeshFileName);
 
 	void PostDuplicate() override;
+	void OnPostLoad(FArchive& Ar) override;
 
 	// CharacterMovement->AddInputVector 의 액터 레벨 wrapper. UE 의 APawn::AddMovementInput 대응.
 	UFUNCTION(Callable, Category="Character|Movement")
