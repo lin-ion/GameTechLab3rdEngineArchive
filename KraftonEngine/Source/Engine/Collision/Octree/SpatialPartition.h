@@ -23,6 +23,7 @@ class FSpatialPartition
 
     // 단일 컴포넌트 제거 — overflow / octree leaf 양쪽 모두 정리한다.
     void RemoveSinglePrimitive(UPrimitiveComponent* Primitive);
+    void UpdatePrimitiveImmediate(UPrimitiveComponent* Primitive);
 
     void QueryFrustumAllPrimitive(const FConvexVolume& ConvexVolume, TArray<UPrimitiveComponent*>& OutPrimitives) const;
     void QueryFrustumAllProxies(const FConvexVolume& ConvexVolume, TArray<FPrimitiveSceneProxy*>& OutProxies) const;

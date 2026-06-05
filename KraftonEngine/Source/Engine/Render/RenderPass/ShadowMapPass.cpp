@@ -674,9 +674,12 @@ void FShadowMapPass::DrawShadowCasters(ID3D11DeviceContext* DC, FScene& Scene, F
 	FShader* SkeletalShadowShader = bUseGpuSkinning
 		? FShaderManager::Get().GetOrCreateShadowDepthPermutation(EShadowDepthDefines::EVertexFactory::SkeletalMesh)
 		: StaticShadowShader;
+	FShader* InstancedShadowShader = FShaderManager::Get().GetOrCreateShadowDepthPermutation(
+		EShadowDepthDefines::EVertexFactory::InstancedStaticMesh);
 
 	if (!StaticShadowShader || !StaticShadowShader->IsValid()) return;
 	const bool bCanDrawGpuSkinnedCasters = SkeletalShadowShader && SkeletalShadowShader->IsValid();
+	const bool bCanDrawInstancedCasters = InstancedShadowShader && InstancedShadowShader->IsValid();
 
 	ID3D11Device* Device = nullptr;
 	DC->GetDevice(&Device);
@@ -734,19 +737,6 @@ void FShadowMapPass::DrawShadowCasters(ID3D11DeviceContext* DC, FScene& Scene, F
 		{
 			if (!Proxy->PrepareDrawBuffer(Device, DC, ProxyBuffer)) continue;
 		}
-		if (!ProxyBuffer.VB || !ProxyBuffer.IB) continue;
-
-		FShader* DesiredShader = bGpuSkinned ? SkeletalShadowShader : StaticShadowShader;
-		if (DesiredShader != BoundShader)
-		{
-			DesiredShader->Bind(DC);
-			BoundShader = DesiredShader;
-
-			if (CurrentFilterMode != EShadowFilterMode::VSM)
-			{
-				DC->PSSetShader(nullptr, nullptr, 0);
-			}
-		}
 
 		if (SkinMatrixSRV != BoundSkinMatrixSRV)
 		{
@@ -754,46 +744,96 @@ void FShadowMapPass::DrawShadowCasters(ID3D11DeviceContext* DC, FScene& Scene, F
 			BoundSkinMatrixSRV = SkinMatrixSRV;
 		}
 
-			bool bAnySectionCastsShadow = false;
-			bool bAnyMaterialTwoSided   = false;
-			for (const FMeshSectionDraw& Section : Proxy->GetSectionDraws())
+		bool bAnySectionCastsShadow = false;
+		bool bAnyMaterialTwoSided   = false;
+		for (const FMeshSectionDraw& Section : Proxy->GetSectionDraws())
+		{
+			if (!ShouldDrawShadowSection(Section)) continue;
+			bAnySectionCastsShadow = true;
+			if (Section.Material && Section.Material->IsTwoSided())
 			{
-				if (!ShouldDrawShadowSection(Section)) continue;
-				bAnySectionCastsShadow = true;
-				if (Section.Material && Section.Material->IsTwoSided())
-				{
-					bAnyMaterialTwoSided = true;
-				}
+				bAnyMaterialTwoSided = true;
 			}
-			if (!bAnySectionCastsShadow) continue;
+		}
+		if (!bAnySectionCastsShadow) continue;
 
-			// Two-sided shadow: front-cull ↔ no-cull 전환
-			bool bTwoSided = Proxy->CastsShadowAsTwoSided() || bAnyMaterialTwoSided;
-			if (bTwoSided != bCurrentTwoSided)
-			{
-				bCurrentTwoSided = bTwoSided;
-				Resources.RasterizerStateManager.Set(DC,
-					bTwoSided ? ERasterizerState::SolidNoCull : ERasterizerState::SolidFrontCull);
-			}
+		// Two-sided shadow: front-cull ↔ no-cull 전환
+		bool bTwoSided = Proxy->CastsShadowAsTwoSided() || bAnyMaterialTwoSided;
+		if (bTwoSided != bCurrentTwoSided)
+		{
+			bCurrentTwoSided = bTwoSided;
+			Resources.RasterizerStateManager.Set(DC,
+				bTwoSided ? ERasterizerState::SolidNoCull : ERasterizerState::SolidFrontCull);
+		}
 
-			++LastDrawCasterCount;
 		ShadowPerObjectCB.Update(DC, &Proxy->GetPerObjectConstants(), sizeof(FPerObjectConstants));
 		ID3D11Buffer* b1 = ShadowPerObjectCB.GetBuffer();
 		DC->VSSetConstantBuffers(ECBSlot::PerObject, 1, &b1);
 
-		ID3D11Buffer* VB = ProxyBuffer.VB;
-		uint32 VBStride = ProxyBuffer.VBStride;
-		uint32 Offset = 0;
-		DC->IASetVertexBuffers(0, 1, &VB, &VBStride, &Offset);
+		bool bDrewCaster = false;
+		for (const FMeshSectionDraw& Section : Proxy->GetSectionDraws())
+		{
+			if (!ShouldDrawShadowSection(Section)) continue;
 
-		DC->IASetIndexBuffer(ProxyBuffer.IB, DXGI_FORMAT_R32_UINT, 0);
+			const FDrawCommandBuffer& EffBuffer = Section.BufferOverride.HasBuffers()
+				? Section.BufferOverride
+				: ProxyBuffer;
+			if (!EffBuffer.VB || !EffBuffer.IB) continue;
 
-			for (const FMeshSectionDraw& Section : Proxy->GetSectionDraws())
+			const bool bInstancedSection =
+				Section.VertexFactory == EVertexFactoryType::InstancedStaticMesh ||
+				EffBuffer.InstanceCount > 0;
+			if (bInstancedSection && (!bCanDrawInstancedCasters || !EffBuffer.InstanceVB || EffBuffer.InstanceCount == 0))
 			{
-				if (!ShouldDrawShadowSection(Section)) continue;
-				DC->DrawIndexed(Section.IndexCount, Section.FirstIndex, 0);
-				SHADOW_STATS_ADD_DRAW_CALL();
+				continue;
 			}
+
+			FShader* DesiredShader = bGpuSkinned
+				? SkeletalShadowShader
+				: (bInstancedSection ? InstancedShadowShader : StaticShadowShader);
+			if (!DesiredShader || !DesiredShader->IsValid()) continue;
+
+			if (DesiredShader != BoundShader)
+			{
+				DesiredShader->Bind(DC);
+				BoundShader = DesiredShader;
+
+				if (CurrentFilterMode != EShadowFilterMode::VSM)
+				{
+					DC->PSSetShader(nullptr, nullptr, 0);
+				}
+			}
+
+			ID3D11Buffer* VB = EffBuffer.VB;
+			uint32 VBStride = EffBuffer.VBStride;
+			uint32 Offset = 0;
+			DC->IASetVertexBuffers(0, 1, &VB, &VBStride, &Offset);
+			DC->IASetIndexBuffer(EffBuffer.IB, DXGI_FORMAT_R32_UINT, 0);
+
+			if (bInstancedSection)
+			{
+				UINT InstOffset = 0;
+				DC->IASetVertexBuffers(1, 1, &EffBuffer.InstanceVB, &EffBuffer.InstanceVBStride, &InstOffset);
+				DC->DrawIndexedInstanced(Section.IndexCount, EffBuffer.InstanceCount,
+					Section.FirstIndex, EffBuffer.BaseVertex, 0);
+
+				ID3D11Buffer* NullVB = nullptr;
+				UINT NullStride = 0;
+				UINT NullOffset = 0;
+				DC->IASetVertexBuffers(1, 1, &NullVB, &NullStride, &NullOffset);
+			}
+			else
+			{
+				DC->DrawIndexed(Section.IndexCount, Section.FirstIndex, EffBuffer.BaseVertex);
+			}
+
+			bDrewCaster = true;
+			SHADOW_STATS_ADD_DRAW_CALL();
+		}
+		if (bDrewCaster)
+		{
+			++LastDrawCasterCount;
+		}
 	}
 	// Front-cull로 복원
 	if (bCurrentTwoSided)

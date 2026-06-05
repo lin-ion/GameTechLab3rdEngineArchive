@@ -99,6 +99,45 @@ UberVS_Output VS_StaticMesh(VS_Input_PNCTT input)
     return output;
 }
 
+UberVS_Output VS_InstancedStaticMesh(VS_Input_InstancedPNCTT input)
+{
+    UberVS_Output output;
+
+    float4x4 InstanceModel = float4x4(
+        input.instanceRow0,
+        input.instanceRow1,
+        input.instanceRow2,
+        input.instanceRow3);
+    float4x4 WorldModel = mul(InstanceModel, Model);
+    float3x3 M = (float3x3) WorldModel;
+
+    float4 worldPos4 = mul(float4(input.position, 1.0f), WorldModel);
+    output.worldPos = worldPos4.xyz;
+    output.position = mul(mul(worldPos4, View), Projection);
+    output.normal = normalize(mul(input.normal, M));
+    output.color = input.color * input.instanceColor * SectionColor;
+    output.texcoord = input.texcoord;
+
+    float3 T = BuildOrthonormalTangent(output.normal, mul(input.tangent.xyz, M));
+    output.tangent = float4(T, input.tangent.w);
+
+#if defined(LIGHTING_MODEL_GOURAUD) && LIGHTING_MODEL_GOURAUD
+    float3 N = output.normal;
+
+    if (HasNormalMap > 0.5f)
+    {
+        float3 tangentNormal = SampleTangentSpaceNormalLevel(NormalTexture, LinearWrapSampler, input.texcoord, 0);
+        N = ApplyTangentSpaceNormal(N, T, input.tangent.w, tangentNormal);
+    }
+
+    float3 V = normalize(CameraWorldPos - output.worldPos);
+    output.litDiffuse = AccumulateDiffuseVS(output.worldPos, N);
+    output.litSpecular = AccumulateSpecularVS(output.worldPos, N, V, g_DefaultShininess);
+#endif
+
+    return output;
+}
+
 // GPU Skinning
 UberVS_Output VS_SkeletalMesh(VS_Input_PNCTTBB input)
 {

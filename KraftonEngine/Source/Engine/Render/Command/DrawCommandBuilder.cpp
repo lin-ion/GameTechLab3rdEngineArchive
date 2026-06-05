@@ -125,13 +125,44 @@ static EUberLitDefines::ELightingModel GetLightingModelForViewMode(EViewMode Vie
 
 static FShader* GetUberTransparentShader(EViewMode ViewMode, EUberLitDefines::EVertexFactory VertexFactory)
 {
-	const char* VSEntry = VertexFactory == EUberLitDefines::EVertexFactory::SkeletalMesh
-		? EUberLitDefines::EntryPoint::SkeletalMeshVS
-		: EUberLitDefines::EntryPoint::StaticMeshVS;
+	const char* VSEntry = EUberLitDefines::EntryPoint::StaticMeshVS;
+	if (VertexFactory == EUberLitDefines::EVertexFactory::SkeletalMesh)
+	{
+		VSEntry = EUberLitDefines::EntryPoint::SkeletalMeshVS;
+	}
+	else if (VertexFactory == EUberLitDefines::EVertexFactory::InstancedStaticMesh)
+	{
+		VSEntry = EUberLitDefines::EntryPoint::InstancedStaticMeshVS;
+	}
 	const EUberLitDefines::ELightingModel LightingModel = GetLightingModelForViewMode(ViewMode);
 	const D3D_SHADER_MACRO* Defines = EUberLitDefines::GetDefines(LightingModel, VertexFactory);
 	return FShaderManager::Get().GetOrCreate(
 		FShaderKey(EShaderPath::UberTransparent, Defines, VSEntry, EUberLitDefines::EntryPoint::PS));
+}
+
+static FShader* GetGraphMaterialShader(UMaterial* Mat, EVertexFactoryType VFType)
+{
+	if (!Mat)
+	{
+		return nullptr;
+	}
+
+	if (VFType == EVertexFactoryType::InstancedStaticMesh && Mat->GetDomain() == EMaterialDomain::Surface)
+	{
+		const FString& ShaderPath = Mat->GetShaderPathForSerialize();
+		if (!ShaderPath.empty())
+		{
+			return FShaderManager::Get().FindOrCreate(
+				FShaderKey(ShaderPath,
+					nullptr,
+					EUberLitDefines::EntryPoint::InstancedStaticMeshVS,
+					EUberLitDefines::EntryPoint::PS,
+					EShaderVertexFactory::InstancedStaticMesh));
+		}
+	}
+
+	if (Mat->HasCustomShader()) return Mat->GetCustomShader();
+	return Mat->GetShader();
 }
 
 // ============================================================
@@ -178,12 +209,11 @@ FShader* FDrawCommandBuilder::ResolveSectionShader(UMaterial* Mat, EVertexFactor
 		Mat->GetShaderPathForSerialize() == EShaderPath::UberLit;
 
     // 1. Graph material first-class path. Runtime-compiled graph materials carry their
-    //    generated shader as the material template/custom shader, and must beat the
-    //    generic particle/default shader fallback.
+    //    generated shader as the material template/custom shader. ISMC uses the same
+    //    generated PS with an instanced VS entry so instance transforms survive.
     if (Mat && Mat->GetSourceKind() == EMaterialSourceKind::Graph)
     {
-        if (Mat->HasCustomShader()) return Mat->GetCustomShader();
-        if (FShader* GraphShader = Mat->GetShader()) return GraphShader;
+        if (FShader* GraphShader = GetGraphMaterialShader(Mat, VFType)) return GraphShader;
     }
 
     // 2. custom override 강제 (CreateTransient: Gizmo/Decal/Text/SubUV, 비표준 셰이더 .mat)
@@ -202,9 +232,13 @@ FShader* FDrawCommandBuilder::ResolveSectionShader(UMaterial* Mat, EVertexFactor
 
     // 4. Surface 메시 → pass별 scene shader. 셰이더 정점 팩토리는 bGPUSkinning 으로 결정
 	//    (CPU 스키닝은 static-layout VS).
-	const EUberLitDefines::EVertexFactory UVF = bGPUSkinning
+	EUberLitDefines::EVertexFactory UVF = bGPUSkinning
 		? EUberLitDefines::EVertexFactory::SkeletalMesh
 		: EUberLitDefines::EVertexFactory::StaticMesh;
+	if (VFType == EVertexFactoryType::InstancedStaticMesh)
+	{
+		UVF = EUberLitDefines::EVertexFactory::InstancedStaticMesh;
+	}
 
 	if (SecPass == ERenderPass::Transparent)
 		return GetUberTransparentShader(ViewMode, UVF);

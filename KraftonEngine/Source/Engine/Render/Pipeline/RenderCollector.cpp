@@ -39,6 +39,7 @@ void FRenderCollector::Collect(UWorld* World, const FFrameContext& Frame, FColle
 
 	FScene& Scene = World->GetScene();
 	Scene.UpdateDirtyProxies();
+	World->GetPartition().FlushPrimitive();
 
 	Output.FrustumVisibleProxies.clear();
 	{
@@ -178,13 +179,14 @@ void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& 
 		// 반투명 빌보드(파티클)는 occlusion 컬링 제외 — depth 기반 AABB occlusion 시 팝핑 위험.
 		// (기존 NeverCull은 frustum+occlusion을 둘 다 면제했음. frustum만 활성화하고 occlusion 면제는 유지.)
 		const bool bParticleProxy = Proxy->HasProxyFlag(EPrimitiveProxyFlags::Particle);
+		const bool bSkipOcclusion = bParticleProxy || Proxy->HasProxyFlag(EPrimitiveProxyFlags::SkipOcclusion);
 
-		if (OcclusionMut && !bParticleProxy)
+		if (OcclusionMut && !bSkipOcclusion)
 		{
 			OcclusionMut->GatherAABB(Proxy);
 		}
 
-		if (Occlusion && !bParticleProxy && !Proxy->HasProxyFlag(EPrimitiveProxyFlags::NeverCull) && Occlusion->IsOccluded(Proxy))
+		if (Occlusion && !bSkipOcclusion && !Proxy->HasProxyFlag(EPrimitiveProxyFlags::NeverCull) && Occlusion->IsOccluded(Proxy))
 		{
 			continue;
 		}

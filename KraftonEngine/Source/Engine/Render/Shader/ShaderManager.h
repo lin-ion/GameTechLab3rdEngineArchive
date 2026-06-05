@@ -12,9 +12,10 @@ enum class EShaderVertexFactory : uint8
     Auto,
     StaticMesh,
     SkeletalMesh,
-    ParticleSprite,
-    ParticleMesh,
-    Fullscreen
+	ParticleSprite,
+	ParticleMesh,
+	InstancedStaticMesh,
+	Fullscreen
 };
 
 struct FShaderKey
@@ -176,6 +177,7 @@ namespace EShadowDepthDefines
 	{
 		inline constexpr const char* StaticMeshVS = "VS_StaticMesh";
 		inline constexpr const char* SkeletalMeshVS = "VS_SkeletalMesh";
+		inline constexpr const char* InstancedStaticMeshVS = "VS_InstancedStaticMesh";
 		inline constexpr const char* PS = "PS";
 	}
 
@@ -183,6 +185,7 @@ namespace EShadowDepthDefines
 	{
 		StaticMesh,
 		SkeletalMesh,
+		InstancedStaticMesh,
 	};
 
 	// StaticMesh: 매크로 없음 (기본 경로)
@@ -194,8 +197,15 @@ namespace EShadowDepthDefines
 	{
 		const D3D_SHADER_MACRO* Defines = 
 			(VF == EVertexFactory::SkeletalMesh) ? SkeletalMesh : StaticMesh;
-		const char* VSEntry =
-			(VF == EVertexFactory::SkeletalMesh) ? EntryPoint::SkeletalMeshVS : EntryPoint::StaticMeshVS;
+		const char* VSEntry = EntryPoint::StaticMeshVS;
+		if (VF == EVertexFactory::SkeletalMesh)
+		{
+			VSEntry = EntryPoint::SkeletalMeshVS;
+		}
+		else if (VF == EVertexFactory::InstancedStaticMesh)
+		{
+			VSEntry = EntryPoint::InstancedStaticMeshVS;
+		}
 		return FShaderKey(EShaderPath::ShadowDepth, Defines, VSEntry, EntryPoint::PS);
 	}
 
@@ -206,6 +216,7 @@ namespace EUberLitDefines
 	{
 		inline constexpr const char* StaticMeshVS = "VS_StaticMesh";
 		inline constexpr const char* SkeletalMeshVS = "VS_SkeletalMesh";
+		inline constexpr const char* InstancedStaticMeshVS = "VS_InstancedStaticMesh";
 		inline constexpr const char* PS = "PS";
 	}
 
@@ -222,6 +233,7 @@ namespace EUberLitDefines
 	{
 		StaticMesh,
 		SkeletalMesh,
+		InstancedStaticMesh,
 	};
 
 	inline const D3D_SHADER_MACRO Default[] = { {"LIGHTING_MODEL_PHONG", "1"}, {nullptr, nullptr} };
@@ -246,9 +258,15 @@ namespace EUberLitDefines
 
 	inline FShaderKey MakePermutationKey(ELightingModel LightingModel, EVertexFactory VertexFactory)
 	{
-		const char* VSEntryPoint = VertexFactory == EVertexFactory::SkeletalMesh
-			? EntryPoint::SkeletalMeshVS
-			: EntryPoint::StaticMeshVS;
+		const char* VSEntryPoint = EntryPoint::StaticMeshVS;
+		if (VertexFactory == EVertexFactory::SkeletalMesh)
+		{
+			VSEntryPoint = EntryPoint::SkeletalMeshVS;
+		}
+		else if (VertexFactory == EVertexFactory::InstancedStaticMesh)
+		{
+			VSEntryPoint = EntryPoint::InstancedStaticMeshVS;
+		}
 		return FShaderKey(EShaderPath::UberLit, GetDefines(LightingModel, VertexFactory), VSEntryPoint, EntryPoint::PS);
 	}
 }

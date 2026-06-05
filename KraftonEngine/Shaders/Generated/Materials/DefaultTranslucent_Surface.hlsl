@@ -1,10 +1,11 @@
-// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/NewMaterial.uasset
+// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/Custom/DefaultTranslucent.uasset
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
 #include "Common/VertexLayouts.hlsli"
 #include "Common/Functions.hlsli"
 #include "Common/SystemSamplers.hlsli"
+#include "Common/ForwardLighting.hlsli"
 
 struct FMaterialPixelInput
 {
@@ -28,20 +29,19 @@ struct FMaterialResult
     float Opacity;
 };
 
-Texture2D Tex_Diffuse : register(t0);
+Texture2D Tex_DiffuseTexture : register(t0);
 
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-    float2 n_3 = Input.UV0;
-    float4 n_5 = Tex_Diffuse.Sample(LinearWrapSampler, n_3);
-    float n_47 = 0.400000f;
+    float4 n_3 = Tex_DiffuseTexture.Sample(LinearWrapSampler, Input.UV0);
+    float n_21 = 0.500000f;
     FMaterialResult Result;
-    Result.BaseColor = (n_5).rgb;
+    Result.BaseColor = (n_3).rgb;
     Result.Normal = float3(0, 0, 1);
     Result.Roughness = 0.5f;
     Result.Metallic = 0.0f;
     Result.Emissive = float3(0, 0, 0);
-    Result.Opacity = n_47;
+    Result.Opacity = n_21;
     return Result;
 }
 
@@ -67,25 +67,6 @@ MaterialSurfaceVSOutput VS(VS_Input_PNCTT input)
     return output;
 }
 
-MaterialSurfaceVSOutput VS_InstancedStaticMesh(VS_Input_InstancedPNCTT input)
-{
-    MaterialSurfaceVSOutput output;
-    float4x4 InstanceModel = float4x4(
-        input.instanceRow0,
-        input.instanceRow1,
-        input.instanceRow2,
-        input.instanceRow3);
-    float4x4 WorldModel = mul(InstanceModel, Model);
-
-    float4 worldPos = mul(float4(input.position, 1.0f), WorldModel);
-    output.worldPos = worldPos.xyz;
-    output.position = mul(mul(worldPos, View), Projection);
-    output.normal = normalize(mul(input.normal, (float3x3)WorldModel));
-    output.color = input.color * input.instanceColor;
-    output.texcoord = input.texcoord;
-    return output;
-}
-
 
 float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
 {
@@ -103,7 +84,11 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float3 N = normalize(input.normal);
 
-    float3 finalRgb = Result.BaseColor + Result.Emissive;
+    float3 V = normalize(CameraWorldPos - input.worldPos);
+    float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
+    float3 specular = AccumulateSpecular(input.worldPos, N, V, 32.0f, input.position);
+
+    float3 finalRgb = Result.BaseColor * diffuse + specular + Result.Emissive;
 
     return float4(finalRgb, saturate(Result.Opacity));
 }

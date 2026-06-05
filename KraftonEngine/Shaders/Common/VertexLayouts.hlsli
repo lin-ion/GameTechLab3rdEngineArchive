@@ -32,6 +32,29 @@ struct VS_Input_PNCTT
     float4 tangent : TANGENT;
 };
 
+struct VS_Input_InstanceTransform
+{
+    float4 row0 : INSTANCE_ROW0;
+    float4 row1 : INSTANCE_ROW1;
+    float4 row2 : INSTANCE_ROW2;
+    float4 row3 : INSTANCE_ROW3;
+    float4 color : INSTANCE_COLOR;
+};
+
+struct VS_Input_InstancedPNCTT
+{
+    float3 position : POSITION;
+    float3 normal : NORMAL;
+    float4 color : COLOR;
+    float2 texcoord : TEXTCOORD;
+    float4 tangent : TANGENT;
+    float4 instanceRow0 : INSTANCE_ROW0;
+    float4 instanceRow1 : INSTANCE_ROW1;
+    float4 instanceRow2 : INSTANCE_ROW2;
+    float4 instanceRow3 : INSTANCE_ROW3;
+    float4 instanceColor : INSTANCE_COLOR;
+};
+
 // 나도 이러고 싶지 않았다.
 struct VS_Input_PNCTTBB
 {

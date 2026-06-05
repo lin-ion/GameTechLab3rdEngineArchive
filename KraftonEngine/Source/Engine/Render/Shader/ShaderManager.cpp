@@ -72,6 +72,7 @@ void FShaderManager::Initialize(ID3D11Device* InDevice)
 	GetOrCreate(EShaderPath::GammaCorrection, StartupError);
 	GetOrCreateShadowDepthPermutation(EShadowDepthDefines::EVertexFactory::StaticMesh, StartupError);
 	GetOrCreateShadowDepthPermutation(EShadowDepthDefines::EVertexFactory::SkeletalMesh, StartupError);
+	GetOrCreateShadowDepthPermutation(EShadowDepthDefines::EVertexFactory::InstancedStaticMesh, StartupError);
 	GetOrCreate(EShaderPath::ShadowMapVis, StartupError);
 	GetOrCreate(EShaderPath::CameraFade, StartupError);
 	GetOrCreate(EShaderPath::CameraVignette, StartupError);

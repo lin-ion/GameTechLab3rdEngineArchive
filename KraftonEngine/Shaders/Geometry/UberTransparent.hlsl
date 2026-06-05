@@ -89,6 +89,44 @@ UberTransparentVS_Output VS_StaticMesh(VS_Input_PNCTT input)
     return BuildVS(input.position, input.normal, input.color, input.texcoord, input.tangent);
 }
 
+UberTransparentVS_Output VS_InstancedStaticMesh(VS_Input_InstancedPNCTT input)
+{
+    UberTransparentVS_Output output;
+
+    float4x4 InstanceModel = float4x4(
+        input.instanceRow0,
+        input.instanceRow1,
+        input.instanceRow2,
+        input.instanceRow3);
+    float4x4 WorldModel = mul(InstanceModel, Model);
+    float3x3 M = (float3x3)WorldModel;
+
+    float4 worldPos = mul(float4(input.position, 1.0f), WorldModel);
+    output.worldPos = worldPos.xyz;
+    output.position = mul(mul(worldPos, View), Projection);
+    output.normal = normalize(mul(input.normal, M));
+    output.color = input.color * input.instanceColor * SectionColor;
+    output.texcoord = input.texcoord;
+
+    float3 T = BuildOrthonormalTangent(output.normal, mul(input.tangent.xyz, M));
+    output.tangent = float4(T, input.tangent.w);
+
+#if defined(LIGHTING_MODEL_GOURAUD) && LIGHTING_MODEL_GOURAUD
+    float3 N = output.normal;
+    if (HasNormalMap >= 0.5)
+    {
+        float3 tangentNormal = SampleTangentSpaceNormalLevel(NormalTexture, LinearWrapSampler, input.texcoord, 0);
+        N = ApplyTangentSpaceNormal(N, T, input.tangent.w, tangentNormal);
+    }
+
+    float3 V = normalize(CameraWorldPos - output.worldPos);
+    output.litDiffuse = AccumulateDiffuseVS(output.worldPos, N);
+    output.litSpecular = AccumulateSpecularVS(output.worldPos, N, V, g_DefaultShininess);
+#endif
+
+    return output;
+}
+
 UberTransparentVS_Output VS_SkeletalMesh(VS_Input_PNCTTBB input)
 {
     FSkinningResult skinned = ApplyLinearBlendSkinning(
