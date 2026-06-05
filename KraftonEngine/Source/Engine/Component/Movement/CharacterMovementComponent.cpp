@@ -84,6 +84,25 @@ void UCharacterMovementComponent::Jump()
 	bWantsJump = true;
 }
 
+void UCharacterMovementComponent::StopMovementImmediately()
+{
+	Velocity.X = 0.0f;
+	Velocity.Y = 0.0f;
+	Velocity.Z = 0.0f;
+	AccumulatedInput = FVector(0.0f, 0.0f, 0.0f);
+}
+
+void UCharacterMovementComponent::SetMovementInputBlocked(bool bBlocked)
+{
+	bMovementInputBlocked = bBlocked;
+	if (bMovementInputBlocked)
+	{
+		AccumulatedInput = FVector(0.0f, 0.0f, 0.0f);
+		Velocity.X = 0.0f;
+		Velocity.Y = 0.0f;
+	}
+}
+
 bool UCharacterMovementComponent::StartDash(const FVector& WorldDirection, float Distance, float Duration)
 {
 	if (Distance <= 0.0f || Duration <= 0.0f)
@@ -107,6 +126,9 @@ bool UCharacterMovementComponent::StartDash(const FVector& WorldDirection, float
 	}
 
 	Direction = Direction.Normalized();
+	Velocity.X = 0.0f;
+	Velocity.Y = 0.0f;
+	AccumulatedInput = FVector(0.0f, 0.0f, 0.0f);
 	DashVelocity = Direction * (Distance / Duration);
 	DashRemainingTime = Duration;
 	return true;
@@ -133,6 +155,10 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	FVector Input;
 	ConsumeInputVector(Input);
 	Input.Z = 0.0f;   // XY 평면만 — Z 는 mode 가 결정.
+	if (bMovementInputBlocked || (bIgnoreInputWhileDashing && IsDashing()))
+	{
+		Input = FVector(0.0f, 0.0f, 0.0f);
+	}
 
 	// 1) Input 처리 — XY velocity 갱신 (양 mode 공통).
 	ApplyInputToVelocity(Input, DeltaTime);
@@ -225,6 +251,13 @@ void UCharacterMovementComponent::PhysOrientToMovement(float DeltaTime)
 	FRotator R = Updated->GetRelativeRotation();
 	const float CurrentYaw = R.Yaw;
 
+	if (bSnapRotationToMovement)
+	{
+		R.Yaw = TargetYaw;
+		Updated->SetRelativeRotation(R);
+		return;
+	}
+
 	// 최단 회전 방향 (delta ∈ [-180, 180])
 	float Delta = TargetYaw - CurrentYaw;
 	while (Delta >  180.0f) Delta -= 360.0f;
@@ -245,6 +278,22 @@ void UCharacterMovementComponent::PhysOrientToMovement(float DeltaTime)
 void UCharacterMovementComponent::ApplyInputToVelocity(const FVector& Input, float DeltaTime)
 {
 	const float InputLen = Input.Length();
+	if (bUseInstantMovementInput)
+	{
+		if (InputLen > 0.0f)
+		{
+			const FVector Direction = Input * (1.0f / InputLen);
+			Velocity.X = Direction.X * MaxWalkSpeed;
+			Velocity.Y = Direction.Y * MaxWalkSpeed;
+		}
+		else if (MovementMode == EMovementMode::Walking)
+		{
+			Velocity.X = 0.0f;
+			Velocity.Y = 0.0f;
+		}
+		return;
+	}
+
 	if (InputLen > 0.0f)
 	{
 		// 입력 방향으로 가속 (XY 만).
@@ -618,4 +667,7 @@ void UCharacterMovementComponent::Serialize(FArchive& Ar)
 	Ar << bOrientRotationToMovement;
 	Ar << RotationYawRate;
 	Ar << SweepPullbackDistance;
+	Ar << bUseInstantMovementInput;
+	Ar << bSnapRotationToMovement;
+	Ar << bIgnoreInputWhileDashing;
 }

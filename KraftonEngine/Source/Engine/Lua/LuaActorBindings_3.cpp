@@ -168,6 +168,46 @@ void FLuaScriptManager::RegisterActorBindings_3(sol::state& Lua)
 
         // 부모 기준 상대 위치 — 동일한 메시를 4개 깐 바퀴 같은 케이스에서 앞/뒤 구분 등
         // 위치 기반 필터링에 쓰인다. 월드 위치는 위 "Location" 프로퍼티 참고.
+        "AttachToComponent",
+        [](USceneComponent& Component, USceneComponent* Parent, sol::optional<FString> SocketName)
+        {
+            if (IsValid(Parent))
+            {
+                Component.AttachToComponent(Parent, SocketName ? FName(SocketName.value()) : FName::None);
+            }
+        },
+        "GetParent",
+        &USceneComponent::GetParent,
+        "GetAttachSocketName",
+        [](USceneComponent& Component)
+        {
+            return Component.GetAttachSocketName().ToString();
+        },
+        "HasSocket",
+        [](USceneComponent& Component, const FString& SocketName)
+        {
+            return Component.HasSocket(FName(SocketName));
+        },
+        "GetSocketWorldLocation",
+        [](USceneComponent& Component, const FString& SocketName)
+        {
+            return Component.GetSocketWorldLocation(FName(SocketName));
+        },
+        "GetSocketWorldRotation",
+        [](USceneComponent& Component, const FString& SocketName)
+        {
+            return Component.GetSocketWorldRotation(FName(SocketName)).ToVector();
+        },
+        "GetSocketWorldScale",
+        [](USceneComponent& Component, const FString& SocketName)
+        {
+            return Component.GetSocketWorldScale(FName(SocketName));
+        },
+        "GetSocketForwardVector",
+        [](USceneComponent& Component, const FString& SocketName)
+        {
+            return Component.GetSocketForwardVector(FName(SocketName));
+        },
         "RelativeLocation",
         sol::property(
             [](USceneComponent& Component)

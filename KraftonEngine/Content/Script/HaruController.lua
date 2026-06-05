@@ -7,13 +7,19 @@ local DASH_SKILL_NAME = "Dash"
 local DASH_SKILL_KEY = "LeftShift"
 local DASH_DISTANCE = 3.0
 local DASH_DURATION = 0.3
+local ROLL_SKILL_NAME = "Roll"
+local ROLL_SKILL_KEY = "LeftControl"
+local ROLL_DISTANCE = 6.0
+local ROLL_DURATION = 1.2
 local DASH_ANIM_VAR = "Dash"
+local ROLL_ANIM_VAR = "Roll"
 local ATTACK_ANIM_VAR = "Attack"
 
 local actor = nil
 local ability_system = nil
 local movement = nil
 local anim_instance = nil
+local movement_locks = {}
 
 local function log(message)
     print("[HaruController] " .. message)
@@ -79,6 +85,60 @@ local function get_character_movement(owner)
     end
 
     return movement
+end
+
+local function set_owner_movement_blocked(owner, blocked)
+    if owner ~= nil and owner.SetCharacterMovementInputBlocked ~= nil then
+        owner:SetCharacterMovementInputBlocked(blocked)
+        return true
+    end
+
+    local character_movement = get_character_movement(owner)
+    if character_movement ~= nil and character_movement.SetMovementInputBlocked ~= nil then
+        character_movement:SetMovementInputBlocked(blocked)
+        return true
+    end
+
+    return false
+end
+
+local function stop_owner_movement(owner)
+    if owner ~= nil and owner.StopCharacterMovementImmediately ~= nil then
+        owner:StopCharacterMovementImmediately()
+        return true
+    end
+
+    local character_movement = get_character_movement(owner)
+    if character_movement ~= nil and character_movement.StopMovementImmediately ~= nil then
+        character_movement:StopMovementImmediately()
+        return true
+    end
+
+    return false
+end
+
+local function has_movement_locks()
+    for _, locked in pairs(movement_locks) do
+        if locked then
+            return true
+        end
+    end
+    return false
+end
+
+local function lock_movement(owner, reason)
+    movement_locks[reason] = true
+    stop_owner_movement(owner)
+    if not set_owner_movement_blocked(owner, true) then
+        log("movement lock failed: CharacterMovementComponent blocking API unavailable reason=" .. tostring(reason))
+    end
+end
+
+local function unlock_movement(owner, reason)
+    movement_locks[reason] = nil
+    if not has_movement_locks() then
+        set_owner_movement_blocked(owner, false)
+    end
 end
 
 local function get_anim_instance(owner)
@@ -155,10 +215,14 @@ local function spawn_steam_effect(owner, ability)
         return
     end
 
+    lock_movement(owner, STEAM_SKILL_NAME)
     set_anim_bool(owner, ATTACK_ANIM_VAR, true)
 
     if World == nil or World.SpawnEmitterAtLocation == nil then
         log("SteamSkill activate failed: World.SpawnEmitterAtLocation is unavailable")
+        set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+        unlock_movement(owner, STEAM_SKILL_NAME)
+        ability.active_remaining = 0.0
         return
     end
 
@@ -170,6 +234,9 @@ local function spawn_steam_effect(owner, ability)
     local particle_component = World.SpawnEmitterAtLocation(STEAM_PARTICLE_PATH, spawn_location, Vec3(0.0, 0.0, 0.0), true)
     if particle_component == nil then
         log("SteamSkill activate failed: failed to spawn emitter")
+        set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+        unlock_movement(owner, STEAM_SKILL_NAME)
+        ability.active_remaining = 0.0
         return
     end
 
@@ -227,6 +294,7 @@ end
 local function end_steam_effect(owner, ability)
     if owner ~= nil then
         set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+        unlock_movement(owner, STEAM_SKILL_NAME)
     end
 
     local effect_actor = ability.effect_actor
@@ -252,9 +320,9 @@ local function end_steam_effect(owner, ability)
     log("SteamSkill ended: effect actor destroyed, cooldown started")
 end
 
-local function activate_dash(owner, ability)
+local function activate_movement_ability(owner, ability, label, anim_var, distance, duration)
     if owner == nil then
-        log("Dash activate failed: owner is nil")
+        log(label .. " activate failed: owner is nil")
         ability.active_remaining = 0.0
         return
     end
@@ -264,37 +332,41 @@ local function activate_dash(owner, ability)
         forward = Vec3(1.0, 0.0, 0.0)
     end
 
-    set_anim_bool(owner, DASH_ANIM_VAR, true)
+    set_anim_bool(owner, anim_var, true)
+    lock_movement(owner, label)
 
     if owner.StartCharacterDash ~= nil then
         local ok, started = pcall(function()
-            return owner:StartCharacterDash(forward, DASH_DISTANCE, DASH_DURATION)
+            return owner:StartCharacterDash(forward, distance, duration)
         end)
 
         if not ok then
-            log("Dash activate failed: StartCharacterDash call error: " .. tostring(started))
-            set_anim_bool(owner, DASH_ANIM_VAR, false)
+            log(label .. " activate failed: StartCharacterDash call error: " .. tostring(started))
+            set_anim_bool(owner, anim_var, false)
+            unlock_movement(owner, label)
             ability.active_remaining = 0.0
             return
         end
 
         if not started then
-            log("Dash activate failed: StartCharacterDash returned false")
-            set_anim_bool(owner, DASH_ANIM_VAR, false)
+            log(label .. " activate failed: StartCharacterDash returned false")
+            set_anim_bool(owner, anim_var, false)
+            unlock_movement(owner, label)
             ability.active_remaining = 0.0
             return
         end
 
-        log("Dash activated: distance=" .. tostring(DASH_DISTANCE)
-            .. " duration=" .. tostring(DASH_DURATION)
+        log(label .. " activated: distance=" .. tostring(distance)
+            .. " duration=" .. tostring(duration)
             .. " forward=" .. format_vec3(forward))
         return
     end
 
     local dash_movement = get_character_movement(owner)
     if dash_movement == nil then
-        log("Dash activate failed: UCharacterMovementComponent not found")
-        set_anim_bool(owner, DASH_ANIM_VAR, false)
+        log(label .. " activate failed: UCharacterMovementComponent not found")
+        set_anim_bool(owner, anim_var, false)
+        unlock_movement(owner, label)
         ability.active_remaining = 0.0
         return
     end
@@ -304,39 +376,59 @@ local function activate_dash(owner, ability)
         if dash_movement.GetName ~= nil then
             movement_name = dash_movement:GetName()
         end
-        log("Dash activate failed: StartDash binding is unavailable on movement=" .. tostring(movement_name))
-        set_anim_bool(owner, DASH_ANIM_VAR, false)
+        log(label .. " activate failed: StartDash binding is unavailable on movement=" .. tostring(movement_name))
+        set_anim_bool(owner, anim_var, false)
+        unlock_movement(owner, label)
         ability.active_remaining = 0.0
         return
     end
 
     local ok, started = pcall(function()
-        return dash_movement:StartDash(forward, DASH_DISTANCE, DASH_DURATION)
+        return dash_movement:StartDash(forward, distance, duration)
     end)
     if not ok then
-        log("Dash activate failed: StartDash call error: " .. tostring(started))
-        set_anim_bool(owner, DASH_ANIM_VAR, false)
+        log(label .. " activate failed: StartDash call error: " .. tostring(started))
+        set_anim_bool(owner, anim_var, false)
+        unlock_movement(owner, label)
         ability.active_remaining = 0.0
         return
     end
 
     if not started then
-        log("Dash activate failed: StartDash returned false")
-        set_anim_bool(owner, DASH_ANIM_VAR, false)
+        log(label .. " activate failed: StartDash returned false")
+        set_anim_bool(owner, anim_var, false)
+        unlock_movement(owner, label)
         ability.active_remaining = 0.0
         return
     end
 
-    log("Dash activated: distance=" .. tostring(DASH_DISTANCE)
-        .. " duration=" .. tostring(DASH_DURATION)
+    log(label .. " activated: distance=" .. tostring(distance)
+        .. " duration=" .. tostring(duration)
         .. " forward=" .. format_vec3(forward))
+end
+
+local function activate_dash(owner, ability)
+    activate_movement_ability(owner, ability, "Dash", DASH_ANIM_VAR, DASH_DISTANCE, DASH_DURATION)
 end
 
 local function end_dash(owner, ability)
     if owner ~= nil then
         set_anim_bool(owner, DASH_ANIM_VAR, false)
+        unlock_movement(owner, "Dash")
     end
     log("Dash ended")
+end
+
+local function activate_roll(owner, ability)
+    activate_movement_ability(owner, ability, "Roll", ROLL_ANIM_VAR, ROLL_DISTANCE, ROLL_DURATION)
+end
+
+local function end_roll(owner, ability)
+    if owner ~= nil then
+        set_anim_bool(owner, ROLL_ANIM_VAR, false)
+        unlock_movement(owner, "Roll")
+    end
+    log("Roll ended")
 end
 
 local function setup_abilities()
@@ -360,15 +452,25 @@ local function setup_abilities()
         Name = DASH_SKILL_NAME,
         Key = DASH_SKILL_KEY,
         Duration = DASH_DURATION,
-        Cooldown = 1.0,
+        Cooldown = 0.0,
         OnActivate = activate_dash,
         OnEnd = end_dash
+    })
+    ability_system:RegisterAbility({
+        Name = ROLL_SKILL_NAME,
+        Key = ROLL_SKILL_KEY,
+        Duration = ROLL_DURATION,
+        Cooldown = 0.0,
+        OnActivate = activate_roll,
+        OnEnd = end_roll
     })
 
     log("registered SteamSkill on " .. STEAM_SKILL_KEY)
     log("registered Dash on " .. DASH_SKILL_KEY)
+    log("registered Roll on " .. ROLL_SKILL_KEY)
 
     set_anim_bool(owner, DASH_ANIM_VAR, false)
+    set_anim_bool(owner, ROLL_ANIM_VAR, false)
     set_anim_bool(owner, ATTACK_ANIM_VAR, false)
 end
 
@@ -382,6 +484,14 @@ function EndPlay()
         if ability ~= nil then
             ability_system:EndAbility(ability)
         end
+    end
+
+    if actor ~= nil then
+        set_anim_bool(actor, DASH_ANIM_VAR, false)
+        set_anim_bool(actor, ROLL_ANIM_VAR, false)
+        set_anim_bool(actor, ATTACK_ANIM_VAR, false)
+        movement_locks = {}
+        set_owner_movement_blocked(actor, false)
     end
 
     actor = nil
@@ -415,6 +525,14 @@ function Tick(dt)
         local activated, reason = ability_system:TryActivateByKey(DASH_SKILL_KEY)
         if not activated then
             log("Dash blocked: " .. (reason or "unknown"))
+        end
+    end
+
+    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(ROLL_SKILL_KEY) then
+        log("input pressed: " .. ROLL_SKILL_KEY)
+        local activated, reason = ability_system:TryActivateByKey(ROLL_SKILL_KEY)
+        if not activated then
+            log("Roll blocked: " .. (reason or "unknown"))
         end
     end
 

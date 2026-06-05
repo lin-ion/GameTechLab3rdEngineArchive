@@ -147,6 +147,31 @@ void FLuaScriptManager::RegisterActorBindings_4(sol::state& Lua)
             return Movement ? Movement->StartDash(WorldDirection, Distance, Duration) : false;
         },
 
+        "StopCharacterMovementImmediately",
+        [](AActor& Actor)
+        {
+            if (UCharacterMovementComponent* Movement = Actor.GetComponentByClass<UCharacterMovementComponent>())
+            {
+                Movement->StopMovementImmediately();
+            }
+        },
+
+        "SetCharacterMovementInputBlocked",
+        [](AActor& Actor, bool bBlocked)
+        {
+            if (UCharacterMovementComponent* Movement = Actor.GetComponentByClass<UCharacterMovementComponent>())
+            {
+                Movement->SetMovementInputBlocked(bBlocked);
+            }
+        },
+
+        "IsCharacterMovementInputBlocked",
+        [](AActor& Actor) -> bool
+        {
+            UCharacterMovementComponent* Movement = Actor.GetComponentByClass<UCharacterMovementComponent>();
+            return Movement ? Movement->IsMovementInputBlocked() : false;
+        },
+
         "IsCharacterDashing",
         [](AActor& Actor) -> bool
         {
