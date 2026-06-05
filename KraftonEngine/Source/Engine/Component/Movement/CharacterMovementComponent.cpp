@@ -1,4 +1,4 @@
-#include "CharacterMovementComponent.h"
+﻿#include "CharacterMovementComponent.h"
 
 #include "Animation/AnimInstance.h"
 #include "Component/Shape/CapsuleComponent.h"
@@ -263,7 +263,7 @@ void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& Ro
 		Velocity.X * DeltaTime + RootMotionWorldXY.X,
 		Velocity.Y * DeltaTime + RootMotionWorldXY.Y,
 		0.0f);
-	SafeMoveUpdatedComponent(XYOffset);
+	MoveAlongFloor(XYOffset);
 
 	// Floor 잡혔는지 — 이동 직후 위치에서 다시 trace.
 	FHitResult Floor;
@@ -311,6 +311,106 @@ void UCharacterMovementComponent::TickFalling(float DeltaTime, const FVector& Ro
 	Updated->SetWorldLocation(LandLoc);
 	Velocity.Z = 0.0f;
 	SetMovementMode(EMovementMode::Walking);
+}
+
+bool UCharacterMovementComponent::IsWalkableFloorHit(const FHitResult& Hit) const
+{
+	constexpr float WalkableFloorZ = 0.7f;
+	const FVector& Normal = !Hit.ImpactNormal.IsNearlyZero() ? Hit.ImpactNormal : Hit.WorldNormal;
+	return Hit.bHit && Normal.Z >= WalkableFloorZ;
+}
+
+bool UCharacterMovementComponent::MoveAlongFloor(const FVector& Delta, FHitResult* OutHit)
+{
+	if (OutHit)
+	{
+		*OutHit = FHitResult();
+	}
+
+	if (Delta.Length() <= 1.e-6f)
+	{
+		return true;
+	}
+
+	USceneComponent* Updated = GetUpdatedComponent();
+	if (!Updated)
+	{
+		return false;
+	}
+
+	AActor* Owner = GetOwner();
+	UWorld* World = Owner ? Owner->GetWorld() : nullptr;
+	UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Updated);
+	if (!Owner || !World || !Capsule)
+	{
+		Updated->SetWorldLocation(Updated->GetWorldLocation() + Delta);
+		return true;
+	}
+
+	const float Radius = Capsule->GetScaledCapsuleRadius();
+	const float HalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	if (Radius <= 0.0f || HalfHeight <= 0.0f)
+	{
+		Updated->SetWorldLocation(Updated->GetWorldLocation() + Delta);
+		return true;
+	}
+
+	ECollisionChannel TraceChannel = ECollisionChannel::Pawn;
+	if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Updated))
+	{
+		TraceChannel = Primitive->GetCollisionObjectType();
+	}
+
+	const FVector Start = Updated->GetWorldLocation();
+	const float SweepLift = (std::max)(0.02f, (std::min)(0.05f, FloorProbeDistance * 0.5f));
+	const FVector SweepStart = Start + FVector(0.0f, 0.0f, SweepLift);
+	const FVector SweepEnd = SweepStart + Delta;
+	const FQuat Rot = Updated->GetWorldMatrix().ToQuat();
+	const FCollisionShape Shape = FCollisionShape::MakeCapsule(Radius, HalfHeight);
+
+	FHitResult Hit;
+	if (!World->PhysicsSweep(SweepStart, SweepEnd, Rot, Shape, Hit, TraceChannel, Owner))
+	{
+		Updated->SetWorldLocation(Start + Delta);
+		return true;
+	}
+
+	if (OutHit)
+	{
+		*OutHit = Hit;
+	}
+
+	if (IsWalkableFloorHit(Hit))
+	{
+		Updated->SetWorldLocation(Start + Delta);
+		return true;
+	}
+
+	const FVector MoveDir = Delta.Normalized();
+	const float SafeDistance = (std::max)(0.0f, Hit.Distance - SweepPullbackDistance);
+	Updated->SetWorldLocation(Start + MoveDir * SafeDistance);
+
+	if (UPrimitiveComponent* MovingPrimitive = Cast<UPrimitiveComponent>(Updated))
+	{
+		MovingPrimitive->NotifyComponentHit(
+			MovingPrimitive,
+			Hit.HitActor,
+			Hit.HitComponent,
+			FVector::ZeroVector,
+			Hit
+		);
+	}
+
+	if (!Hit.ImpactNormal.IsNearlyZero())
+	{
+		const float VelocityIntoSurface = Velocity.Dot(Hit.ImpactNormal);
+		if (VelocityIntoSurface < 0.0f)
+		{
+			Velocity = Velocity - Hit.ImpactNormal * VelocityIntoSurface;
+		}
+	}
+
+	return false;
 }
 
 bool UCharacterMovementComponent::SafeMoveUpdatedComponent(const FVector& Delta, FHitResult* OutHit)

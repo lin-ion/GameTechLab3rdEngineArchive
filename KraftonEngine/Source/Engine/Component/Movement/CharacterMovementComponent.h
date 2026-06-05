@@ -113,6 +113,8 @@ protected:
 
 	// capsule 중심에서 down raycast — bHit + WorldHitLocation 사용.
 	bool  TraceFloor(FHitResult& OutHit) const;
+	bool  MoveAlongFloor(const FVector& Delta, FHitResult* OutHit = nullptr);
+	bool  IsWalkableFloorHit(const FHitResult& Hit) const;
     bool  SafeMoveUpdatedComponent(const FVector& Delta, FHitResult* OutHit = nullptr);
 	float GetCapsuleHalfHeight() const;
 
