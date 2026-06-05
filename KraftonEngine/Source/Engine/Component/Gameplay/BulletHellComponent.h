@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Component/ActorComponent.h"
+#include "Core/Types/CollisionTypes.h"
 #include "Core/Types/EngineTypes.h"
 #include "Math/Transform.h"
 #include "Math/Vector.h"
@@ -61,6 +62,10 @@ struct FBulletDebugStats
 	uint32 TotalSpawned = 0;
 	uint32 TotalKilled = 0;
 	uint32 TotalExpired = 0;
+	uint32 CollisionQueryCount = 0;
+	uint32 CollisionHitCount = 0;
+	uint32 CollisionKilledCount = 0;
+	uint32 EraseKilledCount = 0;
 	int32 DebugDrawSelectedCount = 0;
 	int32 DebugDrawTruncatedCount = 0;
 	int32 RenderInstanceCount = 0;
@@ -116,7 +121,20 @@ protected:
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
 
 private:
+	enum class EBulletCollisionKillReason
+	{
+		None,
+		Collision,
+		Erase
+	};
+
 	void TickBullets(float DeltaTime);
+	EBulletCollisionKillReason CheckBulletCollision(const FBulletInstance& Bullet);
+	bool SweepBulletByChannel(const FBulletInstance& Bullet, ECollisionChannel TraceChannel, FHitResult& OutHit);
+	bool SweepBulletByObjectTypes(const FBulletInstance& Bullet, uint32 ObjectTypeMask, FHitResult& OutHit);
+	uint32 BuildCollisionObjectTypeMask() const;
+	uint32 BuildEraseObjectTypeMask() const;
+	void DrawCollisionSweepDebug(const FBulletInstance& Bullet, const FHitResult* Hit, bool bErase) const;
 	bool RemoveBulletAtIndex(int32 BulletIndex, bool bExpired);
 	UInstancedStaticMeshComponent* EnsureRenderComponent();
 	UInstancedStaticMeshComponent* GetRenderComponent() const;
@@ -182,6 +200,36 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Render Orientation Mode", Enum=EBulletHellRenderOrientationMode)
 	EBulletHellRenderOrientationMode RenderOrientationMode = EBulletHellRenderOrientationMode::Fixed;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Enable Collision")
+	bool bEnableCollision = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Kill On Blocking Collision")
+	bool bKillOnBlockingCollision = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Collision Trace Channel", Enum=ECollisionChannel)
+	ECollisionChannel CollisionTraceChannel = ECollisionChannel::Projectile;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Kill On World Static")
+	bool bKillOnWorldStatic = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Kill On World Dynamic")
+	bool bKillOnWorldDynamic = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Kill On Pawn")
+	bool bKillOnPawn = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Enable Erase Volumes")
+	bool bEnableEraseVolumes = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Erase On Trigger")
+	bool bEraseOnTrigger = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Erase On Projectile")
+	bool bEraseOnProjectile = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Draw Collision Debug")
+	bool bDrawCollisionDebug = false;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Log Debug Stats")
 	bool bLogDebugStats = false;

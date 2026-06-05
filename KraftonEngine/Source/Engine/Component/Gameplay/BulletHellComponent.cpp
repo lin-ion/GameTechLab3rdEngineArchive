@@ -368,15 +368,19 @@ void UBulletHellComponent::LogFirstBulletDebugInfo() const
 
 FString UBulletHellComponent::GetBulletDebugStatsText() const
 {
-	char Buffer[384];
+	char Buffer[512];
 	std::snprintf(
 		Buffer,
 		sizeof(Buffer),
-		"BulletHell stats: Active=%d Spawned=%u Killed=%u Expired=%u DebugDrawSelected=%d DebugDrawTruncated=%d RenderInstances=%d RendererSlots=%d RenderMismatch=%d",
+		"BulletHell stats: Active=%d Spawned=%u Killed=%u Expired=%u CollisionQueries=%u CollisionHits=%u CollisionKilled=%u EraseKilled=%u DebugDrawSelected=%d DebugDrawTruncated=%d RenderInstances=%d RendererSlots=%d RenderMismatch=%d",
 		DebugStats.ActiveBulletCount,
 		DebugStats.TotalSpawned,
 		DebugStats.TotalKilled,
 		DebugStats.TotalExpired,
+		DebugStats.CollisionQueryCount,
+		DebugStats.CollisionHitCount,
+		DebugStats.CollisionKilledCount,
+		DebugStats.EraseKilledCount,
 		DebugStats.DebugDrawSelectedCount,
 		DebugStats.DebugDrawTruncatedCount,
 		DebugStats.RenderInstanceCount,
@@ -400,6 +404,21 @@ void UBulletHellComponent::TickBullets(float DeltaTime)
 		Bullet.Position += Bullet.Velocity * DeltaTime;
 		Bullet.Age += DeltaTime;
 
+		const EBulletCollisionKillReason CollisionKillReason = CheckBulletCollision(Bullet);
+		if (CollisionKillReason != EBulletCollisionKillReason::None)
+		{
+			if (CollisionKillReason == EBulletCollisionKillReason::Erase)
+			{
+				++DebugStats.EraseKilledCount;
+			}
+			else
+			{
+				++DebugStats.CollisionKilledCount;
+			}
+			RemoveBulletAtIndex(Index, false);
+			continue;
+		}
+
 		if (Bullet.Lifetime >= 0.0f && Bullet.Age >= Bullet.Lifetime)
 		{
 			RemoveBulletAtIndex(Index, true);
@@ -410,6 +429,158 @@ void UBulletHellComponent::TickBullets(float DeltaTime)
 	}
 
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
+}
+
+UBulletHellComponent::EBulletCollisionKillReason UBulletHellComponent::CheckBulletCollision(const FBulletInstance& Bullet)
+{
+	if (!bEnableCollision)
+	{
+		return EBulletCollisionKillReason::None;
+	}
+
+	FHitResult Hit;
+	const uint32 EraseObjectTypeMask = BuildEraseObjectTypeMask();
+	if (bEnableEraseVolumes && EraseObjectTypeMask != 0 && SweepBulletByObjectTypes(Bullet, EraseObjectTypeMask, Hit))
+	{
+		return EBulletCollisionKillReason::Erase;
+	}
+
+	const uint32 CollisionObjectTypeMask = BuildCollisionObjectTypeMask();
+	if (CollisionObjectTypeMask != 0 && SweepBulletByObjectTypes(Bullet, CollisionObjectTypeMask, Hit))
+	{
+		return EBulletCollisionKillReason::Collision;
+	}
+
+	if (bKillOnBlockingCollision && SweepBulletByChannel(Bullet, CollisionTraceChannel, Hit))
+	{
+		return EBulletCollisionKillReason::Collision;
+	}
+
+	return EBulletCollisionKillReason::None;
+}
+
+bool UBulletHellComponent::SweepBulletByChannel(
+	const FBulletInstance& Bullet,
+	ECollisionChannel TraceChannel,
+	FHitResult& OutHit)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	++DebugStats.CollisionQueryCount;
+	const FCollisionShape SweepShape = FCollisionShape::MakeSphere((std::max)(0.01f, Bullet.Radius));
+	const bool bHit = World->PhysicsSweep(
+		Bullet.PreviousPosition,
+		Bullet.Position,
+		FQuat::Identity,
+		SweepShape,
+		OutHit,
+		TraceChannel,
+		GetOwner());
+
+	if (bHit)
+	{
+		++DebugStats.CollisionHitCount;
+	}
+
+	DrawCollisionSweepDebug(Bullet, bHit ? &OutHit : nullptr, false);
+	return bHit;
+}
+
+bool UBulletHellComponent::SweepBulletByObjectTypes(
+	const FBulletInstance& Bullet,
+	uint32 ObjectTypeMask,
+	FHitResult& OutHit)
+{
+	if (ObjectTypeMask == 0)
+	{
+		return false;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	++DebugStats.CollisionQueryCount;
+	const FCollisionShape SweepShape = FCollisionShape::MakeSphere((std::max)(0.01f, Bullet.Radius));
+	const bool bHit = World->PhysicsSweepByObjectTypes(
+		Bullet.PreviousPosition,
+		Bullet.Position,
+		FQuat::Identity,
+		SweepShape,
+		OutHit,
+		ObjectTypeMask,
+		GetOwner());
+
+	if (bHit)
+	{
+		++DebugStats.CollisionHitCount;
+	}
+
+	DrawCollisionSweepDebug(Bullet, bHit ? &OutHit : nullptr, ObjectTypeMask == BuildEraseObjectTypeMask());
+	return bHit;
+}
+
+uint32 UBulletHellComponent::BuildCollisionObjectTypeMask() const
+{
+	uint32 Mask = 0;
+	if (bKillOnWorldStatic)
+	{
+		Mask |= ObjectTypeBit(ECollisionChannel::WorldStatic);
+	}
+	if (bKillOnWorldDynamic)
+	{
+		Mask |= ObjectTypeBit(ECollisionChannel::WorldDynamic);
+	}
+	if (bKillOnPawn)
+	{
+		Mask |= ObjectTypeBit(ECollisionChannel::Pawn);
+	}
+	return Mask;
+}
+
+uint32 UBulletHellComponent::BuildEraseObjectTypeMask() const
+{
+	uint32 Mask = 0;
+	if (bEraseOnTrigger)
+	{
+		Mask |= ObjectTypeBit(ECollisionChannel::Trigger);
+	}
+	if (bEraseOnProjectile)
+	{
+		Mask |= ObjectTypeBit(ECollisionChannel::Projectile);
+	}
+	return Mask;
+}
+
+void UBulletHellComponent::DrawCollisionSweepDebug(
+	const FBulletInstance& Bullet,
+	const FHitResult* Hit,
+	bool bErase) const
+{
+	if (!bDrawCollisionDebug)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FColor MissColor = bErase ? FColor(120, 120, 255) : FColor::Gray();
+	const FColor HitColor = bErase ? FColor(255, 0, 255) : FColor::Red();
+	DrawDebugLine(World, Bullet.PreviousPosition, Bullet.Position, Hit ? HitColor : MissColor, 0.0f);
+	if (Hit)
+	{
+		DrawDebugSphere(World, Hit->WorldHitLocation, (std::max)(Bullet.Radius, 1.0f), 12, HitColor, 0.0f);
+	}
 }
 
 bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
