@@ -33,6 +33,14 @@ enum class EBulletHellRenderOrientationMode : int32
 };
 
 UENUM()
+enum class EBulletHellDebugArchetypeMode : int32
+{
+	Primary,
+	Secondary,
+	Alternating
+};
+
+UENUM()
 enum class EBulletBehaviorType : int32
 {
 	Linear,
@@ -49,7 +57,27 @@ enum class EBulletPhase : int32
 	Complete
 };
 
+class AActor;
 class UInstancedStaticMeshComponent;
+
+struct FBulletArchetype
+{
+	FString MeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+	FString MaterialPath = "None";
+	float Radius = 1.0f;
+	float Speed = 1.0f;
+	float Lifetime = 1.0f;
+	float RenderScale = 1.0f;
+	EBulletBehaviorType BehaviorType = EBulletBehaviorType::Linear;
+};
+
+struct FBulletRenderSlot
+{
+	FString MeshPath;
+	FString MaterialPath;
+	TWeakObjectPtr<UInstancedStaticMeshComponent> Renderer;
+	TArray<int32> BulletIndices;
+};
 
 struct FBulletHandle
 {
@@ -69,6 +97,9 @@ struct FBulletInstance
 	float Radius = 1.0f;
 	float Age = 0.0f;
 	float Lifetime = 1.0f;
+	int32 ArchetypeIndex = 0;
+	int32 RenderSlotIndex = -1;
+	float RenderScale = 1.0f;
 	EBulletBehaviorType BehaviorType = EBulletBehaviorType::Linear;
 	EBulletPhase BehaviorPhase = EBulletPhase::Active;
 	FVector HomingTargetPosition = FVector::ZeroVector;
@@ -98,10 +129,14 @@ struct FBulletDebugStats
 	int32 ActiveHomingCount = 0;
 	int32 ActiveColdLaunchCount = 0;
 	int32 ActiveTimedVelocityChangeCount = 0;
+	int32 ActivePrimaryArchetypeCount = 0;
+	int32 ActiveSecondaryArchetypeCount = 0;
 	int32 DebugDrawSelectedCount = 0;
 	int32 DebugDrawTruncatedCount = 0;
 	int32 RenderInstanceCount = 0;
 	int32 RendererSlotCount = 0;
+	int32 RendererSlot0InstanceCount = 0;
+	int32 RendererSlot1InstanceCount = 0;
 	int32 RenderMismatchCount = 0;
 };
 
@@ -166,9 +201,13 @@ private:
 		const FVector& Velocity,
 		float Radius,
 		float Lifetime,
+		int32 ArchetypeIndex,
+		const FBulletArchetype& Archetype,
 		EBulletBehaviorType BehaviorType,
 		const FVector& DebugDirection);
-	void ConfigureDebugBulletBehavior(FBulletInstance& Bullet, const FVector& Direction) const;
+	FBulletArchetype BuildDebugArchetype(int32 ArchetypeIndex) const;
+	int32 ResolveDebugArchetypeIndex(int32 SpawnIndex) const;
+	void ConfigureDebugBulletBehavior(FBulletInstance& Bullet, const FVector& Direction, const FBulletArchetype& Archetype) const;
 	void UpdateBulletBehavior(FBulletInstance& Bullet, float DeltaTime);
 	void UpdateHomingBehavior(FBulletInstance& Bullet, float DeltaTime);
 	void UpdateBehaviorDebugStats();
@@ -181,7 +220,11 @@ private:
 	bool RemoveBulletAtIndex(int32 BulletIndex, bool bExpired);
 	UInstancedStaticMeshComponent* EnsureRenderComponent();
 	UInstancedStaticMeshComponent* GetRenderComponent() const;
+	int32 FindOrCreateRenderSlot(const FBulletArchetype& Archetype);
+	UInstancedStaticMeshComponent* EnsureRenderSlotComponent(int32 SlotIndex);
+	UInstancedStaticMeshComponent* GetRenderSlotComponent(int32 SlotIndex) const;
 	void ApplyRenderAssets();
+	void ApplyRenderSlotAssets(int32 SlotIndex);
 	void RebuildRendererFromBullets();
 	void SyncRenderInstancesBulk();
 	void ClearRenderer();
@@ -228,6 +271,9 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Behavior Type", Enum=EBulletBehaviorType)
 	EBulletBehaviorType DebugBehaviorType = EBulletBehaviorType::Linear;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Archetype Mode", Enum=EBulletHellDebugArchetypeMode)
+	EBulletHellDebugArchetypeMode DebugArchetypeMode = EBulletHellDebugArchetypeMode::Primary;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Target Forward Offset", Min=-100000.0f, Max=100000.0f, Speed=1.0f)
 	float DebugHomingTargetForwardOffset = 900.0f;
@@ -276,6 +322,27 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Render Orientation Mode", Enum=EBulletHellRenderOrientationMode)
 	EBulletHellRenderOrientationMode RenderOrientationMode = EBulletHellRenderOrientationMode::Fixed;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Archetype Secondary", DisplayName="Secondary Mesh Path", AssetType="StaticMesh")
+	FString SecondaryMeshPath = "Content/Data/BasicShape/Cube.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Archetype Secondary", DisplayName="Secondary Material Path", AssetType="Material")
+	FString SecondaryMaterialPath = "None";
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Archetype Secondary", DisplayName="Secondary Radius", Min=0.01f, Max=1000.0f, Speed=0.1f)
+	float SecondaryRadius = 8.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Archetype Secondary", DisplayName="Secondary Speed", Min=0.0f, Max=100000.0f, Speed=1.0f)
+	float SecondarySpeed = 450.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Archetype Secondary", DisplayName="Secondary Lifetime", Min=0.0f, Max=600.0f, Speed=0.1f)
+	float SecondaryLifetime = 4.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Archetype Secondary", DisplayName="Secondary Render Scale", Min=0.01f, Max=1000.0f, Speed=0.1f)
+	float SecondaryRenderScale = 0.75f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Archetype Secondary", DisplayName="Secondary Behavior Type", Enum=EBulletBehaviorType)
+	EBulletBehaviorType SecondaryBehaviorType = EBulletBehaviorType::Linear;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Enable Collision")
 	bool bEnableCollision = true;
@@ -332,6 +399,7 @@ private:
 	int32 DebugRebuildRendererRequest = 0;
 
 	TArray<FBulletInstance> Bullets;
+	TArray<FBulletRenderSlot> RenderSlots;
 	TMap<uint32, int32> BulletIndexById;
 	TWeakObjectPtr<UInstancedStaticMeshComponent> RenderComponent;
 	uint32 NextBulletId = 1;

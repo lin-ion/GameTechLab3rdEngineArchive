@@ -120,7 +120,11 @@ void UBulletHellComponent::PostEditProperty(const char* PropertyName)
 	else if (IsProperty(PropertyName, "RendererMeshPath", "Renderer Mesh Path") ||
 		IsProperty(PropertyName, "RendererMaterialPath", "Renderer Material Path") ||
 		IsProperty(PropertyName, "bEnableRendering", "Enable Rendering") ||
-		IsProperty(PropertyName, "bAutoCreateRenderer", "Auto Create Renderer"))
+		IsProperty(PropertyName, "bAutoCreateRenderer", "Auto Create Renderer") ||
+		IsProperty(PropertyName, "RenderScale", "Render Scale") ||
+		IsProperty(PropertyName, "SecondaryMeshPath", "Secondary Mesh Path") ||
+		IsProperty(PropertyName, "SecondaryMaterialPath", "Secondary Material Path") ||
+		IsProperty(PropertyName, "SecondaryRenderScale", "Secondary Render Scale"))
 	{
 		if (bEnableRendering)
 		{
@@ -167,6 +171,8 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 		Velocity,
 		Radius,
 		Lifetime,
+		0,
+		BuildDebugArchetype(0),
 		EBulletBehaviorType::Linear,
 		SafeDirection(Velocity, ResolveDebugSpawnForward()));
 }
@@ -176,6 +182,8 @@ FBulletHandle UBulletHellComponent::SpawnBulletInternal(
 	const FVector& Velocity,
 	float Radius,
 	float Lifetime,
+	int32 ArchetypeIndex,
+	const FBulletArchetype& Archetype,
 	EBulletBehaviorType BehaviorType,
 	const FVector& DebugDirection)
 {
@@ -188,11 +196,14 @@ FBulletHandle UBulletHellComponent::SpawnBulletInternal(
 	Bullet.Radius = (std::max)(0.01f, Radius);
 	Bullet.Age = 0.0f;
 	Bullet.Lifetime = Lifetime;
+	Bullet.ArchetypeIndex = ArchetypeIndex;
+	Bullet.RenderSlotIndex = -1;
+	Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
 	Bullet.BehaviorType = BehaviorType;
 	Bullet.BehaviorPhase = BehaviorType == EBulletBehaviorType::ColdLaunch ? EBulletPhase::Waiting : EBulletPhase::Active;
 	Bullet.RenderInstanceIndex = -1;
 	Bullet.bAlive = true;
-	ConfigureDebugBulletBehavior(Bullet, DebugDirection);
+	ConfigureDebugBulletBehavior(Bullet, DebugDirection, Archetype);
 
 	NextBulletId = AdvanceNonZero(NextBulletId);
 	NextBulletGeneration = AdvanceNonZero(NextBulletGeneration);
@@ -200,9 +211,16 @@ FBulletHandle UBulletHellComponent::SpawnBulletInternal(
 	const int32 NewIndex = static_cast<int32>(Bullets.size());
 	BulletIndexById[Bullet.Id] = NewIndex;
 	Bullets.push_back(Bullet);
-	if (UInstancedStaticMeshComponent* Renderer = EnsureRenderComponent())
+	const int32 RenderSlotIndex = FindOrCreateRenderSlot(Archetype);
+	Bullets.back().RenderSlotIndex = RenderSlotIndex;
+	if (RenderSlotIndex >= 0)
 	{
-		Bullets.back().RenderInstanceIndex = Renderer->AddInstance(MakeBulletRenderTransform(Bullets.back()));
+		FBulletRenderSlot& Slot = RenderSlots[RenderSlotIndex];
+		if (UInstancedStaticMeshComponent* Renderer = EnsureRenderSlotComponent(RenderSlotIndex))
+		{
+			Bullets.back().RenderInstanceIndex = Renderer->AddInstance(MakeBulletRenderTransform(Bullets.back()));
+			Slot.BulletIndices.push_back(NewIndex);
+		}
 	}
 
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
@@ -356,8 +374,10 @@ int32 UBulletHellComponent::SpawnDebugPreset()
 		}
 		}
 
-		FVector Velocity = Direction * DebugSpawnSpeed;
-		if (DebugBehaviorType == EBulletBehaviorType::ColdLaunch)
+		const int32 ArchetypeIndex = ResolveDebugArchetypeIndex(Index);
+		const FBulletArchetype Archetype = BuildDebugArchetype(ArchetypeIndex);
+		FVector Velocity = Direction * Archetype.Speed;
+		if (Archetype.BehaviorType == EBulletBehaviorType::ColdLaunch)
 		{
 			Velocity = FVector::ZeroVector;
 		}
@@ -365,16 +385,60 @@ int32 UBulletHellComponent::SpawnDebugPreset()
 		SpawnBulletInternal(
 			Position,
 			Velocity,
-			DebugSpawnRadius,
-			DebugSpawnLifetime,
-			DebugBehaviorType,
+			Archetype.Radius,
+			Archetype.Lifetime,
+			ArchetypeIndex,
+			Archetype,
+			Archetype.BehaviorType,
 			Direction);
 	}
 
 	return SafeCount;
 }
 
-void UBulletHellComponent::ConfigureDebugBulletBehavior(FBulletInstance& Bullet, const FVector& Direction) const
+FBulletArchetype UBulletHellComponent::BuildDebugArchetype(int32 ArchetypeIndex) const
+{
+	FBulletArchetype Archetype;
+	if (ArchetypeIndex == 1)
+	{
+		Archetype.MeshPath = SecondaryMeshPath;
+		Archetype.MaterialPath = SecondaryMaterialPath;
+		Archetype.Radius = (std::max)(0.01f, SecondaryRadius);
+		Archetype.Speed = (std::max)(0.0f, SecondarySpeed);
+		Archetype.Lifetime = SecondaryLifetime;
+		Archetype.RenderScale = (std::max)(0.01f, SecondaryRenderScale);
+		Archetype.BehaviorType = SecondaryBehaviorType;
+		return Archetype;
+	}
+
+	Archetype.MeshPath = RendererMeshPath;
+	Archetype.MaterialPath = RendererMaterialPath;
+	Archetype.Radius = (std::max)(0.01f, DebugSpawnRadius);
+	Archetype.Speed = (std::max)(0.0f, DebugSpawnSpeed);
+	Archetype.Lifetime = DebugSpawnLifetime;
+	Archetype.RenderScale = (std::max)(0.01f, RenderScale);
+	Archetype.BehaviorType = DebugBehaviorType;
+	return Archetype;
+}
+
+int32 UBulletHellComponent::ResolveDebugArchetypeIndex(int32 SpawnIndex) const
+{
+	switch (DebugArchetypeMode)
+	{
+	case EBulletHellDebugArchetypeMode::Secondary:
+		return 1;
+	case EBulletHellDebugArchetypeMode::Alternating:
+		return (SpawnIndex % 2) == 0 ? 0 : 1;
+	case EBulletHellDebugArchetypeMode::Primary:
+	default:
+		return 0;
+	}
+}
+
+void UBulletHellComponent::ConfigureDebugBulletBehavior(
+	FBulletInstance& Bullet,
+	const FVector& Direction,
+	const FBulletArchetype& Archetype) const
 {
 	const FVector SafeForward = SafeDirection(Direction, ResolveDebugSpawnForward());
 	const FVector Right = ResolveDebugSpawnRight();
@@ -394,7 +458,7 @@ void UBulletHellComponent::ConfigureDebugBulletBehavior(FBulletInstance& Bullet,
 	case EBulletBehaviorType::ColdLaunch:
 		Bullet.BehaviorPhase = EBulletPhase::Waiting;
 		Bullet.ColdLaunchDelay = (std::max)(0.0f, DebugColdLaunchDelay);
-		Bullet.ColdLaunchVelocity = SafeForward * (std::max)(0.0f, DebugColdLaunchSpeed);
+		Bullet.ColdLaunchVelocity = SafeForward * (std::max)(0.0f, DebugColdLaunchSpeed > 0.0f ? DebugColdLaunchSpeed : Archetype.Speed);
 		break;
 	case EBulletBehaviorType::TimedVelocityChange:
 		Bullet.TimedActivationTime = (std::max)(0.0f, DebugTimedActivationTime);
@@ -447,7 +511,7 @@ FString UBulletHellComponent::GetBulletDebugStatsText() const
 	std::snprintf(
 		Buffer,
 		sizeof(Buffer),
-		"BulletHell stats: Active=%d Spawned=%u Killed=%u Expired=%u CollisionQueries=%u CollisionHits=%u CollisionKilled=%u EraseKilled=%u BehaviorTransitions=%u BehaviorActive(L/H/C/T)=%d/%d/%d/%d DebugDrawSelected=%d DebugDrawTruncated=%d RenderInstances=%d RendererSlots=%d RenderMismatch=%d",
+		"BulletHell stats: Active=%d Spawned=%u Killed=%u Expired=%u CollisionQueries=%u CollisionHits=%u CollisionKilled=%u EraseKilled=%u BehaviorTransitions=%u BehaviorActive(L/H/C/T)=%d/%d/%d/%d ArchetypeActive(P/S)=%d/%d DebugDrawSelected=%d DebugDrawTruncated=%d RenderInstances=%d RendererSlots=%d SlotInstances(0/1)=%d/%d RenderMismatch=%d",
 		DebugStats.ActiveBulletCount,
 		DebugStats.TotalSpawned,
 		DebugStats.TotalKilled,
@@ -461,10 +525,14 @@ FString UBulletHellComponent::GetBulletDebugStatsText() const
 		DebugStats.ActiveHomingCount,
 		DebugStats.ActiveColdLaunchCount,
 		DebugStats.ActiveTimedVelocityChangeCount,
+		DebugStats.ActivePrimaryArchetypeCount,
+		DebugStats.ActiveSecondaryArchetypeCount,
 		DebugStats.DebugDrawSelectedCount,
 		DebugStats.DebugDrawTruncatedCount,
 		DebugStats.RenderInstanceCount,
 		DebugStats.RendererSlotCount,
+		DebugStats.RendererSlot0InstanceCount,
+		DebugStats.RendererSlot1InstanceCount,
 		DebugStats.RenderMismatchCount);
 	return FString(Buffer);
 }
@@ -587,9 +655,20 @@ void UBulletHellComponent::UpdateBehaviorDebugStats()
 	DebugStats.ActiveHomingCount = 0;
 	DebugStats.ActiveColdLaunchCount = 0;
 	DebugStats.ActiveTimedVelocityChangeCount = 0;
+	DebugStats.ActivePrimaryArchetypeCount = 0;
+	DebugStats.ActiveSecondaryArchetypeCount = 0;
 
 	for (const FBulletInstance& Bullet : Bullets)
 	{
+		if (Bullet.ArchetypeIndex == 1)
+		{
+			++DebugStats.ActiveSecondaryArchetypeCount;
+		}
+		else
+		{
+			++DebugStats.ActivePrimaryArchetypeCount;
+		}
+
 		switch (Bullet.BehaviorType)
 		{
 		case EBulletBehaviorType::Homing:
@@ -770,20 +849,43 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 
 	const int32 LastIndex = static_cast<int32>(Bullets.size()) - 1;
 	const uint32 RemovedId = Bullets[BulletIndex].Id;
+	const int32 RemovedRenderSlotIndex = Bullets[BulletIndex].RenderSlotIndex;
 	const int32 RemovedRenderIndex = Bullets[BulletIndex].RenderInstanceIndex;
-	int32 MovedRenderToIndex = -1;
-	if (UInstancedStaticMeshComponent* Renderer = GetRenderComponent())
+
+	if (RemovedRenderSlotIndex >= 0 && RemovedRenderSlotIndex < static_cast<int32>(RenderSlots.size()))
 	{
-		MovedRenderToIndex = Renderer->RemoveInstanceSwap(RemovedRenderIndex);
+		FBulletRenderSlot& Slot = RenderSlots[RemovedRenderSlotIndex];
+		if (RemovedRenderIndex >= 0 && RemovedRenderIndex < static_cast<int32>(Slot.BulletIndices.size()))
+		{
+			const int32 LastRenderIndex = static_cast<int32>(Slot.BulletIndices.size()) - 1;
+			if (RemovedRenderIndex != LastRenderIndex)
+			{
+				const int32 MovedBulletIndex = Slot.BulletIndices[LastRenderIndex];
+				Slot.BulletIndices[RemovedRenderIndex] = MovedBulletIndex;
+				if (MovedBulletIndex >= 0 && MovedBulletIndex < static_cast<int32>(Bullets.size()))
+				{
+					Bullets[MovedBulletIndex].RenderInstanceIndex = RemovedRenderIndex;
+				}
+			}
+			Slot.BulletIndices.pop_back();
+		}
+
+		if (UInstancedStaticMeshComponent* Renderer = GetRenderSlotComponent(RemovedRenderSlotIndex))
+		{
+			Renderer->RemoveInstanceSwap(RemovedRenderIndex);
+		}
 	}
 	BulletIndexById.erase(RemovedId);
 
 	if (BulletIndex != LastIndex)
 	{
 		Bullets[BulletIndex] = Bullets[LastIndex];
-		if (MovedRenderToIndex >= 0)
+		if (Bullets[BulletIndex].RenderSlotIndex >= 0 &&
+			Bullets[BulletIndex].RenderSlotIndex < static_cast<int32>(RenderSlots.size()) &&
+			Bullets[BulletIndex].RenderInstanceIndex >= 0 &&
+			Bullets[BulletIndex].RenderInstanceIndex < static_cast<int32>(RenderSlots[Bullets[BulletIndex].RenderSlotIndex].BulletIndices.size()))
 		{
-			Bullets[BulletIndex].RenderInstanceIndex = MovedRenderToIndex;
+			RenderSlots[Bullets[BulletIndex].RenderSlotIndex].BulletIndices[Bullets[BulletIndex].RenderInstanceIndex] = BulletIndex;
 		}
 		BulletIndexById[Bullets[BulletIndex].Id] = BulletIndex;
 	}
@@ -806,12 +908,49 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 
 UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderComponent()
 {
+	const int32 SlotIndex = FindOrCreateRenderSlot(BuildDebugArchetype(0));
+	return SlotIndex >= 0 ? EnsureRenderSlotComponent(SlotIndex) : nullptr;
+}
+
+UInstancedStaticMeshComponent* UBulletHellComponent::GetRenderComponent() const
+{
+	return GetRenderSlotComponent(0);
+}
+
+int32 UBulletHellComponent::FindOrCreateRenderSlot(const FBulletArchetype& Archetype)
+{
+	for (int32 SlotIndex = 0; SlotIndex < static_cast<int32>(RenderSlots.size()); ++SlotIndex)
+	{
+		const FBulletRenderSlot& Slot = RenderSlots[SlotIndex];
+		if (Slot.MeshPath == Archetype.MeshPath && Slot.MaterialPath == Archetype.MaterialPath)
+		{
+			return SlotIndex;
+		}
+	}
+
+	FBulletRenderSlot NewSlot;
+	NewSlot.MeshPath = Archetype.MeshPath;
+	NewSlot.MaterialPath = Archetype.MaterialPath;
+	RenderSlots.push_back(NewSlot);
+	const int32 NewSlotIndex = static_cast<int32>(RenderSlots.size()) - 1;
+	EnsureRenderSlotComponent(NewSlotIndex);
+	return NewSlotIndex;
+}
+
+UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderSlotComponent(int32 SlotIndex)
+{
 	if (!bEnableRendering)
 	{
 		return nullptr;
 	}
 
-	UInstancedStaticMeshComponent* Renderer = RenderComponent.Get();
+	if (SlotIndex < 0 || SlotIndex >= static_cast<int32>(RenderSlots.size()))
+	{
+		return nullptr;
+	}
+
+	FBulletRenderSlot& Slot = RenderSlots[SlotIndex];
+	UInstancedStaticMeshComponent* Renderer = Slot.Renderer.Get();
 	if (Renderer && Renderer->GetOwner() == GetOwner())
 	{
 		return Renderer;
@@ -831,45 +970,65 @@ UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderComponent()
 		return nullptr;
 	}
 
-	Renderer->SetFName(FName("BulletHellRenderer"));
+	char NameBuffer[64];
+	std::snprintf(NameBuffer, sizeof(NameBuffer), "BulletHellRenderer%d", SlotIndex);
+	Renderer->SetFName(FName(NameBuffer));
 	if (USceneComponent* RootComponent = OwnerActor->GetRootComponent())
 	{
 		Renderer->AttachToComponent(RootComponent);
 	}
 
-	RenderComponent = Renderer;
-	ApplyRenderAssets();
+	Slot.Renderer = Renderer;
+	if (SlotIndex == 0)
+	{
+		RenderComponent = Renderer;
+	}
+	ApplyRenderSlotAssets(SlotIndex);
 	UpdateRenderDebugStats();
 	return Renderer;
 }
 
-UInstancedStaticMeshComponent* UBulletHellComponent::GetRenderComponent() const
+UInstancedStaticMeshComponent* UBulletHellComponent::GetRenderSlotComponent(int32 SlotIndex) const
 {
 	if (!bEnableRendering)
 	{
 		return nullptr;
 	}
 
-	UInstancedStaticMeshComponent* Renderer = RenderComponent.Get();
+	if (SlotIndex < 0 || SlotIndex >= static_cast<int32>(RenderSlots.size()))
+	{
+		return nullptr;
+	}
+
+	UInstancedStaticMeshComponent* Renderer = RenderSlots[SlotIndex].Renderer.Get();
 	return Renderer && Renderer->GetOwner() == GetOwner() ? Renderer : nullptr;
 }
 
 void UBulletHellComponent::ApplyRenderAssets()
 {
-	UInstancedStaticMeshComponent* Renderer = GetRenderComponent();
+	for (int32 SlotIndex = 0; SlotIndex < static_cast<int32>(RenderSlots.size()); ++SlotIndex)
+	{
+		ApplyRenderSlotAssets(SlotIndex);
+	}
+}
+
+void UBulletHellComponent::ApplyRenderSlotAssets(int32 SlotIndex)
+{
+	UInstancedStaticMeshComponent* Renderer = GetRenderSlotComponent(SlotIndex);
 	if (!Renderer)
 	{
 		return;
 	}
 
-	if (!RendererMeshPath.empty() && RendererMeshPath != "None")
+	const FBulletRenderSlot& Slot = RenderSlots[SlotIndex];
+	if (!Slot.MeshPath.empty() && Slot.MeshPath != "None")
 	{
-		Renderer->SetStaticMeshByPath(RendererMeshPath);
+		Renderer->SetStaticMeshByPath(Slot.MeshPath);
 	}
 
-	if (!RendererMaterialPath.empty() && RendererMaterialPath != "None" && Renderer->GetMaterialSlotCount() > 0)
+	if (!Slot.MaterialPath.empty() && Slot.MaterialPath != "None" && Renderer->GetMaterialSlotCount() > 0)
 	{
-		Renderer->SetMaterialByPath(0, RendererMaterialPath);
+		Renderer->SetMaterialByPath(0, Slot.MaterialPath);
 	}
 }
 
@@ -881,26 +1040,36 @@ void UBulletHellComponent::RebuildRendererFromBullets()
 		return;
 	}
 
-	UInstancedStaticMeshComponent* Renderer = EnsureRenderComponent();
-	if (!Renderer)
+	for (FBulletRenderSlot& Slot : RenderSlots)
 	{
-		for (FBulletInstance& Bullet : Bullets)
+		Slot.BulletIndices.clear();
+		if (UInstancedStaticMeshComponent* Renderer = Slot.Renderer.Get())
 		{
-			Bullet.RenderInstanceIndex = -1;
+			Renderer->ClearInstances();
 		}
-		UpdateRenderDebugStats();
-		return;
 	}
 
-	TArray<FTransform> Transforms;
-	Transforms.reserve(Bullets.size());
 	for (int32 Index = 0; Index < static_cast<int32>(Bullets.size()); ++Index)
 	{
-		Bullets[Index].RenderInstanceIndex = Index;
-		Transforms.push_back(MakeBulletRenderTransform(Bullets[Index]));
+		FBulletInstance& Bullet = Bullets[Index];
+		const FBulletArchetype Archetype = BuildDebugArchetype(Bullet.ArchetypeIndex);
+		const int32 SlotIndex = FindOrCreateRenderSlot(Archetype);
+		Bullet.RenderSlotIndex = SlotIndex;
+		Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
+		Bullet.RenderInstanceIndex = -1;
+		if (SlotIndex < 0)
+		{
+			continue;
+		}
+
+		FBulletRenderSlot& Slot = RenderSlots[SlotIndex];
+		if (UInstancedStaticMeshComponent* Renderer = EnsureRenderSlotComponent(SlotIndex))
+		{
+			Bullet.RenderInstanceIndex = Renderer->AddInstance(MakeBulletRenderTransform(Bullet));
+			Slot.BulletIndices.push_back(Index);
+		}
 	}
 
-	Renderer->SetInstances(std::move(Transforms));
 	UpdateRenderDebugStats();
 }
 
@@ -912,34 +1081,50 @@ void UBulletHellComponent::SyncRenderInstancesBulk()
 		return;
 	}
 
-	UInstancedStaticMeshComponent* Renderer = EnsureRenderComponent();
-	if (!Renderer)
+	for (int32 SlotIndex = 0; SlotIndex < static_cast<int32>(RenderSlots.size()); ++SlotIndex)
 	{
-		UpdateRenderDebugStats();
-		return;
+		FBulletRenderSlot& Slot = RenderSlots[SlotIndex];
+		UInstancedStaticMeshComponent* Renderer = EnsureRenderSlotComponent(SlotIndex);
+		if (!Renderer)
+		{
+			continue;
+		}
+
+		TArray<FTransform> Transforms;
+		Transforms.reserve(Slot.BulletIndices.size());
+		for (int32 RenderIndex = 0; RenderIndex < static_cast<int32>(Slot.BulletIndices.size()); ++RenderIndex)
+		{
+			const int32 BulletIndex = Slot.BulletIndices[RenderIndex];
+			if (BulletIndex < 0 || BulletIndex >= static_cast<int32>(Bullets.size()))
+			{
+				continue;
+			}
+
+			Bullets[BulletIndex].RenderSlotIndex = SlotIndex;
+			Bullets[BulletIndex].RenderInstanceIndex = RenderIndex;
+			Transforms.push_back(MakeBulletRenderTransform(Bullets[BulletIndex]));
+		}
+
+		Renderer->SetInstances(std::move(Transforms));
 	}
 
-	TArray<FTransform> Transforms;
-	Transforms.reserve(Bullets.size());
-	for (int32 Index = 0; Index < static_cast<int32>(Bullets.size()); ++Index)
-	{
-		Bullets[Index].RenderInstanceIndex = Index;
-		Transforms.push_back(MakeBulletRenderTransform(Bullets[Index]));
-	}
-
-	Renderer->SetInstances(std::move(Transforms));
 	UpdateRenderDebugStats();
 }
 
 void UBulletHellComponent::ClearRenderer()
 {
-	if (UInstancedStaticMeshComponent* Renderer = RenderComponent.Get())
+	for (FBulletRenderSlot& Slot : RenderSlots)
 	{
-		Renderer->ClearInstances();
+		Slot.BulletIndices.clear();
+		if (UInstancedStaticMeshComponent* Renderer = Slot.Renderer.Get())
+		{
+			Renderer->ClearInstances();
+		}
 	}
 
 	for (FBulletInstance& Bullet : Bullets)
 	{
+		Bullet.RenderSlotIndex = -1;
 		Bullet.RenderInstanceIndex = -1;
 	}
 	UpdateRenderDebugStats();
@@ -949,7 +1134,7 @@ FTransform UBulletHellComponent::MakeBulletRenderTransform(const FBulletInstance
 {
 	FVector RenderPosition = Bullet.Position;
 	FVector RenderVelocity = Bullet.Velocity;
-	if (const UInstancedStaticMeshComponent* Renderer = GetRenderComponent())
+	if (const UInstancedStaticMeshComponent* Renderer = GetRenderSlotComponent(Bullet.RenderSlotIndex))
 	{
 		const FMatrix RendererWorldInverse = Renderer->GetWorldInverseMatrix();
 		RenderPosition = RendererWorldInverse.TransformPositionWithW(Bullet.Position);
@@ -963,7 +1148,7 @@ FTransform UBulletHellComponent::MakeBulletRenderTransform(const FBulletInstance
 		Rotation = FRotator(0.0f, YawDegrees, 0.0f);
 	}
 
-	const float Scale = (std::max)(0.01f, RenderScale);
+	const float Scale = (std::max)(0.01f, Bullet.RenderScale);
 	return FTransform(
 		RenderPosition,
 		Rotation,
@@ -973,29 +1158,69 @@ FTransform UBulletHellComponent::MakeBulletRenderTransform(const FBulletInstance
 void UBulletHellComponent::UpdateRenderDebugStats()
 {
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
-	UInstancedStaticMeshComponent* Renderer = GetRenderComponent();
-	DebugStats.RendererSlotCount = Renderer ? 1 : 0;
-	DebugStats.RenderInstanceCount = Renderer ? Renderer->GetInstanceCount() : 0;
+	DebugStats.RendererSlotCount = 0;
+	DebugStats.RenderInstanceCount = 0;
+	DebugStats.RendererSlot0InstanceCount = 0;
+	DebugStats.RendererSlot1InstanceCount = 0;
+	if (!bEnableRendering)
+	{
+		DebugStats.RenderMismatchCount = 0;
+		return;
+	}
 
 	int32 MismatchCount = 0;
-	if (Renderer)
+	for (int32 SlotIndex = 0; SlotIndex < static_cast<int32>(RenderSlots.size()); ++SlotIndex)
 	{
-		if (Renderer->GetInstanceCount() != static_cast<int32>(Bullets.size()))
+		const FBulletRenderSlot& Slot = RenderSlots[SlotIndex];
+		UInstancedStaticMeshComponent* Renderer = GetRenderSlotComponent(SlotIndex);
+		if (!Renderer)
+		{
+			if (!Slot.BulletIndices.empty())
+			{
+				++MismatchCount;
+			}
+			continue;
+		}
+
+		++DebugStats.RendererSlotCount;
+		const int32 SlotInstanceCount = Renderer->GetInstanceCount();
+		DebugStats.RenderInstanceCount += SlotInstanceCount;
+		if (SlotIndex == 0)
+		{
+			DebugStats.RendererSlot0InstanceCount = SlotInstanceCount;
+		}
+		else if (SlotIndex == 1)
+		{
+			DebugStats.RendererSlot1InstanceCount = SlotInstanceCount;
+		}
+		if (SlotInstanceCount != static_cast<int32>(Slot.BulletIndices.size()))
 		{
 			++MismatchCount;
 		}
 
-		for (int32 Index = 0; Index < static_cast<int32>(Bullets.size()); ++Index)
+		for (int32 RenderIndex = 0; RenderIndex < static_cast<int32>(Slot.BulletIndices.size()); ++RenderIndex)
 		{
-			if (Bullets[Index].RenderInstanceIndex != Index)
+			const int32 BulletIndex = Slot.BulletIndices[RenderIndex];
+			if (BulletIndex < 0 || BulletIndex >= static_cast<int32>(Bullets.size()))
+			{
+				++MismatchCount;
+				continue;
+			}
+
+			const FBulletInstance& Bullet = Bullets[BulletIndex];
+			if (Bullet.RenderSlotIndex != SlotIndex || Bullet.RenderInstanceIndex != RenderIndex)
 			{
 				++MismatchCount;
 			}
 		}
 	}
-	else if (bEnableRendering && !Bullets.empty())
+
+	for (const FBulletInstance& Bullet : Bullets)
 	{
-		++MismatchCount;
+		if (bEnableRendering && (Bullet.RenderSlotIndex < 0 || Bullet.RenderInstanceIndex < 0))
+		{
+			++MismatchCount;
+		}
 	}
 
 	DebugStats.RenderMismatchCount = MismatchCount;
