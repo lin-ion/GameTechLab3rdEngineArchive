@@ -72,6 +72,12 @@ public:
 	// edge-triggered — input 측에서 Pressed 마다 호출.
 	UFUNCTION(Callable, Exec, Category="CharacterMovement")
 	void           Jump();
+	UFUNCTION(Callable, Exec, Category="CharacterMovement|Dash")
+	bool           StartDash(const FVector& WorldDirection, float Distance, float Duration);
+	UFUNCTION(Callable, Exec, Category="CharacterMovement|Dash")
+	void           StopDash();
+	UFUNCTION(Pure, Category="CharacterMovement|Dash")
+	bool           IsDashing() const { return DashRemainingTime > 0.0f; }
 
 	// UMovementComponent:
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
@@ -110,6 +116,7 @@ protected:
 	// XY 적용 단계에 합산되고 floor stick / gravity 는 mode 가 자체 결정.
 	void  TickWalking(float DeltaTime, const FVector& RootMotionWorldXY);
 	void  TickFalling(float DeltaTime, const FVector& RootMotionWorldXY);
+	FVector ConsumeDashOffset(float DeltaTime);
 
 	// capsule 중심에서 down raycast — bHit + WorldHitLocation 사용.
 	bool  TraceFloor(FHitResult& OutHit) const;
@@ -134,6 +141,9 @@ protected:
 	// 직전 TickComponent 에서 root motion yaw 가 실제 적용됐는지 (외부 query 용 — Character 의 yaw 가드).
 	// 매 Tick 시작에 reset 후 yaw 적용 시 true.
 	bool          bAppliedRootMotionYawThisFrame = false;
+
+	FVector       DashVelocity      = FVector(0.0f, 0.0f, 0.0f);
+	float         DashRemainingTime = 0.0f;
 
 	// 평면 속도 기준 yaw 를 RotationYawRate * dt 로 lerp. TickComponent 끝에서 적용.
 	void  PhysOrientToMovement(float DeltaTime);

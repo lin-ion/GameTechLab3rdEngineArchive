@@ -3,9 +3,14 @@ local AbilitySystem = require("AbilitySystem")
 local STEAM_PARTICLE_PATH = "Content/Particle/SteamParticle.uasset"
 local STEAM_SKILL_NAME = "SteamSkill"
 local STEAM_SKILL_KEY = "LeftMouseButton"
+local DASH_SKILL_NAME = "Dash"
+local DASH_SKILL_KEY = "LeftShift"
+local DASH_DISTANCE = 3.0
+local DASH_DURATION = 0.16
 
 local actor = nil
 local ability_system = nil
+local movement = nil
 
 local function log(message)
     print("[HaruController] " .. message)
@@ -35,6 +40,42 @@ local function resolve_actor()
     end
 
     return actor
+end
+
+local function find_component_by_class(owner, class_name)
+    if owner == nil or owner.GetComponents == nil then
+        return nil
+    end
+
+    local components = owner:GetComponents()
+    if components == nil then
+        return nil
+    end
+
+    for index = 1, #components do
+        local component = components[index]
+        if component ~= nil and component.IsA ~= nil and component:IsA(class_name) then
+            return component
+        end
+    end
+
+    return nil
+end
+
+local function get_character_movement(owner)
+    if movement ~= nil then
+        return movement
+    end
+
+    if owner ~= nil and owner.GetCharacterMovement ~= nil then
+        movement = owner:GetCharacterMovement()
+    end
+
+    if movement == nil then
+        movement = find_component_by_class(owner, "UCharacterMovementComponent")
+    end
+
+    return movement
 end
 
 local function get_effect_location(owner)
@@ -153,6 +194,82 @@ local function end_steam_effect(owner, ability)
     log("SteamSkill ended: effect actor destroyed, cooldown started")
 end
 
+local function activate_dash(owner, ability)
+    if owner == nil then
+        log("Dash activate failed: owner is nil")
+        ability.active_remaining = 0.0
+        return
+    end
+
+    local forward = owner.Forward
+    if forward == nil then
+        forward = Vec3(1.0, 0.0, 0.0)
+    end
+
+    if owner.StartCharacterDash ~= nil then
+        local ok, started = pcall(function()
+            return owner:StartCharacterDash(forward, DASH_DISTANCE, DASH_DURATION)
+        end)
+
+        if not ok then
+            log("Dash activate failed: StartCharacterDash call error: " .. tostring(started))
+            ability.active_remaining = 0.0
+            return
+        end
+
+        if not started then
+            log("Dash activate failed: StartCharacterDash returned false")
+            ability.active_remaining = 0.0
+            return
+        end
+
+        log("Dash activated: distance=" .. tostring(DASH_DISTANCE)
+            .. " duration=" .. tostring(DASH_DURATION)
+            .. " forward=" .. format_vec3(forward))
+        return
+    end
+
+    local dash_movement = get_character_movement(owner)
+    if dash_movement == nil then
+        log("Dash activate failed: UCharacterMovementComponent not found")
+        ability.active_remaining = 0.0
+        return
+    end
+
+    if dash_movement.StartDash == nil then
+        local movement_name = "unknown"
+        if dash_movement.GetName ~= nil then
+            movement_name = dash_movement:GetName()
+        end
+        log("Dash activate failed: StartDash binding is unavailable on movement=" .. tostring(movement_name))
+        ability.active_remaining = 0.0
+        return
+    end
+
+    local ok, started = pcall(function()
+        return dash_movement:StartDash(forward, DASH_DISTANCE, DASH_DURATION)
+    end)
+    if not ok then
+        log("Dash activate failed: StartDash call error: " .. tostring(started))
+        ability.active_remaining = 0.0
+        return
+    end
+
+    if not started then
+        log("Dash activate failed: StartDash returned false")
+        ability.active_remaining = 0.0
+        return
+    end
+
+    log("Dash activated: distance=" .. tostring(DASH_DISTANCE)
+        .. " duration=" .. tostring(DASH_DURATION)
+        .. " forward=" .. format_vec3(forward))
+end
+
+local function end_dash(owner, ability)
+    log("Dash ended")
+end
+
 local function setup_abilities()
     local owner = resolve_actor()
     if owner == nil then
@@ -170,8 +287,17 @@ local function setup_abilities()
         OnTick = update_steam_effect,
         OnEnd = end_steam_effect
     })
+    ability_system:RegisterAbility({
+        Name = DASH_SKILL_NAME,
+        Key = DASH_SKILL_KEY,
+        Duration = DASH_DURATION,
+        Cooldown = 0.0,
+        OnActivate = activate_dash,
+        OnEnd = end_dash
+    })
 
     log("registered SteamSkill on " .. STEAM_SKILL_KEY)
+    log("registered Dash on " .. DASH_SKILL_KEY)
 end
 
 function BeginPlay()
@@ -188,6 +314,7 @@ function EndPlay()
 
     actor = nil
     ability_system = nil
+    movement = nil
 end
 
 function OnOverlap(OtherActor)
@@ -207,6 +334,14 @@ function Tick(dt)
         local activated, reason = ability_system:TryActivateByKey(STEAM_SKILL_KEY)
         if not activated then
             log("SteamSkill blocked: " .. (reason or "unknown"))
+        end
+    end
+
+    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(DASH_SKILL_KEY) then
+        log("input pressed: " .. DASH_SKILL_KEY)
+        local activated, reason = ability_system:TryActivateByKey(DASH_SKILL_KEY)
+        if not activated then
+            log("Dash blocked: " .. (reason or "unknown"))
         end
     end
 

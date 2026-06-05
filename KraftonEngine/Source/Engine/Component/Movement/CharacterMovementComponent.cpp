@@ -84,6 +84,40 @@ void UCharacterMovementComponent::Jump()
 	bWantsJump = true;
 }
 
+bool UCharacterMovementComponent::StartDash(const FVector& WorldDirection, float Distance, float Duration)
+{
+	if (Distance <= 0.0f || Duration <= 0.0f)
+	{
+		return false;
+	}
+
+	FVector Direction(WorldDirection.X, WorldDirection.Y, 0.0f);
+	if (Direction.IsNearlyZero())
+	{
+		if (USceneComponent* Updated = GetUpdatedComponent())
+		{
+			const FRotator ActorRot = Updated->GetWorldRotation();
+			Direction = FRotator(0.0f, 0.0f, ActorRot.Yaw).ToQuaternion().RotateVector(FVector(1.0f, 0.0f, 0.0f));
+		}
+	}
+
+	if (Direction.IsNearlyZero())
+	{
+		return false;
+	}
+
+	Direction = Direction.Normalized();
+	DashVelocity = Direction * (Distance / Duration);
+	DashRemainingTime = Duration;
+	return true;
+}
+
+void UCharacterMovementComponent::StopDash()
+{
+	DashVelocity = FVector(0.0f, 0.0f, 0.0f);
+	DashRemainingTime = 0.0f;
+}
+
 void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -137,14 +171,17 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		RootMotionWorldXY.Y     = World.Y;
 	}
 
+	const FVector DashWorldXY = ConsumeDashOffset(DeltaTime);
+	const FVector ExtraWorldXY = RootMotionWorldXY + DashWorldXY;
+
 	// 3) Mode 별 Z 처리 + 위치 적용 (input velocity + root motion XY 합산).
 	if (MovementMode == EMovementMode::Walking)
 	{
-		TickWalking(DeltaTime, RootMotionWorldXY);
+		TickWalking(DeltaTime, ExtraWorldXY);
 	}
 	else
 	{
-		TickFalling(DeltaTime, RootMotionWorldXY);
+		TickFalling(DeltaTime, ExtraWorldXY);
 	}
 
 	// 4) Root motion yaw 적용. yaw 만 추출 — root motion 의 pitch/roll 은 캐릭터 capsule
@@ -238,6 +275,28 @@ void UCharacterMovementComponent::ApplyInputToVelocity(const FVector& Input, flo
 		Velocity.X = Dir.X * MaxWalkSpeed;
 		Velocity.Y = Dir.Y * MaxWalkSpeed;
 	}
+}
+
+FVector UCharacterMovementComponent::ConsumeDashOffset(float DeltaTime)
+{
+	if (DashRemainingTime <= 0.0f || DeltaTime <= 0.0f)
+	{
+		StopDash();
+		return FVector(0.0f, 0.0f, 0.0f);
+	}
+
+	const float StepTime = (std::min)(DeltaTime, DashRemainingTime);
+	DashRemainingTime -= StepTime;
+
+	FVector Offset = DashVelocity * StepTime;
+	Offset.Z = 0.0f;
+
+	if (DashRemainingTime <= 0.0f)
+	{
+		StopDash();
+	}
+
+	return Offset;
 }
 
 void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& RootMotionWorldXY)
