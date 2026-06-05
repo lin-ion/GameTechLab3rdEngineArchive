@@ -1,6 +1,8 @@
 #include "BulletHellComponent.h"
 
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
+#include "Component/PrimitiveComponent.h"
+#include "Component/Gameplay/BulletHellHealthProbeComponent.h"
 #include "Core/Logging/Log.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -126,6 +128,7 @@ FBulletHandle UBulletHellComponent::SpawnBullet(const FBulletSpawnParams& Params
 	Bullet.PreviousPosition = Params.Position;
 	Bullet.Velocity = Params.Velocity;
 	Bullet.Radius = (std::max)(0.01f, Archetype.Radius);
+	Bullet.Damage = (std::max)(0.0f, Archetype.Damage);
 	Bullet.Age = 0.0f;
 	Bullet.Lifetime = Archetype.Lifetime;
 	Bullet.ArchetypeIndex = Params.ArchetypeIndex;
@@ -429,11 +432,13 @@ UBulletHellComponent::EBulletCollisionKillReason UBulletHellComponent::CheckBull
 	const uint32 CollisionObjectTypeMask = BuildCollisionObjectTypeMask();
 	if (CollisionObjectTypeMask != 0 && SweepBulletByObjectTypes(Bullet, CollisionObjectTypeMask, Hit))
 	{
+		ApplyDamageToHitTarget(Bullet, Hit);
 		return EBulletCollisionKillReason::Collision;
 	}
 
 	if (bKillOnBlockingCollision && SweepBulletByChannel(Bullet, CollisionTraceChannel, Hit))
 	{
+		ApplyDamageToHitTarget(Bullet, Hit);
 		return EBulletCollisionKillReason::Collision;
 	}
 
@@ -535,6 +540,30 @@ uint32 UBulletHellComponent::BuildEraseObjectTypeMask() const
 		Mask |= ObjectTypeBit(ECollisionChannel::Projectile);
 	}
 	return Mask;
+}
+
+void UBulletHellComponent::ApplyDamageToHitTarget(const FBulletInstance& Bullet, const FHitResult& Hit) const
+{
+	if (Bullet.Damage <= 0.0f)
+	{
+		return;
+	}
+
+	AActor* TargetActor = Hit.HitActor;
+	if (!TargetActor && Hit.HitComponent)
+	{
+		TargetActor = Hit.HitComponent->GetOwner();
+	}
+
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	if (UBulletHellHealthProbeComponent* HealthProbe = TargetActor->GetComponentByClass<UBulletHellHealthProbeComponent>())
+	{
+		HealthProbe->ApplyDamage(Bullet.Damage);
+	}
 }
 
 bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)

@@ -131,6 +131,7 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 		Archetype.Speed = (std::max)(0.0f, SecondarySpeed);
 		Archetype.Lifetime = SecondaryLifetime;
 		Archetype.RenderScale = (std::max)(0.01f, SecondaryRenderScale);
+		Archetype.Damage = (std::max)(0.0f, SecondaryDamage);
 		Archetype.BehaviorType = SecondaryBehaviorType;
 		return Archetype;
 	}
@@ -141,6 +142,7 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 	Archetype.Speed = (std::max)(0.0f, DebugSpawnSpeed);
 	Archetype.Lifetime = DebugSpawnLifetime;
 	Archetype.RenderScale = (std::max)(0.01f, PrimaryRenderScale);
+	Archetype.Damage = (std::max)(0.0f, PrimaryDamage);
 	Archetype.BehaviorType = DebugBehaviorType;
 	return Archetype;
 }

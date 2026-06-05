@@ -175,6 +175,9 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Primary Render Scale", Min=0.01f, Max=1000.0f, Speed=0.1f)
 	float PrimaryRenderScale = 0.1f;
 
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Primary Damage", Min=0.0f, Max=1000000.0f, Speed=1.0f)
+	float PrimaryDamage = 1.0f;
+
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Mesh Path", AssetType="StaticMesh")
 	FString SecondaryMeshPath = "Content/Data/BasicShape/Cube.OBJ";
 
@@ -192,6 +195,9 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Render Scale", Min=0.01f, Max=1000.0f, Speed=0.1f)
 	float SecondaryRenderScale = 0.1f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Damage", Min=0.0f, Max=1000000.0f, Speed=1.0f)
+	float SecondaryDamage = 2.0f;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Behavior Type", Enum=EBulletBehaviorType)
 	EBulletBehaviorType SecondaryBehaviorType = EBulletBehaviorType::Linear;

@@ -44,6 +44,7 @@ struct FBulletArchetype
 	float Speed = 1.0f;
 	float Lifetime = 1.0f;
 	float RenderScale = 1.0f;
+	float Damage = 1.0f;
 	EBulletBehaviorType BehaviorType = EBulletBehaviorType::Linear;
 };
 
@@ -73,6 +74,7 @@ struct FBulletInstance
 	FVector PreviousPosition = FVector::ZeroVector;
 	FVector Velocity = FVector::ZeroVector;
 	float Radius = 1.0f;
+	float Damage = 1.0f;
 	float Age = 0.0f;
 	float Lifetime = 1.0f;
 	int32 ArchetypeIndex = 0;
@@ -187,6 +189,7 @@ private:
 	bool SweepBulletByObjectTypes(const FBulletInstance& Bullet, uint32 ObjectTypeMask, FHitResult& OutHit);
 	uint32 BuildCollisionObjectTypeMask() const;
 	uint32 BuildEraseObjectTypeMask() const;
+	void ApplyDamageToHitTarget(const FBulletInstance& Bullet, const FHitResult& Hit) const;
 	bool RemoveBulletAtIndex(int32 BulletIndex, bool bExpired);
 	UInstancedStaticMeshComponent* EnsureRenderComponent();
 	UInstancedStaticMeshComponent* GetRenderComponent() const;
