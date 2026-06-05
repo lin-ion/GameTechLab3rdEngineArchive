@@ -417,6 +417,14 @@ def generate_vcxproj(files: dict[str, list[str]]):
         ET.SubElement(cl, "ExceptionHandling").text = "Async"
         ET.SubElement(cl, "MultiProcessorCompilation").text = "true"
 
+        # Tier-1 PCH — 모든 엔진 C++ TU 가 pch.h 를 ForcedInclude 하고 미리 컴파일된 pch.pch 를 사용.
+        # pch.cpp(Create) 와 ThirdParty/생성/.c TU(NotUsing + ForcedInclude 해제)는 아래 ClCompile
+        # item 루프에서 개별 override 된다. PCH 는 컴파일 플래그에 묶이므로 IntDir 기준 구성별 분리.
+        ET.SubElement(cl, "PrecompiledHeader").text = "Use"
+        ET.SubElement(cl, "PrecompiledHeaderFile").text = "pch.h"
+        ET.SubElement(cl, "PrecompiledHeaderOutputFile").text = "$(IntDir)pch.pch"
+        ET.SubElement(cl, "ForcedIncludeFiles").text = "pch.h;%(ForcedIncludeFiles)"
+
         if is_x64:
             ET.SubElement(cl, "LanguageStandard").text = "stdcpp20"
 
@@ -475,7 +483,16 @@ def generate_vcxproj(files: dict[str, list[str]]):
     # ClCompile items
     ig = ET.SubElement(proj, "ItemGroup")
     for f in files["ClCompile"]:
-        ET.SubElement(ig, "ClCompile", Include=f)
+        item = ET.SubElement(ig, "ClCompile", Include=f)
+        base = f.rsplit("\\", 1)[-1].lower()
+        ext = ("." + f.rsplit(".", 1)[-1].lower()) if "." in base else ""
+        if base == "pch.cpp":
+            # PCH 생성 TU (/Yc). 다른 TU 보다 먼저 컴파일되어 pch.pch 를 만든다.
+            ET.SubElement(item, "PrecompiledHeader").text = "Create"
+        elif f.startswith("ThirdParty\\") or base == "reflection.generated.cpp" or ext == ".c":
+            # 외부/생성/C TU 는 pch.h(엔진 C++ 전용) 사용·강제 include 에서 제외.
+            ET.SubElement(item, "PrecompiledHeader").text = "NotUsing"
+            ET.SubElement(item, "ForcedIncludeFiles").text = "%(ForcedIncludeFiles)"
 
     # ClInclude items
     ig = ET.SubElement(proj, "ItemGroup")
