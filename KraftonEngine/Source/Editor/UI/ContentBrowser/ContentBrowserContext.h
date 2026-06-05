@@ -26,7 +26,7 @@ struct ContentBrowserContext final
 	// SelectedElement 삭제 요청 — 우클릭 메뉴의 Delete 가 set. ContentBrowser 가 확인 popup 후 처리.
 	bool bDeleteRequested = false;
 
-	// Shared FBX import options modal state. MeshElement fills this on double-click and
+	// Shared FBX import options modal state. FbxFileElement fills this on double-click and
 	// ContentBrowser renders the common modal once per frame.
 	FFbxSceneImportDialogState FbxImportDialog;
 };

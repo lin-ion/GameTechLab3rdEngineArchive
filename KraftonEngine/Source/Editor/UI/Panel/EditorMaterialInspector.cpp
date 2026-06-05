@@ -243,7 +243,7 @@ void FEditorMaterialInspector::RenderTextureSection()
 
 		if (ImGui::BeginDragDropTarget())
 		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PNGElement"))
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ImageElement"))
 			{
 				FContentItem ContentItem = *reinterpret_cast<const FContentItem*>(payload->Data);
 				FString NewTexturePath = FPaths::ToUtf8(

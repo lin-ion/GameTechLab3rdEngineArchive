@@ -2222,7 +2222,7 @@ bool FEditorPropertyWidget::RenderSoftObjectPropertyWidget(FPropertyValue& Prop)
         if (ImGui::BeginDragDropTarget())
         {
             FString DroppedPath;
-            if (TryAcceptAssetPathDrop("ObjectContentItem", DroppedPath) || TryAcceptAssetPathDrop("MaterialContentItem", DroppedPath) || TryAcceptAssetPathDrop("FloatCurveContentItem", DroppedPath) || TryAcceptAssetPathDrop("PNGElement", DroppedPath)
+            if (TryAcceptAssetPathDrop("ObjectContentItem", DroppedPath) || TryAcceptAssetPathDrop("MaterialContentItem", DroppedPath) || TryAcceptAssetPathDrop("FloatCurveContentItem", DroppedPath) || TryAcceptAssetPathDrop("ImageElement", DroppedPath)
                 || TryAcceptAssetPathDrop("LuaBlueprintContentItem", DroppedPath)
                 || TryAcceptAssetPathDrop("AnimGraphContentItem", DroppedPath)
                 || TryAcceptAssetPathDrop("ParticleSystemContentItem", DroppedPath))

@@ -387,26 +387,43 @@ bool ContentBrowserElement::RenderSelectSpace(ContentBrowserContext& Context)
 			ImDrawFlags_RoundCornersTop);
 	}
 
-	const float Padding = 8.0f;
+	float ContentPadding = 12.0f;
 	const float FontSize = ImGui::GetFontSize();
 
-	const float LabelHeight = FontSize * 2.4f;
-	ImVec2 IconMin(Min.x + Padding, Min.y + Padding);
-	ImVec2 IconMax(Max.x - Padding, Max.y - Padding - LabelHeight);
+	ImVec2 ContentMin(Min.x + ContentPadding, Min.y + ContentPadding);
+	ImVec2 ContentMax(Max.x - ContentPadding, Max.y - ContentPadding);
 
-	if (Icon && IconMax.y > IconMin.y)
+	ImVec2 TextMin(ContentMin.x, ContentMax.y - FontSize * 2.0f);
+	ImVec2 TextMax(ContentMax.x, ContentMax.y);
+
+	ImVec2 ImageMin(ContentMin.x, ContentMin.y);
+	ImVec2 ImageMax(ContentMax.x, TextMin.y);
+
+	const float ImageAreaWidth = ImageMax.x - ImageMin.x;
+	const float ImageAreaHeight = ImageMax.y - ImageMin.y;
+	const float ImageSize = (std::min)(ImageAreaWidth, ImageAreaHeight);
+
+	ImVec2 ImageDrawMin = {
+		ImageMin.x + (ImageAreaWidth - ImageSize) * 0.5f,
+		ImageMin.y + (ImageAreaHeight - ImageSize) * 0.5f
+	};
+	ImVec2 ImageDrawMax = {
+		ImageDrawMin.x + ImageSize,
+		ImageDrawMin.y + ImageSize
+	};
+
+	if (Icon && ImageSize > 0.0f)
 	{
-		DrawList->AddImage(Icon, IconMin, IconMax);
+		DrawList->AddImage(Icon, ImageDrawMin, ImageDrawMax);
 	}
+
+	const FString DisplayName = EllipsisText(GetDisplayName(), TextMax.x - TextMin.x);
+
+	ImVec2 TypePos(TextMin.x, TextMin.y);
+	ImVec2 NamePos(TextMin.x, TextMin.y + FontSize);
 
 	const char* TypeLabel = GetTypeLabel();
 	const bool bHasTypeLabel = TypeLabel && TypeLabel[0] != '\0';
-
-	const FString DisplayName = EllipsisText(GetDisplayName(), CardSize.x - Padding * 2);
-
-	ImVec2 TypePos(Min.x + Padding, Max.y - Padding - FontSize * 2.0f);
-	ImVec2 NamePos(Min.x + Padding, Max.y - Padding - FontSize);
-
 	if (bHasTypeLabel)
 	{
 		DrawList->AddText(TypePos, ImGui::GetColorU32(ImGuiCol_TextDisabled), TypeLabel);
@@ -430,20 +447,6 @@ void ContentBrowserElement::Render(ContentBrowserContext& Context)
 
 	if (ImGui::BeginPopupContextItem())
 	{
-		// 모든 element 공통 — 자식 클래스의 RenderContextMenu 위에 Rename 항목 제공.
-		// 클릭 시 이 element 를 selected 로 만들고 rename popup 요청 set — ContentBrowser
-		// 가 다음 프레임 modal popup 열어 처리.
-		if (ImGui::MenuItem("Rename"))
-		{
-			Context.SelectedElement = shared_from_this();
-			Context.bRenameRequested = true;
-		}
-		if (ImGui::MenuItem("Delete"))
-		{
-			Context.SelectedElement = shared_from_this();
-			Context.bDeleteRequested = true;
-		}
-		ImGui::Separator();
 		RenderContextMenu(Context);
 		ImGui::EndPopup();
 	}
@@ -460,6 +463,33 @@ void ContentBrowserElement::Render(ContentBrowserContext& Context)
 		ImGui::SetDragDropPayload(GetDragItemType(), &ContentItem, sizeof(ContentItem));
 		OnDrag(Context);
 		ImGui::EndDragDropSource();
+	}
+}
+
+void ContentBrowserElement::RenderContextMenu(ContentBrowserContext& Context)
+{
+	if (ImGui::MenuItem("Open"))
+	{
+		OnDoubleLeftClicked(Context);
+	}
+
+	if (ImGui::MenuItem("Reveal in Explorer"))
+	{
+		const std::filesystem::path NormalizedPath = ContentItem.Path.lexically_normal();
+		const std::wstring ExplorerArgs = L"/select,\"" + NormalizedPath.wstring() + L"\"";
+		ShellExecuteW(nullptr, L"open", L"explorer.exe", ExplorerArgs.c_str(), nullptr, SW_SHOWNORMAL);
+	}
+
+	if (ImGui::MenuItem("Rename"))
+	{
+		Context.SelectedElement = shared_from_this();
+		Context.bRenameRequested = true;
+	}
+
+	if (ImGui::MenuItem("Delete"))
+	{
+		Context.SelectedElement = shared_from_this();
+		Context.bDeleteRequested = true;
 	}
 }
 
@@ -582,15 +612,14 @@ void SceneElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 	EditorEngine->LoadSceneFromPath(FilePath);
 }
 
-void ObjectElement::RenderContextMenu(ContentBrowserContext& Context)
+void StaticMeshAssetElement::RenderContextMenu(ContentBrowserContext& Context)
 {
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
+	ContentBrowserElement::RenderContextMenu(Context);
 
-	FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
-
-	if (Extension == ".uasset" && FMeshManager::IsStaticMeshPackage(PackagePath))
+	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	if (FMeshManager::IsStaticMeshPackage(PackagePath))
 	{
+		ImGui::Separator();
 		if (ImGui::MenuItem("Reimport"))
 		{
 			UStaticMesh* Reimported = nullptr;
@@ -608,30 +637,21 @@ void ObjectElement::RenderContextMenu(ContentBrowserContext& Context)
 	}
 }
 
-void ObjectElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+void StaticMeshAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 {
 	if (!Context.EditorEngine)
 	{
-		ShellExecuteW(nullptr, L"open", ContentItem.Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 		return;
 	}
 
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
-
-	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
 	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
-
-	if (Extension == ".uasset" && FMeshManager::IsStaticMeshPackage(PackagePath))
+	if (FMeshManager::IsStaticMeshPackage(PackagePath))
 	{
-		if (UStaticMesh* MeshAsset = FMeshManager::LoadStaticMesh(FilePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
+		if (UStaticMesh* MeshAsset = FMeshManager::LoadStaticMesh(PackagePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
 		{
 			Context.EditorEngine->OpenAssetEditorForObject(MeshAsset);
 		}
-		return;
 	}
-
-	ShellExecuteW(nullptr, L"open", ContentItem.Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
 void FloatCurveElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
@@ -703,37 +723,38 @@ void PhysicsAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 }
 
 
-void MeshElement::RenderContextMenu(ContentBrowserContext& Context)
+void FbxFileElement::RenderContextMenu(ContentBrowserContext& Context)
 {
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
+	ContentBrowserElement::RenderContextMenu(Context);
 
 	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
-	FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
-
-	if (Extension == ".fbx")
+	ImGui::Separator();
+	const bool bHasImportedAsset = HasImportedFbxAssetForContentBrowser(FilePath);
+	if (bHasImportedAsset && ImGui::MenuItem("Open Imported Asset"))
 	{
-		const bool bHasImportedAsset = HasImportedFbxAssetForContentBrowser(FilePath);
-		if (bHasImportedAsset && ImGui::MenuItem("Open Imported Asset"))
-		{
-			TryOpenImportedFbxAssetForContentBrowser(Context, FilePath);
-		}
-
-		if (ImGui::MenuItem(bHasImportedAsset ? "Reimport Options..." : "Import Options..."))
-		{
-			FFbxImportOptionsDialog::BeginSceneImport(Context.FbxImportDialog, FilePath);
-
-			if (!Context.FbxImportDialog.bHasSkin && Context.FbxImportDialog.AnimationStacks.empty())
-			{
-				Context.FbxImportDialog = FFbxSceneImportDialogState {};
-				ReimportOrImportStaticFbxForContentBrowser(Context, FilePath);
-			}
-		}
-		return;
+		TryOpenImportedFbxAssetForContentBrowser(Context, FilePath);
 	}
 
-	if (Extension == ".uasset" && FMeshManager::IsSkeletalMeshPackage(PackagePath))
+	if (ImGui::MenuItem(bHasImportedAsset ? "Reimport Options..." : "Import Options..."))
 	{
+		FFbxImportOptionsDialog::BeginSceneImport(Context.FbxImportDialog, FilePath);
+
+		if (!Context.FbxImportDialog.bHasSkin && Context.FbxImportDialog.AnimationStacks.empty())
+		{
+			Context.FbxImportDialog = FFbxSceneImportDialogState {};
+			ReimportOrImportStaticFbxForContentBrowser(Context, FilePath);
+		}
+	}
+}
+
+void SkeletalMeshAssetElement::RenderContextMenu(ContentBrowserContext& Context)
+{
+	ContentBrowserElement::RenderContextMenu(Context);
+
+	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	if (FMeshManager::IsSkeletalMeshPackage(PackagePath))
+	{
+		ImGui::Separator();
 		if (ImGui::MenuItem("Create Physics Asset"))
 		{
 			if (Context.EditorEngine)
@@ -781,7 +802,7 @@ void MeshElement::RenderContextMenu(ContentBrowserContext& Context)
 	}
 }
 
-void MeshElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+void FbxFileElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 {
 	if (!Context.EditorEngine)
 	{
@@ -789,21 +810,23 @@ void MeshElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 	}
 
 	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
-
-	if (Extension == ".fbx")
+	if (TryOpenImportedFbxAssetForContentBrowser(Context, FilePath))
 	{
-		if (TryOpenImportedFbxAssetForContentBrowser(Context, FilePath))
-		{
-			return;
-		}
-
-		ImportFbxWithDefaultOptionsForContentBrowser(Context, FilePath);
 		return;
 	}
 
-	if (USkeletalMesh* MeshAsset = FMeshManager::LoadSkeletalMesh(FilePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
+	ImportFbxWithDefaultOptionsForContentBrowser(Context, FilePath);
+}
+
+void SkeletalMeshAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+{
+	if (!Context.EditorEngine)
+	{
+		return;
+	}
+
+	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	if (USkeletalMesh* MeshAsset = FMeshManager::LoadSkeletalMesh(PackagePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
 	{
 		FMeshEditorWidget::ClearImportDurationForAsset(MeshAsset->GetAssetPathFileName());
 		Context.EditorEngine->OpenAssetEditorForObject(MeshAsset);
@@ -926,7 +949,10 @@ void ParticleSystemElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 
 void VectorFieldSourceElement::RenderContextMenu(ContentBrowserContext& Context)
 {
+	ContentBrowserElement::RenderContextMenu(Context);
+
 	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
+	ImGui::Separator();
 	if (ImGui::MenuItem("Import Vector Field"))
 	{
 		ImportFgaVectorFieldForContentBrowser(Context, FilePath);
@@ -941,7 +967,10 @@ void VectorFieldSourceElement::OnDoubleLeftClicked(ContentBrowserContext& Contex
 
 void VectorFieldElement::RenderContextMenu(ContentBrowserContext& Context)
 {
+	ContentBrowserElement::RenderContextMenu(Context);
+
 	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	ImGui::Separator();
 	if (ImGui::MenuItem("Reimport"))
 	{
 		FString Error;
