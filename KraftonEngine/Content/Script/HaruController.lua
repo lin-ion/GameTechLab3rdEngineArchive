@@ -6,11 +6,14 @@ local STEAM_SKILL_KEY = "LeftMouseButton"
 local DASH_SKILL_NAME = "Dash"
 local DASH_SKILL_KEY = "LeftShift"
 local DASH_DISTANCE = 3.0
-local DASH_DURATION = 0.16
+local DASH_DURATION = 0.3
+local DASH_ANIM_VAR = "Dash"
+local ATTACK_ANIM_VAR = "Attack"
 
 local actor = nil
 local ability_system = nil
 local movement = nil
+local anim_instance = nil
 
 local function log(message)
     print("[HaruController] " .. message)
@@ -78,6 +81,55 @@ local function get_character_movement(owner)
     return movement
 end
 
+local function get_anim_instance(owner)
+    if anim_instance ~= nil then
+        return anim_instance
+    end
+
+    local mesh = nil
+    if owner ~= nil and owner.GetMesh ~= nil then
+        mesh = owner:GetMesh()
+    end
+
+    if mesh == nil and owner ~= nil and owner.GetSkeletalMeshComponent ~= nil then
+        mesh = owner:GetSkeletalMeshComponent()
+    end
+
+    if mesh == nil then
+        mesh = find_component_by_class(owner, "USkeletalMeshComponent")
+    end
+
+    if mesh ~= nil and mesh.GetAnimInstance ~= nil then
+        anim_instance = mesh:GetAnimInstance()
+    end
+
+    return anim_instance
+end
+
+local function set_anim_bool(owner, variable_name, value)
+    local instance = get_anim_instance(owner)
+    if instance == nil or instance.SetGraphVariableBool == nil then
+        log("AnimGraph bool set skipped: " .. variable_name .. " anim instance unavailable")
+        return false
+    end
+
+    local ok, result = pcall(function()
+        return instance:SetGraphVariableBool(variable_name, value)
+    end)
+
+    if not ok then
+        log("AnimGraph bool set failed: " .. variable_name .. " error=" .. tostring(result))
+        return false
+    end
+
+    if not result then
+        log("AnimGraph bool set failed: variable not found " .. variable_name)
+        return false
+    end
+
+    return true
+end
+
 local function get_effect_location(owner)
     local location = owner.Location
     local forward = owner.Forward
@@ -102,6 +154,8 @@ local function spawn_steam_effect(owner, ability)
         log("SteamSkill activate failed: owner is nil")
         return
     end
+
+    set_anim_bool(owner, ATTACK_ANIM_VAR, true)
 
     if World == nil or World.SpawnEmitterAtLocation == nil then
         log("SteamSkill activate failed: World.SpawnEmitterAtLocation is unavailable")
@@ -171,6 +225,10 @@ local function update_steam_effect(owner, ability, dt)
 end
 
 local function end_steam_effect(owner, ability)
+    if owner ~= nil then
+        set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+    end
+
     local effect_actor = ability.effect_actor
     ability.effect_actor = nil
     ability.particle_component = nil
@@ -206,6 +264,8 @@ local function activate_dash(owner, ability)
         forward = Vec3(1.0, 0.0, 0.0)
     end
 
+    set_anim_bool(owner, DASH_ANIM_VAR, true)
+
     if owner.StartCharacterDash ~= nil then
         local ok, started = pcall(function()
             return owner:StartCharacterDash(forward, DASH_DISTANCE, DASH_DURATION)
@@ -213,12 +273,14 @@ local function activate_dash(owner, ability)
 
         if not ok then
             log("Dash activate failed: StartCharacterDash call error: " .. tostring(started))
+            set_anim_bool(owner, DASH_ANIM_VAR, false)
             ability.active_remaining = 0.0
             return
         end
 
         if not started then
             log("Dash activate failed: StartCharacterDash returned false")
+            set_anim_bool(owner, DASH_ANIM_VAR, false)
             ability.active_remaining = 0.0
             return
         end
@@ -232,6 +294,7 @@ local function activate_dash(owner, ability)
     local dash_movement = get_character_movement(owner)
     if dash_movement == nil then
         log("Dash activate failed: UCharacterMovementComponent not found")
+        set_anim_bool(owner, DASH_ANIM_VAR, false)
         ability.active_remaining = 0.0
         return
     end
@@ -242,6 +305,7 @@ local function activate_dash(owner, ability)
             movement_name = dash_movement:GetName()
         end
         log("Dash activate failed: StartDash binding is unavailable on movement=" .. tostring(movement_name))
+        set_anim_bool(owner, DASH_ANIM_VAR, false)
         ability.active_remaining = 0.0
         return
     end
@@ -251,12 +315,14 @@ local function activate_dash(owner, ability)
     end)
     if not ok then
         log("Dash activate failed: StartDash call error: " .. tostring(started))
+        set_anim_bool(owner, DASH_ANIM_VAR, false)
         ability.active_remaining = 0.0
         return
     end
 
     if not started then
         log("Dash activate failed: StartDash returned false")
+        set_anim_bool(owner, DASH_ANIM_VAR, false)
         ability.active_remaining = 0.0
         return
     end
@@ -267,6 +333,9 @@ local function activate_dash(owner, ability)
 end
 
 local function end_dash(owner, ability)
+    if owner ~= nil then
+        set_anim_bool(owner, DASH_ANIM_VAR, false)
+    end
     log("Dash ended")
 end
 
@@ -291,13 +360,16 @@ local function setup_abilities()
         Name = DASH_SKILL_NAME,
         Key = DASH_SKILL_KEY,
         Duration = DASH_DURATION,
-        Cooldown = 0.0,
+        Cooldown = 1.0,
         OnActivate = activate_dash,
         OnEnd = end_dash
     })
 
     log("registered SteamSkill on " .. STEAM_SKILL_KEY)
     log("registered Dash on " .. DASH_SKILL_KEY)
+
+    set_anim_bool(owner, DASH_ANIM_VAR, false)
+    set_anim_bool(owner, ATTACK_ANIM_VAR, false)
 end
 
 function BeginPlay()
@@ -315,6 +387,7 @@ function EndPlay()
     actor = nil
     ability_system = nil
     movement = nil
+    anim_instance = nil
 end
 
 function OnOverlap(OtherActor)
