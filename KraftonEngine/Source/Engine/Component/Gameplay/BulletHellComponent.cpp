@@ -2,10 +2,10 @@
 
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
 #include "Core/Logging/Log.h"
-#include "Debug/DrawDebugHelpers.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Math/Rotator.h"
+#include "Profiling/Stats/BulletHellStats.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,8 +14,6 @@
 
 namespace
 {
-	constexpr float TwoPi = 6.28318530718f;
-
 	uint32 AdvanceNonZero(uint32 Value)
 	{
 		++Value;
@@ -30,12 +28,6 @@ namespace
 	float ClampFloat(float Value, float MinValue, float MaxValue)
 	{
 		return (std::max)(MinValue, (std::min)(MaxValue, Value));
-	}
-
-	FVector RotateDirectionYaw(const FVector& Forward, const FVector& Right, float Degrees)
-	{
-		const float Radians = Degrees * (3.1415926535f / 180.0f);
-		return SafeDirection(Forward * std::cos(Radians) + Right * std::sin(Radians), Forward);
 	}
 
 	bool IsProperty(const char* PropertyName, const char* MemberName, const char* DisplayName)
@@ -56,11 +48,6 @@ void UBulletHellComponent::BeginPlay()
 {
 	UActorComponent::BeginPlay();
 
-	if (bAutoSpawnDebugPreset)
-	{
-		SpawnDebugPreset();
-	}
-
 	if (bEnableRendering)
 	{
 		EnsureRenderComponent();
@@ -72,59 +59,11 @@ void UBulletHellComponent::PostEditProperty(const char* PropertyName)
 {
 	UActorComponent::PostEditProperty(PropertyName);
 
-	if (IsProperty(PropertyName, "DebugSpawnRequest", "Debug Spawn Request") &&
-		DebugSpawnRequest != LastDebugSpawnRequest)
-	{
-		LastDebugSpawnRequest = DebugSpawnRequest;
-		const int32 SpawnedCount = SpawnDebugPreset();
-		UE_LOG("BulletHell debug spawn request: Spawned=%d %s", SpawnedCount, GetBulletDebugStatsText().c_str());
-	}
-	else if (IsProperty(PropertyName, "DebugRandomKillRequest", "Debug Random Kill Request") &&
-		DebugRandomKillRequest != LastDebugRandomKillRequest)
-	{
-		LastDebugRandomKillRequest = DebugRandomKillRequest;
-		const bool bKilled = KillRandomDebugBullet();
-		UE_LOG("BulletHell debug random kill request: Killed=%s %s", bKilled ? "true" : "false", GetBulletDebugStatsText().c_str());
-	}
-	else if (IsProperty(PropertyName, "DebugClearRequest", "Debug Clear Request") &&
-		DebugClearRequest != LastDebugClearRequest)
-	{
-		LastDebugClearRequest = DebugClearRequest;
-		ClearBullets();
-		UE_LOG("BulletHell debug clear request: %s", GetBulletDebugStatsText().c_str());
-	}
-	else if (IsProperty(PropertyName, "DebugLogStatsRequest", "Debug Log Stats Request") &&
-		DebugLogStatsRequest != LastDebugLogStatsRequest)
-	{
-		LastDebugLogStatsRequest = DebugLogStatsRequest;
-		LogBulletDebugStats();
-	}
-	else if (IsProperty(PropertyName, "DebugLogFirstBulletRequest", "Debug Log First Bullet Request") &&
-		DebugLogFirstBulletRequest != LastDebugLogFirstBulletRequest)
-	{
-		LastDebugLogFirstBulletRequest = DebugLogFirstBulletRequest;
-		LogFirstBulletDebugInfo();
-	}
-	else if (IsProperty(PropertyName, "DebugRebuildRendererRequest", "Debug Rebuild Renderer Request") &&
-		DebugRebuildRendererRequest != LastDebugRebuildRendererRequest)
-	{
-		LastDebugRebuildRendererRequest = DebugRebuildRendererRequest;
-		RebuildRendererFromBullets();
-		UE_LOG("BulletHell debug rebuild renderer request: %s", GetBulletDebugStatsText().c_str());
-	}
-	else if (IsProperty(PropertyName, "bLogDebugStats", "Log Debug Stats") ||
-		IsProperty(PropertyName, "DebugStatsLogInterval", "Debug Stats Log Interval"))
-	{
-		DebugStatsLogAccumulator = 0.0f;
-	}
-	else if (IsProperty(PropertyName, "RendererMeshPath", "Renderer Mesh Path") ||
+	if (IsProperty(PropertyName, "RendererMeshPath", "Renderer Mesh Path") ||
 		IsProperty(PropertyName, "RendererMaterialPath", "Renderer Material Path") ||
 		IsProperty(PropertyName, "bEnableRendering", "Enable Rendering") ||
 		IsProperty(PropertyName, "bAutoCreateRenderer", "Auto Create Renderer") ||
-		IsProperty(PropertyName, "RenderScale", "Render Scale") ||
-		IsProperty(PropertyName, "SecondaryMeshPath", "Secondary Mesh Path") ||
-		IsProperty(PropertyName, "SecondaryMaterialPath", "Secondary Material Path") ||
-		IsProperty(PropertyName, "SecondaryRenderScale", "Secondary Render Scale"))
+		IsProperty(PropertyName, "RenderScale", "Render Scale"))
 	{
 		if (bEnableRendering)
 		{
@@ -151,13 +90,7 @@ void UBulletHellComponent::TickComponent(
 	ResetPerFrameDebugStats();
 	TickBullets(DeltaTime);
 	SyncRenderInstancesBulk();
-
-	if (bDrawBulletDebug)
-	{
-		DrawBulletDebug();
-	}
-
-	MaybeLogBulletDebugStats(DeltaTime);
+	RecordOverlayStats();
 }
 
 FBulletHandle UBulletHellComponent::SpawnBullet(
@@ -166,44 +99,50 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 	float Radius,
 	float Lifetime)
 {
-	return SpawnBulletInternal(
-		Position,
-		Velocity,
-		Radius,
-		Lifetime,
-		0,
-		BuildDebugArchetype(0),
-		EBulletBehaviorType::Linear,
-		SafeDirection(Velocity, ResolveDebugSpawnForward()));
+	FBulletSpawnParams Params;
+	Params.Position = Position;
+	Params.Velocity = Velocity;
+	Params.Archetype.MeshPath = RendererMeshPath;
+	Params.Archetype.MaterialPath = RendererMaterialPath;
+	Params.Archetype.Radius = Radius;
+	Params.Archetype.Speed = Velocity.Length();
+	Params.Archetype.Lifetime = Lifetime;
+	Params.Archetype.RenderScale = RenderScale;
+	Params.Archetype.BehaviorType = EBulletBehaviorType::Linear;
+	Params.BehaviorType = EBulletBehaviorType::Linear;
+	return SpawnBullet(Params);
 }
 
-FBulletHandle UBulletHellComponent::SpawnBulletInternal(
-	const FVector& Position,
-	const FVector& Velocity,
-	float Radius,
-	float Lifetime,
-	int32 ArchetypeIndex,
-	const FBulletArchetype& Archetype,
-	EBulletBehaviorType BehaviorType,
-	const FVector& DebugDirection)
+FBulletHandle UBulletHellComponent::SpawnBullet(const FBulletSpawnParams& Params)
 {
+	const FBulletArchetype& Archetype = Params.Archetype;
+
 	FBulletInstance Bullet;
 	Bullet.Id = NextBulletId;
 	Bullet.Generation = NextBulletGeneration;
-	Bullet.Position = Position;
-	Bullet.PreviousPosition = Position;
-	Bullet.Velocity = Velocity;
-	Bullet.Radius = (std::max)(0.01f, Radius);
+	Bullet.MeshPath = Archetype.MeshPath;
+	Bullet.MaterialPath = Archetype.MaterialPath;
+	Bullet.Position = Params.Position;
+	Bullet.PreviousPosition = Params.Position;
+	Bullet.Velocity = Params.Velocity;
+	Bullet.Radius = (std::max)(0.01f, Archetype.Radius);
 	Bullet.Age = 0.0f;
-	Bullet.Lifetime = Lifetime;
-	Bullet.ArchetypeIndex = ArchetypeIndex;
+	Bullet.Lifetime = Archetype.Lifetime;
+	Bullet.ArchetypeIndex = Params.ArchetypeIndex;
 	Bullet.RenderSlotIndex = -1;
 	Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
-	Bullet.BehaviorType = BehaviorType;
-	Bullet.BehaviorPhase = BehaviorType == EBulletBehaviorType::ColdLaunch ? EBulletPhase::Waiting : EBulletPhase::Active;
+	Bullet.BehaviorType = Params.BehaviorType;
+	Bullet.BehaviorPhase = Params.BehaviorType == EBulletBehaviorType::ColdLaunch ? EBulletPhase::Waiting : EBulletPhase::Active;
+	Bullet.HomingTargetPosition = Params.HomingTargetPosition;
+	Bullet.HomingTargetActor = Params.HomingTargetActor;
+	Bullet.HomingStrength = (std::max)(0.0f, Params.HomingStrength);
+	Bullet.HomingMaxTurnRateDegrees = (std::max)(0.0f, Params.HomingMaxTurnRateDegrees);
+	Bullet.ColdLaunchDelay = (std::max)(0.0f, Params.ColdLaunchDelay);
+	Bullet.ColdLaunchVelocity = Params.ColdLaunchVelocity;
+	Bullet.TimedActivationTime = Params.TimedActivationTime;
+	Bullet.TimedVelocity = Params.TimedVelocity;
 	Bullet.RenderInstanceIndex = -1;
 	Bullet.bAlive = true;
-	ConfigureDebugBulletBehavior(Bullet, DebugDirection, Archetype);
 
 	NextBulletId = AdvanceNonZero(NextBulletId);
 	NextBulletGeneration = AdvanceNonZero(NextBulletGeneration);
@@ -270,18 +209,6 @@ bool UBulletHellComponent::KillBulletById(int32 BulletId, int32 Generation)
 	return KillBullet(FBulletHandle{ static_cast<uint32>(BulletId), static_cast<uint32>(Generation) });
 }
 
-bool UBulletHellComponent::KillRandomDebugBullet()
-{
-	if (Bullets.empty())
-	{
-		return false;
-	}
-
-	DebugKillRandomState = DebugKillRandomState * 1664525u + 1013904223u;
-	const int32 BulletIndex = static_cast<int32>(DebugKillRandomState % static_cast<uint32>(Bullets.size()));
-	return RemoveBulletAtIndex(BulletIndex, false);
-}
-
 bool UBulletHellComponent::IsBulletAlive(const FBulletHandle& Handle) const
 {
 	return FindBullet(Handle) != nullptr;
@@ -328,213 +255,10 @@ int32 UBulletHellComponent::GetBulletCount() const
 	return static_cast<int32>(Bullets.size());
 }
 
-int32 UBulletHellComponent::SpawnDebugPreset()
+void UBulletHellComponent::RecordDebugDrawStats(int32 SelectedCount, int32 TruncatedCount)
 {
-	const int32 SafeCount = (std::max)(0, DebugSpawnCount);
-	if (SafeCount == 0)
-	{
-		return 0;
-	}
-
-	const FVector Origin = ResolveDebugSpawnOrigin();
-	const FVector Forward = ResolveDebugSpawnForward();
-	const FVector Right = ResolveDebugSpawnRight();
-	const float Spacing = (std::max)(DebugSpawnRadius * 3.0f, 1.0f);
-	const float PatternRadius = (std::max)(Spacing, static_cast<float>(SafeCount) * Spacing / TwoPi);
-
-	for (int32 Index = 0; Index < SafeCount; ++Index)
-	{
-		FVector Position = Origin;
-		FVector Direction = Forward;
-
-		switch (DebugSpawnPattern)
-		{
-		case EBulletHellDebugSpawnPattern::Line:
-		{
-			const float Offset = (static_cast<float>(Index) - static_cast<float>(SafeCount - 1) * 0.5f) * Spacing;
-			Position = Origin + Right * Offset;
-			Direction = Forward;
-			break;
-		}
-		case EBulletHellDebugSpawnPattern::Ring:
-		{
-			const float Angle = SafeCount > 0 ? (TwoPi * static_cast<float>(Index) / static_cast<float>(SafeCount)) : 0.0f;
-			const FVector Radial = SafeDirection(Forward * std::cos(Angle) + Right * std::sin(Angle), Forward);
-			Position = Origin + Radial * PatternRadius;
-			Direction = Forward;
-			break;
-		}
-		case EBulletHellDebugSpawnPattern::Radial:
-		default:
-		{
-			const float Angle = SafeCount > 0 ? (TwoPi * static_cast<float>(Index) / static_cast<float>(SafeCount)) : 0.0f;
-			Direction = SafeDirection(Forward * std::cos(Angle) + Right * std::sin(Angle), Forward);
-			Position = Origin;
-			break;
-		}
-		}
-
-		const int32 ArchetypeIndex = ResolveDebugArchetypeIndex(Index);
-		const FBulletArchetype Archetype = BuildDebugArchetype(ArchetypeIndex);
-		FVector Velocity = Direction * Archetype.Speed;
-		if (Archetype.BehaviorType == EBulletBehaviorType::ColdLaunch)
-		{
-			Velocity = FVector::ZeroVector;
-		}
-
-		SpawnBulletInternal(
-			Position,
-			Velocity,
-			Archetype.Radius,
-			Archetype.Lifetime,
-			ArchetypeIndex,
-			Archetype,
-			Archetype.BehaviorType,
-			Direction);
-	}
-
-	return SafeCount;
-}
-
-FBulletArchetype UBulletHellComponent::BuildDebugArchetype(int32 ArchetypeIndex) const
-{
-	FBulletArchetype Archetype;
-	if (ArchetypeIndex == 1)
-	{
-		Archetype.MeshPath = SecondaryMeshPath;
-		Archetype.MaterialPath = SecondaryMaterialPath;
-		Archetype.Radius = (std::max)(0.01f, SecondaryRadius);
-		Archetype.Speed = (std::max)(0.0f, SecondarySpeed);
-		Archetype.Lifetime = SecondaryLifetime;
-		Archetype.RenderScale = (std::max)(0.01f, SecondaryRenderScale);
-		Archetype.BehaviorType = SecondaryBehaviorType;
-		return Archetype;
-	}
-
-	Archetype.MeshPath = RendererMeshPath;
-	Archetype.MaterialPath = RendererMaterialPath;
-	Archetype.Radius = (std::max)(0.01f, DebugSpawnRadius);
-	Archetype.Speed = (std::max)(0.0f, DebugSpawnSpeed);
-	Archetype.Lifetime = DebugSpawnLifetime;
-	Archetype.RenderScale = (std::max)(0.01f, RenderScale);
-	Archetype.BehaviorType = DebugBehaviorType;
-	return Archetype;
-}
-
-int32 UBulletHellComponent::ResolveDebugArchetypeIndex(int32 SpawnIndex) const
-{
-	switch (DebugArchetypeMode)
-	{
-	case EBulletHellDebugArchetypeMode::Secondary:
-		return 1;
-	case EBulletHellDebugArchetypeMode::Alternating:
-		return (SpawnIndex % 2) == 0 ? 0 : 1;
-	case EBulletHellDebugArchetypeMode::Primary:
-	default:
-		return 0;
-	}
-}
-
-void UBulletHellComponent::ConfigureDebugBulletBehavior(
-	FBulletInstance& Bullet,
-	const FVector& Direction,
-	const FBulletArchetype& Archetype) const
-{
-	const FVector SafeForward = SafeDirection(Direction, ResolveDebugSpawnForward());
-	const FVector Right = ResolveDebugSpawnRight();
-	const FVector Up = FVector::UpVector;
-
-	switch (Bullet.BehaviorType)
-	{
-	case EBulletBehaviorType::Homing:
-		Bullet.HomingTargetPosition =
-			ResolveDebugSpawnOrigin()
-			+ SafeForward * DebugHomingTargetForwardOffset
-			+ Right * DebugHomingTargetRightOffset
-			+ Up * DebugHomingTargetUpOffset;
-		Bullet.HomingStrength = (std::max)(0.0f, DebugHomingStrength);
-		Bullet.HomingMaxTurnRateDegrees = (std::max)(0.0f, DebugHomingMaxTurnRateDegrees);
-		break;
-	case EBulletBehaviorType::ColdLaunch:
-		Bullet.BehaviorPhase = EBulletPhase::Waiting;
-		Bullet.ColdLaunchDelay = (std::max)(0.0f, DebugColdLaunchDelay);
-		Bullet.ColdLaunchVelocity = SafeForward * (std::max)(0.0f, DebugColdLaunchSpeed > 0.0f ? DebugColdLaunchSpeed : Archetype.Speed);
-		break;
-	case EBulletBehaviorType::TimedVelocityChange:
-		Bullet.TimedActivationTime = (std::max)(0.0f, DebugTimedActivationTime);
-		Bullet.TimedVelocity = RotateDirectionYaw(SafeForward, Right, DebugTimedYawDegrees) * (std::max)(0.0f, DebugTimedSpeed);
-		break;
-	case EBulletBehaviorType::Linear:
-	default:
-		break;
-	}
-}
-
-void UBulletHellComponent::LogBulletDebugStats() const
-{
-	UE_LOG("%s", GetBulletDebugStatsText().c_str());
-}
-
-void UBulletHellComponent::LogFirstBulletDebugInfo() const
-{
-	if (Bullets.empty())
-	{
-		UE_LOG("BulletHell first bullet: None");
-		return;
-	}
-
-	const FBulletInstance& Bullet = Bullets.front();
-	UE_LOG(
-		"BulletHell first bullet: Id=%u Generation=%u Position=(%.2f,%.2f,%.2f) Previous=(%.2f,%.2f,%.2f) Velocity=(%.2f,%.2f,%.2f) Radius=%.2f Age=%.2f Lifetime=%.2f Behavior=%d Phase=%d RenderIndex=%d",
-		Bullet.Id,
-		Bullet.Generation,
-		Bullet.Position.X,
-		Bullet.Position.Y,
-		Bullet.Position.Z,
-		Bullet.PreviousPosition.X,
-		Bullet.PreviousPosition.Y,
-		Bullet.PreviousPosition.Z,
-		Bullet.Velocity.X,
-		Bullet.Velocity.Y,
-		Bullet.Velocity.Z,
-		Bullet.Radius,
-		Bullet.Age,
-		Bullet.Lifetime,
-		static_cast<int32>(Bullet.BehaviorType),
-		static_cast<int32>(Bullet.BehaviorPhase),
-		Bullet.RenderInstanceIndex);
-}
-
-FString UBulletHellComponent::GetBulletDebugStatsText() const
-{
-	char Buffer[768];
-	std::snprintf(
-		Buffer,
-		sizeof(Buffer),
-		"BulletHell stats: Active=%d Spawned=%u Killed=%u Expired=%u CollisionQueries=%u CollisionHits=%u CollisionKilled=%u EraseKilled=%u BehaviorTransitions=%u BehaviorActive(L/H/C/T)=%d/%d/%d/%d ArchetypeActive(P/S)=%d/%d DebugDrawSelected=%d DebugDrawTruncated=%d RenderInstances=%d RendererSlots=%d SlotInstances(0/1)=%d/%d RenderMismatch=%d",
-		DebugStats.ActiveBulletCount,
-		DebugStats.TotalSpawned,
-		DebugStats.TotalKilled,
-		DebugStats.TotalExpired,
-		DebugStats.CollisionQueryCount,
-		DebugStats.CollisionHitCount,
-		DebugStats.CollisionKilledCount,
-		DebugStats.EraseKilledCount,
-		DebugStats.BehaviorTransitionCount,
-		DebugStats.ActiveLinearCount,
-		DebugStats.ActiveHomingCount,
-		DebugStats.ActiveColdLaunchCount,
-		DebugStats.ActiveTimedVelocityChangeCount,
-		DebugStats.ActivePrimaryArchetypeCount,
-		DebugStats.ActiveSecondaryArchetypeCount,
-		DebugStats.DebugDrawSelectedCount,
-		DebugStats.DebugDrawTruncatedCount,
-		DebugStats.RenderInstanceCount,
-		DebugStats.RendererSlotCount,
-		DebugStats.RendererSlot0InstanceCount,
-		DebugStats.RendererSlot1InstanceCount,
-		DebugStats.RenderMismatchCount);
-	return FString(Buffer);
+	DebugStats.DebugDrawSelectedCount = (std::max)(0, SelectedCount);
+	DebugStats.DebugDrawTruncatedCount = (std::max)(0, TruncatedCount);
 }
 
 void UBulletHellComponent::TickBullets(float DeltaTime)
@@ -743,7 +467,6 @@ bool UBulletHellComponent::SweepBulletByChannel(
 		++DebugStats.CollisionHitCount;
 	}
 
-	DrawCollisionSweepDebug(Bullet, bHit ? &OutHit : nullptr, false);
 	return bHit;
 }
 
@@ -779,7 +502,6 @@ bool UBulletHellComponent::SweepBulletByObjectTypes(
 		++DebugStats.CollisionHitCount;
 	}
 
-	DrawCollisionSweepDebug(Bullet, bHit ? &OutHit : nullptr, ObjectTypeMask == BuildEraseObjectTypeMask());
 	return bHit;
 }
 
@@ -813,31 +535,6 @@ uint32 UBulletHellComponent::BuildEraseObjectTypeMask() const
 		Mask |= ObjectTypeBit(ECollisionChannel::Projectile);
 	}
 	return Mask;
-}
-
-void UBulletHellComponent::DrawCollisionSweepDebug(
-	const FBulletInstance& Bullet,
-	const FHitResult* Hit,
-	bool bErase) const
-{
-	if (!bDrawCollisionDebug)
-	{
-		return;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	const FColor MissColor = bErase ? FColor(120, 120, 255) : FColor::Gray();
-	const FColor HitColor = bErase ? FColor(255, 0, 255) : FColor::Red();
-	DrawDebugLine(World, Bullet.PreviousPosition, Bullet.Position, Hit ? HitColor : MissColor, 0.0f);
-	if (Hit)
-	{
-		DrawDebugSphere(World, Hit->WorldHitLocation, (std::max)(Bullet.Radius, 1.0f), 12, HitColor, 0.0f);
-	}
 }
 
 bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
@@ -908,7 +605,11 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 
 UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderComponent()
 {
-	const int32 SlotIndex = FindOrCreateRenderSlot(BuildDebugArchetype(0));
+	FBulletArchetype DefaultArchetype;
+	DefaultArchetype.MeshPath = RendererMeshPath;
+	DefaultArchetype.MaterialPath = RendererMaterialPath;
+	DefaultArchetype.RenderScale = RenderScale;
+	const int32 SlotIndex = FindOrCreateRenderSlot(DefaultArchetype);
 	return SlotIndex >= 0 ? EnsureRenderSlotComponent(SlotIndex) : nullptr;
 }
 
@@ -1052,7 +753,13 @@ void UBulletHellComponent::RebuildRendererFromBullets()
 	for (int32 Index = 0; Index < static_cast<int32>(Bullets.size()); ++Index)
 	{
 		FBulletInstance& Bullet = Bullets[Index];
-		const FBulletArchetype Archetype = BuildDebugArchetype(Bullet.ArchetypeIndex);
+		FBulletArchetype Archetype;
+		Archetype.MeshPath = Bullet.MeshPath;
+		Archetype.MaterialPath = Bullet.MaterialPath;
+		Archetype.Radius = Bullet.Radius;
+		Archetype.Lifetime = Bullet.Lifetime;
+		Archetype.RenderScale = Bullet.RenderScale;
+		Archetype.BehaviorType = Bullet.BehaviorType;
 		const int32 SlotIndex = FindOrCreateRenderSlot(Archetype);
 		Bullet.RenderSlotIndex = SlotIndex;
 		Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
@@ -1226,104 +933,35 @@ void UBulletHellComponent::UpdateRenderDebugStats()
 	DebugStats.RenderMismatchCount = MismatchCount;
 }
 
-void UBulletHellComponent::DrawBulletDebug()
-{
-	if (DebugDrawMode == EBulletHellDebugDrawMode::Off)
-	{
-		return;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	const int32 MaxDrawCount = (std::max)(0, DebugDrawMaxCount);
-	int32 EligibleCount = 0;
-	int32 DrawnCount = 0;
-
-	for (const FBulletInstance& Bullet : Bullets)
-	{
-		const bool bHighlighted = HighlightedBulletId > 0 && Bullet.Id == static_cast<uint32>(HighlightedBulletId);
-		if (DebugDrawMode == EBulletHellDebugDrawMode::Highlighted && !bHighlighted)
-		{
-			continue;
-		}
-
-		++EligibleCount;
-		if (DrawnCount >= MaxDrawCount)
-		{
-			continue;
-		}
-
-		const FColor Color = bHighlighted ? FColor::Yellow() : FColor(0, 210, 255);
-		DrawBulletCross(Bullet.Position, Color, (std::max)(Bullet.Radius * 0.35f, 0.1f));
-		DrawDebugSphere(World, Bullet.Position, Bullet.Radius, 12, Color, 0.0f);
-		if (!Bullet.PreviousPosition.IsNearlyZero() || !Bullet.Position.IsNearlyZero())
-		{
-			DrawDebugLine(World, Bullet.PreviousPosition, Bullet.Position, FColor(255, 140, 0), 0.0f);
-		}
-		++DrawnCount;
-	}
-
-	DebugStats.DebugDrawSelectedCount = DrawnCount;
-	DebugStats.DebugDrawTruncatedCount = (std::max)(0, EligibleCount - DrawnCount);
-}
-
-void UBulletHellComponent::DrawBulletCross(const FVector& Center, const FColor& Color, float Extent) const
-{
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	DrawDebugLine(World, Center - FVector(Extent, 0.0f, 0.0f), Center + FVector(Extent, 0.0f, 0.0f), Color, 0.0f);
-	DrawDebugLine(World, Center - FVector(0.0f, Extent, 0.0f), Center + FVector(0.0f, Extent, 0.0f), Color, 0.0f);
-	DrawDebugLine(World, Center - FVector(0.0f, 0.0f, Extent), Center + FVector(0.0f, 0.0f, Extent), Color, 0.0f);
-}
-
-FVector UBulletHellComponent::ResolveDebugSpawnOrigin() const
-{
-	const AActor* OwnerActor = GetOwner();
-	return OwnerActor ? OwnerActor->GetActorLocation() : FVector::ZeroVector;
-}
-
-FVector UBulletHellComponent::ResolveDebugSpawnForward() const
-{
-	const AActor* OwnerActor = GetOwner();
-	return OwnerActor ? SafeDirection(OwnerActor->GetActorForward(), FVector::ForwardVector) : FVector::ForwardVector;
-}
-
-FVector UBulletHellComponent::ResolveDebugSpawnRight() const
-{
-	const AActor* OwnerActor = GetOwner();
-	return OwnerActor ? SafeDirection(OwnerActor->GetActorRight(), FVector::RightVector) : FVector::RightVector;
-}
-
 void UBulletHellComponent::ResetPerFrameDebugStats()
 {
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
-	DebugStats.DebugDrawSelectedCount = 0;
-	DebugStats.DebugDrawTruncatedCount = 0;
 }
 
-void UBulletHellComponent::MaybeLogBulletDebugStats(float DeltaTime)
+void UBulletHellComponent::RecordOverlayStats() const
 {
-	if (!bLogDebugStats)
-	{
-		DebugStatsLogAccumulator = 0.0f;
-		return;
-	}
-
-	const float SafeInterval = (std::max)(0.0f, DebugStatsLogInterval);
-	DebugStatsLogAccumulator += (std::max)(0.0f, DeltaTime);
-	if (DebugStatsLogAccumulator < SafeInterval)
-	{
-		return;
-	}
-
-	DebugStatsLogAccumulator = 0.0f;
-	LogBulletDebugStats();
+	FBulletHellStatsSnapshot Snapshot;
+	Snapshot.ActiveBulletCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveBulletCount));
+	Snapshot.TotalSpawned = DebugStats.TotalSpawned;
+	Snapshot.TotalKilled = DebugStats.TotalKilled;
+	Snapshot.TotalExpired = DebugStats.TotalExpired;
+	Snapshot.CollisionQueryCount = DebugStats.CollisionQueryCount;
+	Snapshot.CollisionHitCount = DebugStats.CollisionHitCount;
+	Snapshot.CollisionKilledCount = DebugStats.CollisionKilledCount;
+	Snapshot.EraseKilledCount = DebugStats.EraseKilledCount;
+	Snapshot.BehaviorTransitionCount = DebugStats.BehaviorTransitionCount;
+	Snapshot.ActiveLinearCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveLinearCount));
+	Snapshot.ActiveHomingCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveHomingCount));
+	Snapshot.ActiveColdLaunchCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveColdLaunchCount));
+	Snapshot.ActiveTimedVelocityChangeCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveTimedVelocityChangeCount));
+	Snapshot.ActivePrimaryArchetypeCount = static_cast<uint32>((std::max)(0, DebugStats.ActivePrimaryArchetypeCount));
+	Snapshot.ActiveSecondaryArchetypeCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveSecondaryArchetypeCount));
+	Snapshot.DebugDrawSelectedCount = static_cast<uint32>((std::max)(0, DebugStats.DebugDrawSelectedCount));
+	Snapshot.DebugDrawTruncatedCount = static_cast<uint32>((std::max)(0, DebugStats.DebugDrawTruncatedCount));
+	Snapshot.RenderInstanceCount = static_cast<uint32>((std::max)(0, DebugStats.RenderInstanceCount));
+	Snapshot.RendererSlotCount = static_cast<uint32>((std::max)(0, DebugStats.RendererSlotCount));
+	Snapshot.RendererSlot0InstanceCount = static_cast<uint32>((std::max)(0, DebugStats.RendererSlot0InstanceCount));
+	Snapshot.RendererSlot1InstanceCount = static_cast<uint32>((std::max)(0, DebugStats.RendererSlot1InstanceCount));
+	Snapshot.RenderMismatchCount = static_cast<uint32>((std::max)(0, DebugStats.RenderMismatchCount));
+	BULLETHELL_STATS_ADD_COMPONENT(Snapshot);
 }
