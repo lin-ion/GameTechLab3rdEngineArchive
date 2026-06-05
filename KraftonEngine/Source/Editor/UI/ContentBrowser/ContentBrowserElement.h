@@ -63,7 +63,7 @@ public:
 	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
 };
 
-class ObjectElement final : public ContentBrowserElement
+class StaticMeshAssetElement final : public ContentBrowserElement
 {
 public:
 	void RenderContextMenu(ContentBrowserContext& Context) override;
@@ -74,6 +74,16 @@ public:
 protected:
 	const char* GetTypeLabel() const override { return "Static Mesh"; }
 	uint32 GetAccentColor() const override { return IM_COL32(88, 160, 230, 255); }
+};
+
+class ObjFileElement final : public ContentBrowserElement
+{
+public:
+	const char* GetDragItemType() override { return "ObjFileElement"; }
+
+protected:
+	const char* GetTypeLabel() const override { return "OBJ File"; }
+	uint32 GetAccentColor() const override { return IM_COL32(100, 100, 115, 255); }
 };
 
 class FloatCurveElement final : public ContentBrowserElement
@@ -108,7 +118,7 @@ protected:
 	uint32 GetAccentColor() const override { return IM_COL32(200, 110, 200, 255); }
 };
 
-class MeshElement final : public ContentBrowserElement
+class SkeletalMeshAssetElement final : public ContentBrowserElement
 {
 public:
 	void RenderContextMenu(ContentBrowserContext& Context) override;
@@ -118,6 +128,17 @@ public:
 protected:
 	const char* GetTypeLabel() const override { return "Skeletal Mesh"; }
 	uint32 GetAccentColor() const override { return IM_COL32(126, 140, 255, 255); }
+};
+
+class FbxFileElement final : public ContentBrowserElement
+{
+public:
+	void RenderContextMenu(ContentBrowserContext& Context) override;
+	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
+
+protected:
+	const char* GetTypeLabel() const override { return "FBX File"; }
+	uint32 GetAccentColor() const override { return IM_COL32(100, 100, 115, 255); }
 };
 
 class AnimationElement final : public ContentBrowserElement
@@ -148,7 +169,7 @@ public:
 
 protected:
 	const char* GetTypeLabel() const override { return "Particle System"; }
-	uint32 GetAccentColor() const override { return IM_COL32(36, 180, 125, 255); }
+	uint32 GetAccentColor() const override { return IM_COL32(255, 255, 255, 255); }
 };
 
 class VectorFieldSourceElement final : public ContentBrowserElement
@@ -175,10 +196,14 @@ protected:
 	uint32 GetAccentColor() const override { return IM_COL32(80, 210, 150, 255); }
 };
 
-class PNGElement final : public ContentBrowserElement
+class ImageElement final : public ContentBrowserElement
 {
 public:
-	virtual const char* GetDragItemType() override { return "PNGElement"; }
+	virtual const char* GetDragItemType() override { return "ImageElement"; }
+
+protected:
+	const char* GetTypeLabel() const override { return "Texture"; }
+	uint32 GetAccentColor() const override { return IM_COL32(192, 64, 64, 255); }
 };
 
 #include "Editor/UI/Panel/EditorMaterialInspector.h"
@@ -192,6 +217,8 @@ public:
 
 private:
 	FEditorMaterialInspector MaterialInspector;
+	const char* GetTypeLabel() const override { return "Material"; }
+	uint32 GetAccentColor() const override { return IM_COL32(64, 192, 64, 255); }
 };
 
 

@@ -381,7 +381,7 @@ void FEditorContentBrowserWidget::RenderFbxImportOptionsPopup()
 
 void FEditorContentBrowserWidget::Refresh()
 {
-	RootNode = BuildDirectoryTree(FPaths::RootDir());
+	RootNode = BuildDirectoryTree(std::filesystem::path(FPaths::AssetDir()).lexically_normal());
 	RefreshContent();
 
 	BrowserContext.bPendingContentRefresh = false;
@@ -396,6 +396,11 @@ void FEditorContentBrowserWidget::SetIconSize(float Size)
 void FEditorContentBrowserWidget::LoadFromSettings()
 {
 	BrowserContext.CurrentPath = ResolveContentBrowserSettingsPath(FEditorSettings::Get().ContentBrowserPath);
+	const std::filesystem::path BrowserRootPath = std::filesystem::path(FPaths::AssetDir()).lexically_normal();
+	if (!IsSubPath(BrowserRootPath, BrowserContext.CurrentPath))
+	{
+		BrowserContext.CurrentPath = BrowserRootPath.wstring();
+	}
 	BrowserContext.PendingRevealPath = BrowserContext.CurrentPath;
 }
 
@@ -430,7 +435,7 @@ void FEditorContentBrowserWidget::RefreshContent()
 		}
 		else if (Extension == ".obj")
 		{
-			Element = std::make_shared<ObjectElement>();
+			Element = std::make_shared<ObjFileElement>();
 		}
 		else if (Extension == ".mat")
 		{
@@ -446,7 +451,7 @@ void FEditorContentBrowserWidget::RefreshContent()
 		}
 		else if (Extension == ".fbx")
 		{
-			Element = std::make_shared<MeshElement>();
+			Element = std::make_shared<FbxFileElement>();
 		}
 		else if (Extension == ".fga")
 		{
@@ -454,7 +459,7 @@ void FEditorContentBrowserWidget::RefreshContent()
 		}
 		else if (Extension == ".png")
 		{
-			Element = std::make_shared<PNGElement>();
+			Element = std::make_shared<ImageElement>();
 			Icon = FEditorTextureManager::Get().GetOrLoadThumbnail(FPaths::ToUtf8(Content.Path.lexically_relative(FPaths::RootDir()).generic_wstring()));
 		}
 		else if (Extension == ".uasset")
@@ -467,10 +472,10 @@ void FEditorContentBrowserWidget::RefreshContent()
 				switch (Type)
 				{
 				case EAssetPackageType::StaticMesh:
-					Element = std::make_shared<ObjectElement>();
+					Element = std::make_shared<StaticMeshAssetElement>();
 					break;
 				case EAssetPackageType::SkeletalMesh:
-					Element = std::make_shared<MeshElement>();
+					Element = std::make_shared<SkeletalMeshAssetElement>();
 					break;
 				case EAssetPackageType::FloatCurve:
 					Element = std::make_shared<FloatCurveElement>();
@@ -747,12 +752,6 @@ TArray<FContentItem> FEditorContentBrowserWidget::ReadDirectory(std::wstring Pat
 	for (const auto& Entry : std::filesystem::directory_iterator(Path))
 	{
 		std::wstring Name = Entry.path().filename().wstring();
-		if (Entry.is_directory())
-		{
-			if (Name == L"Bin" || Name == L"Build" || Name == L".git" || Name == L".vs")
-				continue;
-		}
-
 		FContentItem Item;
 		Item.Path = Entry.path();
 		Item.Name = Name;
@@ -785,15 +784,11 @@ FEditorContentBrowserWidget::FDirNode FEditorContentBrowserWidget::BuildDirector
 		if (!Entry.is_directory())
 			continue;
 
-		std::wstring DirName = Entry.path().filename().wstring();
-		if (DirName == L"Bin" || DirName == L"Build" || DirName == L".git" || DirName == L".vs")
-			continue;
-
 		Node.Children.push_back(BuildDirectoryTree(Entry.path()));
 	}
 
 	if (Node.Self.Name.empty())
-		Node.Self.Name = FPaths::ToWide("Project");
+		Node.Self.Name = FPaths::ToWide("Content");
 
 	return Node;
 }

@@ -582,14 +582,10 @@ void SceneElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 	EditorEngine->LoadSceneFromPath(FilePath);
 }
 
-void ObjectElement::RenderContextMenu(ContentBrowserContext& Context)
+void StaticMeshAssetElement::RenderContextMenu(ContentBrowserContext& Context)
 {
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
-
-	FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
-
-	if (Extension == ".uasset" && FMeshManager::IsStaticMeshPackage(PackagePath))
+	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	if (FMeshManager::IsStaticMeshPackage(PackagePath))
 	{
 		if (ImGui::MenuItem("Reimport"))
 		{
@@ -608,30 +604,21 @@ void ObjectElement::RenderContextMenu(ContentBrowserContext& Context)
 	}
 }
 
-void ObjectElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+void StaticMeshAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 {
 	if (!Context.EditorEngine)
 	{
-		ShellExecuteW(nullptr, L"open", ContentItem.Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 		return;
 	}
 
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
-
-	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
 	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
-
-	if (Extension == ".uasset" && FMeshManager::IsStaticMeshPackage(PackagePath))
+	if (FMeshManager::IsStaticMeshPackage(PackagePath))
 	{
-		if (UStaticMesh* MeshAsset = FMeshManager::LoadStaticMesh(FilePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
+		if (UStaticMesh* MeshAsset = FMeshManager::LoadStaticMesh(PackagePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
 		{
 			Context.EditorEngine->OpenAssetEditorForObject(MeshAsset);
 		}
-		return;
 	}
-
-	ShellExecuteW(nullptr, L"open", ContentItem.Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
 void FloatCurveElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
@@ -703,36 +690,31 @@ void PhysicsAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 }
 
 
-void MeshElement::RenderContextMenu(ContentBrowserContext& Context)
+void FbxFileElement::RenderContextMenu(ContentBrowserContext& Context)
 {
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
-
 	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
-	FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
-
-	if (Extension == ".fbx")
+	const bool bHasImportedAsset = HasImportedFbxAssetForContentBrowser(FilePath);
+	if (bHasImportedAsset && ImGui::MenuItem("Open Imported Asset"))
 	{
-		const bool bHasImportedAsset = HasImportedFbxAssetForContentBrowser(FilePath);
-		if (bHasImportedAsset && ImGui::MenuItem("Open Imported Asset"))
-		{
-			TryOpenImportedFbxAssetForContentBrowser(Context, FilePath);
-		}
-
-		if (ImGui::MenuItem(bHasImportedAsset ? "Reimport Options..." : "Import Options..."))
-		{
-			FFbxImportOptionsDialog::BeginSceneImport(Context.FbxImportDialog, FilePath);
-
-			if (!Context.FbxImportDialog.bHasSkin && Context.FbxImportDialog.AnimationStacks.empty())
-			{
-				Context.FbxImportDialog = FFbxSceneImportDialogState {};
-				ReimportOrImportStaticFbxForContentBrowser(Context, FilePath);
-			}
-		}
-		return;
+		TryOpenImportedFbxAssetForContentBrowser(Context, FilePath);
 	}
 
-	if (Extension == ".uasset" && FMeshManager::IsSkeletalMeshPackage(PackagePath))
+	if (ImGui::MenuItem(bHasImportedAsset ? "Reimport Options..." : "Import Options..."))
+	{
+		FFbxImportOptionsDialog::BeginSceneImport(Context.FbxImportDialog, FilePath);
+
+		if (!Context.FbxImportDialog.bHasSkin && Context.FbxImportDialog.AnimationStacks.empty())
+		{
+			Context.FbxImportDialog = FFbxSceneImportDialogState {};
+			ReimportOrImportStaticFbxForContentBrowser(Context, FilePath);
+		}
+	}
+}
+
+void SkeletalMeshAssetElement::RenderContextMenu(ContentBrowserContext& Context)
+{
+	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	if (FMeshManager::IsSkeletalMeshPackage(PackagePath))
 	{
 		if (ImGui::MenuItem("Create Physics Asset"))
 		{
@@ -781,7 +763,7 @@ void MeshElement::RenderContextMenu(ContentBrowserContext& Context)
 	}
 }
 
-void MeshElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+void FbxFileElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 {
 	if (!Context.EditorEngine)
 	{
@@ -789,21 +771,23 @@ void MeshElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 	}
 
 	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
-	FString Extension = FPaths::ToUtf8(ContentItem.Path.extension());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
-
-	if (Extension == ".fbx")
+	if (TryOpenImportedFbxAssetForContentBrowser(Context, FilePath))
 	{
-		if (TryOpenImportedFbxAssetForContentBrowser(Context, FilePath))
-		{
-			return;
-		}
-
-		ImportFbxWithDefaultOptionsForContentBrowser(Context, FilePath);
 		return;
 	}
 
-	if (USkeletalMesh* MeshAsset = FMeshManager::LoadSkeletalMesh(FilePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
+	ImportFbxWithDefaultOptionsForContentBrowser(Context, FilePath);
+}
+
+void SkeletalMeshAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+{
+	if (!Context.EditorEngine)
+	{
+		return;
+	}
+
+	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	if (USkeletalMesh* MeshAsset = FMeshManager::LoadSkeletalMesh(PackagePath, Context.EditorEngine->GetRenderer().GetFD3DDevice().GetDevice()))
 	{
 		FMeshEditorWidget::ClearImportDurationForAsset(MeshAsset->GetAssetPathFileName());
 		Context.EditorEngine->OpenAssetEditorForObject(MeshAsset);
