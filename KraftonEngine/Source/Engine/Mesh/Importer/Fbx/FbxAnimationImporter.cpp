@@ -259,11 +259,11 @@ namespace
 		const FbxAMatrix TranslationMatrix    = MakeFbxTranslationMatrix(LclTranslation);
 		const FbxAMatrix RotationOffsetMatrix = MakeFbxTranslationMatrix(Node->GetRotationOffset(FbxNode::eSourcePivot));
 		const FbxAMatrix RotationPivotMatrix  = MakeFbxTranslationMatrix(Node->GetRotationPivot(FbxNode::eSourcePivot));
-		const FbxAMatrix PreRotationMatrix    = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPreRotation(FbxNode::eSourcePivot), RotationOrder)
+		const FbxAMatrix PreRotationMatrix    = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPreRotation(FbxNode::eSourcePivot), eEulerXYZ /* FBX 규약: pre/post rotation은 노드 RotationOrder와 무관하게 항상 XYZ (fbxnode.h) */)
 		: Identity;
 		const FbxAMatrix RotationMatrix = MakeFbxRotationMatrixByOrder(LclRotation, RotationOrder);
 
-		const FbxAMatrix PostRotationMatrix = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPostRotation(FbxNode::eSourcePivot), RotationOrder)
+		const FbxAMatrix PostRotationMatrix = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPostRotation(FbxNode::eSourcePivot), eEulerXYZ /* FBX 규약: pre/post rotation은 노드 RotationOrder와 무관하게 항상 XYZ (fbxnode.h) */)
 		: Identity;
 
 		const FbxAMatrix ScalingOffsetMatrix = MakeFbxTranslationMatrix(Node->GetScalingOffset(FbxNode::eSourcePivot));
@@ -1039,10 +1039,10 @@ namespace
 		const FbxAMatrix TranslationMatrix    = MakeFbxTranslationMatrix(ToFbxVector4(Translation));
 		const FbxAMatrix RotationOffsetMatrix = MakeFbxTranslationMatrix(Node->GetRotationOffset(FbxNode::eSourcePivot));
 		const FbxAMatrix RotationPivotMatrix  = MakeFbxTranslationMatrix(Node->GetRotationPivot(FbxNode::eSourcePivot));
-		const FbxAMatrix PreRotationMatrix    = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPreRotation(FbxNode::eSourcePivot), RotationOrder)
+		const FbxAMatrix PreRotationMatrix    = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPreRotation(FbxNode::eSourcePivot), eEulerXYZ /* FBX 규약: pre/post rotation은 노드 RotationOrder와 무관하게 항상 XYZ (fbxnode.h) */)
 		: Identity;
 		const FbxAMatrix RotationMatrix     = MakeFbxRotationMatrixByOrder(ToFbxVector4(RotationEulerDegree), RotationOrder);
-		const FbxAMatrix PostRotationMatrix = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPostRotation(FbxNode::eSourcePivot), RotationOrder)
+		const FbxAMatrix PostRotationMatrix = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPostRotation(FbxNode::eSourcePivot), eEulerXYZ /* FBX 규약: pre/post rotation은 노드 RotationOrder와 무관하게 항상 XYZ (fbxnode.h) */)
 		: Identity;
 		const FbxAMatrix ScalingOffsetMatrix = MakeFbxTranslationMatrix(Node->GetScalingOffset(FbxNode::eSourcePivot));
 		const FbxAMatrix ScalingPivotMatrix  = MakeFbxTranslationMatrix(Node->GetScalingPivot(FbxNode::eSourcePivot));
@@ -1070,10 +1070,10 @@ namespace
 		const FbxAMatrix TranslationMatrix    = MakeFbxTranslationMatrix(ToFbxVector4(Translation));
 		const FbxAMatrix RotationOffsetMatrix = MakeFbxTranslationMatrix(Node->GetRotationOffset(FbxNode::eSourcePivot));
 		const FbxAMatrix RotationPivotMatrix  = MakeFbxTranslationMatrix(Node->GetRotationPivot(FbxNode::eSourcePivot));
-		const FbxAMatrix PreRotationMatrix    = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPreRotation(FbxNode::eSourcePivot), RotationOrder)
+		const FbxAMatrix PreRotationMatrix    = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPreRotation(FbxNode::eSourcePivot), eEulerXYZ /* FBX 규약: pre/post rotation은 노드 RotationOrder와 무관하게 항상 XYZ (fbxnode.h) */)
 		: Identity;
 		const FbxAMatrix RotationMatrix     = MakeFbxRotationMatrixFromQuat(RotationQuat);
-		const FbxAMatrix PostRotationMatrix = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPostRotation(FbxNode::eSourcePivot), RotationOrder)
+		const FbxAMatrix PostRotationMatrix = bRotationActive ? MakeFbxRotationMatrixByOrder(Node->GetPostRotation(FbxNode::eSourcePivot), eEulerXYZ /* FBX 규약: pre/post rotation은 노드 RotationOrder와 무관하게 항상 XYZ (fbxnode.h) */)
 		: Identity;
 		const FbxAMatrix ScalingOffsetMatrix = MakeFbxTranslationMatrix(Node->GetScalingOffset(FbxNode::eSourcePivot));
 		const FbxAMatrix ScalingPivotMatrix  = MakeFbxTranslationMatrix(Node->GetScalingPivot(FbxNode::eSourcePivot));
