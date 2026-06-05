@@ -447,20 +447,6 @@ void ContentBrowserElement::Render(ContentBrowserContext& Context)
 
 	if (ImGui::BeginPopupContextItem())
 	{
-		// 모든 element 공통 — 자식 클래스의 RenderContextMenu 위에 Rename 항목 제공.
-		// 클릭 시 이 element 를 selected 로 만들고 rename popup 요청 set — ContentBrowser
-		// 가 다음 프레임 modal popup 열어 처리.
-		if (ImGui::MenuItem("Rename"))
-		{
-			Context.SelectedElement = shared_from_this();
-			Context.bRenameRequested = true;
-		}
-		if (ImGui::MenuItem("Delete"))
-		{
-			Context.SelectedElement = shared_from_this();
-			Context.bDeleteRequested = true;
-		}
-		ImGui::Separator();
 		RenderContextMenu(Context);
 		ImGui::EndPopup();
 	}
@@ -477,6 +463,33 @@ void ContentBrowserElement::Render(ContentBrowserContext& Context)
 		ImGui::SetDragDropPayload(GetDragItemType(), &ContentItem, sizeof(ContentItem));
 		OnDrag(Context);
 		ImGui::EndDragDropSource();
+	}
+}
+
+void ContentBrowserElement::RenderContextMenu(ContentBrowserContext& Context)
+{
+	if (ImGui::MenuItem("Open"))
+	{
+		OnDoubleLeftClicked(Context);
+	}
+
+	if (ImGui::MenuItem("Reveal in Explorer"))
+	{
+		const std::filesystem::path NormalizedPath = ContentItem.Path.lexically_normal();
+		const std::wstring ExplorerArgs = L"/select,\"" + NormalizedPath.wstring() + L"\"";
+		ShellExecuteW(nullptr, L"open", L"explorer.exe", ExplorerArgs.c_str(), nullptr, SW_SHOWNORMAL);
+	}
+
+	if (ImGui::MenuItem("Rename"))
+	{
+		Context.SelectedElement = shared_from_this();
+		Context.bRenameRequested = true;
+	}
+
+	if (ImGui::MenuItem("Delete"))
+	{
+		Context.SelectedElement = shared_from_this();
+		Context.bDeleteRequested = true;
 	}
 }
 
@@ -601,9 +614,12 @@ void SceneElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 
 void StaticMeshAssetElement::RenderContextMenu(ContentBrowserContext& Context)
 {
+	ContentBrowserElement::RenderContextMenu(Context);
+
 	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
 	if (FMeshManager::IsStaticMeshPackage(PackagePath))
 	{
+		ImGui::Separator();
 		if (ImGui::MenuItem("Reimport"))
 		{
 			UStaticMesh* Reimported = nullptr;
@@ -709,7 +725,10 @@ void PhysicsAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 
 void FbxFileElement::RenderContextMenu(ContentBrowserContext& Context)
 {
+	ContentBrowserElement::RenderContextMenu(Context);
+
 	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
+	ImGui::Separator();
 	const bool bHasImportedAsset = HasImportedFbxAssetForContentBrowser(FilePath);
 	if (bHasImportedAsset && ImGui::MenuItem("Open Imported Asset"))
 	{
@@ -730,9 +749,12 @@ void FbxFileElement::RenderContextMenu(ContentBrowserContext& Context)
 
 void SkeletalMeshAssetElement::RenderContextMenu(ContentBrowserContext& Context)
 {
+	ContentBrowserElement::RenderContextMenu(Context);
+
 	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
 	if (FMeshManager::IsSkeletalMeshPackage(PackagePath))
 	{
+		ImGui::Separator();
 		if (ImGui::MenuItem("Create Physics Asset"))
 		{
 			if (Context.EditorEngine)
@@ -927,7 +949,10 @@ void ParticleSystemElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 
 void VectorFieldSourceElement::RenderContextMenu(ContentBrowserContext& Context)
 {
+	ContentBrowserElement::RenderContextMenu(Context);
+
 	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
+	ImGui::Separator();
 	if (ImGui::MenuItem("Import Vector Field"))
 	{
 		ImportFgaVectorFieldForContentBrowser(Context, FilePath);
@@ -942,7 +967,10 @@ void VectorFieldSourceElement::OnDoubleLeftClicked(ContentBrowserContext& Contex
 
 void VectorFieldElement::RenderContextMenu(ContentBrowserContext& Context)
 {
+	ContentBrowserElement::RenderContextMenu(Context);
+
 	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+	ImGui::Separator();
 	if (ImGui::MenuItem("Reimport"))
 	{
 		FString Error;
