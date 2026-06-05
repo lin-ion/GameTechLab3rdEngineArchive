@@ -703,6 +703,18 @@ void FViewportToolbar::RenderShowFlags(const FToolbarRenderState& State)
 		ImGui::SliderFloat("DoF Bokeh Radius", &RenderOptions.DoFBokehRadiusThreshold, 0.0f, 12.0f, "%.1f");
 		ImGui::SliderFloat("DoF Bokeh Luma", &RenderOptions.DoFBokehLumaThreshold, 0.0f, 2.0f, "%.2f");
 		ImGui::SliderFloat("DoF Bokeh Intensity", &RenderOptions.DoFBokehIntensity, 0.0f, 4.0f, "%.2f");
+		ImGui::Checkbox("Bloom", &RenderOptions.ShowFlags.bBloom);
+		if (RenderOptions.ShowFlags.bBloom)
+		{
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("Bloom Threshold", &RenderOptions.BloomThreshold, 0.0f, 10.0f, "%.2f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("Bloom Intensity", &RenderOptions.BloomIntensity, 0.0f, 3.0f, "%.2f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("Bloom Radius", &RenderOptions.BloomBlurRadius, 0.25f, 4.0f, "%.2f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("Bloom Soft Knee", &RenderOptions.BloomSoftKnee, 0.0f, 1.0f, "%.2f");
+		}
 		ImGui::Checkbox("FXAA", &RenderOptions.ShowFlags.bFXAA);
 		ImGui::Checkbox("Gamma Correction", &RenderOptions.ShowFlags.bGammaCorrection);
 		if (RenderOptions.ShowFlags.bGammaCorrection)

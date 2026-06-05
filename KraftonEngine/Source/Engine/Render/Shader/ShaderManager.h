@@ -147,6 +147,10 @@ namespace EShaderPath
 	inline constexpr const char* DoFCoCDebug = "Shaders/PostProcess/DoFCoCDebug.hlsl";
 	inline constexpr const char* DebugViewModeResolve = "Shaders/PostProcess/DebugViewModeResolve.hlsl";
 	inline constexpr const char* GammaCorrection = "Shaders/PostProcess/GammaCorrection.hlsl";
+	inline constexpr const char* BloomPrefilter = "Shaders/PostProcess/BloomPrefilter.hlsl";
+	inline constexpr const char* BloomDownsample = "Shaders/PostProcess/BloomDownsample.hlsl";
+	inline constexpr const char* BloomBlur = "Shaders/PostProcess/BloomBlur.hlsl";
+	inline constexpr const char* BloomComposite = "Shaders/PostProcess/BloomComposite.hlsl";
 
 	inline constexpr const char* Font = "Shaders/UI/Font.hlsl";
 	inline constexpr const char* OverlayFont = "Shaders/UI/OverlayFont.hlsl";

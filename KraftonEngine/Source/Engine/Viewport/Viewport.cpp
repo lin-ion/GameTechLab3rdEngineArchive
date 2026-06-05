@@ -2,6 +2,9 @@
 
 #include "Render/Resource/Buffer.h"
 
+#include <algorithm>
+#include <cstdio>
+
 namespace
 {
 	constexpr DXGI_FORMAT SceneColorFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -288,11 +291,110 @@ bool FViewport::CreateResources()
 	ViewportRect.MinDepth = 0.0f;
 	ViewportRect.MaxDepth = 1.0f;
 
+	if (!CreateBloomResources())
+	{
+		return false;
+	}
+
 	return true;
+}
+
+bool FViewport::CreateBloomResources()
+{
+	ReleaseBloomResources();
+
+	for (uint32 MipIndex = 0; MipIndex < EBloom::MaxMipCount; ++MipIndex)
+	{
+		const uint32 Divisor = 1u << (MipIndex + 1);
+		const uint32 MipWidth = std::max<uint32>(1, (Width + Divisor - 1) / Divisor);
+		const uint32 MipHeight = std::max<uint32>(1, (Height + Divisor - 1) / Divisor);
+
+		char DebugName[64];
+		std::snprintf(DebugName, sizeof(DebugName), "ViewportBloomMip%u", MipIndex);
+		if (!CreateBloomMip(BloomResources.Mips[MipIndex], MipWidth, MipHeight, DebugName))
+		{
+			ReleaseBloomResources();
+			return false;
+		}
+
+		std::snprintf(DebugName, sizeof(DebugName), "ViewportBloomTempMip%u", MipIndex);
+		if (!CreateBloomMip(BloomResources.TempMips[MipIndex], MipWidth, MipHeight, DebugName))
+		{
+			ReleaseBloomResources();
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void FViewport::ReleaseBloomResources()
+{
+	for (uint32 MipIndex = 0; MipIndex < EBloom::MaxMipCount; ++MipIndex)
+	{
+		ReleaseBloomMip(BloomResources.Mips[MipIndex]);
+		ReleaseBloomMip(BloomResources.TempMips[MipIndex]);
+	}
+}
+
+bool FViewport::CreateBloomMip(FBloomMipResource& OutResource, uint32 InWidth, uint32 InHeight, const char* DebugName)
+{
+	ReleaseBloomMip(OutResource);
+
+	OutResource.Width = InWidth;
+	OutResource.Height = InHeight;
+
+	D3D11_TEXTURE2D_DESC Desc = {};
+	Desc.Width = InWidth;
+	Desc.Height = InHeight;
+	Desc.MipLevels = 1;
+	Desc.ArraySize = 1;
+	Desc.Format = EBloom::Format;
+	Desc.SampleDesc.Count = 1;
+	Desc.Usage = D3D11_USAGE_DEFAULT;
+	Desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+	HRESULT hr = Device->CreateTexture2D(&Desc, nullptr, &OutResource.Texture);
+	if (FAILED(hr)) return false;
+
+	OutResource.Texture->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(strlen(DebugName)), DebugName);
+
+	hr = Device->CreateRenderTargetView(OutResource.Texture, nullptr, &OutResource.RTV);
+	if (FAILED(hr))
+	{
+		ReleaseBloomMip(OutResource);
+		return false;
+	}
+
+	char ViewName[96];
+	std::snprintf(ViewName, sizeof(ViewName), "%sRTV", DebugName);
+	OutResource.RTV->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(strlen(ViewName)), ViewName);
+
+	hr = Device->CreateShaderResourceView(OutResource.Texture, nullptr, &OutResource.SRV);
+	if (FAILED(hr))
+	{
+		ReleaseBloomMip(OutResource);
+		return false;
+	}
+
+	std::snprintf(ViewName, sizeof(ViewName), "%sSRV", DebugName);
+	OutResource.SRV->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(strlen(ViewName)), ViewName);
+
+	return true;
+}
+
+void FViewport::ReleaseBloomMip(FBloomMipResource& Resource)
+{
+	if (Resource.SRV) { Resource.SRV->Release(); Resource.SRV = nullptr; }
+	if (Resource.RTV) { Resource.RTV->Release(); Resource.RTV = nullptr; }
+	if (Resource.Texture) { Resource.Texture->Release(); Resource.Texture = nullptr; }
+	Resource.Width = 0;
+	Resource.Height = 0;
 }
 
 void FViewport::ReleaseResources()
 {
+	ReleaseBloomResources();
 	if (DoFBokehSRV) { DoFBokehSRV->Release(); DoFBokehSRV = nullptr; }
 	if (DoFBokehRTV) { DoFBokehRTV->Release(); DoFBokehRTV = nullptr; }
 	if (DoFBokehTexture) { DoFBokehTexture->Release(); DoFBokehTexture = nullptr; }

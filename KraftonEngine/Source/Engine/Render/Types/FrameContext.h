@@ -5,6 +5,7 @@
 #include "Math/Vector.h"
 #include "Render/Types/ViewTypes.h"
 #include "Render/Types/LODContext.h"
+#include "Render/Types/BloomTypes.h"
 #include "Collision/Math/ConvexVolume.h"
 #include "GameFramework/WorldContext.h"
 #include "GameFramework/Camera/CameraTypes.h"
@@ -67,6 +68,9 @@ struct FFrameContext
 	ID3D11ShaderResourceView* DoFBokehSRV           = nullptr;
 	float DoFBokehWidth = 0.0f;
 	float DoFBokehHeight = 0.0f;
+
+	// Bloom RT chain
+	const FBloomFrameResources* BloomResources = nullptr;
 
 	// Cursor position relative to viewport (for debug visualization)
 	uint32 CursorViewportX = UINT32_MAX;
@@ -138,5 +142,6 @@ struct FFrameContext
 		DoFBokehSRV             = nullptr;
 		DoFBokehWidth           = 0.0f;
 		DoFBokehHeight          = 0.0f;
+		BloomResources          = nullptr;
 	}
 };

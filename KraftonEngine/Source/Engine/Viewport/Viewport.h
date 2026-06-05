@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Render/Types/BloomTypes.h"
 #include "Render/Types/RenderTypes.h"
 
 class FViewportClient;
@@ -57,11 +58,18 @@ public:
 	uint32 GetDoFBokehWidth() const { return DoFBokehWidth; }
 	uint32 GetDoFBokehHeight() const { return DoFBokehHeight; }
 
+	// Bloom RT chain
+	const FBloomFrameResources* GetBloomResources() const { return &BloomResources; }
+
 	const D3D11_VIEWPORT& GetViewportRect() const { return ViewportRect; }
 
 private:
 	bool CreateResources();
 	void ReleaseResources();
+	bool CreateBloomResources();
+	void ReleaseBloomResources();
+	bool CreateBloomMip(FBloomMipResource& OutResource, uint32 InWidth, uint32 InHeight, const char* DebugName);
+	void ReleaseBloomMip(FBloomMipResource& Resource);
 
 private:
 	FViewportClient* ViewportClient = nullptr;
@@ -103,6 +111,9 @@ private:
 	ID3D11ShaderResourceView* DoFBokehSRV = nullptr;
 	uint32 DoFBokehWidth = 0;
 	uint32 DoFBokehHeight = 0;
+
+	// Bloom mip chain: half-res and below, plus ping-pong temp targets.
+	FBloomFrameResources BloomResources;
 
 	D3D11_VIEWPORT ViewportRect = {};
 

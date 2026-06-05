@@ -34,6 +34,7 @@ namespace Key
 	constexpr const char* bOctree = "bOctree";
 	constexpr const char* bFog = "bFog";
 	constexpr const char* bDoF = "bDoF";
+	constexpr const char* bBloom = "bBloom";
 	constexpr const char* bFXAA = "bFXAA";
 	constexpr const char* bGammaCorrection = "bGammaCorrection";
 	constexpr const char* bViewLightCulling = "bViewLightCulling";
@@ -53,6 +54,10 @@ namespace Key
 	constexpr const char* Range = "Range";
 	constexpr const char* EdgeThreshold = "EdgeThreshold";
 	constexpr const char* EdgeThresholdMin = "EdgeThresholdMin";
+	constexpr const char* BloomThreshold = "BloomThreshold";
+	constexpr const char* BloomSoftKnee = "BloomSoftKnee";
+	constexpr const char* BloomIntensity = "BloomIntensity";
+	constexpr const char* BloomBlurRadius = "BloomBlurRadius";
 	constexpr const char* Gamma = "Gamma";
 	constexpr const char* Exposure = "Exposure";
 	constexpr const char* DoFFocusDistance = "DoFFocusDistance";
@@ -176,6 +181,7 @@ json::JSON SaveRenderOptions(const FViewportRenderOptions& Opts)
 	Obj[Key::bOctree] = Opts.ShowFlags.bOctree;
 	Obj[Key::bFog] = Opts.ShowFlags.bFog;
 	Obj[Key::bDoF] = Opts.ShowFlags.bDoF;
+	Obj[Key::bBloom] = Opts.ShowFlags.bBloom;
 	Obj[Key::bFXAA] = Opts.ShowFlags.bFXAA;
 	Obj[Key::bGammaCorrection] = Opts.ShowFlags.bGammaCorrection;
 	Obj[Key::bViewLightCulling] = Opts.ShowFlags.bViewLightCulling;
@@ -195,6 +201,10 @@ json::JSON SaveRenderOptions(const FViewportRenderOptions& Opts)
 	Obj[Key::Range] = Opts.Range;
 	Obj[Key::EdgeThreshold] = Opts.EdgeThreshold;
 	Obj[Key::EdgeThresholdMin] = Opts.EdgeThresholdMin;
+	Obj[Key::BloomThreshold] = Opts.BloomThreshold;
+	Obj[Key::BloomSoftKnee] = Opts.BloomSoftKnee;
+	Obj[Key::BloomIntensity] = Opts.BloomIntensity;
+	Obj[Key::BloomBlurRadius] = Opts.BloomBlurRadius;
 	Obj[Key::Gamma] = Opts.Gamma;
 	Obj[Key::Exposure] = Opts.Exposure;
 	Obj[Key::DoFFocusDistance] = Opts.DoFFocusDistance;
@@ -241,6 +251,8 @@ void LoadRenderOptions(json::JSON Obj, FViewportRenderOptions& Opts)
 		Opts.ShowFlags.bFog = Obj[Key::bFog].ToBool();
 	if (Obj.hasKey(Key::bDoF))
 		Opts.ShowFlags.bDoF = Obj[Key::bDoF].ToBool();
+	if (Obj.hasKey(Key::bBloom))
+		Opts.ShowFlags.bBloom = Obj[Key::bBloom].ToBool();
 	if (Obj.hasKey(Key::bFXAA))
 		Opts.ShowFlags.bFXAA = Obj[Key::bFXAA].ToBool();
 	if (Obj.hasKey(Key::bGammaCorrection))
@@ -279,6 +291,14 @@ void LoadRenderOptions(json::JSON Obj, FViewportRenderOptions& Opts)
 		Opts.EdgeThreshold = static_cast<float>(Obj[Key::EdgeThreshold].ToFloat());
 	if (Obj.hasKey(Key::EdgeThresholdMin))
 		Opts.EdgeThresholdMin = static_cast<float>(Obj[Key::EdgeThresholdMin].ToFloat());
+	if (Obj.hasKey(Key::BloomThreshold))
+		Opts.BloomThreshold = static_cast<float>(Obj[Key::BloomThreshold].ToFloat());
+	if (Obj.hasKey(Key::BloomSoftKnee))
+		Opts.BloomSoftKnee = static_cast<float>(Obj[Key::BloomSoftKnee].ToFloat());
+	if (Obj.hasKey(Key::BloomIntensity))
+		Opts.BloomIntensity = static_cast<float>(Obj[Key::BloomIntensity].ToFloat());
+	if (Obj.hasKey(Key::BloomBlurRadius))
+		Opts.BloomBlurRadius = static_cast<float>(Obj[Key::BloomBlurRadius].ToFloat());
 	if (Obj.hasKey(Key::Gamma))
 		Opts.Gamma = static_cast<float>(Obj[Key::Gamma].ToFloat());
 	if (Obj.hasKey(Key::Exposure))
