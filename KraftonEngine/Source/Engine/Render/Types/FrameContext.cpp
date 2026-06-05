@@ -55,4 +55,5 @@ void FFrameContext::SetViewportInfo(const FViewport* VP)
 	DoFBokehSRV             = VP->GetDoFBokehSRV();
 	DoFBokehWidth           = static_cast<float>(VP->GetDoFBokehWidth());
 	DoFBokehHeight          = static_cast<float>(VP->GetDoFBokehHeight());
+	BloomResources          = VP->GetBloomResources();
 }

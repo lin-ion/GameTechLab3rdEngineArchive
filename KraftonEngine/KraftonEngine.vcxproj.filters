@@ -810,6 +810,18 @@
     <FxCompile Include="Shaders\PostProcess\DoFSetup.hlsl">
       <Filter>Shaders\PostProcess</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\BloomPrefilter.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\BloomDownsample.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\BloomBlur.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\BloomComposite.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\PostProcess\FXAA.hlsl">
       <Filter>Shaders\PostProcess</Filter>
     </FxCompile>
@@ -1914,6 +1926,9 @@
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\DoFSetupPass.cpp">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\RenderPass\BloomPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\EditorIconPass.cpp">
@@ -3440,6 +3455,9 @@
     <ClInclude Include="Source\Engine\Render\RenderPass\DoFSetupPass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\RenderPass\BloomPass.h">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\EditorIconPass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
@@ -3597,6 +3615,9 @@
       <Filter>Source\Engine\Render\Types</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Types\ViewModeUtils.h">
+      <Filter>Source\Engine\Render\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Types\BloomTypes.h">
       <Filter>Source\Engine\Render\Types</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Types\ViewTypes.h">

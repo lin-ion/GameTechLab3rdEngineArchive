@@ -3,9 +3,14 @@
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/Level/LevelEditorViewportClient.h"
 #include "Engine/Input/InputSystem.h"
+#include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
+#include "Object/FName.h"
 
 #include "ImGui/imgui.h"
 #include "Profiling/Stats/Stats.h"
+
+#include <cstring>
 
 void FEditorSceneWidget::Initialize(UEditorEngine* InEditorEngine)
 {
@@ -26,6 +31,7 @@ void FEditorSceneWidget::Render(float DeltaTime)
 
 	// 씬 파일 작업은 상단 메뉴로 옮기고, Scene Manager는 액터 목록만 유지한다.
 	RenderActorOutliner();
+	RenderRenamePopup();
 	HandleSceneManagerShortcuts();
 
 	ImGui::End();
@@ -85,6 +91,8 @@ void FEditorSceneWidget::RenderActorOutliner()
 
 	ImGui::BeginChild("ActorList", ImVec2(0, 0), ImGuiChildFlags_Borders);
 
+	AActor* PendingRemoveActor = nullptr;
+
 	ImGuiListClipper Clipper;
 	Clipper.Begin(static_cast<int>(ValidActorIndices.size()));
 	while (Clipper.Step())
@@ -93,7 +101,7 @@ void FEditorSceneWidget::RenderActorOutliner()
 		{
 			AActor* Actor = Actors[ValidActorIndices[Row]];
 
-			const FString& StoredName = Actor->GetFName().ToString();
+			const FString StoredName = Actor->GetFName().ToString();
 			const char* DisplayName = StoredName.empty()
 				? Actor->GetClass()->GetName()
 				: StoredName.c_str();
@@ -115,9 +123,142 @@ void FEditorSceneWidget::RenderActorOutliner()
 					Selection.Select(Actor);
 				}
 			}
+			if (ImGui::BeginPopupContextItem())
+			{
+				if (ImGui::MenuItem("Rename"))
+				{
+					BeginRenameActor(Actor);
+				}
+				if (ImGui::MenuItem("Remove"))
+				{
+					PendingRemoveActor = Actor;
+				}
+				ImGui::EndPopup();
+			}
 			ImGui::PopID();
 		}
 	}
 
 	ImGui::EndChild();
+
+	if (PendingRemoveActor)
+	{
+		Selection.Select(PendingRemoveActor);
+		Selection.DeleteSelectedActors();
+	}
+}
+
+void FEditorSceneWidget::BeginRenameActor(AActor* Actor)
+{
+	if (!IsValid(Actor))
+	{
+		return;
+	}
+
+	RenameTargetActor = Actor;
+	bShowRenameDuplicateWarning = false;
+
+	const FString CurrentName = Actor->GetFName().ToString();
+	strncpy_s(RenameBuffer, sizeof(RenameBuffer), CurrentName.c_str(), _TRUNCATE);
+
+	bRenamePopupRequested = true;
+	bFocusRenameInputNextFrame = true;
+}
+
+void FEditorSceneWidget::RenderRenamePopup()
+{
+	if (bRenamePopupRequested)
+	{
+		ImGui::OpenPopup("Rename Actor");
+		bRenamePopupRequested = false;
+	}
+
+	if (ImGui::BeginPopupModal("Rename Actor", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		if (!IsValid(RenameTargetActor))
+		{
+			RenameTargetActor = nullptr;
+			RenameBuffer[0] = '\0';
+			bShowRenameDuplicateWarning = false;
+			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+			return;
+		}
+
+		ImGui::TextUnformatted("Actor Name");
+		ImGui::SetNextItemWidth(320.0f);
+
+		if (bFocusRenameInputNextFrame)
+		{
+			ImGui::SetKeyboardFocusHere();
+			bFocusRenameInputNextFrame = false;
+		}
+
+		const bool bSubmit = ImGui::InputText("##RenameInput", RenameBuffer, sizeof(RenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
+
+		if (bShowRenameDuplicateWarning)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Already used name.");
+		}
+
+		const bool bApply = bSubmit || ImGui::Button("OK");
+		ImGui::SameLine();
+		const bool bCancel = ImGui::Button("Cancel");
+
+		if (bApply)
+		{
+			if (TryRenameActor(RenameTargetActor, FString(RenameBuffer)))
+			{
+				RenameTargetActor = nullptr;
+				RenameBuffer[0] = '\0';
+				bShowRenameDuplicateWarning = false;
+				ImGui::CloseCurrentPopup();
+			}
+		}
+		else if (bCancel)
+		{
+			RenameTargetActor = nullptr;
+			RenameBuffer[0] = '\0';
+			bShowRenameDuplicateWarning = false;
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+bool FEditorSceneWidget::TryRenameActor(AActor* Actor, const FString& NewName)
+{
+	if (!IsValid(Actor))
+	{
+		return false;
+	}
+
+	const FString CurrentName = Actor->GetFName().ToString();
+	if (NewName == CurrentName)
+	{
+		return true;
+	}
+
+	bShowRenameDuplicateWarning = false;
+
+	UWorld* World = EditorEngine ? EditorEngine->GetWorld() : nullptr;
+	if (World)
+	{
+		for (AActor* OtherActor : World->GetActors())
+		{
+			if (!IsValid(OtherActor) || OtherActor == Actor)
+			{
+				continue;
+			}
+			if (OtherActor->GetFName().ToString() == NewName)
+			{
+				bShowRenameDuplicateWarning = true;
+				return false;
+			}
+		}
+	}
+
+	Actor->SetFName(FName(NewName));
+	return true;
 }

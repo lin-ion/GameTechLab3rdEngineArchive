@@ -19,20 +19,20 @@ ROOT = Path(__file__).resolve().parent.parent
 PROJECT_NAME = "KraftonEngine"
 PROJECT_DIR = ROOT / PROJECT_NAME
 PROJECT_GUID = "{55068e81-c0a0-49f9-ab7b-54aea968722b}"
-ROOT_NAMESPACE = "Week2"
+ROOT_NAMESPACE = "Week14"
 
 SOLUTION_GUID = "{4EBC5DD2-CECA-4722-9D19-87C7CB5F481B}"
 VS_PROJECT_TYPE = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
 
 CONFIGURATIONS = [
-    ("Debug", "Win32"),
-    ("Release", "Win32"),
+    # ("Debug", "Win32"),
+    # ("Release", "Win32"),
     ("Debug", "x64"),
     ("Release", "x64"),
-    ("Game", "Win32"),
+    # ("Game", "Win32"),
     ("Game", "x64"),
-    ("ObjViewDebug", "x64"),
-    ("Demo", "x64"),
+    # ("ObjViewDebug", "x64"),
+    # ("Demo", "x64"),
 ]
 
 # Per-configuration overrides (base is derived from the name)
@@ -44,14 +44,14 @@ CONFIG_PROPS = {
         "release_like": True,
         "extra_defines": ["WITH_EDITOR=0", "WITH_STANDALONE=1", "STATS=0"],
     },
-    "ObjViewDebug": {
-        "release_like": True,
-        "extra_defines": ["IS_OBJ_VIEWER=1"],
-    },
-    "Demo": {
-        "release_like": True,
-        "extra_defines": ["STATS=0"],
-    },
+    # "ObjViewDebug": {
+    #     "release_like": True,
+    #     "extra_defines": ["IS_OBJ_VIEWER=1"],
+    # },
+    # "Demo": {
+    #     "release_like": True,
+    #     "extra_defines": ["STATS=0"],
+    # },
 }
 
 # Directories to recursively scan for source files
@@ -219,6 +219,8 @@ def scan_files(project_dir: Path) -> dict[str, list[str]]:
             for fname in sorted(filenames):
                 full = Path(dirpath) / fname
                 rel = full.relative_to(project_dir)
+                if rel.parts[:2] == ("Shaders", "Generated"):
+                    continue
                 rel_str = str(rel).replace("/", "\\")
                 ext = full.suffix.lower()
 
@@ -525,15 +527,12 @@ def generate_vcxproj(files: dict[str, list[str]]):
     # Reflection codegen — ClCompile 직전 한 번 더 보장.
     # PreBuildEvent 만으로는 IDE 의 IntelliSense 파싱 시점이나 incremental build 에서
     # 누락될 수 있어 BeforeTargets="ClCompile" 타깃을 별도로 둔다.
-    # $(PythonExe) 가 비어 있으면 "python" 폴백.
-    pg = ET.SubElement(proj, "PropertyGroup")
-    ET.SubElement(pg, "PythonExe", Condition="'$(PythonExe)'==''").text = "python"
     refl = ET.SubElement(proj, "Target",
                          Name="GenerateReflectionHeaders",
                          BeforeTargets="ClCompile")
     ET.SubElement(refl, "Exec",
                   Command=(
-                      f'"$(PythonExe)" "$(MSBuildProjectDirectory)\\{GENERATE_HEADERS_TOOL}"'
+                      f'"$(MSBuildProjectDirectory)\\{LOCAL_PYTHON_PATH}" "$(MSBuildProjectDirectory)\\{GENERATE_HEADERS_TOOL}"'
                       f' --root "$(MSBuildProjectDirectory)"'
                   ),
                   WorkingDirectory="$(MSBuildProjectDirectory)")

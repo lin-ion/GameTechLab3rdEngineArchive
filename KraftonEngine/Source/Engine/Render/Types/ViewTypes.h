@@ -59,6 +59,7 @@ struct FShowFlags
 	bool bOctree = false;
 	bool bFog = true;
 	bool bDoF = false;
+	bool bBloom = false;
 	bool bFXAA = false;
 	bool bGammaCorrection = true;
 	bool bViewLightCulling = false;
@@ -106,8 +107,15 @@ struct FViewportRenderOptions
 	float EdgeThreshold = 0.125f;
 	float EdgeThresholdMin = 0.0625f;
 
-	// Gamma Correction 전용 설정
+	// Bloom 전용 설정
+	float BloomThreshold = 1.0f;
+	float BloomSoftKnee = 0.5f;
+	float BloomIntensity = 0.6f;
+	float BloomBlurRadius = 1.0f;
+
+	// Tone Mapping / Gamma Correction 전용 설정
 	float Gamma = 2.4f;
+	float Exposure = 1.0f;
 
 	// Depth of Field 전용 설정
 	float DoFFocusDistance = 500.0f;

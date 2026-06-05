@@ -64,7 +64,7 @@ namespace ELightCullingSRVSlot
 namespace ESystemTexSlot
 {
 	constexpr uint32 SceneDepth = 16;          // t16: CopyResource된 Depth (R24_UNORM)
-	constexpr uint32 SceneColor = 17;          // t17: CopyResource된 SceneColor (R8G8B8A8_UNORM)
+	constexpr uint32 SceneColor = 17;          // t17: CopyResource된 HDR SceneColor (R16G16B16A16_FLOAT)
 	constexpr uint32 Stencil     = 19;         // t19: CopyResource된 Stencil (X24_G8_UINT)
 	constexpr uint32 ShadowMapCSM       = 21;  // t21: Directional CSM Texture2DArray (4 cascades)
 	constexpr uint32 ShadowMapSpotAtlas = 22;  // t22: Spot Atlas Texture2DArray (multi-page)
@@ -72,8 +72,8 @@ namespace ESystemTexSlot
 	constexpr uint32 SpotShadowDatas    = 24;  // t24: StructuredBuffer<FSpotShadowDataGPU>
 	constexpr uint32 PointShadowDatas   = 25;  // t25: StructuredBuffer<FPointShadowDataGPU>
 	constexpr uint32 CoC                = 26;  // t26: Depth of Field circle of confusion (R16_FLOAT)
-	constexpr uint32 DoFBackground      = 27;  // t27: Depth of Field background blur (R8G8B8A8_UNORM)
-	constexpr uint32 DoFForeground      = 28;  // t28: Depth of Field foreground blur + mask (R8G8B8A8_UNORM)
+	constexpr uint32 DoFBackground      = 27;  // t27: Depth of Field background blur (R16G16B16A16_FLOAT)
+	constexpr uint32 DoFForeground      = 28;  // t28: Depth of Field foreground blur + mask (R16G16B16A16_FLOAT)
 	constexpr uint32 DoFBokeh           = 29;  // t29: Depth of Field highlight bokeh scatter (R16G16B16A16_FLOAT)
 
 	// 하위 호환용 별칭
@@ -275,7 +275,8 @@ struct FFXAAConstants
 struct FGammaCorrectionConstants
 {
 	float Gamma;
-	float _pad[3];
+	float Exposure;
+	float _pad[2];
 };
 
 struct FDoFConstants

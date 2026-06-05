@@ -765,6 +765,7 @@ UObject* AActor::Duplicate(UObject* NewOuter) const
 	}
 
 	// 2) 얕은 복사로 따라온 컴포넌트 컨테이너 즉시 비우기 (안전장치)
+	Dup->SetFName(GetFName());
 	Dup->OwnedComponents.clear();
 	Dup->RootComponent = nullptr;
 	Dup->bPrimitiveCacheDirty = true;

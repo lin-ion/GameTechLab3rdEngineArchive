@@ -11,7 +11,15 @@ public:
 
 private:
 	void RenderActorOutliner();
+	void BeginRenameActor(class AActor* Actor);
+	void RenderRenamePopup();
+	bool TryRenameActor(class AActor* Actor, const FString& NewName);
 	void HandleSceneManagerShortcuts();
 
 	TArray<int32> ValidActorIndices;
+	class AActor* RenameTargetActor = nullptr;
+	char RenameBuffer[256] = {};
+	bool bRenamePopupRequested = false;
+	bool bFocusRenameInputNextFrame = false;
+	bool bShowRenameDuplicateWarning = false;
 };
