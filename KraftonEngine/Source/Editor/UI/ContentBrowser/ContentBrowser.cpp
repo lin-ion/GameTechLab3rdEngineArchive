@@ -457,7 +457,7 @@ void FEditorContentBrowserWidget::RefreshContent()
 		{
 			Element = std::make_shared<VectorFieldSourceElement>();
 		}
-		else if (Extension == ".png")
+		else if (Extension == ".png" || Extension == ".jpg" || Extension == ".jpeg")
 		{
 			Element = std::make_shared<ImageElement>();
 			Icon = FEditorTextureManager::Get().GetOrLoadThumbnail(FPaths::ToUtf8(Content.Path.lexically_relative(FPaths::RootDir()).generic_wstring()));
