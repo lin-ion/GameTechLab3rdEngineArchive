@@ -697,12 +697,21 @@ void FViewportToolbar::RenderShowFlags(const FToolbarRenderState& State)
 		ImGui::Checkbox("Octree", &RenderOptions.ShowFlags.bOctree);
 		ImGui::Checkbox("Fog", &RenderOptions.ShowFlags.bFog);
 		ImGui::Checkbox("DoF", &RenderOptions.ShowFlags.bDoF);
-		ImGui::SliderFloat("DoF Focus", &RenderOptions.DoFFocusDistance, 1.0f, 5000.0f, "%.1f");
-		ImGui::SliderFloat("DoF Range", &RenderOptions.DoFFocusRange, 1.0f, 2000.0f, "%.1f");
-		ImGui::SliderFloat("DoF Blur", &RenderOptions.DoFMaxBlurRadius, 0.0f, 12.0f, "%.1f");
-		ImGui::SliderFloat("DoF Bokeh Radius", &RenderOptions.DoFBokehRadiusThreshold, 0.0f, 12.0f, "%.1f");
-		ImGui::SliderFloat("DoF Bokeh Luma", &RenderOptions.DoFBokehLumaThreshold, 0.0f, 2.0f, "%.2f");
-		ImGui::SliderFloat("DoF Bokeh Intensity", &RenderOptions.DoFBokehIntensity, 0.0f, 4.0f, "%.2f");
+		if (RenderOptions.ShowFlags.bDoF)
+		{
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("DoF Focus", &RenderOptions.DoFFocusDistance, 1.0f, 5000.0f, "%.1f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("DoF Range", &RenderOptions.DoFFocusRange, 1.0f, 2000.0f, "%.1f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("DoF Blur", &RenderOptions.DoFMaxBlurRadius, 0.0f, 12.0f, "%.1f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("DoF Bokeh Radius", &RenderOptions.DoFBokehRadiusThreshold, 0.0f, 12.0f, "%.1f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("DoF Bokeh Luma", &RenderOptions.DoFBokehLumaThreshold, 0.0f, 2.0f, "%.2f");
+			ImGui::SetNextItemWidth(140.0f);
+			ImGui::SliderFloat("DoF Bokeh Intensity", &RenderOptions.DoFBokehIntensity, 0.0f, 4.0f, "%.2f");
+		}
 		ImGui::Checkbox("Bloom", &RenderOptions.ShowFlags.bBloom);
 		if (RenderOptions.ShowFlags.bBloom)
 		{
