@@ -27,6 +27,17 @@ namespace
 		return Direction.IsNearlyZero() ? Fallback : Direction.Normalized();
 	}
 
+	float ClampFloat(float Value, float MinValue, float MaxValue)
+	{
+		return (std::max)(MinValue, (std::min)(MaxValue, Value));
+	}
+
+	FVector RotateDirectionYaw(const FVector& Forward, const FVector& Right, float Degrees)
+	{
+		const float Radians = Degrees * (3.1415926535f / 180.0f);
+		return SafeDirection(Forward * std::cos(Radians) + Right * std::sin(Radians), Forward);
+	}
+
 	bool IsProperty(const char* PropertyName, const char* MemberName, const char* DisplayName)
 	{
 		return PropertyName
@@ -151,6 +162,23 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 	float Radius,
 	float Lifetime)
 {
+	return SpawnBulletInternal(
+		Position,
+		Velocity,
+		Radius,
+		Lifetime,
+		EBulletBehaviorType::Linear,
+		SafeDirection(Velocity, ResolveDebugSpawnForward()));
+}
+
+FBulletHandle UBulletHellComponent::SpawnBulletInternal(
+	const FVector& Position,
+	const FVector& Velocity,
+	float Radius,
+	float Lifetime,
+	EBulletBehaviorType BehaviorType,
+	const FVector& DebugDirection)
+{
 	FBulletInstance Bullet;
 	Bullet.Id = NextBulletId;
 	Bullet.Generation = NextBulletGeneration;
@@ -160,8 +188,11 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 	Bullet.Radius = (std::max)(0.01f, Radius);
 	Bullet.Age = 0.0f;
 	Bullet.Lifetime = Lifetime;
+	Bullet.BehaviorType = BehaviorType;
+	Bullet.BehaviorPhase = BehaviorType == EBulletBehaviorType::ColdLaunch ? EBulletPhase::Waiting : EBulletPhase::Active;
 	Bullet.RenderInstanceIndex = -1;
 	Bullet.bAlive = true;
+	ConfigureDebugBulletBehavior(Bullet, DebugDirection);
 
 	NextBulletId = AdvanceNonZero(NextBulletId);
 	NextBulletGeneration = AdvanceNonZero(NextBulletGeneration);
@@ -176,6 +207,7 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
 	++DebugStats.TotalSpawned;
+	UpdateBehaviorDebugStats();
 	UpdateRenderDebugStats();
 
 	return FBulletHandle{ Bullet.Id, Bullet.Generation };
@@ -269,6 +301,7 @@ void UBulletHellComponent::ClearBullets()
 	DebugStats.ActiveBulletCount = 0;
 	DebugStats.DebugDrawSelectedCount = 0;
 	DebugStats.DebugDrawTruncatedCount = 0;
+	UpdateBehaviorDebugStats();
 	UpdateRenderDebugStats();
 }
 
@@ -323,14 +356,54 @@ int32 UBulletHellComponent::SpawnDebugPreset()
 		}
 		}
 
-		SpawnBullet(
+		FVector Velocity = Direction * DebugSpawnSpeed;
+		if (DebugBehaviorType == EBulletBehaviorType::ColdLaunch)
+		{
+			Velocity = FVector::ZeroVector;
+		}
+
+		SpawnBulletInternal(
 			Position,
-			Direction * DebugSpawnSpeed,
+			Velocity,
 			DebugSpawnRadius,
-			DebugSpawnLifetime);
+			DebugSpawnLifetime,
+			DebugBehaviorType,
+			Direction);
 	}
 
 	return SafeCount;
+}
+
+void UBulletHellComponent::ConfigureDebugBulletBehavior(FBulletInstance& Bullet, const FVector& Direction) const
+{
+	const FVector SafeForward = SafeDirection(Direction, ResolveDebugSpawnForward());
+	const FVector Right = ResolveDebugSpawnRight();
+	const FVector Up = FVector::UpVector;
+
+	switch (Bullet.BehaviorType)
+	{
+	case EBulletBehaviorType::Homing:
+		Bullet.HomingTargetPosition =
+			ResolveDebugSpawnOrigin()
+			+ SafeForward * DebugHomingTargetForwardOffset
+			+ Right * DebugHomingTargetRightOffset
+			+ Up * DebugHomingTargetUpOffset;
+		Bullet.HomingStrength = (std::max)(0.0f, DebugHomingStrength);
+		Bullet.HomingMaxTurnRateDegrees = (std::max)(0.0f, DebugHomingMaxTurnRateDegrees);
+		break;
+	case EBulletBehaviorType::ColdLaunch:
+		Bullet.BehaviorPhase = EBulletPhase::Waiting;
+		Bullet.ColdLaunchDelay = (std::max)(0.0f, DebugColdLaunchDelay);
+		Bullet.ColdLaunchVelocity = SafeForward * (std::max)(0.0f, DebugColdLaunchSpeed);
+		break;
+	case EBulletBehaviorType::TimedVelocityChange:
+		Bullet.TimedActivationTime = (std::max)(0.0f, DebugTimedActivationTime);
+		Bullet.TimedVelocity = RotateDirectionYaw(SafeForward, Right, DebugTimedYawDegrees) * (std::max)(0.0f, DebugTimedSpeed);
+		break;
+	case EBulletBehaviorType::Linear:
+	default:
+		break;
+	}
 }
 
 void UBulletHellComponent::LogBulletDebugStats() const
@@ -348,7 +421,7 @@ void UBulletHellComponent::LogFirstBulletDebugInfo() const
 
 	const FBulletInstance& Bullet = Bullets.front();
 	UE_LOG(
-		"BulletHell first bullet: Id=%u Generation=%u Position=(%.2f,%.2f,%.2f) Previous=(%.2f,%.2f,%.2f) Velocity=(%.2f,%.2f,%.2f) Radius=%.2f Age=%.2f Lifetime=%.2f RenderIndex=%d",
+		"BulletHell first bullet: Id=%u Generation=%u Position=(%.2f,%.2f,%.2f) Previous=(%.2f,%.2f,%.2f) Velocity=(%.2f,%.2f,%.2f) Radius=%.2f Age=%.2f Lifetime=%.2f Behavior=%d Phase=%d RenderIndex=%d",
 		Bullet.Id,
 		Bullet.Generation,
 		Bullet.Position.X,
@@ -363,16 +436,18 @@ void UBulletHellComponent::LogFirstBulletDebugInfo() const
 		Bullet.Radius,
 		Bullet.Age,
 		Bullet.Lifetime,
+		static_cast<int32>(Bullet.BehaviorType),
+		static_cast<int32>(Bullet.BehaviorPhase),
 		Bullet.RenderInstanceIndex);
 }
 
 FString UBulletHellComponent::GetBulletDebugStatsText() const
 {
-	char Buffer[512];
+	char Buffer[768];
 	std::snprintf(
 		Buffer,
 		sizeof(Buffer),
-		"BulletHell stats: Active=%d Spawned=%u Killed=%u Expired=%u CollisionQueries=%u CollisionHits=%u CollisionKilled=%u EraseKilled=%u DebugDrawSelected=%d DebugDrawTruncated=%d RenderInstances=%d RendererSlots=%d RenderMismatch=%d",
+		"BulletHell stats: Active=%d Spawned=%u Killed=%u Expired=%u CollisionQueries=%u CollisionHits=%u CollisionKilled=%u EraseKilled=%u BehaviorTransitions=%u BehaviorActive(L/H/C/T)=%d/%d/%d/%d DebugDrawSelected=%d DebugDrawTruncated=%d RenderInstances=%d RendererSlots=%d RenderMismatch=%d",
 		DebugStats.ActiveBulletCount,
 		DebugStats.TotalSpawned,
 		DebugStats.TotalKilled,
@@ -381,6 +456,11 @@ FString UBulletHellComponent::GetBulletDebugStatsText() const
 		DebugStats.CollisionHitCount,
 		DebugStats.CollisionKilledCount,
 		DebugStats.EraseKilledCount,
+		DebugStats.BehaviorTransitionCount,
+		DebugStats.ActiveLinearCount,
+		DebugStats.ActiveHomingCount,
+		DebugStats.ActiveColdLaunchCount,
+		DebugStats.ActiveTimedVelocityChangeCount,
 		DebugStats.DebugDrawSelectedCount,
 		DebugStats.DebugDrawTruncatedCount,
 		DebugStats.RenderInstanceCount,
@@ -394,12 +474,14 @@ void UBulletHellComponent::TickBullets(float DeltaTime)
 	if (DeltaTime <= 0.0f)
 	{
 		DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
+		UpdateBehaviorDebugStats();
 		return;
 	}
 
 	for (int32 Index = 0; Index < static_cast<int32>(Bullets.size());)
 	{
 		FBulletInstance& Bullet = Bullets[Index];
+		UpdateBulletBehavior(Bullet, DeltaTime);
 		Bullet.PreviousPosition = Bullet.Position;
 		Bullet.Position += Bullet.Velocity * DeltaTime;
 		Bullet.Age += DeltaTime;
@@ -429,6 +511,102 @@ void UBulletHellComponent::TickBullets(float DeltaTime)
 	}
 
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
+	UpdateBehaviorDebugStats();
+}
+
+void UBulletHellComponent::UpdateBulletBehavior(FBulletInstance& Bullet, float DeltaTime)
+{
+	switch (Bullet.BehaviorType)
+	{
+	case EBulletBehaviorType::Homing:
+		UpdateHomingBehavior(Bullet, DeltaTime);
+		break;
+	case EBulletBehaviorType::ColdLaunch:
+		if (Bullet.BehaviorPhase == EBulletPhase::Waiting && Bullet.Age + DeltaTime >= Bullet.ColdLaunchDelay)
+		{
+			Bullet.Velocity = Bullet.ColdLaunchVelocity;
+			Bullet.BehaviorPhase = EBulletPhase::Active;
+			++DebugStats.BehaviorTransitionCount;
+		}
+		break;
+	case EBulletBehaviorType::TimedVelocityChange:
+		if (Bullet.BehaviorPhase == EBulletPhase::Active &&
+			Bullet.TimedActivationTime >= 0.0f &&
+			Bullet.Age + DeltaTime >= Bullet.TimedActivationTime)
+		{
+			Bullet.Velocity = Bullet.TimedVelocity;
+			Bullet.BehaviorPhase = EBulletPhase::Complete;
+			++DebugStats.BehaviorTransitionCount;
+		}
+		break;
+	case EBulletBehaviorType::Linear:
+	default:
+		break;
+	}
+}
+
+void UBulletHellComponent::UpdateHomingBehavior(FBulletInstance& Bullet, float DeltaTime)
+{
+	if (DeltaTime <= 0.0f)
+	{
+		return;
+	}
+
+	const AActor* TargetActor = Bullet.HomingTargetActor.Get();
+	const FVector TargetPosition = TargetActor ? TargetActor->GetActorLocation() : Bullet.HomingTargetPosition;
+	const FVector DesiredDirection = SafeDirection(TargetPosition - Bullet.Position, Bullet.Velocity);
+	const float CurrentSpeed = Bullet.Velocity.Length();
+	if (CurrentSpeed <= 0.0f || DesiredDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FVector CurrentDirection = SafeDirection(Bullet.Velocity, DesiredDirection);
+	const float Dot = ClampFloat(CurrentDirection.Dot(DesiredDirection), -1.0f, 1.0f);
+	const float AngleRadians = std::acos(Dot);
+	if (AngleRadians <= 0.0001f)
+	{
+		Bullet.Velocity = DesiredDirection * CurrentSpeed;
+		return;
+	}
+
+	const float MaxTurnRadians = (std::max)(0.0f, Bullet.HomingMaxTurnRateDegrees) * (3.1415926535f / 180.0f) * DeltaTime;
+	const float TurnAlpha = MaxTurnRadians > 0.0f ? ClampFloat(MaxTurnRadians / AngleRadians, 0.0f, 1.0f) : 1.0f;
+	const float StrengthAlpha = ClampFloat((std::max)(0.0f, Bullet.HomingStrength) * DeltaTime, 0.0f, 1.0f);
+	const float Alpha = (std::min)(TurnAlpha, StrengthAlpha);
+	const FVector NewDirection = SafeDirection(
+		CurrentDirection * (1.0f - Alpha) + DesiredDirection * Alpha,
+		DesiredDirection);
+	Bullet.Velocity = NewDirection * CurrentSpeed;
+}
+
+void UBulletHellComponent::UpdateBehaviorDebugStats()
+{
+	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
+	DebugStats.ActiveLinearCount = 0;
+	DebugStats.ActiveHomingCount = 0;
+	DebugStats.ActiveColdLaunchCount = 0;
+	DebugStats.ActiveTimedVelocityChangeCount = 0;
+
+	for (const FBulletInstance& Bullet : Bullets)
+	{
+		switch (Bullet.BehaviorType)
+		{
+		case EBulletBehaviorType::Homing:
+			++DebugStats.ActiveHomingCount;
+			break;
+		case EBulletBehaviorType::ColdLaunch:
+			++DebugStats.ActiveColdLaunchCount;
+			break;
+		case EBulletBehaviorType::TimedVelocityChange:
+			++DebugStats.ActiveTimedVelocityChangeCount;
+			break;
+		case EBulletBehaviorType::Linear:
+		default:
+			++DebugStats.ActiveLinearCount;
+			break;
+		}
+	}
 }
 
 UBulletHellComponent::EBulletCollisionKillReason UBulletHellComponent::CheckBulletCollision(const FBulletInstance& Bullet)
@@ -621,6 +799,7 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 		++DebugStats.TotalKilled;
 	}
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
+	UpdateBehaviorDebugStats();
 	UpdateRenderDebugStats();
 	return true;
 }

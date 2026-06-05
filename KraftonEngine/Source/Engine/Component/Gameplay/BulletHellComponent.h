@@ -32,6 +32,23 @@ enum class EBulletHellRenderOrientationMode : int32
 	VelocityYaw
 };
 
+UENUM()
+enum class EBulletBehaviorType : int32
+{
+	Linear,
+	Homing,
+	ColdLaunch,
+	TimedVelocityChange
+};
+
+UENUM()
+enum class EBulletPhase : int32
+{
+	Active,
+	Waiting,
+	Complete
+};
+
 class UInstancedStaticMeshComponent;
 
 struct FBulletHandle
@@ -52,6 +69,16 @@ struct FBulletInstance
 	float Radius = 1.0f;
 	float Age = 0.0f;
 	float Lifetime = 1.0f;
+	EBulletBehaviorType BehaviorType = EBulletBehaviorType::Linear;
+	EBulletPhase BehaviorPhase = EBulletPhase::Active;
+	FVector HomingTargetPosition = FVector::ZeroVector;
+	TWeakObjectPtr<AActor> HomingTargetActor;
+	float HomingStrength = 0.0f;
+	float HomingMaxTurnRateDegrees = 0.0f;
+	float ColdLaunchDelay = 0.0f;
+	FVector ColdLaunchVelocity = FVector::ZeroVector;
+	float TimedActivationTime = -1.0f;
+	FVector TimedVelocity = FVector::ZeroVector;
 	int32 RenderInstanceIndex = -1;
 	bool bAlive = true;
 };
@@ -66,6 +93,11 @@ struct FBulletDebugStats
 	uint32 CollisionHitCount = 0;
 	uint32 CollisionKilledCount = 0;
 	uint32 EraseKilledCount = 0;
+	uint32 BehaviorTransitionCount = 0;
+	int32 ActiveLinearCount = 0;
+	int32 ActiveHomingCount = 0;
+	int32 ActiveColdLaunchCount = 0;
+	int32 ActiveTimedVelocityChangeCount = 0;
 	int32 DebugDrawSelectedCount = 0;
 	int32 DebugDrawTruncatedCount = 0;
 	int32 RenderInstanceCount = 0;
@@ -129,6 +161,17 @@ private:
 	};
 
 	void TickBullets(float DeltaTime);
+	FBulletHandle SpawnBulletInternal(
+		const FVector& Position,
+		const FVector& Velocity,
+		float Radius,
+		float Lifetime,
+		EBulletBehaviorType BehaviorType,
+		const FVector& DebugDirection);
+	void ConfigureDebugBulletBehavior(FBulletInstance& Bullet, const FVector& Direction) const;
+	void UpdateBulletBehavior(FBulletInstance& Bullet, float DeltaTime);
+	void UpdateHomingBehavior(FBulletInstance& Bullet, float DeltaTime);
+	void UpdateBehaviorDebugStats();
 	EBulletCollisionKillReason CheckBulletCollision(const FBulletInstance& Bullet);
 	bool SweepBulletByChannel(const FBulletInstance& Bullet, ECollisionChannel TraceChannel, FHitResult& OutHit);
 	bool SweepBulletByObjectTypes(const FBulletInstance& Bullet, uint32 ObjectTypeMask, FHitResult& OutHit);
@@ -182,6 +225,39 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Spawn Pattern", Enum=EBulletHellDebugSpawnPattern)
 	EBulletHellDebugSpawnPattern DebugSpawnPattern = EBulletHellDebugSpawnPattern::Radial;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Behavior Type", Enum=EBulletBehaviorType)
+	EBulletBehaviorType DebugBehaviorType = EBulletBehaviorType::Linear;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Target Forward Offset", Min=-100000.0f, Max=100000.0f, Speed=1.0f)
+	float DebugHomingTargetForwardOffset = 900.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Target Right Offset", Min=-100000.0f, Max=100000.0f, Speed=1.0f)
+	float DebugHomingTargetRightOffset = 450.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Target Up Offset", Min=-100000.0f, Max=100000.0f, Speed=1.0f)
+	float DebugHomingTargetUpOffset = 0.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Strength", Min=0.0f, Max=100.0f, Speed=0.1f)
+	float DebugHomingStrength = 6.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Max Turn Rate", Min=0.0f, Max=3600.0f, Speed=1.0f)
+	float DebugHomingMaxTurnRateDegrees = 360.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Cold Launch Delay", Min=0.0f, Max=60.0f, Speed=0.1f)
+	float DebugColdLaunchDelay = 0.75f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Cold Launch Speed", Min=0.0f, Max=100000.0f, Speed=1.0f)
+	float DebugColdLaunchSpeed = 900.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Timed Activation Time", Min=0.0f, Max=60.0f, Speed=0.1f)
+	float DebugTimedActivationTime = 1.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Timed Speed", Min=0.0f, Max=100000.0f, Speed=1.0f)
+	float DebugTimedSpeed = 900.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Timed Yaw Degrees", Min=-360.0f, Max=360.0f, Speed=1.0f)
+	float DebugTimedYawDegrees = 90.0f;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Enable Rendering")
 	bool bEnableRendering = true;
