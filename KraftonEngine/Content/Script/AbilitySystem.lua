@@ -24,6 +24,7 @@ function AbilitySystem.new(owner)
             key = config.Key,
             duration = config.Duration or 0.0,
             cooldown = config.Cooldown or 0.0,
+            block_while_any_active = config.BlockWhileAnyActive or false,
             active_remaining = 0.0,
             cooldown_remaining = 0.0,
             is_active = false,
@@ -41,10 +42,29 @@ function AbilitySystem.new(owner)
         return self.abilities[name]
     end
 
+    function system:GetActiveAbility(except_ability)
+        for _, ability in pairs(self.abilities) do
+            if ability ~= except_ability and ability.is_active then
+                return ability
+            end
+        end
+        return nil
+    end
+
     function system:CanActivate(ability)
-        return ability ~= nil
-            and not ability.is_active
-            and ability.cooldown_remaining <= 0.0
+        if ability == nil then
+            return false
+        end
+        if ability.is_active then
+            return false
+        end
+        if ability.cooldown_remaining > 0.0 then
+            return false
+        end
+        if ability.block_while_any_active and self:GetActiveAbility(ability) ~= nil then
+            return false
+        end
+        return true
     end
 
     function system:TryActivateByKey(key)
@@ -58,6 +78,12 @@ function AbilitySystem.new(owner)
             end
             if ability.cooldown_remaining > 0.0 then
                 return false, string.format("cooldown %.2fs", ability.cooldown_remaining)
+            end
+            if ability.block_while_any_active then
+                local active_ability = self:GetActiveAbility(ability)
+                if active_ability ~= nil then
+                    return false, "blocked by active " .. active_ability.name
+                end
             end
             return false, "cannot activate"
         end

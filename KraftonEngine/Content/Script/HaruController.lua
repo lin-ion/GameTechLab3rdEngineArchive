@@ -448,6 +448,7 @@ local function setup_abilities()
         Key = STEAM_SKILL_KEY,
         Duration = 2.0,
         Cooldown = 2.0,
+        BlockWhileAnyActive = true,
         OnActivate = spawn_steam_effect,
         OnTick = update_steam_effect,
         OnEnd = end_steam_effect
@@ -457,6 +458,7 @@ local function setup_abilities()
         Key = DASH_SKILL_KEY,
         Duration = DASH_DURATION,
         Cooldown = 0.0,
+        BlockWhileAnyActive = true,
         OnActivate = activate_dash,
         OnEnd = end_dash
     })
@@ -465,6 +467,7 @@ local function setup_abilities()
         Key = ROLL_SKILL_KEY,
         Duration = ROLL_DURATION,
         Cooldown = 0.0,
+        BlockWhileAnyActive = true,
         OnActivate = activate_roll,
         OnEnd = end_roll
     })
