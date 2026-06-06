@@ -54,6 +54,7 @@ public:
 	virtual void UpdateWorldMatrix() const;
 	UFUNCTION(Pure, Category="Scene|Socket")
 	virtual bool HasSocket(const FName& SocketName) const;
+	virtual FMatrix GetSocketMatrix(const FName& SocketName) const;
 	UFUNCTION(Pure, Category="Scene|Socket")
 	virtual FTransform GetSocketTransform(const FName& SocketName) const;
 	UFUNCTION(Pure, Category="Scene|Socket")

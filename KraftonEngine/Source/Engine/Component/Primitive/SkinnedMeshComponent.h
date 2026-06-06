@@ -40,6 +40,7 @@ public:
 	// Bounds 섹션: SkeletalMesh는 local asset bounds 대신 실제 skinned vertex 기준으로 culling bounds를 만든다.
 	void UpdateWorldAABB() const override;
 	bool HasSocket(const FName& SocketName) const override;
+	FMatrix GetSocketMatrix(const FName& SocketName) const override;
 	FTransform GetSocketTransform(const FName& SocketName) const override;
 
 	// Material 섹션: editor slot 경로와 runtime override 포인터를 같이 유지한다.

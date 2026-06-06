@@ -67,7 +67,7 @@ static FQuat GetWorldRotationNoScale(const USceneComponent* Component)
 	const FName AttachSocketName = Component->GetAttachSocketName();
 	if (Parent && IsSocketAttachmentNameSet(AttachSocketName) && Parent->HasSocket(AttachSocketName))
 	{
-		const FQuat SocketWorldQuat = GetRotationTranslationWithoutScale(Parent->GetSocketTransform(AttachSocketName).ToMatrix()).ToQuat().GetNormalized();
+		const FQuat SocketWorldQuat = GetRotationTranslationWithoutScale(Parent->GetSocketMatrix(AttachSocketName)).ToQuat().GetNormalized();
 		return (SocketWorldQuat * Component->GetRelativeQuat()).GetNormalized();
 	}
 
@@ -359,7 +359,7 @@ void USceneComponent::UpdateWorldMatrix() const
 
 		if (bParentHasSocket)
 		{
-			const FMatrix SocketMatrix = ParentComponent->GetSocketTransform(AttachSocketName).ToMatrix();
+			const FMatrix SocketMatrix = ParentComponent->GetSocketMatrix(AttachSocketName);
 			CachedWorldMatrix = bAbsoluteScale
 				? RelativeMatrix * GetRotationTranslationWithoutScale(SocketMatrix)
 				: RelativeMatrix * SocketMatrix;
@@ -413,9 +413,14 @@ bool USceneComponent::HasSocket(const FName& /*SocketName*/) const
 	return false;
 }
 
-FTransform USceneComponent::GetSocketTransform(const FName& /*SocketName*/) const
+FMatrix USceneComponent::GetSocketMatrix(const FName& /*SocketName*/) const
 {
-	return FTransform(GetWorldMatrix());
+	return GetWorldMatrix();
+}
+
+FTransform USceneComponent::GetSocketTransform(const FName& SocketName) const
+{
+	return FTransform(GetSocketMatrix(SocketName));
 }
 
 FVector USceneComponent::GetSocketWorldLocation(const FName& SocketName) const
@@ -435,7 +440,7 @@ FVector USceneComponent::GetSocketWorldScale(const FName& SocketName) const
 
 FVector USceneComponent::GetSocketForwardVector(const FName& SocketName) const
 {
-	const FMatrix Matrix = GetSocketTransform(SocketName).ToMatrix();
+	const FMatrix Matrix = GetSocketMatrix(SocketName);
 	FVector Forward(Matrix.M[0][0], Matrix.M[0][1], Matrix.M[0][2]);
 	Forward.Normalize();
 	return Forward;
@@ -443,7 +448,7 @@ FVector USceneComponent::GetSocketForwardVector(const FName& SocketName) const
 
 FVector USceneComponent::GetSocketRightVector(const FName& SocketName) const
 {
-	const FMatrix Matrix = GetSocketTransform(SocketName).ToMatrix();
+	const FMatrix Matrix = GetSocketMatrix(SocketName);
 	FVector Right(Matrix.M[1][0], Matrix.M[1][1], Matrix.M[1][2]);
 	Right.Normalize();
 	return Right;
@@ -451,7 +456,7 @@ FVector USceneComponent::GetSocketRightVector(const FName& SocketName) const
 
 FVector USceneComponent::GetSocketUpVector(const FName& SocketName) const
 {
-	const FMatrix Matrix = GetSocketTransform(SocketName).ToMatrix();
+	const FMatrix Matrix = GetSocketMatrix(SocketName);
 	FVector Up(Matrix.M[2][0], Matrix.M[2][1], Matrix.M[2][2]);
 	Up.Normalize();
 	return Up;
@@ -641,7 +646,7 @@ void USceneComponent::SetWorldRotation(const FQuat& NewWorldRotation)
 		FQuat ParentWorldQuat = GetWorldRotationNoScale(Parent);
 		if (IsSocketAttachmentNameSet(AttachSocketName) && Parent->HasSocket(AttachSocketName))
 		{
-			ParentWorldQuat = GetRotationTranslationWithoutScale(Parent->GetSocketTransform(AttachSocketName).ToMatrix()).ToQuat().GetNormalized();
+			ParentWorldQuat = GetRotationTranslationWithoutScale(Parent->GetSocketMatrix(AttachSocketName)).ToQuat().GetNormalized();
 		}
 		SetRelativeRotation((ParentWorldQuat.Inverse() * WorldQuat).GetNormalized());
 	}
