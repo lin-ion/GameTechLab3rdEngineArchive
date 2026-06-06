@@ -72,6 +72,18 @@ public:
 	// edge-triggered — input 측에서 Pressed 마다 호출.
 	UFUNCTION(Callable, Exec, Category="CharacterMovement")
 	void           Jump();
+	UFUNCTION(Callable, Exec, Category="CharacterMovement")
+	void           StopMovementImmediately();
+	UFUNCTION(Callable, Exec, Category="CharacterMovement")
+	void           SetMovementInputBlocked(bool bBlocked);
+	UFUNCTION(Pure, Category="CharacterMovement")
+	bool           IsMovementInputBlocked() const { return bMovementInputBlocked; }
+	UFUNCTION(Callable, Exec, Category="CharacterMovement|Dash")
+	bool           StartDash(const FVector& WorldDirection, float Distance, float Duration);
+	UFUNCTION(Callable, Exec, Category="CharacterMovement|Dash")
+	void           StopDash();
+	UFUNCTION(Pure, Category="CharacterMovement|Dash")
+	bool           IsDashing() const { return DashRemainingTime > 0.0f; }
 
 	// UMovementComponent:
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
@@ -84,6 +96,8 @@ public:
 	float MaxAcceleration    = 20.0f;    // m/s^2
 	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Braking Friction", Min=0.0f, Max=100.0f, Speed=0.1f)
 	float BrakingFriction    = 8.0f;     // 입력 없을 때 감속률 (m/s^2). Walking 만 적용.
+	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Use Instant Movement Input")
+	bool  bUseInstantMovementInput = false;
 	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Gravity", Min=0.0f, Max=100.0f, Speed=0.1f)
 	float Gravity            = 9.8f;     // m/s^2 (positive — 적용 시 Velocity.Z -= Gravity*dt)
 	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Floor Probe Distance", Min=0.0f, Max=5.0f, Speed=0.01f)
@@ -98,6 +112,10 @@ public:
 	// 켜면 이쪽이 마지막 우선 (Component Tick 이 Actor Tick 후 호출). 보통 둘 중 하나만.
 	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Orient Rotation To Movement")
 	bool  bOrientRotationToMovement = true;
+	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Snap Rotation To Movement")
+	bool  bSnapRotationToMovement   = false;
+	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Ignore Input While Dashing")
+	bool  bIgnoreInputWhileDashing  = true;
 	UPROPERTY(Edit, Save, Category="CharacterMovement", DisplayName="Rotation Yaw Rate", Min=0.0f, Max=3600.0f, Speed=5.0f)
 	float RotationYawRate           = 540.0f;   // deg/sec
 
@@ -110,9 +128,12 @@ protected:
 	// XY 적용 단계에 합산되고 floor stick / gravity 는 mode 가 자체 결정.
 	void  TickWalking(float DeltaTime, const FVector& RootMotionWorldXY);
 	void  TickFalling(float DeltaTime, const FVector& RootMotionWorldXY);
+	FVector ConsumeDashOffset(float DeltaTime);
 
 	// capsule 중심에서 down raycast — bHit + WorldHitLocation 사용.
 	bool  TraceFloor(FHitResult& OutHit) const;
+	bool  MoveAlongFloor(const FVector& Delta, FHitResult* OutHit = nullptr);
+	bool  IsWalkableFloorHit(const FHitResult& Hit) const;
     bool  SafeMoveUpdatedComponent(const FVector& Delta, FHitResult* OutHit = nullptr);
 	float GetCapsuleHalfHeight() const;
 
@@ -132,6 +153,10 @@ protected:
 	// 직전 TickComponent 에서 root motion yaw 가 실제 적용됐는지 (외부 query 용 — Character 의 yaw 가드).
 	// 매 Tick 시작에 reset 후 yaw 적용 시 true.
 	bool          bAppliedRootMotionYawThisFrame = false;
+
+	FVector       DashVelocity      = FVector(0.0f, 0.0f, 0.0f);
+	float         DashRemainingTime = 0.0f;
+	bool          bMovementInputBlocked = false;
 
 	// 평면 속도 기준 yaw 를 RotationYawRate * dt 로 lerp. TickComponent 끝에서 적용.
 	void  PhysOrientToMovement(float DeltaTime);

@@ -7,6 +7,8 @@
 
 class UInstancedStaticMeshValidationComponent;
 
+// Debug-only editor placement actor for UInstancedStaticMeshComponent regression/stress validation.
+// This is not a production gameplay actor; BulletHell owns gameplay projectile state separately.
 UCLASS()
 class AInstancedStaticMeshValidationActor : public AActor
 {

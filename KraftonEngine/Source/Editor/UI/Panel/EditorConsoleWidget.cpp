@@ -274,6 +274,8 @@ void FEditorConsoleWidget::RegisterDiagnosticsCommands()
 		"Diagnostics", "stat physics", "Shows the physics overlay stat (bodies/pairs/queries/timing).");
 	RegisterCommand("stat clothcollision", [this](const TArray<FString>& Args) { HandleStatClothCollision(Args); },
 		"Diagnostics", "stat clothcollision", "Shows the cloth collision overlay stat for the level world.");
+	RegisterCommand("stat bullethell", [this](const TArray<FString>& Args) { HandleStatBulletHell(Args); },
+		"Diagnostics", "stat bullethell", "Shows the BulletHell overlay stat.");
 	RegisterCommand("stat none", [this](const TArray<FString>& Args) { HandleStatNone(Args); },
 		"Diagnostics", "stat none", "Hides all overlay stats.");
 	RegisterCommand("cause crash", [this](const TArray<FString>& Args) { HandleCauseCrash(Args); },
@@ -1077,6 +1079,18 @@ void FEditorConsoleWidget::HandleStatClothCollision(const TArray<FString>& Args)
 	}
 	const bool bEnabled = EditorEngine->GetOverlayStatSystem().ToggleClothCollision();
 	AddLog("Overlay stat %s: clothcollision\n", bEnabled ? "enabled" : "disabled");
+}
+
+void FEditorConsoleWidget::HandleStatBulletHell(const TArray<FString>& Args)
+{
+	(void)Args;
+	if (!EditorEngine)
+	{
+		AddLog("[ERROR] EditorEngine is null.\n");
+		return;
+	}
+	const bool bEnabled = EditorEngine->GetOverlayStatSystem().ToggleBulletHell();
+	AddLog("Overlay stat %s: bullethell\n", bEnabled ? "enabled" : "disabled");
 }
 
 void FEditorConsoleWidget::HandleStatNone(const TArray<FString>& Args)

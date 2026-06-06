@@ -6,6 +6,7 @@
 #include "Engine/Profiling/Stats/ShadowStats.h"
 #include "Engine/Profiling/Stats/ParticleStats.h"
 #include "Engine/Profiling/Stats/ClothCollisionStats.h"
+#include "Engine/Profiling/Stats/BulletHellStats.h"
 #include "Engine/Profiling/Stats/Stats.h"
 #include "GameFramework/World.h"
 #include "Physics/IPhysicsScene.h"
@@ -693,6 +694,59 @@ void FOverlayStatSystem::BuildClothCollisionLines(TArray<FString>& OutLines) con
 #endif
 }
 
+void FOverlayStatSystem::BuildBulletHellLines(TArray<FString>& OutLines) const
+{
+#if STATS
+	char Buffer[192] = {};
+
+	snprintf(Buffer, sizeof(Buffer), "Components : %u   Active Bullets : %u",
+		FBulletHellStats::ComponentCount,
+		FBulletHellStats::ActiveBulletCount);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "Lifetime : Spawned %u   Killed %u   Expired %u",
+		FBulletHellStats::TotalSpawned,
+		FBulletHellStats::TotalKilled,
+		FBulletHellStats::TotalExpired);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "Collision : Queries %u   Hits %u   Killed %u   EraseKilled %u",
+		FBulletHellStats::CollisionQueryCount,
+		FBulletHellStats::CollisionHitCount,
+		FBulletHellStats::CollisionKilledCount,
+		FBulletHellStats::EraseKilledCount);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "Behavior : Transitions %u   Linear/Homing/Cold/Timed %u/%u/%u/%u",
+		FBulletHellStats::BehaviorTransitionCount,
+		FBulletHellStats::ActiveLinearCount,
+		FBulletHellStats::ActiveHomingCount,
+		FBulletHellStats::ActiveColdLaunchCount,
+		FBulletHellStats::ActiveTimedVelocityChangeCount);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "Archetype : Primary %u   Secondary %u",
+		FBulletHellStats::ActivePrimaryArchetypeCount,
+		FBulletHellStats::ActiveSecondaryArchetypeCount);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "Render : Instances %u   Slots %u   Slot0/1 %u/%u   Mismatch %u",
+		FBulletHellStats::RenderInstanceCount,
+		FBulletHellStats::RendererSlotCount,
+		FBulletHellStats::RendererSlot0InstanceCount,
+		FBulletHellStats::RendererSlot1InstanceCount,
+		FBulletHellStats::RenderMismatchCount);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "DebugDraw : Selected %u   Truncated %u",
+		FBulletHellStats::DebugDrawSelectedCount,
+		FBulletHellStats::DebugDrawTruncatedCount);
+	OutLines.push_back(FString(Buffer));
+#else
+	OutLines.push_back(FString("BulletHell stats unavailable (STATS=0)"));
+#endif
+}
+
 void FOverlayStatSystem::BuildLines(const UEditorEngine& Editor, TArray<FOverlayStatLine>& OutLines) const
 {
 	OutLines.clear();
@@ -729,6 +783,10 @@ void FOverlayStatSystem::BuildLines(const UEditorEngine& Editor, TArray<FOverlay
 	if (bShowClothCollision)
 	{
 		EstimatedLineCount += 12;
+	}
+	if (bShowBulletHell)
+	{
+		EstimatedLineCount += 7;
 	}
 	OutLines.reserve(EstimatedLineCount);
 
@@ -793,6 +851,13 @@ void FOverlayStatSystem::BuildLines(const UEditorEngine& Editor, TArray<FOverlay
 	{
 		Lines.clear();
 		BuildClothCollisionLines(Lines);
+		AppendGroup(Lines);
+	}
+
+	if (bShowBulletHell)
+	{
+		Lines.clear();
+		BuildBulletHellLines(Lines);
 		AppendGroup(Lines);
 	}
 }
@@ -921,5 +986,12 @@ void FOverlayStatSystem::RenderImGui(const UEditorEngine& Editor, const FRect& V
 		Lines.clear();
 		BuildClothCollisionLines(Lines);
 		RenderWindow("##StatClothCollisionOverlay", "Stat Cloth Collision", ImVec4(0.08f, 0.06f, 0.04f, 0.62f), Lines);
+	}
+
+	if (bShowBulletHell)
+	{
+		Lines.clear();
+		BuildBulletHellLines(Lines);
+		RenderWindow("##StatBulletHellOverlay", "Stat BulletHell", ImVec4(0.04f, 0.08f, 0.07f, 0.62f), Lines);
 	}
 }

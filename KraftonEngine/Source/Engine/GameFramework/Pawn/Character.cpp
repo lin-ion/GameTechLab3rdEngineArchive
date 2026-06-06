@@ -244,6 +244,25 @@ void ACharacter::PostDuplicate()
 	CapsuleComponent  = Cast<UCapsuleComponent>(GetRootComponent());
 	Mesh              = GetComponentByClass<USkeletalMeshComponent>();
 	CharacterMovement = GetComponentByClass<UCharacterMovementComponent>();
+	if (CharacterMovement && CapsuleComponent)
+	{
+		CharacterMovement->SetUpdatedComponent(CapsuleComponent);
+	}
+}
+
+void ACharacter::OnPostLoad(FArchive& Ar)
+{
+	Super::OnPostLoad(Ar);
+
+	// Scene load rebuilds the component graph from JSON instead of calling
+	// InitDefaultComponents. Restore cached component pointers after properties load.
+	CapsuleComponent  = Cast<UCapsuleComponent>(GetRootComponent());
+	Mesh              = GetComponentByClass<USkeletalMeshComponent>();
+	CharacterMovement = GetComponentByClass<UCharacterMovementComponent>();
+	if (CharacterMovement && CapsuleComponent)
+	{
+		CharacterMovement->SetUpdatedComponent(CapsuleComponent);
+	}
 }
 
 bool ACharacter::EnterRagdoll()

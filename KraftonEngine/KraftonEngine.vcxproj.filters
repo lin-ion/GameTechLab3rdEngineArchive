@@ -1166,6 +1166,15 @@
     <ClCompile Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.cpp">
       <Filter>Source\Engine\Component\Debug</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
@@ -1774,6 +1783,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\StartupProfiler.cpp">
       <Filter>Source\Engine\Profiling</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Profiling\Stats\BulletHellStats.cpp">
+      <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\Stats\ClothCollisionStats.cpp">
       <Filter>Source\Engine\Profiling\Stats</Filter>
@@ -2548,6 +2560,15 @@
     <ClInclude Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.h">
       <Filter>Source\Engine\Component\Debug</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
@@ -3306,6 +3327,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\StartupProfiler.h">
       <Filter>Source\Engine\Profiling</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Profiling\Stats\BulletHellStats.h">
+      <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\Stats\ClothCollisionStats.h">
       <Filter>Source\Engine\Profiling\Stats</Filter>

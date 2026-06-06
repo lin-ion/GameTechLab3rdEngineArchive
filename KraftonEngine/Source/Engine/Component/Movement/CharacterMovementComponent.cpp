@@ -1,4 +1,4 @@
-#include "CharacterMovementComponent.h"
+﻿#include "CharacterMovementComponent.h"
 
 #include "Animation/AnimInstance.h"
 #include "Component/Shape/CapsuleComponent.h"
@@ -84,6 +84,62 @@ void UCharacterMovementComponent::Jump()
 	bWantsJump = true;
 }
 
+void UCharacterMovementComponent::StopMovementImmediately()
+{
+	Velocity.X = 0.0f;
+	Velocity.Y = 0.0f;
+	Velocity.Z = 0.0f;
+	AccumulatedInput = FVector(0.0f, 0.0f, 0.0f);
+}
+
+void UCharacterMovementComponent::SetMovementInputBlocked(bool bBlocked)
+{
+	bMovementInputBlocked = bBlocked;
+	if (bMovementInputBlocked)
+	{
+		AccumulatedInput = FVector(0.0f, 0.0f, 0.0f);
+		Velocity.X = 0.0f;
+		Velocity.Y = 0.0f;
+	}
+}
+
+bool UCharacterMovementComponent::StartDash(const FVector& WorldDirection, float Distance, float Duration)
+{
+	if (Distance <= 0.0f || Duration <= 0.0f)
+	{
+		return false;
+	}
+
+	FVector Direction(WorldDirection.X, WorldDirection.Y, 0.0f);
+	if (Direction.IsNearlyZero())
+	{
+		if (USceneComponent* Updated = GetUpdatedComponent())
+		{
+			const FRotator ActorRot = Updated->GetWorldRotation();
+			Direction = FRotator(0.0f, 0.0f, ActorRot.Yaw).ToQuaternion().RotateVector(FVector(1.0f, 0.0f, 0.0f));
+		}
+	}
+
+	if (Direction.IsNearlyZero())
+	{
+		return false;
+	}
+
+	Direction = Direction.Normalized();
+	Velocity.X = 0.0f;
+	Velocity.Y = 0.0f;
+	AccumulatedInput = FVector(0.0f, 0.0f, 0.0f);
+	DashVelocity = Direction * (Distance / Duration);
+	DashRemainingTime = Duration;
+	return true;
+}
+
+void UCharacterMovementComponent::StopDash()
+{
+	DashVelocity = FVector(0.0f, 0.0f, 0.0f);
+	DashRemainingTime = 0.0f;
+}
+
 void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -99,6 +155,10 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	FVector Input;
 	ConsumeInputVector(Input);
 	Input.Z = 0.0f;   // XY 평면만 — Z 는 mode 가 결정.
+	if (bMovementInputBlocked || (bIgnoreInputWhileDashing && IsDashing()))
+	{
+		Input = FVector(0.0f, 0.0f, 0.0f);
+	}
 
 	// 1) Input 처리 — XY velocity 갱신 (양 mode 공통).
 	ApplyInputToVelocity(Input, DeltaTime);
@@ -137,14 +197,17 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		RootMotionWorldXY.Y     = World.Y;
 	}
 
+	const FVector DashWorldXY = ConsumeDashOffset(DeltaTime);
+	const FVector ExtraWorldXY = RootMotionWorldXY + DashWorldXY;
+
 	// 3) Mode 별 Z 처리 + 위치 적용 (input velocity + root motion XY 합산).
 	if (MovementMode == EMovementMode::Walking)
 	{
-		TickWalking(DeltaTime, RootMotionWorldXY);
+		TickWalking(DeltaTime, ExtraWorldXY);
 	}
 	else
 	{
-		TickFalling(DeltaTime, RootMotionWorldXY);
+		TickFalling(DeltaTime, ExtraWorldXY);
 	}
 
 	// 4) Root motion yaw 적용. yaw 만 추출 — root motion 의 pitch/roll 은 캐릭터 capsule
@@ -188,6 +251,13 @@ void UCharacterMovementComponent::PhysOrientToMovement(float DeltaTime)
 	FRotator R = Updated->GetRelativeRotation();
 	const float CurrentYaw = R.Yaw;
 
+	if (bSnapRotationToMovement)
+	{
+		R.Yaw = TargetYaw;
+		Updated->SetRelativeRotation(R);
+		return;
+	}
+
 	// 최단 회전 방향 (delta ∈ [-180, 180])
 	float Delta = TargetYaw - CurrentYaw;
 	while (Delta >  180.0f) Delta -= 360.0f;
@@ -208,6 +278,22 @@ void UCharacterMovementComponent::PhysOrientToMovement(float DeltaTime)
 void UCharacterMovementComponent::ApplyInputToVelocity(const FVector& Input, float DeltaTime)
 {
 	const float InputLen = Input.Length();
+	if (bUseInstantMovementInput)
+	{
+		if (InputLen > 0.0f)
+		{
+			const FVector Direction = Input * (1.0f / InputLen);
+			Velocity.X = Direction.X * MaxWalkSpeed;
+			Velocity.Y = Direction.Y * MaxWalkSpeed;
+		}
+		else if (MovementMode == EMovementMode::Walking)
+		{
+			Velocity.X = 0.0f;
+			Velocity.Y = 0.0f;
+		}
+		return;
+	}
+
 	if (InputLen > 0.0f)
 	{
 		// 입력 방향으로 가속 (XY 만).
@@ -240,6 +326,28 @@ void UCharacterMovementComponent::ApplyInputToVelocity(const FVector& Input, flo
 	}
 }
 
+FVector UCharacterMovementComponent::ConsumeDashOffset(float DeltaTime)
+{
+	if (DashRemainingTime <= 0.0f || DeltaTime <= 0.0f)
+	{
+		StopDash();
+		return FVector(0.0f, 0.0f, 0.0f);
+	}
+
+	const float StepTime = (std::min)(DeltaTime, DashRemainingTime);
+	DashRemainingTime -= StepTime;
+
+	FVector Offset = DashVelocity * StepTime;
+	Offset.Z = 0.0f;
+
+	if (DashRemainingTime <= 0.0f)
+	{
+		StopDash();
+	}
+
+	return Offset;
+}
+
 void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& RootMotionWorldXY)
 {
 	USceneComponent* Updated = GetUpdatedComponent();
@@ -263,7 +371,7 @@ void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& Ro
 		Velocity.X * DeltaTime + RootMotionWorldXY.X,
 		Velocity.Y * DeltaTime + RootMotionWorldXY.Y,
 		0.0f);
-	SafeMoveUpdatedComponent(XYOffset);
+	MoveAlongFloor(XYOffset);
 
 	// Floor 잡혔는지 — 이동 직후 위치에서 다시 trace.
 	FHitResult Floor;
@@ -311,6 +419,106 @@ void UCharacterMovementComponent::TickFalling(float DeltaTime, const FVector& Ro
 	Updated->SetWorldLocation(LandLoc);
 	Velocity.Z = 0.0f;
 	SetMovementMode(EMovementMode::Walking);
+}
+
+bool UCharacterMovementComponent::IsWalkableFloorHit(const FHitResult& Hit) const
+{
+	constexpr float WalkableFloorZ = 0.7f;
+	const FVector& Normal = !Hit.ImpactNormal.IsNearlyZero() ? Hit.ImpactNormal : Hit.WorldNormal;
+	return Hit.bHit && Normal.Z >= WalkableFloorZ;
+}
+
+bool UCharacterMovementComponent::MoveAlongFloor(const FVector& Delta, FHitResult* OutHit)
+{
+	if (OutHit)
+	{
+		*OutHit = FHitResult();
+	}
+
+	if (Delta.Length() <= 1.e-6f)
+	{
+		return true;
+	}
+
+	USceneComponent* Updated = GetUpdatedComponent();
+	if (!Updated)
+	{
+		return false;
+	}
+
+	AActor* Owner = GetOwner();
+	UWorld* World = Owner ? Owner->GetWorld() : nullptr;
+	UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Updated);
+	if (!Owner || !World || !Capsule)
+	{
+		Updated->SetWorldLocation(Updated->GetWorldLocation() + Delta);
+		return true;
+	}
+
+	const float Radius = Capsule->GetScaledCapsuleRadius();
+	const float HalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	if (Radius <= 0.0f || HalfHeight <= 0.0f)
+	{
+		Updated->SetWorldLocation(Updated->GetWorldLocation() + Delta);
+		return true;
+	}
+
+	ECollisionChannel TraceChannel = ECollisionChannel::Pawn;
+	if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Updated))
+	{
+		TraceChannel = Primitive->GetCollisionObjectType();
+	}
+
+	const FVector Start = Updated->GetWorldLocation();
+	const float SweepLift = (std::max)(0.02f, (std::min)(0.05f, FloorProbeDistance * 0.5f));
+	const FVector SweepStart = Start + FVector(0.0f, 0.0f, SweepLift);
+	const FVector SweepEnd = SweepStart + Delta;
+	const FQuat Rot = Updated->GetWorldMatrix().ToQuat();
+	const FCollisionShape Shape = FCollisionShape::MakeCapsule(Radius, HalfHeight);
+
+	FHitResult Hit;
+	if (!World->PhysicsSweep(SweepStart, SweepEnd, Rot, Shape, Hit, TraceChannel, Owner))
+	{
+		Updated->SetWorldLocation(Start + Delta);
+		return true;
+	}
+
+	if (OutHit)
+	{
+		*OutHit = Hit;
+	}
+
+	if (IsWalkableFloorHit(Hit))
+	{
+		Updated->SetWorldLocation(Start + Delta);
+		return true;
+	}
+
+	const FVector MoveDir = Delta.Normalized();
+	const float SafeDistance = (std::max)(0.0f, Hit.Distance - SweepPullbackDistance);
+	Updated->SetWorldLocation(Start + MoveDir * SafeDistance);
+
+	if (UPrimitiveComponent* MovingPrimitive = Cast<UPrimitiveComponent>(Updated))
+	{
+		MovingPrimitive->NotifyComponentHit(
+			MovingPrimitive,
+			Hit.HitActor,
+			Hit.HitComponent,
+			FVector::ZeroVector,
+			Hit
+		);
+	}
+
+	if (!Hit.ImpactNormal.IsNearlyZero())
+	{
+		const float VelocityIntoSurface = Velocity.Dot(Hit.ImpactNormal);
+		if (VelocityIntoSurface < 0.0f)
+		{
+			Velocity = Velocity - Hit.ImpactNormal * VelocityIntoSurface;
+		}
+	}
+
+	return false;
 }
 
 bool UCharacterMovementComponent::SafeMoveUpdatedComponent(const FVector& Delta, FHitResult* OutHit)
@@ -459,4 +667,7 @@ void UCharacterMovementComponent::Serialize(FArchive& Ar)
 	Ar << bOrientRotationToMovement;
 	Ar << RotationYawRate;
 	Ar << SweepPullbackDistance;
+	Ar << bUseInstantMovementInput;
+	Ar << bSnapRotationToMovement;
+	Ar << bIgnoreInputWhileDashing;
 }
