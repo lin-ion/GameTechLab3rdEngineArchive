@@ -2,6 +2,7 @@
 
 #include "UI/Canvas/UICanvas.h"
 #include "UI/Canvas/UIElement.h"
+#include "UI/Canvas/UILabel.h"
 #include "Object/Object.h"
 
 void FUICanvasManager::RegisterCanvas(UUICanvas* Canvas)
@@ -65,6 +66,16 @@ UUICanvas* FUICanvasManager::CreateDebugTestCanvas()
 	MakeRect({ 1.0f, 1.0f }, { 1.0f, 1.0f }, { -40.0f, -40.0f }, { 250.0f, 150.0f },
 	         { 0.2f, 0.4f, 0.9f, 0.85f });
 
+	// 텍스트 라벨(RmlUi 마운트) — 상단 중앙 빈 영역. 사이클 6 검증용.
+	{
+		UUILabel* Label = UObjectManager::Get().CreateObject<UUILabel>();
+		Label->SetAnchor({ 0.5f, 0.0f });
+		Label->SetPivot({ 0.5f, 0.0f });
+		Label->SetPosition({ 0.0f, 40.0f });
+		Label->SetText("SimpleUI Label");
+		Canvas->AddChild(Label);
+	}
+
 	return Canvas;
 }
 
@@ -111,6 +122,9 @@ void FUICanvasManager::LayoutElement(UUIElement* Element, const FVector2& Parent
 	Screen.Pos = FinalPos * Scale;
 	Screen.Size = RT.Size * Scale;
 	Element->SetScreenRect(Screen);
+
+	// 화면 위치 종속 외부 리소스 동기화 훅(예: UUILabel 의 RmlUi 텍스트). 기본 no-op.
+	Element->OnLayoutUpdated(Scale);
 
 	// 자식은 이 노드의 레퍼런스 좌상단/크기를 부모 기준으로 받아 top-down 누적(진단 C3).
 	for (USceneComponent* Child : Element->GetChildren())

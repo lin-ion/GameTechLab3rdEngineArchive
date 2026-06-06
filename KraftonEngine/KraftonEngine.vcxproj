@@ -615,6 +615,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\UI\UserWidget.cpp" />
     <ClCompile Include="Source\Engine\UI\Canvas\UICanvasActor.cpp" />
     <ClCompile Include="Source\Engine\UI\Canvas\UICanvasManager.cpp" />
+    <ClCompile Include="Source\Engine\UI\Canvas\UILabel.cpp" />
     <ClCompile Include="Source\Engine\Viewport\GameViewportClient.cpp" />
     <ClCompile Include="Source\Engine\Viewport\Viewport.cpp" />
     <ClCompile Include="Source\Engine\Viewport\ViewportClient.cpp" />
@@ -1207,6 +1208,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\UI\Canvas\UICanvasManager.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UIElement.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UIGroup.h" />
+    <ClInclude Include="Source\Engine\UI\Canvas\UILabel.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UIRect.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UIRectTransform.h" />
     <ClInclude Include="Source\Engine\Viewport\GameViewportClient.h" />

@@ -2099,6 +2099,9 @@
     <ClCompile Include="Source\Engine\UI\Canvas\UICanvasManager.cpp">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\UI\Canvas\UILabel.cpp">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Viewport\GameViewportClient.cpp">
       <Filter>Source\Engine\Viewport</Filter>
     </ClCompile>
@@ -3750,6 +3753,9 @@
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\UI\Canvas\UIGroup.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UILabel.h">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\UI\Canvas\UIRect.h">
