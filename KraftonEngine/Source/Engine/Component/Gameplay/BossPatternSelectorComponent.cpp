@@ -1,6 +1,7 @@
 #include "BossPatternSelectorComponent.h"
 
 #include "Component/Gameplay/BulletHellComponent.h"
+#include "Component/Script/LuaBlueprintComponent.h"
 #include "Core/Logging/Log.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "GameFramework/AActor.h"
@@ -506,7 +507,30 @@ void UBossPatternSelectorComponent::StartPattern(UBossPatternComponentBase* Patt
 	RecordRecentPattern(Pattern);
 	DebugState.LastSelectedPatternName = Pattern->GetPatternName();
 	++DebugState.SelectionCount;
+	BroadcastPatternCustomEvent(Pattern);
 	LogSelectionEvent("selected", Pattern, nullptr);
+}
+
+void UBossPatternSelectorComponent::BroadcastPatternCustomEvent(const UBossPatternComponentBase* Pattern) const
+{
+	if (!Pattern || Pattern->GetPatternName().empty())
+	{
+		return;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return;
+	}
+
+	for (UActorComponent* Component : OwnerActor->GetComponents())
+	{
+		if (ULuaBlueprintComponent* LuaBlueprint = Cast<ULuaBlueprintComponent>(Component))
+		{
+			LuaBlueprint->CallCustomEvent(Pattern->GetPatternName());
+		}
+	}
 }
 
 void UBossPatternSelectorComponent::LogSelectionEvent(

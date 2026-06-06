@@ -3058,6 +3058,18 @@ void FLuaScriptManager::RegisterReflectionBindings(sol::state& Lua)
         &ULuaBlueprintComponent::ReloadBlueprint,
         "CallFunction",
         &ULuaBlueprintComponent::CallFunction,
+        "CallCustomEvent",
+        [](ULuaBlueprintComponent& Component, const FString& EventName, sol::variadic_args Args, sol::this_state State)
+        {
+            sol::state_view Lua(State);
+            auto GetArg = [&](int Index) -> sol::object
+            {
+                return Index < static_cast<int>(Args.size())
+                    ? Args.get<sol::object>(Index)
+                    : sol::make_object(Lua, sol::nil);
+            };
+            return Component.CallCustomEvent(EventName, GetArg(0), GetArg(1), GetArg(2), GetArg(3));
+        },
         "CallLuaBlueprintFileFunction",
         &ULuaBlueprintComponent::CallLuaBlueprintFileFunction,
         "CallLuaScriptFileFunction",

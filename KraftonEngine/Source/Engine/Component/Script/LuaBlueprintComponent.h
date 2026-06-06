@@ -30,8 +30,10 @@ public:
     UFUNCTION(Callable, Exec, Category="Lua Blueprint") bool ReloadBlueprint();
 
     UFUNCTION(Callable, Exec, Category="Lua Blueprint") bool CallFunction(const FString& FunctionName);
+    UFUNCTION(Callable, Exec, Category="Lua Blueprint") bool CallCustomEvent(const FString& EventName);
     UFUNCTION(Callable, Exec, Category="Lua Blueprint") bool CallLuaBlueprintFileFunction(const FString& BlueprintPath, const FString& FunctionName);
     UFUNCTION(Callable, Exec, Category="Lua Blueprint") bool CallLuaScriptFileFunction(const FString& ScriptFile, const FString& FunctionName);
+    bool CallCustomEvent(const FString& EventName, sol::object Arg0, sol::object Arg1, sol::object Arg2, sol::object Arg3);
 
     // LuaBlueprint 디버거가 중단점/스텝 정지 후 같은 coroutine 지점에서 재개할 때 호출한다.
     bool ResumeLuaDebugExecution();
