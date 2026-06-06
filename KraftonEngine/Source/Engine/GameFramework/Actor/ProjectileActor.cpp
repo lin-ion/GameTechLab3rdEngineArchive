@@ -133,11 +133,14 @@ void AProjectileActor::InitDefaultComponents()
 {
 	StaticMeshComponent = AddComponent<UStaticMeshComponent>();
 	ParticleSystemComponent = AddComponent<UParticleSystemComponent>();
+	
 
 	SetRootComponent(StaticMeshComponent);
 	ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 	UStaticMesh* MeshAsset = FMeshManager::LoadStaticMesh("Content/Data/fireball/fireball.obj" , Device);
+	
 	StaticMeshComponent->SetStaticMesh(MeshAsset);
+	StaticMeshComponent->SetRelativeScale(FVector(0.3f, 0.3f, 0.3f));
 	ParticleSystemComponent->AttachToComponent(StaticMeshComponent);
 
 

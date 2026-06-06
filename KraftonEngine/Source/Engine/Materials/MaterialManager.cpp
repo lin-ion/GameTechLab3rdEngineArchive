@@ -258,13 +258,28 @@ UMaterial* FMaterialManager::LoadMaterialBinary(const FString& UassetPath)
 UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPath, const FVector4& SectionColor,
 	const FString& DiffuseTexturePath, const FString& NormalTexturePath)
 {
-	MaterialCache.erase(UassetPath);
-
 	FMaterialTemplate* Template = GetOrCreateTemplate(DefaultShaderPath);
 	if (!Template) return nullptr;
 	auto Buffers = CreateConstantBuffers(Template);
 
-	UMaterial* Material = UObjectManager::Get().CreateObject<UMaterial>();
+	// [재import 안전] 같은 경로 머티리얼이 이미 캐시에 살아 있으면 새 객체로 '교체'하지 않고
+	// 그 UMaterial 객체를 제자리에서 재구성한다. 교체할 경우 SkeletalMesh 슬롯(FSkeletalMaterial::
+	// MaterialInterface)·씬 프록시(FMeshSectionDraw::Material)가 들고 있던 raw UMaterial* 가
+	// dangling 이 되어 다음 GC 에 해제되고, ShadowMapPass 등에서 use-after-free 가 발생한다.
+	UMaterial* Material = nullptr;
+	auto CacheIt = MaterialCache.find(UassetPath);
+	if (CacheIt != MaterialCache.end() && IsValid(CacheIt->second))
+	{
+		Material = CacheIt->second;
+		Material->GetTexture()->clear();        // 이전 텍스처 슬롯 제거 (아래에서 재설정)
+		Material->ClearRenderStateOverrides();  // 이전 상태(two-sided 등) 초기화 — 신규 객체와 동일하게
+	}
+	else
+	{
+		if (CacheIt != MaterialCache.end()) MaterialCache.erase(CacheIt); // 무효 엔트리 정리
+		Material = UObjectManager::Get().CreateObject<UMaterial>();
+	}
+
 	Material->Create(UassetPath, Template, EMaterialDomain::Surface, EBlendMode::Opaque, std::move(Buffers));
 	Material->SetShaderPathForSerialize(DefaultShaderPath);
 	Material->SetVector4Parameter("SectionColor", SectionColor);

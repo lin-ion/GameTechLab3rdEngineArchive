@@ -9,7 +9,7 @@ Ke 1.000000 0.070791 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd C:/Users/user/Desktop/새 폴더 (3)/textures/internal_ground_ao_texture.jpeg
+map_Kd internal_ground_ao_texture.jpeg
 
 newmtl Material.008
 Ns 250.000000

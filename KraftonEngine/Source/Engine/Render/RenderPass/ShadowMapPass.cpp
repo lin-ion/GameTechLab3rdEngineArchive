@@ -28,7 +28,7 @@ REGISTER_RENDER_PASS(FShadowMapPass)
 static ERenderPass GetShadowSectionRenderPass(const FMeshSectionDraw& Section)
 {
 	if (Section.PassOverride != ERenderPass::MAX) return Section.PassOverride;
-	if (Section.Material) return Section.Material->GetRenderPass();
+	if (IsValid(Section.Material)) return Section.Material->GetRenderPass();
 	return ERenderPass::Opaque;
 }
 
@@ -36,7 +36,7 @@ static bool ShouldDrawShadowSection(const FMeshSectionDraw& Section)
 {
 	if (Section.IndexCount == 0) return false;
 	if (GetShadowSectionRenderPass(Section) != ERenderPass::Opaque) return false;
-	if (Section.Material && !Section.Material->GetMaterialSettings().bCastShadow) return false;
+	if (IsValid(Section.Material) && !Section.Material->GetMaterialSettings().bCastShadow) return false;
 	return true;
 }
 
@@ -750,7 +750,7 @@ void FShadowMapPass::DrawShadowCasters(ID3D11DeviceContext* DC, FScene& Scene, F
 		{
 			if (!ShouldDrawShadowSection(Section)) continue;
 			bAnySectionCastsShadow = true;
-			if (Section.Material && Section.Material->IsTwoSided())
+			if (IsValid(Section.Material) && Section.Material->IsTwoSided())
 			{
 				bAnyMaterialTwoSided = true;
 			}
