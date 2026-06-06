@@ -2087,6 +2087,12 @@
     <ClCompile Include="Source\Engine\UI\UserWidget.cpp">
       <Filter>Source\Engine\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\UI\Canvas\UICanvasActor.cpp">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\UI\Canvas\UICanvasManager.cpp">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Viewport\GameViewportClient.cpp">
       <Filter>Source\Engine\Viewport</Filter>
     </ClCompile>
@@ -3722,7 +3728,25 @@
     <ClInclude Include="Source\Engine\UI\UserWidget.h">
       <Filter>Source\Engine\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UICanvas.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UICanvasActor.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UICanvasManager.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UIElement.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UIGroup.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\UI\Canvas\UIRect.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UIRectTransform.h">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Viewport\GameViewportClient.h">
