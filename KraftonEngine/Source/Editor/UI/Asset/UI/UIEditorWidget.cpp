@@ -13,6 +13,7 @@
 #include "UI/Canvas/UIButton.h"
 #include "UI/Canvas/UIImage.h"
 #include "UI/Canvas/UITextElement.h"
+#include "UI/Canvas/UILabel.h"
 #include "UI/Canvas/UIRect.h"
 
 #include <imgui.h>
@@ -308,6 +309,9 @@ void FUIEditorWidget::RenderPalettePanel()
 	if (ImGui::Button("Canvas", ImVec2(W, 0.0f))) { SpawnElement(UUICanvas::StaticClass()); }
 	if (ImGui::Button("Button", ImVec2(W, 0.0f))) { SpawnElement(UUIButton::StaticClass()); }
 	if (ImGui::Button("Image",  ImVec2(W, 0.0f))) { SpawnElement(UUIImage::StaticClass()); }
+	// "배경 없는 텍스트" 프리셋 — UUILabel(bVisibleRect=false + 기본 Text="Text"). 스폰 직후 자동 선택되어
+	// 디테일에서 바로 편집 가능. 뷰포트 클릭 선택은 불가(배경 없음→히트테스트 제외)이라 계층 트리로 선택(R5).
+	if (ImGui::Button("Text",   ImVec2(W, 0.0f))) { SpawnElement(UUILabel::StaticClass()); }
 
 	ImGui::Spacing();
 	ImGui::TextDisabled("Adds under selection,\nelse under Canvas.");
