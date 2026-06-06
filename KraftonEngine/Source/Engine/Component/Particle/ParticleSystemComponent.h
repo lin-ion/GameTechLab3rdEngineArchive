@@ -46,6 +46,10 @@ public:
 	void ResetParticles();
 	UFUNCTION(Pure, Category="Particle|Playback")
 	bool IsActive() const { return bActive; }
+	UFUNCTION(Callable, Category="Particle|Playback")
+	void SetResetOnActivate(bool bInResetOnActivate) { bResetOnActivate = bInResetOnActivate; }
+	UFUNCTION(Pure, Category="Particle|Playback")
+	bool GetResetOnActivate() const { return bResetOnActivate; }
 
 	// --- 컴포넌트 라이프사이클 ---
 	void BeginPlay() override;
@@ -124,9 +128,6 @@ protected:
 
 	UPROPERTY(Edit, Save, Category="Particle", DisplayName="Template", AssetType="UParticleSystem")
 	FSoftObjectPtr TemplatePath;
-
-	UPROPERTY(Edit, Save, Category="Particle", DisplayName="Auto Activate")
-	bool bAutoActivate = true;
 
 	UPROPERTY(Edit, Save, Category="Particle", DisplayName="Reset On Activate")
 	bool bResetOnActivate = false;

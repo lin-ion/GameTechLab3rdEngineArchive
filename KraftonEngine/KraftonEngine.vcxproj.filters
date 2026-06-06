@@ -169,6 +169,9 @@
     <Filter Include="Source\Engine\Component">
       <UniqueIdentifier>{22bbd7c0-73bc-1bc4-992f-be08238b1609}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Engine\Component\Action">
+      <UniqueIdentifier>{ec82a0b6-0a3a-4c85-a55b-15a9e405fef3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Engine\Component\Camera">
       <UniqueIdentifier>{ac700b73-d302-a951-b230-7f47ae1a3f19}</UniqueIdentifier>
     </Filter>
@@ -774,6 +777,9 @@
     <FxCompile Include="Shaders\PostProcess\DoFSetup.hlsl">
       <Filter>Shaders\PostProcess</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\ActionAfterImage.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\PostProcess\FXAA.hlsl">
       <Filter>Shaders\PostProcess</Filter>
     </FxCompile>
@@ -1180,6 +1186,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Action\ActionVisualEffectComponent.cpp">
+      <Filter>Source\Engine\Component\Action</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Input\ActionComponent.cpp">
       <Filter>Source\Engine\Component\Input</Filter>
@@ -1916,6 +1925,12 @@
     <ClCompile Include="Source\Engine\Render\RenderPass\EditorLinesPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.cpp">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.cpp">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\FXAAPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
@@ -2574,6 +2589,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Action\ActionVisualEffectComponent.h">
+      <Filter>Source\Engine\Component\Action</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Input\ActionComponent.h">
       <Filter>Source\Engine\Component\Input</Filter>
@@ -3470,6 +3488,12 @@
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\EditorLinesPass.h">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.h">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\FXAAPass.h">

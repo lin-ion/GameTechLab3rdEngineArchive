@@ -57,9 +57,11 @@ enum class ERenderPass : uint32
 	DoF,			// SceneColor + CoC composite
 	DebugViewModeResolve, // 순수 fullscreen debug viewmode resolve
 	SelectionMask,	// 선택 스텐실 마스크
+	ActionAfterImageMask,
 	EditorLines,	// 디버그 라인 + 그리드 (LINELIST)
 	PostProcess,	// 아웃라인 등 일반 fullscreen postprocess
 	Bloom,			// HDR SceneColor threshold/blur/composite
+	ActionAfterImage,
 	FXAA,			// FXAA 안티앨리어싱 (SceneColor 복사 후 실행)
 	EditorIcon,		// 에디터 아이콘 빌보드 오버레이 (포스트프로세스 이후, NoDepth/AlphaBlend — 항상 위)
 	GizmoOuter,		// 기즈모 외곽 (깊이 테스트 O)
@@ -89,9 +91,11 @@ inline const char* GetRenderPassName(ERenderPass Pass)
 		"RenderPass::DoF",
 		"RenderPass::DebugViewModeResolve",
 		"RenderPass::SelectionMask",
+		"RenderPass::ActionAfterImageMask",
 		"RenderPass::EditorLines",
 		"RenderPass::PostProcess",
 		"RenderPass::Bloom",
+		"RenderPass::ActionAfterImage",
 		"RenderPass::FXAA",
 		"RenderPass::EditorIcon",
 		"RenderPass::GizmoOuter",
@@ -124,9 +128,11 @@ namespace RenderStateStrings
 		{ "DoF",           (int)ERenderPass::DoF },
 		{ "DebugViewModeResolve", (int)ERenderPass::DebugViewModeResolve },
 		{ "SelectionMask", (int)ERenderPass::SelectionMask },
+		{ "ActionAfterImageMask", (int)ERenderPass::ActionAfterImageMask },
 		{ "EditorLines",   (int)ERenderPass::EditorLines },
 		{ "PostProcess",   (int)ERenderPass::PostProcess },
 		{ "Bloom",         (int)ERenderPass::Bloom },
+		{ "ActionAfterImage", (int)ERenderPass::ActionAfterImage },
 		{ "FXAA",          (int)ERenderPass::FXAA },
 		{ "EditorIcon",    (int)ERenderPass::EditorIcon },
 		{ "GizmoOuter",    (int)ERenderPass::GizmoOuter },
