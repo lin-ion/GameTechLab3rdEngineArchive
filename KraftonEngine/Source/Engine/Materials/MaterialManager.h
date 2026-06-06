@@ -45,7 +45,8 @@ public:
 
 	// 임포터용 — JSON 없이 머티리얼을 직접 만들고 .uasset 으로 저장.
 	UMaterial* CreateImportedMaterialAsset(const FString& UassetPath, const FVector4& SectionColor,
-		const FString& DiffuseTexturePath, const FString& NormalTexturePath);
+		const FString& DiffuseTexturePath, const FString& NormalTexturePath, const FVector& EmissiveColor = FVector::ZeroVector,
+		const FVector& SpecularColor = FVector(1.0f, 1.0f, 1.0f), float SpecularExponent = 32.0f, float Opacity = 1.0f);
 
 	// 에디터 Create Material 팩토리용 — 빈(흰색) 머티리얼을 만들어 .uasset 으로 저장.
 	UMaterial* CreateMaterialAsset(const FString& UassetPath);

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <cstdio>
+#include <cmath>
 #include "Materials/Material.h"
 #include "Materials/MaterialInstance.h"
 #include "Materials/MaterialDomain.h"  // Phase 1: Domain/BlendMode 도출 (dormant)
@@ -256,20 +257,23 @@ UMaterial* FMaterialManager::LoadMaterialBinary(const FString& UassetPath)
 
 // 임포터용 — JSON 없이 머티리얼을 직접 만들고 .uasset 으로 저장한다.
 UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPath, const FVector4& SectionColor,
-	const FString& DiffuseTexturePath, const FString& NormalTexturePath)
+	const FString& DiffuseTexturePath, const FString& NormalTexturePath, const FVector& EmissiveColor,
+	const FVector& SpecularColor, float SpecularExponent, float Opacity)
 {
 	MaterialCache.erase(UassetPath);
 
+	const float ClampedOpacity = std::clamp(Opacity, 0.0f, 1.0f);
+	const bool bTransparent = ClampedOpacity < 0.999f;
 	FMaterialTemplate* Template = GetOrCreateTemplate(DefaultShaderPath);
 	if (!Template) return nullptr;
 	auto Buffers = CreateConstantBuffers(Template);
 
 	UMaterial* Material = UObjectManager::Get().CreateObject<UMaterial>();
-	Material->Create(UassetPath, Template, EMaterialDomain::Surface, EBlendMode::Opaque, std::move(Buffers));
+	Material->Create(UassetPath, Template, EMaterialDomain::Surface, bTransparent ? EBlendMode::Transparent : EBlendMode::Opaque, std::move(Buffers));
 	Material->SetShaderPathForSerialize(DefaultShaderPath);
 	Material->SetVector4Parameter("SectionColor", SectionColor);
 	Material->SetScalarParameter("HasNormalMap", NormalTexturePath.empty() ? 0.0f : 1.0f);
-	Material->SetScalarParameter("Opacity", 1.0f); // CB zero-init=0(투명) 방지 — 신규 머티리얼 기본 불투명
+	Material->SetScalarParameter("Opacity", ClampedOpacity); // CB zero-init=0(투명) 방지 — 신규 머티리얼 기본 불투명
 
 	if (!DiffuseTexturePath.empty())
 		if (UTexture2D* Tex = UTexture2D::LoadFromFile(DiffuseTexturePath, Device, ETextureColorSpace::SRGB))
@@ -277,6 +281,134 @@ UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPa
 	if (!NormalTexturePath.empty())
 		if (UTexture2D* Tex = UTexture2D::LoadFromFile(NormalTexturePath, Device, ETextureColorSpace::Linear))
 			Material->SetTextureParameter("NormalTexture", Tex);
+
+	const bool bHasEmissive = EmissiveColor.X != 0.0f || EmissiveColor.Y != 0.0f || EmissiveColor.Z != 0.0f;
+	const bool bHasSpecular = SpecularColor.X != 1.0f || SpecularColor.Y != 1.0f || SpecularColor.Z != 1.0f;
+	const bool bHasCustomShininess = SpecularExponent != 32.0f;
+	const bool bNeedsGraphMaterial = bHasEmissive || bHasSpecular || bHasCustomShininess || bTransparent;
+	if (bNeedsGraphMaterial)
+	{
+		FMaterialGraph& Graph = Material->GetGraphDocument().Graph;
+		Graph.Nodes.clear();
+		Graph.Links.clear();
+		Graph.NextId = 1;
+
+		uint32 BaseColorOut = 0;
+		if (!DiffuseTexturePath.empty())
+		{
+			uint32 TexOut = 0;
+			if (FMaterialGraphNode* TextureObject = Graph.AddNodeOfType(EMaterialGraphNodeType::TextureObject, -720.0f, -80.0f, EMaterialGraphTarget::Surface))
+			{
+				TextureObject->ParameterName = "DiffuseTexture";
+				TextureObject->TexturePath = DiffuseTexturePath;
+				TextureObject->TextureSlot = EMaterialTextureSlot::Diffuse;
+				TexOut = TextureObject->Pins.empty() ? 0 : TextureObject->Pins[0].PinId;
+			}
+
+			uint32 SampleTexIn = 0;
+			uint32 SampleRgbOut = 0;
+			if (FMaterialGraphNode* Sample = Graph.AddNodeOfType(EMaterialGraphNodeType::TextureSample, -480.0f, -40.0f, EMaterialGraphTarget::Surface))
+			{
+				for (const FMaterialGraphPin& Pin : Sample->Pins)
+				{
+					const FString PinName = Pin.DisplayName.ToString();
+					if (Pin.Kind == EMaterialGraphPinKind::Input && PinName == "Texture") SampleTexIn = Pin.PinId;
+					else if (Pin.Kind == EMaterialGraphPinKind::Output && PinName == "RGB") SampleRgbOut = Pin.PinId;
+				}
+			}
+
+			if (TexOut && SampleTexIn) Graph.AddLink(TexOut, SampleTexIn);
+			BaseColorOut = SampleRgbOut;
+		}
+		else if (FMaterialGraphNode* BaseColor = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat3, -480.0f, -80.0f, EMaterialGraphTarget::Surface))
+		{
+			BaseColor->Value = FVector4(SectionColor.X, SectionColor.Y, SectionColor.Z, 1.0f);
+			BaseColorOut = BaseColor->Pins.empty() ? 0 : BaseColor->Pins[0].PinId;
+		}
+
+		uint32 NormalOut = 0;
+		if (!NormalTexturePath.empty())
+		{
+			uint32 NormalTexOut = 0;
+			if (FMaterialGraphNode* TextureObject = Graph.AddNodeOfType(EMaterialGraphNodeType::TextureObject, -720.0f, 220.0f, EMaterialGraphTarget::Surface))
+			{
+				TextureObject->ParameterName = "NormalTexture";
+				TextureObject->TexturePath = NormalTexturePath;
+				TextureObject->TextureSlot = EMaterialTextureSlot::Normal;
+				NormalTexOut = TextureObject->Pins.empty() ? 0 : TextureObject->Pins[0].PinId;
+			}
+
+			uint32 SampleTexIn = 0;
+			uint32 SampleRgbOut = 0;
+			if (FMaterialGraphNode* Sample = Graph.AddNodeOfType(EMaterialGraphNodeType::TextureSample, -480.0f, 260.0f, EMaterialGraphTarget::Surface))
+			{
+				for (const FMaterialGraphPin& Pin : Sample->Pins)
+				{
+					const FString PinName = Pin.DisplayName.ToString();
+					if (Pin.Kind == EMaterialGraphPinKind::Input && PinName == "Texture") SampleTexIn = Pin.PinId;
+					else if (Pin.Kind == EMaterialGraphPinKind::Output && PinName == "RGB") SampleRgbOut = Pin.PinId;
+				}
+			}
+
+			if (NormalTexOut && SampleTexIn) Graph.AddLink(NormalTexOut, SampleTexIn);
+			NormalOut = SampleRgbOut;
+		}
+
+		uint32 EmissiveOut = 0;
+		if (FMaterialGraphNode* Emissive = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat3, -480.0f, 120.0f, EMaterialGraphTarget::Surface))
+		{
+			Emissive->Value = FVector4(EmissiveColor.X, EmissiveColor.Y, EmissiveColor.Z, 1.0f);
+			EmissiveOut = Emissive->Pins.empty() ? 0 : Emissive->Pins[0].PinId;
+		}
+
+		uint32 RoughnessOut = 0;
+		const float SafeNs = std::max(0.0f, SpecularExponent);
+		const float Roughness = std::clamp(std::sqrt(2.0f / (SafeNs + 2.0f)), 0.02f, 1.0f);
+		if (FMaterialGraphNode* RoughnessNode = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat, -480.0f, 420.0f, EMaterialGraphTarget::Surface))
+		{
+			RoughnessNode->Value = FVector4(Roughness, 0.0f, 0.0f, 0.0f);
+			RoughnessOut = RoughnessNode->Pins.empty() ? 0 : RoughnessNode->Pins[0].PinId;
+		}
+
+		uint32 SpecularOut = 0;
+		if (FMaterialGraphNode* Specular = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat3, -480.0f, 540.0f, EMaterialGraphTarget::Surface))
+		{
+			Specular->Value = FVector4(SpecularColor.X, SpecularColor.Y, SpecularColor.Z, 1.0f);
+			SpecularOut = Specular->Pins.empty() ? 0 : Specular->Pins[0].PinId;
+		}
+
+		uint32 OpacityOut = 0;
+		if (FMaterialGraphNode* OpacityNode = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat, -480.0f, 660.0f, EMaterialGraphTarget::Surface))
+		{
+			OpacityNode->Value = FVector4(ClampedOpacity, 0.0f, 0.0f, 0.0f);
+			OpacityOut = OpacityNode->Pins.empty() ? 0 : OpacityNode->Pins[0].PinId;
+		}
+
+		if (FMaterialGraphNode* Output = Graph.AddNodeOfType(EMaterialGraphNodeType::Output, -120.0f, 20.0f, EMaterialGraphTarget::Surface))
+		{
+			for (const FMaterialGraphPin& Pin : Output->Pins)
+			{
+				const FString PinName = Pin.DisplayName.ToString();
+				if (PinName == "BaseColor" && BaseColorOut) Graph.AddLink(BaseColorOut, Pin.PinId);
+				else if (PinName == "Normal" && NormalOut) Graph.AddLink(NormalOut, Pin.PinId);
+				else if (PinName == "Roughness" && RoughnessOut) Graph.AddLink(RoughnessOut, Pin.PinId);
+				else if (PinName == "Specular" && SpecularOut) Graph.AddLink(SpecularOut, Pin.PinId);
+				else if (PinName == "Emissive" && EmissiveOut) Graph.AddLink(EmissiveOut, Pin.PinId);
+				else if (PinName == "Opacity" && OpacityOut) Graph.AddLink(OpacityOut, Pin.PinId);
+			}
+		}
+
+		Material->SetDomainBlend(EMaterialDomain::Surface, bTransparent ? EBlendMode::Transparent : EBlendMode::Opaque);
+		Material->GetMaterialSettings().ShadingModel = EMaterialShadingModel::DefaultLit;
+		Material->GetMaterialSettings().bReceiveLighting = true;
+		Material->GetGraphDocument().Target = EMaterialGraphTarget::Surface;
+		Material->GetGraphDocument().LastSavedGraphHash = ComputeMaterialGraphStructuralHash(Graph);
+		FString CompileError;
+		if (!CompileMaterialGraphRuntime(Material, Graph, true, &CompileError))
+		{
+			UE_LOG("Imported material graph compile failed: %s (%s)", UassetPath.c_str(), CompileError.c_str());
+		}
+	}
 
 	Material->RebuildCachedSRVs();
 	SaveMaterial(Material, UassetPath);

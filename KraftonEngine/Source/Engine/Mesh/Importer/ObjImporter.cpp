@@ -358,6 +358,26 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 			MaterialInfo.Kd = FallbackColor3;
 			OutMtlInfos.emplace_back(MaterialInfo);
 		}
+		else if (Prefix == "Ns")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FObjMaterialInfo& CurrentMaterial = OutMtlInfos.back();
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ns);
+			CurrentMaterial.bHasNs = true;
+		}
+		else if (Prefix == "d")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FObjMaterialInfo& CurrentMaterial = OutMtlInfos.back();
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.d);
+			CurrentMaterial.bHasD = true;
+		}
 		else if (Prefix == "Kd")
 		{
 			if (OutMtlInfos.empty())
@@ -368,6 +388,29 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Kd.X);
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Kd.Y);
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Kd.Z);
+		}
+		else if (Prefix == "Ks")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FObjMaterialInfo& CurrentMaterial = OutMtlInfos.back();
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.X);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.Y);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.Z);
+			CurrentMaterial.bHasKs = true;
+		}
+		else if (Prefix == "Ke")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FObjMaterialInfo& CurrentMaterial = OutMtlInfos.back();
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ke.X);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ke.Y);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ke.Z);
 		}
 		else if (Prefix == "map_Kd" || Prefix == "map_Bump" || Prefix == "bump" || Prefix == "norm")
 		{
@@ -462,9 +505,15 @@ FString FObjImporter::ConvertMtlInfoToJson(const FObjMaterialInfo* MtlInfo)
 FString FObjImporter::ConvertMtlInfoToMat(const FObjMaterialInfo* MtlInfo)
 {
 	const FString UassetPath = "Content/Material/Auto/" + MtlInfo->MaterialSlotName + ".uasset";
+	const bool bHasEmissive = MtlInfo->Ke.X != 0.0f || MtlInfo->Ke.Y != 0.0f || MtlInfo->Ke.Z != 0.0f;
+	const bool bHasAdvancedMaterial =
+		bHasEmissive ||
+		MtlInfo->bHasNs ||
+		MtlInfo->bHasKs ||
+		MtlInfo->bHasD;
 
 	// 이미 있으면 그대로 사용 (덮어쓰지 않음)
-	if (std::filesystem::exists(FPaths::ToWide(UassetPath)))
+	if (!bHasAdvancedMaterial && std::filesystem::exists(FPaths::ToWide(UassetPath)))
 		return UassetPath;
 
 	std::filesystem::create_directories(FPaths::ToWide("Content/Material/Auto"));
@@ -474,7 +523,7 @@ FString FObjImporter::ConvertMtlInfoToMat(const FObjMaterialInfo* MtlInfo)
 		: FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// JSON 없이 머티리얼을 직접 빌드해 .uasset(바이너리)으로 저장.
-	FMaterialManager::Get().CreateImportedMaterialAsset(UassetPath, SectionColor, MtlInfo->map_Kd, MtlInfo->map_Bump);
+	FMaterialManager::Get().CreateImportedMaterialAsset(UassetPath, SectionColor, MtlInfo->map_Kd, MtlInfo->map_Bump, MtlInfo->Ke, MtlInfo->Ks, MtlInfo->Ns, MtlInfo->d);
 	return UassetPath;
 }
 

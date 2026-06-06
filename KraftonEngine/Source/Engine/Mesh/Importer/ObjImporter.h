@@ -28,15 +28,20 @@ struct FObjInfo
 struct FObjMaterialInfo
 {
 	FString MaterialSlotName = "None"; // newmtl
-	FVector Kd; // diffuse color
+	FVector Kd = FVector(1.0f, 1.0f, 1.0f); // diffuse color
+	FVector Ke = FVector::ZeroVector; // emissive color
 	FString map_Kd; // diffuse texture file path
 	FString map_Bump; // normal/bump texture file path
 
-	FVector Ka; // ambient color
-	FVector Ks; // specular color
-	float Ns; // specular exponent
-	float Ni; // optical density
-	int32 illum; // illumination model
+	FVector Ka = FVector(1.0f, 1.0f, 1.0f); // ambient color
+	FVector Ks = FVector(1.0f, 1.0f, 1.0f); // specular color
+	float Ns = 32.0f; // specular exponent
+	float Ni = 1.0f; // optical density
+	float d = 1.0f; // dissolve/opacity
+	int32 illum = 2; // illumination model
+	bool bHasNs = false;
+	bool bHasKs = false;
+	bool bHasD = false;
 };
 
 

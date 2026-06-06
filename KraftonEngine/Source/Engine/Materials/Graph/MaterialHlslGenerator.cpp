@@ -851,13 +851,14 @@ namespace
             return SS.str();
         }
 
-        FString ColorExpr, NormalExpr, RoughExpr, MetalExpr, EmissiveExpr, OpacityExpr, UVOffsetExpr;
+        FString ColorExpr, NormalExpr, RoughExpr, MetalExpr, SpecularExpr, EmissiveExpr, OpacityExpr, UVOffsetExpr;
         if (Domain == EMaterialGraphTarget::Surface || Domain == EMaterialGraphTarget::Decal)
         {
             ColorExpr    = OutputInputExpr(Context, Graph, *Output, "BaseColor", "float3(1, 1, 1)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             NormalExpr   = OutputInputExpr(Context, Graph, *Output, "Normal", "float3(0, 0, 1)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             RoughExpr    = OutputInputExpr(Context, Graph, *Output, "Roughness", "0.5f", EMaterialGraphPinType::Float, EMaterialGraphPinType::Float, Result);
             MetalExpr    = OutputInputExpr(Context, Graph, *Output, "Metallic", "0.0f", EMaterialGraphPinType::Float, EMaterialGraphPinType::Float, Result);
+            SpecularExpr = OutputInputExpr(Context, Graph, *Output, "Specular", "float3(1, 1, 1)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             EmissiveExpr = OutputInputExpr(Context, Graph, *Output, "Emissive", "float3(0, 0, 0)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             OpacityExpr  = OutputInputExpr(Context, Graph, *Output, "Opacity", "1.0f", EMaterialGraphPinType::Float, EMaterialGraphPinType::Float, Result);
         }
@@ -880,6 +881,7 @@ namespace
             SS << "    Result.Normal = " << NormalExpr << ";\n";
             SS << "    Result.Roughness = " << RoughExpr << ";\n";
             SS << "    Result.Metallic = " << MetalExpr << ";\n";
+            SS << "    Result.Specular = " << SpecularExpr << ";\n";
             SS << "    Result.Emissive = " << EmissiveExpr << ";\n";
             SS << "    Result.Opacity = " << OpacityExpr << ";\n";
         }
@@ -964,6 +966,7 @@ float4 ApplyFogTransparent(float4 color, float3 worldPos, float3 cameraWorldPos)
             SS << "    float3 Normal;\n";
             SS << "    float Roughness;\n";
             SS << "    float Metallic;\n";
+            SS << "    float3 Specular;\n";
             SS << "    float3 Emissive;\n";
             SS << "    float Opacity;\n";
         }
@@ -1200,16 +1203,17 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
         {
             // UberLit 과 동일한 라이팅 누적 — directional/point/spot + CSM/spot/point shadows.
             // ForwardLighting.hlsli 가 AccumulateDiffuse / AccumulateSpecular 를 제공한다.
-            const float Shininess = (ShadingModel == EMaterialShadingModel::Phong) ? 32.0f : 8.0f;
             const bool  bSpecular = (ShadingModel == EMaterialShadingModel::Phong || ShadingModel == EMaterialShadingModel::DefaultLit);
 
             SS << R"(
     float3 V = normalize(CameraWorldPos - input.worldPos);
     float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
+    float materialRoughness = clamp(Result.Roughness, 0.02f, 1.0f);
+    float materialShininess = max(1.0f, (2.0f / (materialRoughness * materialRoughness)) - 2.0f);
 )";
             if (bSpecular)
             {
-                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, " << Shininess << ".0f, input.position);\n";
+                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, materialShininess, input.position) * Result.Specular;\n";
             }
             else
             {
@@ -1302,15 +1306,16 @@ float4 PS(PS_Input_Decal input) : SV_TARGET
         }
         else
         {
-            const float Shininess = (ShadingModel == EMaterialShadingModel::Phong) ? 32.0f : 8.0f;
             const bool bSpecular = (ShadingModel == EMaterialShadingModel::Phong || ShadingModel == EMaterialShadingModel::DefaultLit);
             SS << R"(
     float3 V = normalize(CameraWorldPos - input.worldPos);
     float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
+    float materialRoughness = clamp(Result.Roughness, 0.02f, 1.0f);
+    float materialShininess = max(1.0f, (2.0f / (materialRoughness * materialRoughness)) - 2.0f);
 )";
             if (bSpecular)
             {
-                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, " << Shininess << ".0f, input.position);\n";
+                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, materialShininess, input.position) * Result.Specular;\n";
             }
             else
             {
