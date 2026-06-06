@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Object/Object.h"
 #include "Object/Ptr/WeakObjectPtr.h"
 #include "Core/Types/RayTypes.h"
@@ -27,12 +27,13 @@ class AGameStateBase;
 class APlayerController;
 class UClass;
 struct FPhysicsWorldSnapshot;
+class FProjectilePoolSubsystem;
 
 UCLASS()
 class UWorld : public UObject {
 public:
 	GENERATED_BODY()
-	UWorld() = default;
+	UWorld();                  // out-of-line 정의(World.cpp): unique_ptr<FProjectilePoolSubsystem>(전방선언 멤버) deleter 인스턴스화를 .cpp 로 격리
 	~UWorld() override;
 	void BeginDestroy() override;
 	void AddReferencedObjects(FReferenceCollector& Collector) override;
@@ -98,6 +99,9 @@ private:
 	void TickPlayerCamera() const;
 	void ApplyPhysicsSnapshot_GameThread();
 	void ShutdownPhysicsScene();
+	void ShutdownProjectilePool();                      // ▼ 추가 (멱등)
+
+
     void RouteLuaBlueprintPostBeginPlayForActor(AActor* Actor) const;
     void RouteLuaBlueprintPostStartMatchForActor(AActor* Actor) const;
     bool ResolveLuaBlueprintPlayerCameraReadyContext(
@@ -168,9 +172,9 @@ private:
     IPOVProvider*                     EditorPOVProvider   = nullptr;
     EWorldType                        WorldType           = EWorldType::Editor;
     bool                              bHasBegunPlay       = false;
-	    bool                              bHasRoutedPostBeginPlay = false;
-	    bool                              bHasRoutedPostStartMatch = false;
-	    bool                              bHasRoutedPlayerCameraReady = false;
+	bool                              bHasRoutedPostBeginPlay = false;
+	bool                              bHasRoutedPostStartMatch = false;
+	bool                              bHasRoutedPlayerCameraReady = false;
     bool                              bPaused             = false;
     float                             GameTimeSeconds     = 0.0f;
     bool                              bWorldDestroyRouted = false;
@@ -189,6 +193,7 @@ private:
 
 	FSpatialPartition Partition;
 	std::unique_ptr<IPhysicsScene> PhysicsScene;
+	std::unique_ptr<FProjectilePoolSubsystem> ProjectilePool;   // ▼ 추가 (PhysicsScene 
 
 	// Game flow — Editor 월드에서는 nullptr로 유지된다.
 	TWeakObjectPtr<AGameModeBase> GameMode;
@@ -196,6 +201,8 @@ private:
 
 public:
 	IPhysicsScene* GetPhysicsScene() const { return PhysicsScene.get(); }
+	FProjectilePoolSubsystem* GetProjectilePool() const { return ProjectilePool.get(); }
+
 
 	// Physics raycast convenience — delegates to IPhysicsScene::Raycast
 	bool PhysicsRaycast(const FVector& Start, const FVector& Dir, float MaxDist, FHitResult& OutHit,

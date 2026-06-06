@@ -1,4 +1,6 @@
-#include "LuaActorBindings.internal.h"
+﻿#include "LuaActorBindings.internal.h"
+#include "GameFramework/ProjectilePoolSubSystem.h"   // FProjectilePoolSubsystem::Acquire<T>
+#include "GameFramework/Actor/ProjectileActor.h"     // AProjectileActor
 
 using namespace LuaActorBindingsDetail;
 
@@ -45,6 +47,48 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
                 FRotator(Rotation.value_or(FVector(0, 0, 0))),
                 bActivate.value_or(true)
             );
+        }
+    );
+    World.set_function(
+        "FireCameraProjectile",
+        [](sol::optional<float> Speed, sol::optional<float> MuzzleOffset, sol::optional<float> SpawnHeight) -> AActor*
+        {
+            if (!GEngine) return nullptr;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return nullptr;
+
+            FProjectilePoolSubsystem* Pool = W->GetProjectilePool();
+            if (!Pool) return nullptr;
+
+            // 조준 방향 = 카메라 시점(3인칭에서도 바라보는 방향).
+            FMinimalViewInfo POV;
+            if (!W->GetActivePOV(POV)) return nullptr;
+            const FVector Forward = POV.Rotation.GetForwardVector()*2;
+
+            // 발사 원점 = (3인칭) 카메라가 아니라 '플레이어가 조종하는 폰(Haru)' 위치.
+            //   PlayerController::GetPossessedPawn() → APawn(=AActor) → GetActorLocation().
+            //   폰을 못 찾으면 카메라 위치로 폴백(기존 동작).
+            FVector Origin = POV.Location;
+            if (APlayerController* PC = W->GetFirstPlayerController())
+            {
+                if (APawn* Pawn = PC->GetPossessedPawn())
+                {
+                    Origin = Pawn->GetActorLocation();
+                }
+            }
+
+            const float   SpeedVal  = Speed.value_or(0.5f);        // m/s
+            const float   OffsetVal = MuzzleOffset.value_or(1.0f);  // m, 조준 방향 전방 오프셋
+            const float   HeightVal = SpawnHeight.value_or(1.0f);   // m, 캐릭터 기준 높이(가슴 정도)
+            const FVector SpawnLoc  = Origin + Forward * OffsetVal + FVector(0.0f, 0.0f, HeightVal);
+
+            // ── [진단] 발사 직전 월드 상태 + Acquire 결과 ──
+            const FVector Vel = Forward * SpeedVal;
+            AActor* Proj = Pool->Acquire<AProjectileActor>(SpawnLoc, Vel);
+            UE_LOG("[ProjFire] PIE=%d type=%d spawn=(%.2f,%.2f,%.2f) vel=(%.3f,%.3f,%.3f) acquired=%d",
+                (int)W->HasBegunPlay(), (int)W->GetWorldType(),
+                SpawnLoc.X, SpawnLoc.Y, SpawnLoc.Z, Vel.X, Vel.Y, Vel.Z, (int)(Proj != nullptr));
+            return Proj;
         }
     );
     World.set_function(
