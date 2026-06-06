@@ -242,8 +242,6 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Editor\Viewport\Asset\MeshEditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Viewport\Asset\StaticMeshEditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Viewport\Level\FLevelViewportLayout.cpp" />
-    <ClCompile Include="Source\Engine\GameFramework\Actor\ProjectileActor.cpp" />
-    <ClCompile Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.cpp" />
     <ClCompile Include="Source\Engine\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -301,6 +299,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\PrimitiveComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\SceneComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\ShapeComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Action\ActionVisualEffectComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Camera\CameraComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Camera\CineCameraComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Camera\SpringArmComponent.cpp" />
@@ -315,7 +314,6 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.cpp" />
-    <ClCompile Include="Source\Engine\Component\Action\ActionVisualEffectComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Input\ActionComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Input\InputComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Light\AmbientLightComponent.cpp" />
@@ -372,6 +370,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\FloatCurve\FloatCurveManager.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\AActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Level.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\World.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Actor\BoxActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Actor\CapsuleActor.cpp" />
@@ -380,6 +379,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\GameFramework\Actor\InstancedStaticMeshValidationActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Actor\ParticleSystemActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Actor\PawnStaticMesh.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ProjectileActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Actor\SkeletalMeshActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Actor\SphereActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Actor\StaticMeshActor.cpp" />
@@ -550,6 +550,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Render\Proxy\SubUVSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\TextRenderSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\Particle\ParticleSystemSceneProxy.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\AdditiveDecalPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\BloomPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\DebugViewModeResolvePass.cpp" />
@@ -561,8 +563,6 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Render\RenderPass\DoFSetupPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\EditorIconPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\EditorLinesPass.cpp" />
-    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.cpp" />
-    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\FXAAPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\FogPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\GammaCorrectionPass.cpp" />
@@ -741,9 +741,6 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Editor\Viewport\Asset\StaticMeshEditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Viewport\Level\FLevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\Viewport\Level\LevelEditorViewportClient.h" />
-    <ClInclude Include="Source\Engine\GameFramework\Actor\ProjectileActor.h" />
-    <ClInclude Include="Source\Engine\GameFramework\IPoolableProjectile.h" />
-    <ClInclude Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.h" />
     <ClInclude Include="Source\Engine\pch.h" />
     <ClInclude Include="Source\Engine\Animation\AnimExtractContext.h" />
     <ClInclude Include="Source\Engine\Animation\AnimInstance.h" />
@@ -812,6 +809,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\PrimitiveComponent.h" />
     <ClInclude Include="Source\Engine\Component\SceneComponent.h" />
     <ClInclude Include="Source\Engine\Component\ShapeComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Action\ActionVisualEffectComponent.h" />
     <ClInclude Include="Source\Engine\Component\Camera\CameraComponent.h" />
     <ClInclude Include="Source\Engine\Component\Camera\CineCameraComponent.h" />
     <ClInclude Include="Source\Engine\Component\Camera\SpringArmComponent.h" />
@@ -826,7 +824,6 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.h" />
-    <ClInclude Include="Source\Engine\Component\Action\ActionVisualEffectComponent.h" />
     <ClInclude Include="Source\Engine\Component\Input\ActionComponent.h" />
     <ClInclude Include="Source\Engine\Component\Input\InputComponent.h" />
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h" />
@@ -891,7 +888,9 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\FloatCurve\FloatCurveAsset.h" />
     <ClInclude Include="Source\Engine\FloatCurve\FloatCurveManager.h" />
     <ClInclude Include="Source\Engine\GameFramework\AActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\IPoolableProjectile.h" />
     <ClInclude Include="Source\Engine\GameFramework\Level.h" />
+    <ClInclude Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.h" />
     <ClInclude Include="Source\Engine\GameFramework\World.h" />
     <ClInclude Include="Source\Engine\GameFramework\WorldContext.h" />
     <ClInclude Include="Source\Engine\GameFramework\WorldSettings.h" />
@@ -902,6 +901,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\GameFramework\Actor\InstancedStaticMeshValidationActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\Actor\ParticleSystemActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\Actor\PawnStaticMesh.h" />
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ProjectileActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\Actor\SkeletalMeshActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\Actor\SphereActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\Actor\StaticMeshActor.h" />
@@ -1115,6 +1115,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Render\Proxy\SubUVSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\TextRenderSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\Particle\ParticleSystemSceneProxy.h" />
+    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.h" />
+    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\AdditiveDecalPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\BloomPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\DebugViewModeResolvePass.h" />
@@ -1126,8 +1128,6 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Render\RenderPass\DoFSetupPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\EditorIconPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\EditorLinesPass.h" />
-    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.h" />
-    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\FXAAPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\FogPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\GammaCorrectionPass.h" />
@@ -1198,6 +1198,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Texture\Texture2D.h" />
     <ClInclude Include="Source\Engine\UI\UIManager.h" />
     <ClInclude Include="Source\Engine\UI\UserWidget.h" />
+    <ClInclude Include="Source\Engine\UI\Canvas\UIRect.h" />
     <ClInclude Include="Source\Engine\Viewport\GameViewportClient.h" />
     <ClInclude Include="Source\Engine\Viewport\Viewport.h" />
     <ClInclude Include="Source\Engine\Viewport\ViewportClient.h" />
@@ -2173,8 +2174,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     </FxCompile>
     <FxCompile Include="Shaders\PostProcess\ActionAfterImage.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Game|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Game|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Shaders\PostProcess\Blit.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

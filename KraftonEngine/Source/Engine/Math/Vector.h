@@ -258,3 +258,10 @@ struct FVector2
 	FVector2& operator*=(float Scalar);
 	FVector2& operator/=(float Scalar);
 };
+
+// 성분별(Hadamard) 곱 — UI 레이아웃의 ParentSize*anchor, size*pivot 에 사용.
+// FVector2 의 operator* 는 스칼라 전용이라 벡터×벡터 성분곱은 별도 헬퍼가 필요하다.
+inline FVector2 ComponentMul(const FVector2& A, const FVector2& B)
+{
+	return FVector2(A.X * B.X, A.Y * B.Y);
+}
