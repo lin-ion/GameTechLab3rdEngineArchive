@@ -45,8 +45,19 @@ public:
 	FVector4 GetColor() const { return BackgroundColor; }
 
 protected:
-	FUIRectTransform RectTransform;   // 사이클 8에서 PF_Save 직렬화 대상이 됨
+	// FUIRectTransform 은 USTRUCT 가 아니므로, USceneComponent 가 FTransform 의 하위 필드를
+	// Member= 로 반사하는 방식(진단 C5 선례)을 그대로 차용해 4개의 Vec2 를 PF_Save 로 노출한다.
+	// → FSceneSaveManager 가 .Scene 에 자동 영속(사이클 8). 토폴로지는 컴포넌트 트리 직렬화가 처리.
+	UPROPERTY(Save, Category="RectTransform", DisplayName="Pivot", Member=RectTransform.Pivot, Type=Vec2);
+	UPROPERTY(Save, Category="RectTransform", DisplayName="Anchor", Member=RectTransform.Anchor, Type=Vec2);
+	UPROPERTY(Save, Category="RectTransform", DisplayName="Position", Member=RectTransform.Position, Type=Vec2);
+	UPROPERTY(Save, Category="RectTransform", DisplayName="Size", Member=RectTransform.Size, Type=Vec2);
+	FUIRectTransform RectTransform;
+
 	FUIRect ScreenRect;               // 레이아웃 결과 캐시(직렬화 안 함)
+
+	UPROPERTY(Save, Category="UI", DisplayName="Visible Rect")
 	bool bVisibleRect = true;
-	FVector4 BackgroundColor{ 0.2f, 0.4f, 0.8f, 0.7f };
+	UPROPERTY(Save, Category="UI", DisplayName="Background Color", Type=Color4)
+	FVector4 BackgroundColor = { 0.2f, 0.4f, 0.8f, 0.7f };
 };

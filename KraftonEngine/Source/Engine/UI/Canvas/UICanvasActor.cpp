@@ -9,6 +9,13 @@ void AUICanvasActor::InitCanvas()
 	{
 		return;
 	}
+	// 로드된 씬: 컴포넌트 트리 직렬화(DeserializeSceneComponentTree)가 이미 UUICanvas 를
+	// RootComponent 로 복원했을 수 있다. 그 경우 새로 만들지 말고 재사용한다(중복 생성 방지).
+	if (UUICanvas* Existing = Cast<UUICanvas>(GetRootComponent()))
+	{
+		Canvas = Existing;
+		return;
+	}
 	UUICanvas* NewCanvas = AddComponent<UUICanvas>();
 	SetRootComponent(NewCanvas);
 	Canvas = NewCanvas;

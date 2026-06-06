@@ -54,6 +54,7 @@ public:
 	virtual void SerializeFloat(float& Value) { Serialize(&Value, sizeof(Value)); }
 	virtual void SerializeString(FString& Str);
 	virtual void SerializeName(FName& Name);
+	virtual void SerializeVector2(FVector2& Value) { Serialize(Value.Data, sizeof(float) * 2); }
 	virtual void SerializeVector(FVector& Value) { Serialize(Value.Data, sizeof(float) * 3); }
 	virtual void SerializeVector4(FVector4& Value) { Serialize(Value.Data, sizeof(float) * 4); }
 	virtual void SerializeRotator(FRotator& Value) { Serialize(&Value, sizeof(Value)); }
@@ -64,6 +65,7 @@ public:
 	FArchive& operator<<(float& Value) { SerializeFloat(Value); return *this; }
 	FArchive& operator<<(FString& Value) { SerializeString(Value); return *this; }
 	FArchive& operator<<(FName& Value) { SerializeName(Value); return *this; }
+	FArchive& operator<<(FVector2& Value) { SerializeVector2(Value); return *this; }
 	FArchive& operator<<(FVector& Value) { SerializeVector(Value); return *this; }
 	FArchive& operator<<(FVector4& Value) { SerializeVector4(Value); return *this; }
 	FArchive& operator<<(FRotator& Value) { SerializeRotator(Value); return *this; }

@@ -27,6 +27,7 @@ public:
 	void BeginDestroy() override;
 
 private:
+	UPROPERTY(Save, Category="UI", DisplayName="Text")
 	FString Text;
 	TWeakObjectPtr<UUserWidget> Widget;
 	bool bMountAttempted = false;

@@ -157,6 +157,11 @@ public:
 		}
 	}
 
+	void SerializeVector2(FVector2& Value) override
+	{
+		SerializeFloatArray(Value.Data, 2);
+	}
+
 	void SerializeVector(FVector& Value) override
 	{
 		SerializeFloatArray(Value.Data, 3);

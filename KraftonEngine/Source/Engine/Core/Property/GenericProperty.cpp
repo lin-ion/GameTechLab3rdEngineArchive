@@ -23,6 +23,9 @@ void FGenericProperty::SerializeValue(void* ValuePtr, FArchive& Ar) const
 		}
 		break;
 	}
+	case EPropertyType::Vec2:
+		Ar << *static_cast<FVector2*>(ValuePtr);
+		break;
 	case EPropertyType::Vec3:
 		Ar << *static_cast<FVector*>(ValuePtr);
 		break;
