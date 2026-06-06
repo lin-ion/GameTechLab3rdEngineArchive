@@ -1,6 +1,7 @@
 #include "BossPatternSelectorComponent.h"
 
 #include "Component/Gameplay/BulletHellComponent.h"
+#include "Component/Gameplay/BulletHellHealthProbeComponent.h"
 #include "Core/Logging/Log.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "GameFramework/AActor.h"
@@ -93,12 +94,16 @@ void UBossPatternSelectorComponent::TickComponent(
 	if (!bSelectionStarted || !bEnablePatternSelection)
 	{
 		FBossPatternContext Context = BuildContext(DeltaTime);
+		DebugState.BossPhase = Context.BossPhase;
+		DebugState.BossHealthRatio = Context.BossHealthRatio;
 		UpdateDebugStateFromActive();
 		RecordOverlayStats(Context);
 		return;
 	}
 
 	FBossPatternContext Context = BuildContext(DeltaTime);
+	DebugState.BossPhase = Context.BossPhase;
+	DebugState.BossHealthRatio = Context.BossHealthRatio;
 	ConsumeDebugRequests(Context);
 	TickPatternCooldowns(DeltaTime);
 	TickFallbackIdle(DeltaTime);
@@ -122,8 +127,8 @@ FBossPatternContext UBossPatternSelectorComponent::BuildContext(float DeltaTime)
 	Context.TargetActor = ResolveTargetActor();
 	Context.BulletHell = ResolveBulletHellComponent();
 	Context.DeltaTime = DeltaTime;
-	Context.BossPhase = 0;
-	Context.BossHealthRatio = 1.0f;
+	Context.BossHealthRatio = ResolveBossHealthRatio();
+	Context.BossPhase = bUseDebugBossPhase ? (std::max)(0, DebugBossPhase) : ComputeBossPhase(Context.BossHealthRatio);
 
 	if (Context.BossActor)
 	{
@@ -196,6 +201,47 @@ UBulletHellComponent* UBossPatternSelectorComponent::ResolveBulletHellComponent(
 {
 	AActor* OwnerActor = GetOwner();
 	return OwnerActor ? OwnerActor->GetComponentByClass<UBulletHellComponent>() : nullptr;
+}
+
+float UBossPatternSelectorComponent::ResolveBossHealthRatio() const
+{
+	if (bUseDebugBossHealthRatio)
+	{
+		return (std::max)(0.0f, (std::min)(1.0f, DebugBossHealthRatio));
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return 1.0f;
+	}
+
+	UBulletHellHealthProbeComponent* HealthProbe = OwnerActor->GetComponentByClass<UBulletHellHealthProbeComponent>();
+	if (!HealthProbe || HealthProbe->GetMaxHealth() <= 0.0f)
+	{
+		return 1.0f;
+	}
+
+	const float Ratio = HealthProbe->GetCurrentHealth() / HealthProbe->GetMaxHealth();
+	return (std::max)(0.0f, (std::min)(1.0f, Ratio));
+}
+
+int32 UBossPatternSelectorComponent::ComputeBossPhase(float BossHealthRatio) const
+{
+	const float Phase1Threshold = (std::max)(0.0f, (std::min)(1.0f, Phase1HealthRatioThreshold));
+	const float Phase2Threshold = (std::max)(0.0f, (std::min)(Phase1Threshold, Phase2HealthRatioThreshold));
+
+	if (BossHealthRatio <= Phase2Threshold)
+	{
+		return 2;
+	}
+
+	if (BossHealthRatio <= Phase1Threshold)
+	{
+		return 1;
+	}
+
+	return 0;
 }
 
 void UBossPatternSelectorComponent::TickPatternCooldowns(float DeltaTime)
@@ -363,6 +409,13 @@ UBossPatternComponentBase* UBossPatternSelectorComponent::SelectWeightedPattern(
 			continue;
 		}
 
+		const float EffectiveWeight = Pattern->GetEffectiveWeight(Context);
+		if (EffectiveWeight <= 0.0f)
+		{
+			LastRejectReason = Pattern->GetPatternName() + ": phase weight zero";
+			continue;
+		}
+
 		if (IsBlockedByRecentPattern(Pattern))
 		{
 			LastRejectReason = Pattern->GetPatternName() + ": repeat blocked";
@@ -370,7 +423,7 @@ UBossPatternComponentBase* UBossPatternSelectorComponent::SelectWeightedPattern(
 		}
 
 		UsablePatterns.push_back(Pattern);
-		TotalWeight += (std::max)(0.0f, Pattern->GetWeight());
+		TotalWeight += EffectiveWeight;
 	}
 
 	DebugState.CandidateCount = CandidateCount;
@@ -386,7 +439,7 @@ UBossPatternComponentBase* UBossPatternSelectorComponent::SelectWeightedPattern(
 	float Pick = RandomUnitFloat() * TotalWeight;
 	for (UBossPatternComponentBase* Pattern : UsablePatterns)
 	{
-		Pick -= (std::max)(0.0f, Pattern->GetWeight());
+		Pick -= Pattern->GetEffectiveWeight(Context);
 		if (Pick <= 0.0f)
 		{
 			return Pattern;
@@ -582,6 +635,8 @@ void UBossPatternSelectorComponent::RecordOverlayStats(const FBossPatternContext
 	Snapshot.SelectionCount = DebugState.SelectionCount;
 	Snapshot.FallbackCount = DebugState.FallbackCount;
 	Snapshot.bSelectionEnabled = bSelectionStarted && bEnablePatternSelection;
+	Snapshot.BossPhase = Context.BossPhase;
+	Snapshot.BossHealthRatio = Context.BossHealthRatio;
 	Snapshot.Patterns.reserve(PatternComponents.size());
 
 	for (const TWeakObjectPtr<UBossPatternComponentBase>& PatternRef : PatternComponents)
@@ -596,7 +651,7 @@ void UBossPatternSelectorComponent::RecordOverlayStats(const FBossPatternContext
 		Entry.PatternName = Pattern->GetPatternName();
 		Entry.Detail = Pattern->GetRuntimeDebugText();
 		Entry.CooldownRemaining = Pattern->GetCooldownRemaining();
-		Entry.Weight = Pattern->GetWeight();
+		Entry.Weight = Pattern->GetEffectiveWeight(Context);
 		Entry.SelectionCount = Pattern->GetSelectionCount();
 
 		if (ActivePattern.Get() == Pattern)
@@ -618,6 +673,11 @@ void UBossPatternSelectorComponent::RecordOverlayStats(const FBossPatternContext
 			{
 				Entry.Status = EBossPatternStatStatus::Blocked;
 				Entry.Reason = RejectReason.empty() ? "blocked" : RejectReason;
+			}
+			else if (Pattern->GetEffectiveWeight(Context) <= 0.0f)
+			{
+				Entry.Status = EBossPatternStatStatus::Blocked;
+				Entry.Reason = "phase weight zero";
 			}
 			else if (IsBlockedByRecentPattern(Pattern))
 			{

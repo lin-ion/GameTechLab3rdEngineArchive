@@ -29,6 +29,8 @@ private:
 	FBossPatternContext BuildContext(float DeltaTime);
 	AActor* ResolveTargetActor() const;
 	UBulletHellComponent* ResolveBulletHellComponent() const;
+	float ResolveBossHealthRatio() const;
+	int32 ComputeBossPhase(float BossHealthRatio) const;
 	void TickPatternCooldowns(float DeltaTime);
 	void TickActivePattern(float DeltaTime, const FBossPatternContext& Context);
 	void ConsumeDebugRequests(const FBossPatternContext& Context);
@@ -95,6 +97,24 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Debug", DisplayName="Debug Log Interval", Min=0.0f, Max=30.0f, Speed=0.1f)
 	float DebugLogInterval = 0.5f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Phase", DisplayName="Phase 1 Health Ratio Threshold", Min=0.0f, Max=1.0f, Speed=0.01f)
+	float Phase1HealthRatioThreshold = 0.66f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Phase", DisplayName="Phase 2 Health Ratio Threshold", Min=0.0f, Max=1.0f, Speed=0.01f)
+	float Phase2HealthRatioThreshold = 0.33f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Debug", DisplayName="Use Debug Boss Health Ratio")
+	bool bUseDebugBossHealthRatio = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Debug", DisplayName="Debug Boss Health Ratio", Min=0.0f, Max=1.0f, Speed=0.01f)
+	float DebugBossHealthRatio = 1.0f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Debug", DisplayName="Use Debug Boss Phase")
+	bool bUseDebugBossPhase = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Debug", DisplayName="Debug Boss Phase", Min=0, Max=30, Speed=1)
+	int32 DebugBossPhase = 0;
 
 	TArray<TWeakObjectPtr<UBossPatternComponentBase>> PatternComponents;
 	TWeakObjectPtr<UBossPatternComponentBase> ActivePattern;

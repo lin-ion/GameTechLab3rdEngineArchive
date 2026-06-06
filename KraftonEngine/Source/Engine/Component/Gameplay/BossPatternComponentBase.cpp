@@ -146,6 +146,21 @@ bool UBossPatternComponentBase::IsPatternFinished() const
 	return bFinished;
 }
 
+float UBossPatternComponentBase::GetEffectiveWeight(const FBossPatternContext& Context) const
+{
+	float PhaseWeight = PhaseWeight0;
+	if (Context.BossPhase == 1)
+	{
+		PhaseWeight = PhaseWeight1;
+	}
+	else if (Context.BossPhase >= 2)
+	{
+		PhaseWeight = PhaseWeight2;
+	}
+
+	return (std::max)(0.0f, Weight) * (std::max)(0.0f, PhaseWeight);
+}
+
 FString UBossPatternComponentBase::GetRuntimeDebugText() const
 {
 	return "";

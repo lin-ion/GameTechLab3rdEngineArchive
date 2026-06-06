@@ -1,5 +1,7 @@
 # Boss Pattern Selector Implementation Plan
 
+> This is a completed implementation plan. For practical tuning, usage, and code-maintenance guidance, use `Docs/BossPatternSelector_HandoffGuide.md`.
+
 ## Goals
 
 - Behavior Tree 없이 보스 이동/공격을 C++ pattern component 단위로 제작한다.
@@ -10,6 +12,16 @@
 - 초기 샘플 pattern은 별도 테스트용 예제가 아니라, 사전에 기획된 실제 boss pattern 4개로 바로 구현한다.
 - 탄막은 `UBulletHellComponent` public API를 호출하고, boss pattern은 bullet runtime storage나 render instance를 직접 만지지 않는다.
 - 모든 Phase는 `ReleaseBuild.bat < NUL` 기준으로 빌드 검증 가능해야 한다.
+
+## Implementation Status
+
+- Phase 1-6 are implemented and have passed `ReleaseBuild.bat < NUL`.
+- Phase 5 debug UX was expanded beyond the original log/debug-draw scope with `stat bosspattern`.
+- `stat bosspattern` lists registered patterns and uses green for ready, blue for active, and red for blocked.
+- The overlay shows reject reason, cooldown remaining, effective phase weight, selection count, `Phase`, and `HealthRatio`.
+- Phase 6 uses `UBulletHellHealthProbeComponent` as an optional health provider. If it is missing, the selector falls back to `BossHealthRatio=1.0f` and `BossPhase=0`.
+- Implemented pattern classes are `IdleTrackTarget`, `AimedRingVolley`, `HomingOrbTrail`, `SphericalPulseBarrage`, and `ThunderclapCascade`.
+- Known runtime ownership gap: `HomingOrbTrail` intentionally does not move the boss. Movement remains owned by the separate boss movement work.
 
 ## No Goals
 
@@ -401,13 +413,60 @@ Implementation notes:
 ## Pattern Authoring Rules
 
 - 새 pattern을 만들 때는 기존 pattern 하나를 복사하고 class name, file name, `PatternName` default만 먼저 바꾼다.
+- 새 pattern 파일은 `KraftonEngine.vcxproj`와 `KraftonEngine.vcxproj.filters`에 모두 등록한다.
+- 새 pattern class는 owner actor에 component로 붙이면 selector가 `BeginPlay`에서 자동 수집한다.
+- `PatternName`은 `ForcedPatternName`과 `stat bosspattern`에서 쓰이므로 class 이름과 비슷하게 유지한다.
 - tuning parameter는 header의 private `UPROPERTY(Edit, Save, Category="Boss Pattern|...")` 아래에 모은다.
 - `TickCurrentStep()` 안에 긴 if chain을 만들지 않는다. step별 private helper로 분리한다.
 - `GetCanUse()`에서 gameplay side effect를 만들지 않는다.
 - `OnStepEnter()`에서 한 번만 실행되어야 하는 spawn, sound, animation trigger를 처리한다.
 - 매 frame 필요한 이동/회전만 `TickCurrentStep()`에서 처리한다.
 - pattern 종료는 `FinishPattern()` 같은 base helper를 통해 수행해 selector state와 cooldown이 한 곳에서 갱신되게 한다.
-- debug log에는 pattern name, step, reject reason, target distance를 포함한다.
+- debug log 또는 `stat bosspattern`에서 pattern name, step/detail, reject reason, cooldown, phase 상태를 확인할 수 있어야 한다.
+
+## Tuning Quick Reference
+
+공통 selector 값:
+
+- `FallbackIdleDuration`: 사용 가능한 pattern이 없을 때 대기 시간. 0.1-1.0초부터 시작한다.
+- `RepeatBlockCount`: 바로 반복을 막고 싶으면 1, 더 강하게 섞고 싶으면 2-3을 쓴다.
+- `Phase1HealthRatioThreshold`: 기본 0.66. 이 값 이하부터 phase 1이다.
+- `Phase2HealthRatioThreshold`: 기본 0.33. 이 값 이하부터 phase 2다.
+- `DebugBossHealthRatio` / `DebugBossPhase`: phase 튜닝 중에만 켠다.
+
+공통 pattern 값:
+
+- `Weight`: 기본 선택 빈도. 0이면 선택되지 않는다.
+- `PhaseWeight0/1/2`: phase별 weight multiplier. 특정 phase에서 막으려면 0으로 둔다.
+- `Cooldown`: 같은 pattern이 다시 나올 수 있는 최소 간격. 1-8초 범위부터 조정한다.
+- `AllowedPhaseMask`: phase 자체를 금지하고 싶을 때 사용한다. phase weight 0은 선택 확률 조정용, mask는 hard block용이다.
+- `MinTargetDistance` / `MaxTargetDistance`: 거리 조건. 모든 거리에서 허용하려면 기본값을 유지한다.
+- `WindupDuration` / `RecoveryDuration`: 시작/종료 템포. 0.1-1.0초부터 조정한다.
+
+Pattern별 주요 값:
+
+- `AimedRingVolley`: `RingRadius`, `ProjectileCount`, `LaunchDelay`, `ProjectileSpeed`를 먼저 조정한다.
+- `HomingOrbTrail`: `SpawnDuration`, `ProjectileCount`, `LaunchDelay`, `HomingStrength`를 먼저 조정한다.
+- `SphericalPulseBarrage`: `PulseCount`, `ProjectilesPerPulse`, `SphereRadius`, `ProjectileSpeed`를 먼저 조정한다.
+- `ThunderclapCascade`: `CycleCount`, `CycleInterval`, `StrikeForwardDistance`, `StrikeRandomXYRadius`, `ShockwaveProjectileCount`, `ShockwaveSpeed`를 먼저 조정한다.
+
+## Unsupported Scope
+
+- Behavior Tree, blackboard, visual scripting graph
+- Lua Blueprint pattern authoring or Lua bridge
+- Data-only pattern asset authoring
+- Parallel top-level patterns in the selector
+- Full boss movement, navmesh, or pathfinding
+- Ground-query-perfect lightning impact placement
+- Boss animation graph, VFX graph, and sound cue authoring UI
+- Per-projectile AI inside boss patterns
+
+## Fallback Behavior
+
+- Selector가 붙었지만 pattern component가 없으면 `LastRejectedReason`은 `no pattern components`가 되고 fallback idle wait만 반복한다.
+- Pattern component가 있어도 전부 disabled, cooldown, phase, weight, distance, repeat block에 막히면 fallback idle wait로 들어간다.
+- Fallback은 별도 공격을 만들지 않고 selector가 멈춘 것처럼 보이지 않게 하는 안전 대기 상태다.
+- 이 상태는 `stat bosspattern`의 `Select 0/N`, 빨간 blocked line, `LastReject`, `Fallback` count로 확인한다.
 
 ## Phase 1: Selector And Base Pattern Skeleton
 
@@ -621,9 +680,21 @@ Boss pattern system의 최소 실행 루프를 만든다. 이 Phase의 완료 �
 ### Validation
 
 - `ReleaseBuild.bat < NUL`
-- 새 pattern을 하나 복사 추가해 project/header generation/build가 통과하는지 확인한다.
+- 새 pattern 추가 절차는 이번 구현에서 5개 pattern 파일 세트를 추가하며 검증했다. 이후 새 pattern을 추가할 때도 project/filter 등록 후 `ReleaseBuild.bat < NUL`을 기준으로 확인한다.
 - 기존 pattern parameter만 바꿔도 발사 타이밍, projectile 수, 속도, 반경이 바뀌는지 확인한다.
 - selector/pattern debug log만 보고 현재 상태를 추적할 수 있다.
+
+## Final Verification Checklist
+
+- `ReleaseBuild.bat < NUL`이 통과한다.
+- PIE/Game에서 `stat bosspattern`을 켜면 등록된 pattern 목록이 보인다.
+- Active pattern은 파란색, ready pattern은 초록색, blocked pattern은 빨간색으로 보인다.
+- Cooldown 중인 pattern은 남은 시간이 줄어드는 것을 확인할 수 있다.
+- `HealthRatio`와 `Phase` 표시가 debug override 또는 health probe 값과 맞는다.
+- `AllowedPhaseMask`, `PhaseWeight0/1/2`, `RepeatBlockCount`, `Cooldown`, `Weight`가 선택 pool에 반영된다.
+- `ForcedPatternName`과 `ForcePatternRequest`로 특정 pattern을 강제 실행할 수 있다.
+- `CancelPatternRequest` 후 selector가 fallback 또는 다음 선택 루프로 정상 복귀한다.
+- 각 pattern의 주요 수치를 바꾸면 발사 수, 속도, 반경, 간격, 낙뢰 위치 랜덤성이 즉시 달라진다.
 
 ## Suggested File List
 
@@ -641,16 +712,3 @@ Boss pattern system의 최소 실행 루프를 만든다. 이 Phase의 완료 �
 - `Source/Engine/Component/Gameplay/BossPattern_SphericalPulseBarrage.cpp`
 - `Source/Engine/Component/Gameplay/BossPattern_ThunderclapCascade.h`
 - `Source/Engine/Component/Gameplay/BossPattern_ThunderclapCascade.cpp`
-
-## Team Handoff Checklist
-
-- Pattern을 끄고 싶으면 해당 component의 `bEnabled`를 false로 둔다.
-- Pattern 빈도를 바꾸고 싶으면 `Weight`를 조정한다.
-- Pattern이 너무 자주 나오면 `Cooldown`을 늘린다.
-- 특정 거리에서만 쓰고 싶으면 `MinTargetDistance`, `MaxTargetDistance`를 조정한다.
-- 보스 페이즈별로 막고 싶으면 `AllowedPhaseMask`를 조정한다.
-- 원형 대기 후 조준 발사를 바꾸고 싶으면 `AimedRingVolley`의 `RingRadius`, `ProjectileCount`, `LaunchDelay`, `ProjectileSpeed`를 먼저 조정한다.
-- 호밍 순차 생성을 바꾸고 싶으면 `HomingOrbTrail`의 `SpawnDuration`, `ProjectileCount`, `LaunchDelay`, `HomingStrength`를 먼저 조정한다.
-- 구형 방출을 바꾸고 싶으면 `SphericalPulseBarrage`의 `PulseCount`, `ProjectilesPerPulse`, `SphereRadius`, `ProjectileSpeed`를 먼저 조정한다.
-- 낙뢰 연타를 바꾸고 싶으면 `ThunderclapCascade`의 `CycleCount`, `CycleInterval`, `StrikeForwardDistance`, `ShockwaveProjectileCount`, `ShockwaveSpeed`를 먼저 조정한다.
-- selector가 멈춘 것처럼 보이면 debug state의 `UsableCandidateCount`, `LastRejectedReason`, `FallbackCount`를 먼저 확인한다.

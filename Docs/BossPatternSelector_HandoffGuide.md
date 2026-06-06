@@ -1,0 +1,249 @@
+# Boss Pattern Selector Handoff Guide
+
+이 문서는 완성된 Boss Pattern Selector를 실제로 조정하고, 필요하면 코드를 수정하기 위한 설명서다. 앞부분은 사람이 에디터에서 따라 하는 cookbook이고, 뒷부분은 AI Agent가 코드를 수정할 때 필요한 시스템 설명이다.
+
+## Cookbook For Designers And Teammates
+
+### 기본 배치 확인
+
+1. 레벨에서 보스 actor를 선택한다.
+2. Details 패널의 component 목록에서 `UBossPatternSelectorComponent`가 붙어 있는지 확인한다.
+3. 같은 보스 actor에 `UBulletHellComponent`가 붙어 있는지 확인한다. 실제 공격 pattern은 이 component의 public API로 탄을 만든다.
+4. 같은 보스 actor에 사용할 pattern component들이 붙어 있는지 확인한다.
+   - `UBossPattern_AimedRingVolley`
+   - `UBossPattern_HomingOrbTrail`
+   - `UBossPattern_SphericalPulseBarrage`
+   - `UBossPattern_ThunderclapCascade`
+   - 필요하면 `UBossPattern_IdleTrackTarget`
+5. 체력 비율로 phase를 바꾸고 싶으면 같은 보스 actor에 `UBulletHellHealthProbeComponent`를 붙인다. 없으면 selector는 항상 `HealthRatio=1.0`, `Phase=0`으로 동작한다.
+
+### 현재 상태를 화면에서 보기
+
+1. PIE 또는 Game 실행 중 콘솔을 연다.
+2. `stat bosspattern`을 입력한다.
+3. 오버레이에서 상태를 확인한다.
+   - 초록색 `READY`: 지금 선택될 수 있는 pattern
+   - 파란색 `ACTIVE`: 현재 실행 중인 pattern
+   - 빨간색 `BLOCK`: 선택될 수 없는 pattern
+4. 빨간색 line의 괄호 안 reason을 먼저 본다.
+   - `cooldown Ns`: 쿨타임이 남았다.
+   - `disabled`: pattern component가 꺼져 있다.
+   - `zero weight`: 공통 weight가 0이다.
+   - `phase blocked`: 현재 phase가 `Allowed Phase Mask`에 없다.
+   - `phase weight zero`: 현재 phase의 phase weight가 0이다.
+   - `target too close` / `target too far`: 거리 조건에 막혔다.
+   - `repeat blocked`: 최근 사용 pattern 반복 방지에 막혔다.
+5. 오버레이를 끄려면 `stat none`을 입력한다.
+
+### Pattern을 끄기
+
+1. 보스 actor를 선택한다.
+2. 끄고 싶은 pattern component를 component 목록에서 선택한다.
+3. `Boss Pattern|Common` 카테고리의 `Enabled`를 false로 둔다.
+4. `stat bosspattern`에서 해당 pattern이 빨간색 `BLOCK (... disabled)`로 나오는지 확인한다.
+
+### Pattern 빈도 조정
+
+1. 보스 actor에서 조정할 pattern component를 선택한다.
+2. `Boss Pattern|Selection` 카테고리의 `Weight`를 조정한다.
+   - 0이면 선택되지 않는다.
+   - 값이 클수록 같은 phase 안에서 더 자주 선택된다.
+3. phase별로 빈도를 다르게 하고 싶으면 같은 카테고리의 `Phase Weight 0`, `Phase Weight 1`, `Phase Weight 2`를 조정한다.
+   - 최종 선택 가중치는 `Weight * Phase Weight N`이다.
+   - 특정 phase에서만 막고 싶으면 해당 `Phase Weight N`을 0으로 둔다.
+4. `stat bosspattern`의 `W` 값이 기대한 effective weight로 표시되는지 확인한다.
+
+### Pattern이 너무 자주 나올 때
+
+1. 보스 actor에서 해당 pattern component를 선택한다.
+2. `Boss Pattern|Selection` 카테고리의 `Cooldown`을 늘린다.
+3. 같은 pattern이 바로 반복되는 것이 싫으면 selector component를 선택한다.
+4. `Boss Pattern|Selection` 카테고리의 `Repeat Block Count`를 1 이상으로 둔다.
+   - 1은 방금 쓴 pattern 1개를 막는다.
+   - 2 이상은 최근 pattern 여러 개를 막으므로 fallback이 더 자주 나올 수 있다.
+
+### 특정 거리에서만 쓰게 하기
+
+1. 보스 actor에서 해당 pattern component를 선택한다.
+2. `Boss Pattern|Condition` 카테고리의 `Min Target Distance`와 `Max Target Distance`를 조정한다.
+3. target이 너무 가까우면 `target too close`, 너무 멀면 `target too far`로 표시된다.
+4. 모든 거리에서 허용하려면 기본값처럼 `Min Target Distance=0`, `Max Target Distance`를 충분히 크게 둔다.
+
+### Phase별 pattern pool 만들기
+
+1. 보스 actor의 selector component를 선택한다.
+2. `Boss Pattern|Phase` 카테고리에서 `Phase 1 Health Ratio Threshold`, `Phase 2 Health Ratio Threshold`를 정한다.
+   - 기본값은 0.66 이하부터 phase 1, 0.33 이하부터 phase 2다.
+3. 빠르게 테스트하려면 selector의 `Boss Pattern|Debug` 카테고리에서 `Use Debug Boss Health Ratio`를 켜고 `Debug Boss Health Ratio`를 바꾼다.
+4. 특정 pattern component를 선택한다.
+5. hard block이 필요하면 `Boss Pattern|Condition`의 `Allowed Phase Mask`를 조정한다.
+6. 선택 확률만 조정하려면 `Boss Pattern|Selection`의 `Phase Weight 0/1/2`를 조정한다.
+7. `stat bosspattern`에서 `Phase`, `HealthRatio`, blocked reason이 기대와 맞는지 본다.
+
+### 특정 pattern 강제 실행
+
+1. 보스 actor의 selector component를 선택한다.
+2. `Boss Pattern|Debug` 카테고리의 `Forced Pattern Name`에 pattern 이름을 입력한다.
+   - 예: `AimedRingVolley`, `HomingOrbTrail`, `SphericalPulseBarrage`, `ThunderclapCascade`
+3. 조건을 존중하고 강제 실행하려면 `Force Pattern Ignore Conditions`를 false로 둔다.
+4. cooldown, distance, phase를 무시하고 테스트하려면 `Force Pattern Ignore Conditions`를 true로 둔다.
+   - 단, disabled pattern은 여전히 실행하지 않는다.
+5. `Force Pattern Request`를 토글한다.
+6. 실행 중인 pattern을 중단하려면 `Cancel Pattern Request`를 토글한다.
+7. 취소 후 fallback으로 보낼지 여부는 `Cancel Goes To Fallback`으로 정한다.
+
+### Aimed Ring Volley 조정
+
+1. 보스 actor에서 `UBossPattern_AimedRingVolley` component를 선택한다.
+2. `Boss Pattern|Aimed Ring Volley` 카테고리를 연다.
+3. 원형 대기 탄 수를 바꾸려면 `Projectile Count`를 조정한다.
+4. 원 크기를 바꾸려면 `Ring Radius`를 조정한다.
+5. 대기 시간을 바꾸려면 `Launch Delay`를 조정한다.
+6. 발사 속도를 바꾸려면 `Projectile Speed`를 조정한다.
+7. 생성 위치를 boss 기준 앞/위로 옮기려면 `Spawn Forward Offset`, `Spawn Up Offset`을 조정한다.
+8. 원의 회전 시작 각도를 바꾸려면 `Angle Offset Degrees`를 조정한다.
+9. 시작 시점 target 방향을 고정하려면 `Lock Target Direction On Start`를 true로 둔다.
+
+### Homing Orb Trail 조정
+
+1. 보스 actor에서 `UBossPattern_HomingOrbTrail` component를 선택한다.
+2. `Boss Pattern|Homing Orb Trail` 카테고리를 연다.
+3. 전체 생성 시간을 바꾸려면 `Spawn Duration`을 조정한다.
+4. 생성 개수를 바꾸려면 `Projectile Count`를 조정한다.
+5. 명시적 생성 간격이 필요하면 `Spawn Interval Override`를 0보다 크게 둔다.
+6. boss 주변 생성 반경은 `Spawn Radius Around Boss`로 조정한다.
+7. 생성 후 발사까지의 대기 시간은 `Launch Delay`로 조정한다.
+8. 호밍 세기는 `Homing Strength`, 회전 제한은 `Homing Max Turn Rate Degrees`, 추적 각도는 `Homing Cone Half Angle Degrees`로 조정한다.
+9. 이 pattern은 boss 이동을 직접 하지 않는다. 이동은 별도 boss movement 작업에서 처리해야 한다.
+
+### Spherical Pulse Barrage 조정
+
+1. 보스 actor에서 `UBossPattern_SphericalPulseBarrage` component를 선택한다.
+2. `Boss Pattern|Spherical Pulse Barrage` 카테고리를 연다.
+3. pulse 횟수는 `Pulse Count`로 조정한다.
+4. 전체 pulse 기간은 `Pulse Duration`으로 조정한다.
+5. 명시적 pulse 간격이 필요하면 `Pulse Interval Override`를 0보다 크게 둔다.
+6. pulse당 탄 수는 `Projectiles Per Pulse`로 조정한다.
+7. 구면 생성 반경은 `Sphere Radius`로 조정한다.
+8. 즉시 퍼지는 속도는 `Projectile Speed`로 조정한다.
+9. 분포를 랜덤화하려면 `Use Random Sphere Points`를 켜고 `Random Seed Offset`으로 변형한다.
+
+### Thunderclap Cascade 조정
+
+1. 보스 actor에서 `UBossPattern_ThunderclapCascade` component를 선택한다.
+2. `Boss Pattern|Thunderclap Cascade` 카테고리를 연다.
+3. 낙뢰 반복 횟수는 `Cycle Count`로 조정한다.
+4. 낙뢰 간격은 `Cycle Interval`로 조정한다.
+5. boss 앞 기준 위치는 `Strike Forward Distance`로 조정한다.
+6. 매 cycle마다 x/y 위치를 흔들고 싶으면 `Strike Random XY Radius`를 0보다 크게 둔다. z 위치는 기존 strike 기준을 유지한다.
+7. 낙뢰가 시작되는 높이는 `Strike Spawn Height`, 떨어지는 속도는 `Strike Fall Speed`로 조정한다.
+8. 충격파 높이는 `Shockwave Height Offset`으로 조정한다.
+9. 충격파 탄 수는 `Shockwave Projectile Count`, 퍼지는 속도는 `Shockwave Speed`로 조정한다.
+10. pattern이 무한히 지속되는 것을 막는 안전 시간은 `Max Pattern Duration`으로 조정한다.
+
+### Selector가 멈춘 것처럼 보일 때
+
+1. `stat bosspattern`을 켠다.
+2. `Select 0/N`이면 모든 pattern이 막힌 상태다.
+3. 빨간 line의 reason을 본다.
+4. cooldown만 남아 있으면 기다리거나 `Cooldown`을 줄인다.
+5. `phase blocked`이면 `Allowed Phase Mask` 또는 selector phase threshold/debug phase를 확인한다.
+6. `phase weight zero`이면 현재 phase의 `Phase Weight N`을 확인한다.
+7. `repeat blocked`가 많으면 selector의 `Repeat Block Count`를 낮춘다.
+8. pattern component가 아예 없으면 selector는 fallback idle만 돈다.
+
+## System Notes For AI Agents
+
+### Runtime ownership
+
+- `UBossPatternSelectorComponent` owns selection, active pattern lifetime, cooldown ticking, fallback idle, target resolution, health-ratio-to-phase calculation, force/cancel debug requests, recent-pattern repeat blocking, and boss-pattern stat snapshots.
+- `UBossPatternComponentBase` owns common pattern gates and the coarse step state machine.
+- Concrete `UBossPattern_*` classes own only their local timing, projectile spawn math, delayed launch queues, and pattern-specific tuning parameters.
+- `UBulletHellComponent` owns projectile storage, lifetime, collision, homing updates, render binding, and public spawn/launch APIs. Boss patterns must not mutate bullet arrays or render instance indices directly.
+
+### Tick order
+
+Selector tick runs in this order:
+
+1. Build `FBossPatternContext`.
+2. Consume `CancelPatternRequest` and `ForcePatternRequest`.
+3. Tick all pattern cooldowns.
+4. Tick fallback idle timer.
+5. Tick active pattern.
+6. If no active pattern and fallback elapsed, select the next pattern.
+7. Update `FBossPatternDebugState`.
+8. Record `BossPatternStats` snapshot.
+9. Draw/log debug if enabled.
+
+This order means a forced pattern can start and tick in the same frame. Cooldown is assigned by `NotifySelected()` before `StartPattern()`.
+
+### Selection gates
+
+The base `GetCanUse()` rejects in this order:
+
+1. `Enabled == false`
+2. `Weight <= 0`
+3. `CooldownRemaining > 0`
+4. target distance below `MinTargetDistance`
+5. target distance above `MaxTargetDistance`
+6. `AllowedPhaseMask` does not contain `BossPhase`
+
+Selector-level selection then applies:
+
+1. `GetEffectiveWeight(Context) > 0`
+2. recent-pattern repeat block
+3. weighted random pick among usable patterns
+
+`GetEffectiveWeight()` returns `Weight * PhaseWeightN`, where phase 0 uses `PhaseWeight0`, phase 1 uses `PhaseWeight1`, and phase 2 or higher uses `PhaseWeight2`.
+
+### Phase and health
+
+- `ResolveBossHealthRatio()` first checks selector debug override.
+- Without override, it reads `UBulletHellHealthProbeComponent` on the selector owner.
+- If no health probe exists or max health is invalid, health ratio is 1.0.
+- `ComputeBossPhase()` uses selector thresholds. Default phase is 0, phase 1 starts at or below `Phase1HealthRatioThreshold`, and phase 2 starts at or below `Phase2HealthRatioThreshold`.
+- `AllowedPhaseMask` is a hard block. `PhaseWeightN=0` is also a block in selection, but semantically represents weight tuning.
+
+### Debug and stat flow
+
+- `stat bosspattern` is implemented through `FOverlayStatSystem::BuildBossPatternLines()`.
+- Runtime snapshots are accumulated in `FBossPatternStats` and reset once per `UEngine::WorldTick()`.
+- Pattern-specific debug text comes from virtual `GetRuntimeDebugText()`.
+- Existing useful details:
+  - `AimedRingVolley`: pending launch count
+  - `HomingOrbTrail`: spawned count and pending launch count
+  - `SphericalPulseBarrage`: spawned pulse count
+  - `ThunderclapCascade`: started cycle count and active cycle count
+
+### Adding a new pattern
+
+1. Copy an existing `BossPattern_*.h/.cpp` pair under `KraftonEngine/Source/Engine/Component/Gameplay`.
+2. Rename file names, class name, generated include, constructor, and default `PatternName`.
+3. Register both files in `KraftonEngine.vcxproj` and `KraftonEngine.vcxproj.filters`.
+4. Keep common gates in `UBossPatternComponentBase`; override `GetCanUse()` only for pattern-specific dependencies such as requiring `Context.BulletHell`.
+5. Implement step behavior through `OnPatternStart()`, `OnStepEnter()`, `TickCurrentStep()`, `ShouldAdvanceStep()`, and `GetNextStep()`.
+6. Call `FinishPattern(Context)` only through base flow or when the pattern must force-end.
+7. Add a compact `GetRuntimeDebugText()` if the pattern has delayed launches, cycle state, or other hidden runtime state.
+8. Build with `cmd /c "ReleaseBuild.bat < NUL"`.
+
+### Invariants to preserve
+
+- Only one top-level pattern is active in the selector.
+- Parallel work is allowed only inside a pattern, such as `ThunderclapCascade` active cycles.
+- Patterns must not store `FBossPatternContext` across frames.
+- Patterns should tolerate missing target by using locked or fallback directions.
+- Patterns that spawn projectiles should reject with a clear reason when `Context.BulletHell` is null.
+- Do not add Behavior Tree, Lua bridge, data-only asset authoring, or navmesh requirements to this system unless the scope is explicitly reopened.
+
+### Key files
+
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPatternComponentBase.h`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPatternComponentBase.cpp`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPatternSelectorComponent.h`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPatternSelectorComponent.cpp`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_AimedRingVolley.*`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_HomingOrbTrail.*`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_SphericalPulseBarrage.*`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_ThunderclapCascade.*`
+- `KraftonEngine/Source/Engine/Profiling/Stats/BossPatternStats.*`
+- `KraftonEngine/Source/Editor/Subsystem/OverlayStatSystem.*`

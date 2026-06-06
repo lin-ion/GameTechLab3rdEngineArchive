@@ -775,9 +775,11 @@ void FOverlayStatSystem::BuildBossPatternLines(TArray<FOverlayStatLine>& OutLine
 
 	for (const FBossPatternStatsSnapshot& Snapshot : FBossPatternStats::Snapshots)
 	{
-		snprintf(Buffer, sizeof(Buffer), "Owner : %s   Active : %s   Select %d/%d   Total %d   Fallback %d",
+		snprintf(Buffer, sizeof(Buffer), "Owner : %s   Active : %s   Phase %d   HealthRatio %.2f   Select %d/%d   Total %d   Fallback %d",
 			Snapshot.OwnerName.c_str(),
 			Snapshot.ActivePatternName.c_str(),
+			Snapshot.BossPhase,
+			Snapshot.BossHealthRatio,
 			Snapshot.UsableCandidateCount,
 			Snapshot.CandidateCount,
 			Snapshot.SelectionCount,

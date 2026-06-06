@@ -32,6 +32,8 @@ struct FBossPatternStatsSnapshot
 	int32 UsableCandidateCount = 0;
 	int32 SelectionCount = 0;
 	int32 FallbackCount = 0;
+	int32 BossPhase = 0;
+	float BossHealthRatio = 1.0f;
 	bool bSelectionEnabled = false;
 	TArray<FBossPatternStatEntry> Patterns;
 };

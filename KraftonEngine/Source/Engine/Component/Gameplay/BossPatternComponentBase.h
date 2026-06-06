@@ -51,6 +51,8 @@ struct FBossPatternDebugState
 	int32 SelectionCount = 0;
 	int32 FallbackCount = 0;
 	int32 ActivePatternSelectionCount = 0;
+	int32 BossPhase = 0;
+	float BossHealthRatio = 1.0f;
 };
 
 UCLASS()
@@ -61,6 +63,10 @@ public:
 	UBossPatternComponentBase();
 	~UBossPatternComponentBase() override = default;
 
+	// To add a new boss pattern, copy one existing BossPattern_*.h/.cpp pair,
+	// rename the class/file/default PatternName, register the files in the
+	// project and filters, then implement only the step helpers it needs.
+
 	virtual bool GetCanUse(const FBossPatternContext& Context, FString* OutRejectReason) const;
 	virtual void StartPattern(const FBossPatternContext& Context);
 	virtual void TickPattern(float DeltaTime, const FBossPatternContext& Context);
@@ -68,6 +74,7 @@ public:
 	virtual bool IsPatternFinished() const;
 
 	float GetWeight() const { return Weight; }
+	float GetEffectiveWeight(const FBossPatternContext& Context) const;
 	float GetCooldownRemaining() const { return CooldownRemaining; }
 	const FString& GetPatternName() const { return PatternName; }
 	EBossPatternStep GetCurrentStep() const { return CurrentStep; }
@@ -101,6 +108,15 @@ protected:
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Selection", DisplayName="Weight", Min=0.0f, Max=100.0f, Speed=0.1f)
 	float Weight = 1.0f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Selection", DisplayName="Phase Weight 0", Min=0.0f, Max=100.0f, Speed=0.1f)
+	float PhaseWeight0 = 1.0f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Selection", DisplayName="Phase Weight 1", Min=0.0f, Max=100.0f, Speed=0.1f)
+	float PhaseWeight1 = 1.0f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Selection", DisplayName="Phase Weight 2", Min=0.0f, Max=100.0f, Speed=0.1f)
+	float PhaseWeight2 = 1.0f;
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Selection", DisplayName="Cooldown", Min=0.0f, Max=300.0f, Speed=0.1f)
 	float Cooldown = 1.0f;
