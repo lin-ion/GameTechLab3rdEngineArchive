@@ -7,6 +7,9 @@ local DASH_SKILL_NAME = "Dash"
 local DASH_SKILL_KEY = "LeftShift"
 local DASH_DISTANCE = 3.0
 local DASH_DURATION = 0.3
+local DASH_AFTERIMAGE_INTENSITY = 1.0
+local DASH_AFTERIMAGE_RADIUS = 32.0
+local DASH_AFTERIMAGE_SAMPLES = 16
 local ROLL_SKILL_NAME = "Roll"
 local ROLL_SKILL_KEY = "LeftControl"
 local ROLL_DISTANCE = 6.0
@@ -119,6 +122,26 @@ local function stop_owner_movement(owner)
     end
 
     return false
+end
+
+local function start_dash_afterimage(owner, forward, duration)
+    if owner == nil or owner.StartAfterImage == nil then
+        return
+    end
+
+    local ok, started = pcall(function()
+        return owner:StartAfterImage(
+            forward,
+            duration,
+            DASH_AFTERIMAGE_INTENSITY,
+            DASH_AFTERIMAGE_RADIUS,
+            DASH_AFTERIMAGE_SAMPLES
+        )
+    end)
+
+    if not ok then
+        log("Dash afterimage failed: " .. tostring(started))
+    end
 end
 
 local function has_movement_locks()
@@ -360,6 +383,10 @@ local function activate_movement_ability(owner, ability, label, anim_var, distan
             return
         end
 
+        if label == "Dash" then
+            start_dash_afterimage(owner, forward, duration)
+        end
+
         log(label .. " activated: distance=" .. tostring(distance)
             .. " duration=" .. tostring(duration)
             .. " forward=" .. format_vec3(forward))
@@ -404,6 +431,10 @@ local function activate_movement_ability(owner, ability, label, anim_var, distan
         unlock_movement(owner, label)
         ability.active_remaining = 0.0
         return
+    end
+
+    if label == "Dash" then
+        start_dash_afterimage(owner, forward, duration)
     end
 
     log(label .. " activated: distance=" .. tostring(distance)

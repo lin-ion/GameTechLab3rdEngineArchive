@@ -13,9 +13,26 @@
 #include <d3d11.h>
 
 class UCameraComponent;
+class AActor;
 class FViewport;
 class FGPUOcclusionCulling;
 struct FMinimalViewInfo;
+
+struct FActionAfterImageRenderState
+{
+	const AActor* TargetActor = nullptr;
+	FVector WorldDirection = FVector::ZeroVector;
+	FVector2 ScreenDirection = FVector2(0.0f, 0.0f);
+	float Intensity = 0.0f;
+	float Radius = 0.0f;
+	int32 SampleCount = 1;
+	uint32 StencilValue = 2;
+
+	bool IsValid() const
+	{
+		return TargetActor && Intensity > 0.0f && Radius > 0.0f && SampleCount > 0;
+	}
+};
 
 /*
 	FFrameContext - per-frame/per-viewport read-only state.
@@ -95,6 +112,9 @@ struct FFrameContext
 	FCameraVignetteState CameraVignette;
 	FCameraLetterboxState CameraLetterbox;
 
+	// Actor-local action VFX
+	TArray<FActionAfterImageRenderState> ActionAfterImages;
+
 	// Derived helpers
 	bool IsFixedOrtho() const
 	{
@@ -143,5 +163,6 @@ struct FFrameContext
 		DoFBokehWidth           = 0.0f;
 		DoFBokehHeight          = 0.0f;
 		BloomResources          = nullptr;
+		ActionAfterImages.clear();
 	}
 };

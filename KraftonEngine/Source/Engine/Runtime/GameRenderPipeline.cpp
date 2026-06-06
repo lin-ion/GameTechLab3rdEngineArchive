@@ -6,6 +6,7 @@
 #include "GameFramework/World.h"
 #include "Component/Camera/CameraComponent.h"
 #include "Component/Camera/CineCameraComponent.h"
+#include "Component/Action/ActionVisualEffectComponent.h"
 #include "Render/Types/MinimalViewInfo.h"
 #include "Input/InputSystem.h"
 #include "Viewport/Viewport.h"
@@ -153,6 +154,51 @@ void FGameRenderPipeline::BuildFrame(FViewport* VP, const FMinimalViewInfo& POV,
 	FMinimalViewInfo RenderPOV = POV;
 	ApplyLetterboxAspect(RenderPOV, Frame.CameraLetterbox, Frame.ViewportWidth, Frame.ViewportHeight);
 	Frame.SetCameraInfo(RenderPOV);
+
+	Frame.ActionAfterImages.clear();
+	if (World)
+	{
+		for (AActor* Actor : World->GetActors())
+		{
+			if (!IsValid(Actor))
+			{
+				continue;
+			}
+
+			UActionVisualEffectComponent* VisualEffect = Actor->GetComponentByClass<UActionVisualEffectComponent>();
+			if (!VisualEffect || !VisualEffect->IsAfterImageActive())
+			{
+				continue;
+			}
+
+			FVector Direction = VisualEffect->GetAfterImageWorldDirection();
+			if (Direction.Length() <= FMath::Epsilon)
+			{
+				continue;
+			}
+			Direction.Normalize();
+
+			FVector2 ScreenDirection(Direction.Dot(Frame.CameraRight), -Direction.Dot(Frame.CameraUp));
+			if (ScreenDirection.Length() <= FMath::Epsilon)
+			{
+				continue;
+			}
+			ScreenDirection.Normalize();
+
+			FActionAfterImageRenderState State;
+			State.TargetActor = Actor;
+			State.WorldDirection = Direction;
+			State.ScreenDirection = ScreenDirection;
+			State.Intensity = VisualEffect->GetAfterImageIntensity();
+			State.Radius = VisualEffect->GetAfterImageRadius();
+			State.SampleCount = VisualEffect->GetAfterImageSampleCount();
+			State.StencilValue = 2;
+			if (State.IsValid())
+			{
+				Frame.ActionAfterImages.push_back(State);
+			}
+		}
+	}
 
 	const POINT MousePos = InputSystem::Get().GetMouseClientPos();
 	if (MousePos.x >= 0 && MousePos.y >= 0

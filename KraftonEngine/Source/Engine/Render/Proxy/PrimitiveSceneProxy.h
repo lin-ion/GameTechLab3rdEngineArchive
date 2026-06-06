@@ -78,6 +78,7 @@ public:
 	virtual ERenderPass GetRenderPass() const;
 	FShader*           GetShader()      const;
 	FMeshBuffer*       GetMeshBuffer()  const { return MeshBuffer; }
+	UPrimitiveComponent* GetOwnerComponent() const { return Owner.Get(); }
 
 	const FPerObjectConstants&      GetPerObjectConstants() const { return PerObjectConstants; }
 	const FBoundingBox&             GetCachedBounds()       const { return CachedBounds; }

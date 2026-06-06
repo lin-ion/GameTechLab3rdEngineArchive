@@ -315,6 +315,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Action\ActionVisualEffectComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Input\ActionComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Input\InputComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Light\AmbientLightComponent.cpp" />
@@ -560,6 +561,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Render\RenderPass\DoFSetupPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\EditorIconPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\EditorLinesPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\FXAAPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\FogPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\GammaCorrectionPass.cpp" />
@@ -823,6 +826,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Action\ActionVisualEffectComponent.h" />
     <ClInclude Include="Source\Engine\Component\Input\ActionComponent.h" />
     <ClInclude Include="Source\Engine\Component\Input\InputComponent.h" />
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h" />
@@ -1122,6 +1126,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Render\RenderPass\DoFSetupPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\EditorIconPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\EditorLinesPass.h" />
+    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImageMaskPass.h" />
+    <ClInclude Include="Source\Engine\Render\RenderPass\ActionAfterImagePass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\FXAAPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\FogPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\GammaCorrectionPass.h" />
@@ -2164,6 +2170,11 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Game|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\ActionAfterImage.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Game|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Shaders\PostProcess\Blit.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
