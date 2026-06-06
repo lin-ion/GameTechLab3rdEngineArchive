@@ -35,7 +35,8 @@ public:
 
 	// 등록 없이 단일 캔버스 트리만 레이아웃한다(에디터 전용 seam, 진단 §C). 전역 레지스트리/
 	// GlobalScale 에 영향을 주지 않으므로 런타임 LayoutAll/SimpleUIPass 와 격리된다.
-	void LayoutCanvas(UUICanvas* Canvas, float Scale);
+	// bSyncExternal=false(기본) → 에디터 전용 seam: OnLayoutUpdated 의 외부(RmlUi) 동기화를 건너뛴다(R1).
+	void LayoutCanvas(UUICanvas* Canvas, float Scale, bool bSyncExternal = false);
 
 	// 화면/레퍼런스 해상도 스케일. 레이아웃 픽셀 결과에 곱한다(진단 D3). 사이클 4에서 설정.
 	float GetGlobalScale() const { return GlobalScale; }
@@ -67,7 +68,7 @@ private:
 	// 한 노드의 화면 사각형을 계산하고 자식으로 재귀(top-down). 좌표는 레퍼런스 공간에서
 	// 누적하고 마지막에 Scale 을 곱해 화면 픽셀로 변환한다(진단 C2/C3/D3).
 	static void LayoutElement(UUIElement* Element, const FVector2& ParentOrigin,
-	                          const FVector2& ParentSize, float Scale);
+	                          const FVector2& ParentSize, float Scale, bool bSyncExternal);
 
 	// 트리를 pre-order(그린 순서)로 순회하며 마우스를 포함하는 가시 Element 중 마지막(=최상위)을
 	// OutTop 에 남긴다(진단 E1: 최후-그림/최심 우선).

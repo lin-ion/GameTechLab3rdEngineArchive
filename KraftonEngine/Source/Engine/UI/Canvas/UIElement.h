@@ -32,9 +32,11 @@ public:
 	const FUIRect& GetScreenRect() const { return ScreenRect; }
 	void SetScreenRect(const FUIRect& InRect) { ScreenRect = InRect; }
 
-	// 레이아웃 패스가 ScreenRect 를 갱신한 직후 호출되는 훅(기본 no-op). 화면 위치에 종속된
-	// 외부 리소스(예: UUILabel 의 RmlUi 텍스트 위젯)를 동기화할 때 override 한다(사이클 6).
-	virtual void OnLayoutUpdated(float GlobalScale) { (void)GlobalScale; }
+	// 레이아웃 패스가 ScreenRect 를 갱신한 직후 호출되는 훅(기본 no-op). 화면 위치에 종속된 외부
+	// 리소스(예: UUITextElement 의 RmlUi 텍스트 위젯)를 동기화할 때 override 한다.
+	// bSyncExternal: 런타임 LayoutAll=true / 에디터 LayoutCanvas=false — 에디터에서 RmlUi 가 게임
+	// viewport 로 새는 것을 막는 게이트(진단 R1). false 면 외부 리소스 동기화를 수행하지 않아야 한다.
+	virtual void OnLayoutUpdated(float GlobalScale, bool bSyncExternal) { (void)GlobalScale; (void)bSyncExternal; }
 
 	// 이 노드가 사각형을 그릴지 여부. Canvas / Group 같은 순수 컨테이너는 false.
 	bool IsVisibleRect() const { return bVisibleRect; }

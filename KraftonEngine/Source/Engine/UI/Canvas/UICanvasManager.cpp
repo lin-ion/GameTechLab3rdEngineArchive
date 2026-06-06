@@ -98,23 +98,25 @@ void FUICanvasManager::LayoutAll()
 		// 루트는 origin=(0,0) 에서 시작하며, 부모 크기는 Canvas 자신의 레퍼런스 크기다.
 		// Canvas 의 anchor/pivot/position 은 기본 0 이라 FinalPos 도 (0,0) 이 된다.
 		const FVector2 CanvasSize = Canvas->GetRectTransform().Size;
-		LayoutElement(Canvas, FVector2(0.0f, 0.0f), CanvasSize, GlobalScale);
+		// 런타임 패스 → 외부(RmlUi) 동기화 허용(bSyncExternal=true).
+		LayoutElement(Canvas, FVector2(0.0f, 0.0f), CanvasSize, GlobalScale, /*bSyncExternal=*/true);
 	}
 }
 
-void FUICanvasManager::LayoutCanvas(UUICanvas* Canvas, float Scale)
+void FUICanvasManager::LayoutCanvas(UUICanvas* Canvas, float Scale, bool bSyncExternal)
 {
 	if (!Canvas)
 	{
 		return;
 	}
 	// LayoutAll 과 동일 규칙(origin=(0,0), parentSize=Canvas 레퍼런스 크기)으로 한 트리만 계산.
+	// 에디터 호출은 bSyncExternal=false(기본) → RmlUi 마운트/동기화 스킵(R1).
 	const FVector2 CanvasSize = Canvas->GetRectTransform().Size;
-	LayoutElement(Canvas, FVector2(0.0f, 0.0f), CanvasSize, Scale);
+	LayoutElement(Canvas, FVector2(0.0f, 0.0f), CanvasSize, Scale, bSyncExternal);
 }
 
 void FUICanvasManager::LayoutElement(UUIElement* Element, const FVector2& ParentOrigin,
-                                     const FVector2& ParentSize, float Scale)
+                                     const FVector2& ParentSize, float Scale, bool bSyncExternal)
 {
 	if (!Element)
 	{
@@ -135,15 +137,15 @@ void FUICanvasManager::LayoutElement(UUIElement* Element, const FVector2& Parent
 	Screen.Size = RT.Size * Scale;
 	Element->SetScreenRect(Screen);
 
-	// 화면 위치 종속 외부 리소스 동기화 훅(예: UUILabel 의 RmlUi 텍스트). 기본 no-op.
-	Element->OnLayoutUpdated(Scale);
+	// 화면 위치 종속 외부 리소스 동기화 훅(예: UUITextElement 의 RmlUi 텍스트). bSyncExternal 게이트(R1).
+	Element->OnLayoutUpdated(Scale, bSyncExternal);
 
 	// 자식은 이 노드의 레퍼런스 좌상단/크기를 부모 기준으로 받아 top-down 누적(진단 C3).
 	for (USceneComponent* Child : Element->GetChildren())
 	{
 		if (UUIElement* ChildElement = Cast<UUIElement>(Child))
 		{
-			LayoutElement(ChildElement, FinalPos, RT.Size, Scale);
+			LayoutElement(ChildElement, FinalPos, RT.Size, Scale, bSyncExternal);
 		}
 	}
 }
