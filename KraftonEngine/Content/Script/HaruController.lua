@@ -11,6 +11,10 @@ local ROLL_SKILL_NAME = "Roll"
 local ROLL_SKILL_KEY = "LeftControl"
 local ROLL_DISTANCE = 6.0
 local ROLL_DURATION = 1.2
+-- ProjectilePool 발사 테스트(좌클릭). 주의: STEAM_SKILL_KEY 도 LeftMouseButton 이라 둘 다 발동됨.
+local FIRE_PROJECTILE_KEY = "LeftMouseButton"
+local PROJECTILE_SPEED = 3.0            -- m/s (물리 등속)
+local PROJECTILE_MUZZLE_OFFSET = 1.0    -- m (카메라 앞 발사 원점, meter 단위)
 local DASH_ANIM_VAR = "Dash"
 local ROLL_ANIM_VAR = "Roll"
 local ATTACK_ANIM_VAR = "Attack"
@@ -533,6 +537,16 @@ function Tick(dt)
         local activated, reason = ability_system:TryActivateByKey(ROLL_SKILL_KEY)
         if not activated then
             log("Roll blocked: " .. (reason or "unknown"))
+        end
+    end
+
+    -- ProjectilePool 테스트: 좌클릭 → 카메라 시점으로 발사체 발사
+    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(FIRE_PROJECTILE_KEY) then
+        if World ~= nil and World.FireCameraProjectile ~= nil then
+            local proj = World.FireCameraProjectile(PROJECTILE_SPEED, PROJECTILE_MUZZLE_OFFSET)
+            log("FireCameraProjectile -> " .. tostring(proj ~= nil))
+        else
+            log("FireCameraProjectile unavailable (World 바인딩 미등록?)")
         end
     end
 

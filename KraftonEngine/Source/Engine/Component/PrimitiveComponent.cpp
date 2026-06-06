@@ -166,6 +166,13 @@ void UPrimitiveComponent::SetKinematic(bool bInKinematic)
 	NotifyPhysicsBodyDirty();  // 바디 타입(static↔kinematic dynamic) 변경 → 재등록
 }
 
+void UPrimitiveComponent::SetEnableGravity(bool bInEnableGravity)
+{
+	if (bEnableGravity == bInEnableGravity) return;
+	bEnableGravity = bInEnableGravity;
+	NotifyPhysicsBodyDirty();  // 중력 플래그 변경 → 바디 재생성으로 PhysX 에 반영
+}
+
 void UPrimitiveComponent::MarkProxyDirty(EDirtyFlag Flag) const
 {
 	if (!SceneProxy) return;

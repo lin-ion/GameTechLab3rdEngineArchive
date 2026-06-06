@@ -189,6 +189,11 @@ public:
 	void SetEnableCCD(bool bInEnableCCD);
 	UFUNCTION(Pure, Category="Physics")
 	bool GetEnableCCD() const { return bEnableCCD; }
+	// 등속(중력 없는) 발사체 등에서 사용. body 재생성 시 BuildBodyDescFromComponent 가 읽어 PhysX 에 적용.
+	UFUNCTION(Callable, Exec, Category="Physics")
+	void SetEnableGravity(bool bInEnableGravity);
+	UFUNCTION(Pure, Category="Physics")
+	bool IsGravityEnabled() const { return bEnableGravity; }
 	UFUNCTION(Pure, Category="Physics")
 	FVector GetLinearVelocity() const;
 	UFUNCTION(Callable, Category="Physics")
@@ -312,6 +317,8 @@ protected:
 	FVector CenterOfMassOffset = { 0, 0, 0 };   // RootComponent local 좌표계 offset
 	UPROPERTY(Edit, Save, Category="Physics", DisplayName="Enable CCD")
 	bool bEnableCCD = false;
+	UPROPERTY(Edit, Save, Category="Physics", DisplayName="Enable Gravity")
+	bool bEnableGravity = true;   // false 면 dynamic 바디에 중력 미적용(등속 발사체용)
 	UPROPERTY(Edit, Save, Category="Collision", DisplayName="Collision Enabled", Enum=ECollisionEnabled)
 	ECollisionEnabled CollisionEnabled = ECollisionEnabled::NoCollision;
 	UPROPERTY(Edit, Save, Category="Collision", DisplayName="Object Type", Enum=ECollisionChannel)

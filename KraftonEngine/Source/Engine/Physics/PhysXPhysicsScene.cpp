@@ -1644,6 +1644,7 @@ FBodyCreationDesc FPhysXPhysicsScene::BuildBodyDescFromComponent_GameThread(UPri
     Desc.Mass                    = Comp->GetMass();
     Desc.CenterOfMassLocalOffset = Comp->GetCenterOfMass();
     Desc.bEnableCCD              = Comp->GetEnableCCD();
+    Desc.bEnableGravity          = Comp->IsGravityEnabled();
     Desc.bGenerateHitEvents      = true;
     Desc.bGenerateOverlapEvents  = Comp->GetGenerateOverlapEvents();
 

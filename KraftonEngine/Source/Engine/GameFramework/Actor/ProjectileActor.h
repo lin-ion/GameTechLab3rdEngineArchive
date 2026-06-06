@@ -18,6 +18,7 @@ public:
 	void InitDefaultComponents();
 	void PostDuplicate() override;
 	void BeginPlay() override;
+	void Tick(float DeltaTime) override;   // 직진 이동 + 수명 만료 시 자가 Release
 
 	// ── IPoolableProjectile ─────────────────────────────────────
 	AActor* AsActor() override { return this; }
