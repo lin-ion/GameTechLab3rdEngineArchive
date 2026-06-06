@@ -22,6 +22,26 @@
 #include <cstring>
 #include <cmath>
 
+namespace
+{
+    FString MakeCustomEventFunctionName(const FString& EventName)
+    {
+        FString Safe = "BP_Custom_";
+        for (char Ch : EventName)
+        {
+            if ((Ch >= 'a' && Ch <= 'z') || (Ch >= 'A' && Ch <= 'Z') || (Ch >= '0' && Ch <= '9') || Ch == '_')
+            {
+                Safe += Ch;
+            }
+            else
+            {
+                Safe += '_';
+            }
+        }
+        return Safe;
+    }
+}
+
 ULuaBlueprintComponent::ULuaBlueprintComponent()  = default;
 ULuaBlueprintComponent::~ULuaBlueprintComponent() = default;
 
@@ -79,6 +99,57 @@ bool ULuaBlueprintComponent::CallFunction(const FString& FunctionName)
         {
             sol::error Err = Result;
             UE_LOG("LuaBlueprint %s error in %s: %s", FunctionName.c_str(), GetRuntimeName().c_str(), Err.what());
+            FLuaDebugManager::OnLuaError(GetRuntimeName(), Err.what(), true);
+        }
+    }
+    return bOk;
+}
+
+bool ULuaBlueprintComponent::CallCustomEvent(const FString& EventName)
+{
+    sol::state& Lua = FLuaScriptManager::GetState();
+    sol::object Nil = sol::make_object(Lua, sol::nil);
+    return CallCustomEvent(EventName, Nil, Nil, Nil, Nil);
+}
+
+bool ULuaBlueprintComponent::CallCustomEvent(
+    const FString& EventName,
+    sol::object    Arg0,
+    sol::object    Arg1,
+    sol::object    Arg2,
+    sol::object    Arg3
+)
+{
+    if (!Env.valid() || EventName.empty())
+    {
+        return false;
+    }
+
+    const FString GeneratedName = MakeCustomEventFunctionName(EventName);
+    sol::object   Target        = Env[GeneratedName.c_str()];
+    FString       FunctionName  = GeneratedName;
+
+    if (!Target.valid() || Target.get_type() != sol::type::function)
+    {
+        Target       = Env[EventName.c_str()];
+        FunctionName = EventName;
+    }
+
+    if (!Target.valid() || Target.get_type() != sol::type::function)
+    {
+        return false;
+    }
+
+    sol::protected_function Fn = Target;
+    bool                    bOk;
+    {
+        FLuaCallScope                  Scope(this);
+        sol::protected_function_result Result = Fn(Arg0, Arg1, Arg2, Arg3);
+        bOk                                   = Result.valid();
+        if (!bOk)
+        {
+            sol::error Err = Result;
+            UE_LOG("LuaBlueprint custom event %s error in %s: %s", FunctionName.c_str(), GetRuntimeName().c_str(), Err.what());
             FLuaDebugManager::OnLuaError(GetRuntimeName(), Err.what(), true);
         }
     }

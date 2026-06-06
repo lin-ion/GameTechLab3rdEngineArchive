@@ -153,11 +153,13 @@
 3. 낙뢰 반복 횟수는 `Cycle Count`로 조정한다.
 4. 낙뢰 간격은 `Cycle Interval`로 조정한다.
 5. boss 앞 기준 위치는 `Strike Forward Distance`로 조정한다.
-6. 매 cycle마다 x/y 위치를 흔들고 싶으면 `Strike Random XY Radius`를 0보다 크게 둔다. z 위치는 기존 strike 기준을 유지한다.
-7. 낙뢰가 시작되는 높이는 `Strike Spawn Height`, 떨어지는 속도는 `Strike Fall Speed`로 조정한다.
-8. 충격파 높이는 `Shockwave Height Offset`으로 조정한다.
-9. 충격파 탄 수는 `Shockwave Projectile Count`, 퍼지는 속도는 `Shockwave Speed`로 조정한다.
-10. pattern이 무한히 지속되는 것을 막는 안전 시간은 `Max Pattern Duration`으로 조정한다.
+6. 매 cycle마다 x/y 위치를 흔들고 싶으면 `Strike Random XY Radius`를 0보다 크게 둔다.
+7. impact z는 strike x/y 지점 위에서 아래로 WorldStatic raycast를 해서 구한다. cast 시작 높이는 `Ground Trace Start Height`, 아래 탐색 거리는 `Ground Trace Down Distance`로 조정한다.
+8. 실제 지면보다 살짝 위/아래를 맞추고 싶으면 `Ground Height Offset`을 조정한다.
+9. 낙뢰가 시작되는 높이는 `Strike Spawn Height`, 떨어지는 속도는 `Strike Fall Speed`로 조정한다.
+10. 충격파 높이는 `Shockwave Height Offset`으로 조정한다.
+11. 충격파 탄 수는 `Shockwave Projectile Count`, 퍼지는 속도는 `Shockwave Speed`로 조정한다.
+12. pattern이 무한히 지속되는 것을 막는 안전 시간은 `Max Pattern Duration`으로 조정한다.
 
 ### Selector가 멈춘 것처럼 보일 때
 

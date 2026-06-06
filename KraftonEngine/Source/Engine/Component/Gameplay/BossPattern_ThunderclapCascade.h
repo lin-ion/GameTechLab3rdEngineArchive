@@ -36,6 +36,8 @@ private:
 	void TickCycleStarting(const FBossPatternContext& Context);
 	void TickActiveCycles(float DeltaTime, const FBossPatternContext& Context);
 	void StartCycle(const FBossPatternContext& Context);
+	FVector ResolveImpactLocation(const FBossPatternContext& Context, const FVector& CandidateLocation) const;
+	bool SampleGroundHeight(const FBossPatternContext& Context, const FVector& CandidateLocation, float& OutGroundZ) const;
 	void SpawnStrike(FThunderclapCycleState& Cycle, const FBossPatternContext& Context);
 	void SpawnShockwave(FThunderclapCycleState& Cycle, const FBossPatternContext& Context);
 	void FinishCycle(FThunderclapCycleState& Cycle, const FBossPatternContext& Context);
@@ -74,6 +76,12 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Ground Height Offset", Min=-1000.0f, Max=1000.0f, Speed=0.1f)
 	float GroundHeightOffset = 0.0f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Ground Trace Start Height", Min=0.0f, Max=10000.0f, Speed=0.1f)
+	float GroundTraceStartHeight = 100.0f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Ground Trace Down Distance", Min=0.0f, Max=10000.0f, Speed=0.1f)
+	float GroundTraceDownDistance = 500.0f;
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Shockwave Height Offset", Min=-1000.0f, Max=1000.0f, Speed=0.1f)
 	float ShockwaveHeightOffset = 0.25f;

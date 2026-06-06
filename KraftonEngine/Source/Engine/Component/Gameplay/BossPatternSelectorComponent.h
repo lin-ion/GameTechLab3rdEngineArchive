@@ -44,6 +44,7 @@ private:
 	void EnterFallbackIdle();
 	void TickFallbackIdle(float DeltaTime);
 	void StartPattern(UBossPatternComponentBase* Pattern, const FBossPatternContext& Context);
+	void BroadcastPatternCustomEvent(const UBossPatternComponentBase* Pattern) const;
 	void LogSelectionEvent(const char* EventName, const UBossPatternComponentBase* Pattern, const char* Reason) const;
 	void DrawPatternDebug(const FBossPatternContext& Context);
 	void LogPatternDebug(float DeltaTime);
