@@ -41,6 +41,7 @@ namespace
                 { "Normal", EMaterialGraphPinType::Float3 },
                 { "Roughness", EMaterialGraphPinType::Float },
                 { "Metallic", EMaterialGraphPinType::Float },
+                { "Specular", EMaterialGraphPinType::Float3 },
                 { "Emissive", EMaterialGraphPinType::Float3 },
                 { "Opacity", EMaterialGraphPinType::Float },
                 { "OpacityMask", EMaterialGraphPinType::Float },

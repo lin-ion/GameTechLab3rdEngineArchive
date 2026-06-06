@@ -227,6 +227,16 @@ void FLuaScriptManager::RegisterActorBindings_1(sol::state& Lua)
         &UCharacterMovementComponent::IsFalling,
         "Jump",
         &UCharacterMovementComponent::Jump,
+        "SetGravity",
+        [](UCharacterMovementComponent& C, float InGravity)
+        {
+            C.Gravity = InGravity;
+        },
+        "GetGravity",
+        [](UCharacterMovementComponent& C)
+        {
+            return C.Gravity;
+        },
         "StopMovementImmediately",
         &UCharacterMovementComponent::StopMovementImmediately,
         "SetMovementInputBlocked",
@@ -505,7 +515,27 @@ void FLuaScriptManager::RegisterActorBindings_1(sol::state& Lua)
     Lua.new_usertype<USpringArmComponent>(
         "SpringArmComponent",
         sol::base_classes,
-        sol::bases<USceneComponent, UActorComponent, UObject>()
+        sol::bases<USceneComponent, UActorComponent, UObject>(),
+        "SetTargetArmLength",
+        [](USpringArmComponent& C, float InTargetArmLength)
+        {
+            C.TargetArmLength = InTargetArmLength;
+        },
+        "GetTargetArmLength",
+        [](USpringArmComponent& C)
+        {
+            return C.TargetArmLength;
+        },
+        "SetSocketOffset",
+        [](USpringArmComponent& C, const FVector& InSocketOffset)
+        {
+            C.SocketOffset = InSocketOffset;
+        },
+        "GetSocketOffset",
+        [](USpringArmComponent& C)
+        {
+            return C.SocketOffset;
+        }
     );
     Lua.new_usertype<UCineCameraComponent>(
         "CineCameraComponent",

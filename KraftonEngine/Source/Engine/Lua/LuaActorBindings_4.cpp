@@ -51,6 +51,28 @@ void FLuaScriptManager::RegisterActorBindings_4(sol::state& Lua)
             }
         ),
 
+        "FaceYawToControlRotation",
+        [](AActor& Actor) -> bool
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            if (!Pawn)
+            {
+                return false;
+            }
+
+            FRotator Rotation = Actor.GetActorRotation();
+            Rotation.Yaw = Pawn->GetControlRotation().Yaw;
+            Actor.SetActorRotation(Rotation);
+            return true;
+        },
+
+        "GetControlRotation",
+        [](AActor& Actor)
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            return Pawn ? Pawn->GetControlRotation().ToVector() : FVector(0.0f, 0.0f, 0.0f);
+        },
+
         "Right",
         sol::property(
             [](AActor& Actor)
@@ -201,6 +223,18 @@ void FLuaScriptManager::RegisterActorBindings_4(sol::state& Lua)
             return Actor.GetComponentByClass<UCameraComponent>();
         },
 
+        "GetCameraComponent",
+        [](AActor& Actor)
+        {
+            return Actor.GetComponentByClass<UCameraComponent>();
+        },
+
+        "GetSpringArmComponent",
+        [](AActor& Actor)
+        {
+            return Actor.GetComponentByClass<USpringArmComponent>();
+        },
+
         "GetSkeletalMeshComponent",
         [](AActor& Actor)
         {
@@ -239,6 +273,34 @@ void FLuaScriptManager::RegisterActorBindings_4(sol::state& Lua)
         [](AActor& Actor)
         {
             return Actor.GetComponentByClass<UActionComponent>();
+        },
+
+        "GetOrCreateActionComponent",
+        [](AActor& Actor) -> UActionComponent*
+        {
+            if (UActionComponent* Action = Actor.GetComponentByClass<UActionComponent>())
+            {
+                return Action;
+            }
+            return Actor.AddComponent<UActionComponent>();
+        },
+
+        "Slomo",
+        [](AActor& Actor, float Duration, float TimeDilation) -> bool
+        {
+            UActionComponent* Action = Actor.GetComponentByClass<UActionComponent>();
+            if (!Action)
+            {
+                Action = Actor.AddComponent<UActionComponent>();
+            }
+
+            if (!Action)
+            {
+                return false;
+            }
+
+            Action->Slomo(Duration, TimeDilation);
+            return true;
         },
 
         "GetActionVisualEffectComponent",
