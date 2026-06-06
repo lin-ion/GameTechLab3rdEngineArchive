@@ -565,7 +565,8 @@ void UWorld::InitWorld()
 	// 참고: 실제 Prewarm 은 GameMode/게임 셋업 코드에서 호출 (아래 G 참조).
 //       UWorld::BeginPlay() 이전에 Prewarm 하면 SpawnActor 가 즉시 BeginPlay 를
 //       트리거하지 않고, 월드 BeginPlay 에서 컴포넌트까지 일괄 BeginPlay 된다.
-	
+	//ProjectilePool->Prewarm<AProjectileActor>(64);
+
 }
 
 void UWorld::BeginPlay()
@@ -579,6 +580,7 @@ void UWorld::BeginPlay()
 		AActor* Spawned = SpawnActorByClass(GameModeClass);
 		GameMode.Reset(Cast<AGameModeBase>(Spawned));
 	}
+	// test를 위해서 editor 관리를 위해 initworld에서 prewarm
 	ProjectilePool->Prewarm<AProjectileActor>(64);
 	if (PersistentLevel)
 	{
