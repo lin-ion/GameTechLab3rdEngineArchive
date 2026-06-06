@@ -5,6 +5,8 @@
 
 #include "Source/Engine/Component/Gameplay/BulletHellDebugComponent.generated.h"
 
+class UWorld;
+
 UENUM()
 enum class EBulletHellDebugDrawMode : int32
 {
@@ -68,6 +70,7 @@ public:
 
 private:
 	UBulletHellComponent* ResolveBulletHellComponent() const;
+	int32 ApplyDebugRuntimeModifier();
 	FBulletArchetype BuildDebugArchetype(int32 ArchetypeIndex) const;
 	int32 ResolveDebugArchetypeIndex(int32 SpawnIndex) const;
 	FBulletSpawnParams BuildSpawnParams(
@@ -77,12 +80,14 @@ private:
 		const FBulletArchetype& Archetype) const;
 	void DrawBulletDebug();
 	void DrawBulletCross(const FVector& Center, const FColor& Color, float Extent) const;
+	void DrawDebugHomingTarget(UWorld* World) const;
 	bool ShouldDrawDebugBounds() const;
 	bool ShouldDrawDebugVelocity() const;
 	bool ShouldDrawDebugCollision() const;
 	FVector ResolveDebugSpawnOrigin() const;
 	FVector ResolveDebugSpawnForward() const;
 	FVector ResolveDebugSpawnRight() const;
+	FVector ResolveDebugHomingTargetPosition() const;
 
 private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Auto Spawn Debug Preset")
@@ -106,6 +111,9 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Velocity Draw Scale", Min=1.0f, Max=100000.0f, Speed=1.0f)
 	float DebugVelocityDrawScale = 100.0f;
 
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Draw Debug Homing Target")
+	bool bDrawDebugHomingTarget = true;
+
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Spawn Count", Min=0, Max=1000000, Speed=1)
 	int32 DebugSpawnCount = 64;
 
@@ -121,11 +129,14 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Spawn Pattern", Enum=EBulletHellDebugSpawnPattern)
 	EBulletHellDebugSpawnPattern DebugSpawnPattern = EBulletHellDebugSpawnPattern::Radial;
 
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Behavior Type", Enum=EBulletBehaviorType)
-	EBulletBehaviorType DebugBehaviorType = EBulletBehaviorType::Linear;
-
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Archetype Mode", Enum=EBulletHellDebugArchetypeMode)
 	EBulletHellDebugArchetypeMode DebugArchetypeMode = EBulletHellDebugArchetypeMode::Primary;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Group Id", Min=0, Max=1000000, Speed=1)
+	int32 DebugGroupId = 0;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Spawn Homing")
+	bool bDebugSpawnHoming = false;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Target Forward Offset", Min=-100000.0f, Max=100000.0f, Speed=1.0f)
 	float DebugHomingTargetForwardOffset = 9.0f;
@@ -142,23 +153,8 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Max Turn Rate", Min=0.0f, Max=3600.0f, Speed=1.0f)
 	float DebugHomingMaxTurnRateDegrees = 360.0f;
 
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Cold Launch Delay", Min=0.0f, Max=60.0f, Speed=0.1f)
-	float DebugColdLaunchDelay = 0.75f;
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Cold Launch Initial Speed", Min=0.0f, Max=100000.0f, Speed=1.0f)
-	float DebugColdLaunchInitialSpeed = 0.0f;
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Cold Launch Speed", Min=0.0f, Max=100000.0f, Speed=1.0f)
-	float DebugColdLaunchSpeed = 9.0f;
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Timed Activation Time", Min=0.0f, Max=60.0f, Speed=0.1f)
-	float DebugTimedActivationTime = 1.0f;
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Timed Speed", Min=0.0f, Max=100000.0f, Speed=1.0f)
-	float DebugTimedSpeed = 9.0f;
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Timed Yaw Degrees", Min=-360.0f, Max=360.0f, Speed=1.0f)
-	float DebugTimedYawDegrees = 90.0f;
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Homing Cone Half Angle", Min=0.0f, Max=180.0f, Speed=1.0f)
+	float DebugHomingConeHalfAngleDegrees = 90.0f;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug", DisplayName="Debug Stress Spawn Count", Min=0, Max=1000000, Speed=1)
 	int32 DebugStressSpawnCount = 5000;
@@ -199,8 +195,8 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Damage", Min=0.0f, Max=1000000.0f, Speed=1.0f)
 	float SecondaryDamage = 2.0f;
 
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Behavior Type", Enum=EBulletBehaviorType)
-	EBulletBehaviorType SecondaryBehaviorType = EBulletBehaviorType::Linear;
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Homing")
+	bool bSecondaryHoming = false;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Commands", DisplayName="Debug Spawn Request", Min=0, Max=1000000, Speed=1)
 	int32 DebugSpawnRequest = 0;
@@ -220,6 +216,33 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Commands", DisplayName="Debug Sample Boss Pattern Request", Min=0, Max=1000000, Speed=1)
 	int32 DebugSampleBossPatternRequest = 0;
 
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Archetype Index", Min=-1, Max=1000000, Speed=1)
+	int32 DebugRuntimeModifierArchetypeIndex = -1;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Group Id", Min=-1, Max=1000000, Speed=1)
+	int32 DebugRuntimeModifierGroupId = -1;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Only Homing")
+	bool bDebugRuntimeModifierOnlyHoming = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Set Speed")
+	bool bDebugRuntimeModifierSetSpeed = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Speed", Min=0.0f, Max=100000.0f, Speed=1.0f)
+	float DebugRuntimeModifierSpeed = 9.0f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Set Homing Cone")
+	bool bDebugRuntimeModifierSetHomingCone = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Set Homing Enabled")
+	bool bDebugRuntimeModifierSetHomingEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Homing Enabled")
+	bool bDebugRuntimeModifierHomingEnabled = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Runtime Modifier", DisplayName="Runtime Modifier Apply Request", Min=0, Max=1000000, Speed=1)
+	int32 DebugRuntimeModifierApplyRequest = 0;
+
 	uint32 DebugKillRandomState = 0x9e3779b9u;
 	int32 LastDebugSpawnRequest = 0;
 	int32 LastDebugStressSpawnRequest = 0;
@@ -227,4 +250,5 @@ private:
 	int32 LastDebugClearRequest = 0;
 	int32 LastDebugLogFirstBulletRequest = 0;
 	int32 LastDebugSampleBossPatternRequest = 0;
+	int32 LastDebugRuntimeModifierApplyRequest = 0;
 };

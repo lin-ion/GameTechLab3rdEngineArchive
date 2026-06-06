@@ -18,12 +18,6 @@ namespace
 		return Direction.IsNearlyZero() ? Fallback : Direction.Normalized();
 	}
 
-	FVector RotateDirectionYaw(const FVector& Forward, const FVector& Right, float Degrees)
-	{
-		const float Radians = Degrees * (3.1415926535f / 180.0f);
-		return SafeDirection(Forward * std::cos(Radians) + Right * std::sin(Radians), Forward);
-	}
-
 	bool IsProperty(const char* PropertyName, const char* MemberName, const char* DisplayName)
 	{
 		return PropertyName
@@ -99,6 +93,18 @@ void UBulletHellDebugComponent::PostEditProperty(const char* PropertyName)
 		const int32 SpawnedCount = SpawnSampleBossPattern();
 		UE_LOG("BulletHell sample boss pattern request: Spawned=%d", SpawnedCount);
 	}
+	else if (IsProperty(PropertyName, "DebugRuntimeModifierApplyRequest", "Runtime Modifier Apply Request") &&
+		DebugRuntimeModifierApplyRequest != LastDebugRuntimeModifierApplyRequest)
+	{
+		LastDebugRuntimeModifierApplyRequest = DebugRuntimeModifierApplyRequest;
+		const int32 UpdatedCount = ApplyDebugRuntimeModifier();
+		UE_LOG("BulletHell runtime modifier request: Updated=%d", UpdatedCount);
+	}
+	else if (IsProperty(PropertyName, "DebugHomingConeHalfAngleDegrees", "Debug Homing Cone Half Angle"))
+	{
+		const int32 UpdatedCount = BulletHell->SetActiveHomingConeHalfAngle(DebugHomingConeHalfAngleDegrees, -1);
+		UE_LOG("BulletHell debug homing cone updated: ConeHalfAngle=%.2f Updated=%d", DebugHomingConeHalfAngleDegrees, UpdatedCount);
+	}
 }
 
 void UBulletHellDebugComponent::TickComponent(
@@ -120,6 +126,27 @@ UBulletHellComponent* UBulletHellDebugComponent::ResolveBulletHellComponent() co
 	return OwnerActor ? OwnerActor->GetComponentByClass<UBulletHellComponent>() : nullptr;
 }
 
+int32 UBulletHellDebugComponent::ApplyDebugRuntimeModifier()
+{
+	UBulletHellComponent* BulletHell = ResolveBulletHellComponent();
+	if (!BulletHell)
+	{
+		return 0;
+	}
+
+	FBulletRuntimeModifier Modifier;
+	Modifier.ArchetypeIndex = DebugRuntimeModifierArchetypeIndex;
+	Modifier.GroupId = DebugRuntimeModifierGroupId;
+	Modifier.bOnlyHoming = bDebugRuntimeModifierOnlyHoming;
+	Modifier.bSetSpeed = bDebugRuntimeModifierSetSpeed;
+	Modifier.Speed = DebugRuntimeModifierSpeed;
+	Modifier.bSetHomingConeHalfAngle = bDebugRuntimeModifierSetHomingCone;
+	Modifier.HomingConeHalfAngleDegrees = DebugHomingConeHalfAngleDegrees;
+	Modifier.bSetHomingEnabled = bDebugRuntimeModifierSetHomingEnabled;
+	Modifier.bHoming = bDebugRuntimeModifierHomingEnabled;
+	return BulletHell->ApplyRuntimeModifier(Modifier);
+}
+
 FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeIndex) const
 {
 	FBulletArchetype Archetype;
@@ -132,7 +159,6 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 		Archetype.Lifetime = SecondaryLifetime;
 		Archetype.RenderScale = (std::max)(0.01f, SecondaryRenderScale);
 		Archetype.Damage = (std::max)(0.0f, SecondaryDamage);
-		Archetype.BehaviorType = SecondaryBehaviorType;
 		return Archetype;
 	}
 
@@ -143,7 +169,6 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 	Archetype.Lifetime = DebugSpawnLifetime;
 	Archetype.RenderScale = (std::max)(0.01f, PrimaryRenderScale);
 	Archetype.Damage = (std::max)(0.0f, PrimaryDamage);
-	Archetype.BehaviorType = DebugBehaviorType;
 	return Archetype;
 }
 
@@ -168,39 +193,22 @@ FBulletSpawnParams UBulletHellDebugComponent::BuildSpawnParams(
 	const FBulletArchetype& Archetype) const
 {
 	const FVector Forward = SafeDirection(Direction, ResolveDebugSpawnForward());
-	const FVector Right = ResolveDebugSpawnRight();
-	const FVector Up = FVector::UpVector;
 
 	FBulletSpawnParams Params;
 	Params.Position = Position;
 	Params.Archetype = Archetype;
 	Params.ArchetypeIndex = ArchetypeIndex;
-	Params.BehaviorType = Archetype.BehaviorType;
+	Params.GroupId = (std::max)(0, DebugGroupId);
 	Params.Velocity = Forward * Archetype.Speed;
 
-	switch (Params.BehaviorType)
+	const bool bSpawnHoming = ArchetypeIndex == 1 ? bSecondaryHoming : bDebugSpawnHoming;
+	if (bSpawnHoming)
 	{
-	case EBulletBehaviorType::Homing:
-		Params.HomingTargetPosition =
-			ResolveDebugSpawnOrigin()
-			+ Forward * DebugHomingTargetForwardOffset
-			+ Right * DebugHomingTargetRightOffset
-			+ Up * DebugHomingTargetUpOffset;
+		Params.HomingTargetPosition = ResolveDebugHomingTargetPosition();
+		Params.bHoming = true;
 		Params.HomingStrength = DebugHomingStrength;
 		Params.HomingMaxTurnRateDegrees = DebugHomingMaxTurnRateDegrees;
-		break;
-	case EBulletBehaviorType::ColdLaunch:
-		Params.Velocity = Forward * (std::max)(0.0f, DebugColdLaunchInitialSpeed);
-		Params.ColdLaunchDelay = DebugColdLaunchDelay;
-		Params.ColdLaunchVelocity = Forward * (std::max)(0.0f, DebugColdLaunchSpeed > 0.0f ? DebugColdLaunchSpeed : Archetype.Speed);
-		break;
-	case EBulletBehaviorType::TimedVelocityChange:
-		Params.TimedActivationTime = DebugTimedActivationTime;
-		Params.TimedVelocity = RotateDirectionYaw(Forward, Right, DebugTimedYawDegrees) * (std::max)(0.0f, DebugTimedSpeed);
-		break;
-	case EBulletBehaviorType::Linear:
-	default:
-		break;
+		Params.HomingConeHalfAngleDegrees = DebugHomingConeHalfAngleDegrees;
 	}
 
 	return Params;
@@ -320,9 +328,11 @@ void UBulletHellDebugComponent::LogFirstBulletDebugInfo() const
 
 	const FBulletInstance& Bullet = BulletHell->GetBulletInstances().front();
 	UE_LOG(
-		"BulletHell first bullet: Id=%u Generation=%u Position=(%.2f,%.2f,%.2f) Previous=(%.2f,%.2f,%.2f) Velocity=(%.2f,%.2f,%.2f) Radius=%.2f Age=%.2f Lifetime=%.2f Behavior=%d Phase=%d RenderIndex=%d",
+		"BulletHell first bullet: Id=%u Generation=%u Archetype=%d Group=%d Position=(%.2f,%.2f,%.2f) Previous=(%.2f,%.2f,%.2f) Velocity=(%.2f,%.2f,%.2f) Radius=%.2f Age=%.2f Lifetime=%.2f Homing=%s RenderIndex=%d",
 		Bullet.Id,
 		Bullet.Generation,
+		Bullet.ArchetypeIndex,
+		Bullet.GroupId,
 		Bullet.Position.X,
 		Bullet.Position.Y,
 		Bullet.Position.Z,
@@ -335,8 +345,7 @@ void UBulletHellDebugComponent::LogFirstBulletDebugInfo() const
 		Bullet.Radius,
 		Bullet.Age,
 		Bullet.Lifetime,
-		static_cast<int32>(Bullet.BehaviorType),
-		static_cast<int32>(Bullet.BehaviorPhase),
+		Bullet.bHoming ? "true" : "false",
 		Bullet.RenderInstanceIndex);
 }
 
@@ -355,22 +364,29 @@ int32 UBulletHellDebugComponent::SpawnSampleBossPattern()
 	int32 SpawnedCount = 0;
 	constexpr int32 RingCount = 24;
 	FBulletArchetype RingArchetype = BuildDebugArchetype(0);
-	RingArchetype.BehaviorType = EBulletBehaviorType::Linear;
 	for (int32 Index = 0; Index < RingCount; ++Index)
 	{
 		const float Angle = TwoPi * static_cast<float>(Index) / static_cast<float>(RingCount);
 		const FVector Direction = SafeDirection(Forward * std::cos(Angle) + Right * std::sin(Angle), Forward);
-		BulletHell->SpawnBullet(BuildSpawnParams(Origin, Direction, 0, RingArchetype));
+		FBulletSpawnParams Params = BuildSpawnParams(Origin, Direction, 0, RingArchetype);
+		Params.GroupId = 0;
+		Params.bHoming = false;
+		BulletHell->SpawnBullet(Params);
 		++SpawnedCount;
 	}
 
 	FBulletArchetype HomingArchetype = BuildDebugArchetype(1);
-	HomingArchetype.BehaviorType = EBulletBehaviorType::Homing;
 	for (int32 Index = -2; Index <= 2; ++Index)
 	{
 		const FVector Position = Origin + Right * (static_cast<float>(Index) * 0.5f);
 		FBulletSpawnParams Params = BuildSpawnParams(Position, Forward, 1, HomingArchetype);
-		Params.HomingTargetPosition = Origin + Forward * 8.0f + Right * (static_cast<float>(Index) * 0.75f);
+		Params.GroupId = 1;
+		Params.bHoming = true;
+		// Params.HomingTargetPosition = Origin + Forward * 8.0f + Right * (static_cast<float>(Index) * 0.75f);
+		Params.HomingTargetPosition = ResolveDebugHomingTargetPosition();
+		Params.HomingStrength = DebugHomingStrength;
+		Params.HomingMaxTurnRateDegrees = DebugHomingMaxTurnRateDegrees;
+		Params.HomingConeHalfAngleDegrees = DebugHomingConeHalfAngleDegrees;
 		BulletHell->SpawnBullet(Params);
 		++SpawnedCount;
 	}
@@ -403,6 +419,11 @@ void UBulletHellDebugComponent::DrawBulletDebug()
 	int32 EligibleCount = 0;
 	int32 DrawnCount = 0;
 
+	if (bDrawDebugHomingTarget)
+	{
+		DrawDebugHomingTarget(World);
+	}
+
 	for (const FBulletInstance& Bullet : BulletHell->GetBulletInstances())
 	{
 		const bool bHighlighted = HighlightedBulletId > 0 && Bullet.Id == static_cast<uint32>(HighlightedBulletId);
@@ -433,6 +454,14 @@ void UBulletHellDebugComponent::DrawBulletDebug()
 		{
 			DrawDebugLine(World, Bullet.PreviousPosition, Bullet.Position, FColor::Gray(), 0.0f);
 		}
+		if (bDrawDebugHomingTarget && Bullet.bHoming)
+		{
+			const FColor TargetColor = Bullet.bHoming ? FColor::White() : FColor::Gray();
+			const float TargetExtent = Bullet.bHoming ? 0.14f : 0.08f;
+			DrawBulletCross(Bullet.HomingTargetPosition, TargetColor, TargetExtent);
+			DrawDebugSphere(World, Bullet.HomingTargetPosition, TargetExtent, 8, TargetColor, 0.0f);
+			DrawDebugLine(World, Bullet.Position, Bullet.HomingTargetPosition, TargetColor, 0.0f);
+		}
 		++DrawnCount;
 	}
 
@@ -450,6 +479,21 @@ void UBulletHellDebugComponent::DrawBulletCross(const FVector& Center, const FCo
 	DrawDebugLine(World, Center - FVector(Extent, 0.0f, 0.0f), Center + FVector(Extent, 0.0f, 0.0f), Color, 0.0f);
 	DrawDebugLine(World, Center - FVector(0.0f, Extent, 0.0f), Center + FVector(0.0f, Extent, 0.0f), Color, 0.0f);
 	DrawDebugLine(World, Center - FVector(0.0f, 0.0f, Extent), Center + FVector(0.0f, 0.0f, Extent), Color, 0.0f);
+}
+
+void UBulletHellDebugComponent::DrawDebugHomingTarget(UWorld* World) const
+{
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector TargetPosition = ResolveDebugHomingTargetPosition();
+	const FColor TargetColor(255, 0, 180);
+	const float TargetExtent = 0.18f;
+	DrawBulletCross(TargetPosition, TargetColor, TargetExtent);
+	DrawDebugSphere(World, TargetPosition, TargetExtent, 12, TargetColor, 0.0f);
+	DrawDebugLine(World, ResolveDebugSpawnOrigin(), TargetPosition, TargetColor, 0.0f);
 }
 
 bool UBulletHellDebugComponent::ShouldDrawDebugBounds() const
@@ -488,4 +532,12 @@ FVector UBulletHellDebugComponent::ResolveDebugSpawnRight() const
 {
 	const AActor* OwnerActor = GetOwner();
 	return OwnerActor ? SafeDirection(OwnerActor->GetActorRight(), FVector::RightVector) : FVector::RightVector;
+}
+
+FVector UBulletHellDebugComponent::ResolveDebugHomingTargetPosition() const
+{
+	return ResolveDebugSpawnOrigin()
+		+ ResolveDebugSpawnForward() * DebugHomingTargetForwardOffset
+		+ ResolveDebugSpawnRight() * DebugHomingTargetRightOffset
+		+ FVector::UpVector * DebugHomingTargetUpOffset;
 }

@@ -110,8 +110,6 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 	Params.Archetype.Speed = Velocity.Length();
 	Params.Archetype.Lifetime = Lifetime;
 	Params.Archetype.RenderScale = RenderScale;
-	Params.Archetype.BehaviorType = EBulletBehaviorType::Linear;
-	Params.BehaviorType = EBulletBehaviorType::Linear;
 	return SpawnBullet(Params);
 }
 
@@ -132,18 +130,15 @@ FBulletHandle UBulletHellComponent::SpawnBullet(const FBulletSpawnParams& Params
 	Bullet.Age = 0.0f;
 	Bullet.Lifetime = Archetype.Lifetime;
 	Bullet.ArchetypeIndex = Params.ArchetypeIndex;
+	Bullet.GroupId = Params.GroupId;
 	Bullet.RenderSlotIndex = -1;
 	Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
-	Bullet.BehaviorType = Params.BehaviorType;
-	Bullet.BehaviorPhase = Params.BehaviorType == EBulletBehaviorType::ColdLaunch ? EBulletPhase::Waiting : EBulletPhase::Active;
 	Bullet.HomingTargetPosition = Params.HomingTargetPosition;
 	Bullet.HomingTargetActor = Params.HomingTargetActor;
+	Bullet.bHoming = Params.bHoming;
 	Bullet.HomingStrength = (std::max)(0.0f, Params.HomingStrength);
 	Bullet.HomingMaxTurnRateDegrees = (std::max)(0.0f, Params.HomingMaxTurnRateDegrees);
-	Bullet.ColdLaunchDelay = (std::max)(0.0f, Params.ColdLaunchDelay);
-	Bullet.ColdLaunchVelocity = Params.ColdLaunchVelocity;
-	Bullet.TimedActivationTime = Params.TimedActivationTime;
-	Bullet.TimedVelocity = Params.TimedVelocity;
+	Bullet.HomingConeHalfAngleDegrees = ClampFloat(Params.HomingConeHalfAngleDegrees, 0.0f, 180.0f);
 	Bullet.RenderInstanceIndex = -1;
 	Bullet.bAlive = true;
 
@@ -240,6 +235,75 @@ const FBulletInstance* UBulletHellComponent::FindBullet(const FBulletHandle& Han
 	return Bullet.bAlive && Bullet.Generation == Handle.Generation ? &Bullet : nullptr;
 }
 
+int32 UBulletHellComponent::ApplyRuntimeModifier(const FBulletRuntimeModifier& Modifier)
+{
+	int32 UpdatedCount = 0;
+
+	for (FBulletInstance& Bullet : Bullets)
+	{
+		if (!Bullet.bAlive)
+		{
+			continue;
+		}
+
+		if (Modifier.ArchetypeIndex >= 0 && Bullet.ArchetypeIndex != Modifier.ArchetypeIndex)
+		{
+			continue;
+		}
+
+		if (Modifier.GroupId >= 0 && Bullet.GroupId != Modifier.GroupId)
+		{
+			continue;
+		}
+
+		if (Modifier.bOnlyHoming && !Bullet.bHoming)
+		{
+			continue;
+		}
+
+		if (Modifier.bSetSpeed)
+		{
+			FVector DirectionFallback = Bullet.Velocity;
+			if (DirectionFallback.IsNearlyZero())
+			{
+				if (Bullet.bHoming)
+				{
+					const AActor* TargetActor = Bullet.HomingTargetActor.Get();
+					const FVector TargetPosition = TargetActor ? TargetActor->GetActorLocation() : Bullet.HomingTargetPosition;
+					DirectionFallback = TargetPosition - Bullet.Position;
+				}
+			}
+
+			Bullet.Velocity = SafeDirection(DirectionFallback, FVector::ForwardVector) * (std::max)(0.0f, Modifier.Speed);
+		}
+
+		if (Modifier.bSetHomingConeHalfAngle)
+		{
+			Bullet.HomingConeHalfAngleDegrees = ClampFloat(Modifier.HomingConeHalfAngleDegrees, 0.0f, 180.0f);
+		}
+
+		if (Modifier.bSetHomingEnabled && Bullet.bHoming != Modifier.bHoming)
+		{
+			Bullet.bHoming = Modifier.bHoming;
+			++DebugStats.RuntimeModificationCount;
+		}
+
+		++UpdatedCount;
+	}
+
+	return UpdatedCount;
+}
+
+int32 UBulletHellComponent::SetActiveHomingConeHalfAngle(float ConeHalfAngleDegrees, int32 ArchetypeIndex)
+{
+	FBulletRuntimeModifier Modifier;
+	Modifier.ArchetypeIndex = ArchetypeIndex;
+	Modifier.bOnlyHoming = true;
+	Modifier.bSetHomingConeHalfAngle = true;
+	Modifier.HomingConeHalfAngleDegrees = ConeHalfAngleDegrees;
+	return ApplyRuntimeModifier(Modifier);
+}
+
 void UBulletHellComponent::ClearBullets()
 {
 	DebugStats.TotalKilled += static_cast<uint32>(Bullets.size());
@@ -276,7 +340,7 @@ void UBulletHellComponent::TickBullets(float DeltaTime)
 	for (int32 Index = 0; Index < static_cast<int32>(Bullets.size());)
 	{
 		FBulletInstance& Bullet = Bullets[Index];
-		UpdateBulletBehavior(Bullet, DeltaTime);
+		UpdateHomingBehavior(Bullet, DeltaTime);
 		Bullet.PreviousPosition = Bullet.Position;
 		Bullet.Position += Bullet.Velocity * DeltaTime;
 		Bullet.Age += DeltaTime;
@@ -309,40 +373,14 @@ void UBulletHellComponent::TickBullets(float DeltaTime)
 	UpdateBehaviorDebugStats();
 }
 
-void UBulletHellComponent::UpdateBulletBehavior(FBulletInstance& Bullet, float DeltaTime)
-{
-	switch (Bullet.BehaviorType)
-	{
-	case EBulletBehaviorType::Homing:
-		UpdateHomingBehavior(Bullet, DeltaTime);
-		break;
-	case EBulletBehaviorType::ColdLaunch:
-		if (Bullet.BehaviorPhase == EBulletPhase::Waiting && Bullet.Age + DeltaTime >= Bullet.ColdLaunchDelay)
-		{
-			Bullet.Velocity = Bullet.ColdLaunchVelocity;
-			Bullet.BehaviorPhase = EBulletPhase::Active;
-			++DebugStats.BehaviorTransitionCount;
-		}
-		break;
-	case EBulletBehaviorType::TimedVelocityChange:
-		if (Bullet.BehaviorPhase == EBulletPhase::Active &&
-			Bullet.TimedActivationTime >= 0.0f &&
-			Bullet.Age + DeltaTime >= Bullet.TimedActivationTime)
-		{
-			Bullet.Velocity = Bullet.TimedVelocity;
-			Bullet.BehaviorPhase = EBulletPhase::Complete;
-			++DebugStats.BehaviorTransitionCount;
-		}
-		break;
-	case EBulletBehaviorType::Linear:
-	default:
-		break;
-	}
-}
-
 void UBulletHellComponent::UpdateHomingBehavior(FBulletInstance& Bullet, float DeltaTime)
 {
 	if (DeltaTime <= 0.0f)
+	{
+		return;
+	}
+
+	if (!Bullet.bHoming)
 	{
 		return;
 	}
@@ -358,6 +396,18 @@ void UBulletHellComponent::UpdateHomingBehavior(FBulletInstance& Bullet, float D
 
 	const FVector CurrentDirection = SafeDirection(Bullet.Velocity, DesiredDirection);
 	const float Dot = ClampFloat(CurrentDirection.Dot(DesiredDirection), -1.0f, 1.0f);
+	const float ConeHalfAngleDegrees = ClampFloat(Bullet.HomingConeHalfAngleDegrees, 0.0f, 180.0f);
+	if (ConeHalfAngleDegrees < 180.0f)
+	{
+		const float ConeCos = std::cos(ConeHalfAngleDegrees * (3.1415926535f / 180.0f));
+		if (Dot < ConeCos)
+		{
+			Bullet.bHoming = false;
+			++DebugStats.RuntimeModificationCount;
+			return;
+		}
+	}
+
 	const float AngleRadians = std::acos(Dot);
 	if (AngleRadians <= 0.0001f)
 	{
@@ -378,10 +428,8 @@ void UBulletHellComponent::UpdateHomingBehavior(FBulletInstance& Bullet, float D
 void UBulletHellComponent::UpdateBehaviorDebugStats()
 {
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
-	DebugStats.ActiveLinearCount = 0;
+	DebugStats.ActiveNonHomingCount = 0;
 	DebugStats.ActiveHomingCount = 0;
-	DebugStats.ActiveColdLaunchCount = 0;
-	DebugStats.ActiveTimedVelocityChangeCount = 0;
 	DebugStats.ActivePrimaryArchetypeCount = 0;
 	DebugStats.ActiveSecondaryArchetypeCount = 0;
 
@@ -396,21 +444,13 @@ void UBulletHellComponent::UpdateBehaviorDebugStats()
 			++DebugStats.ActivePrimaryArchetypeCount;
 		}
 
-		switch (Bullet.BehaviorType)
+		if (Bullet.bHoming)
 		{
-		case EBulletBehaviorType::Homing:
 			++DebugStats.ActiveHomingCount;
-			break;
-		case EBulletBehaviorType::ColdLaunch:
-			++DebugStats.ActiveColdLaunchCount;
-			break;
-		case EBulletBehaviorType::TimedVelocityChange:
-			++DebugStats.ActiveTimedVelocityChangeCount;
-			break;
-		case EBulletBehaviorType::Linear:
-		default:
-			++DebugStats.ActiveLinearCount;
-			break;
+		}
+		else
+		{
+			++DebugStats.ActiveNonHomingCount;
 		}
 	}
 }
@@ -788,7 +828,6 @@ void UBulletHellComponent::RebuildRendererFromBullets()
 		Archetype.Radius = Bullet.Radius;
 		Archetype.Lifetime = Bullet.Lifetime;
 		Archetype.RenderScale = Bullet.RenderScale;
-		Archetype.BehaviorType = Bullet.BehaviorType;
 		const int32 SlotIndex = FindOrCreateRenderSlot(Archetype);
 		Bullet.RenderSlotIndex = SlotIndex;
 		Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
@@ -978,11 +1017,9 @@ void UBulletHellComponent::RecordOverlayStats() const
 	Snapshot.CollisionHitCount = DebugStats.CollisionHitCount;
 	Snapshot.CollisionKilledCount = DebugStats.CollisionKilledCount;
 	Snapshot.EraseKilledCount = DebugStats.EraseKilledCount;
-	Snapshot.BehaviorTransitionCount = DebugStats.BehaviorTransitionCount;
-	Snapshot.ActiveLinearCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveLinearCount));
+	Snapshot.RuntimeModificationCount = DebugStats.RuntimeModificationCount;
+	Snapshot.ActiveNonHomingCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveNonHomingCount));
 	Snapshot.ActiveHomingCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveHomingCount));
-	Snapshot.ActiveColdLaunchCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveColdLaunchCount));
-	Snapshot.ActiveTimedVelocityChangeCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveTimedVelocityChangeCount));
 	Snapshot.ActivePrimaryArchetypeCount = static_cast<uint32>((std::max)(0, DebugStats.ActivePrimaryArchetypeCount));
 	Snapshot.ActiveSecondaryArchetypeCount = static_cast<uint32>((std::max)(0, DebugStats.ActiveSecondaryArchetypeCount));
 	Snapshot.DebugDrawSelectedCount = static_cast<uint32>((std::max)(0, DebugStats.DebugDrawSelectedCount));

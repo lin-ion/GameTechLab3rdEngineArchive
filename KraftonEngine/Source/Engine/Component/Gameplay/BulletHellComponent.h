@@ -16,23 +16,6 @@ enum class EBulletHellRenderOrientationMode : int32
 	VelocityYaw
 };
 
-UENUM()
-enum class EBulletBehaviorType : int32
-{
-	Linear,
-	Homing,
-	ColdLaunch,
-	TimedVelocityChange
-};
-
-UENUM()
-enum class EBulletPhase : int32
-{
-	Active,
-	Waiting,
-	Complete
-};
-
 class AActor;
 class UInstancedStaticMeshComponent;
 
@@ -45,7 +28,6 @@ struct FBulletArchetype
 	float Lifetime = 1.0f;
 	float RenderScale = 1.0f;
 	float Damage = 1.0f;
-	EBulletBehaviorType BehaviorType = EBulletBehaviorType::Linear;
 };
 
 struct FBulletRenderSlot
@@ -77,19 +59,16 @@ struct FBulletInstance
 	float Damage = 1.0f;
 	float Age = 0.0f;
 	float Lifetime = 1.0f;
-	int32 ArchetypeIndex = 0;
+	int32 ArchetypeIndex = 0;	// Archetype = 비슷한 종류의 탄환들끼리의 묶음
+	int32 GroupId = 0;			// Group = 동일 Archetype 내에서 특정 탄들만 골라서 파라미터를 변경하거나 하고 싶을 때 쓰는 '라벨'
 	int32 RenderSlotIndex = -1;
 	float RenderScale = 1.0f;
-	EBulletBehaviorType BehaviorType = EBulletBehaviorType::Linear;
-	EBulletPhase BehaviorPhase = EBulletPhase::Active;
 	FVector HomingTargetPosition = FVector::ZeroVector;
 	TWeakObjectPtr<AActor> HomingTargetActor;
+	bool bHoming = false;
 	float HomingStrength = 0.0f;
 	float HomingMaxTurnRateDegrees = 0.0f;
-	float ColdLaunchDelay = 0.0f;
-	FVector ColdLaunchVelocity = FVector::ZeroVector;
-	float TimedActivationTime = -1.0f;
-	FVector TimedVelocity = FVector::ZeroVector;
+	float HomingConeHalfAngleDegrees = 180.0f;
 	int32 RenderInstanceIndex = -1;
 	bool bAlive = true;
 };
@@ -100,15 +79,26 @@ struct FBulletSpawnParams
 	FVector Velocity = FVector::ForwardVector;
 	FBulletArchetype Archetype;
 	int32 ArchetypeIndex = 0;
-	EBulletBehaviorType BehaviorType = EBulletBehaviorType::Linear;
+	int32 GroupId = 0;
 	FVector HomingTargetPosition = FVector::ZeroVector;
 	TWeakObjectPtr<AActor> HomingTargetActor;
+	bool bHoming = false;
 	float HomingStrength = 0.0f;
 	float HomingMaxTurnRateDegrees = 0.0f;
-	float ColdLaunchDelay = 0.0f;
-	FVector ColdLaunchVelocity = FVector::ZeroVector;
-	float TimedActivationTime = -1.0f;
-	FVector TimedVelocity = FVector::ZeroVector;
+	float HomingConeHalfAngleDegrees = 180.0f;
+};
+
+struct FBulletRuntimeModifier
+{
+	int32 ArchetypeIndex = -1;
+	int32 GroupId = -1;
+	bool bOnlyHoming = false;
+	bool bSetSpeed = false;
+	float Speed = 0.0f;
+	bool bSetHomingConeHalfAngle = false;
+	float HomingConeHalfAngleDegrees = 180.0f;
+	bool bSetHomingEnabled = false;
+	bool bHoming = true;
 };
 
 struct FBulletDebugStats
@@ -121,11 +111,9 @@ struct FBulletDebugStats
 	uint32 CollisionHitCount = 0;
 	uint32 CollisionKilledCount = 0;
 	uint32 EraseKilledCount = 0;
-	uint32 BehaviorTransitionCount = 0;
-	int32 ActiveLinearCount = 0;
+	uint32 RuntimeModificationCount = 0;
+	int32 ActiveNonHomingCount = 0;
 	int32 ActiveHomingCount = 0;
-	int32 ActiveColdLaunchCount = 0;
-	int32 ActiveTimedVelocityChangeCount = 0;
 	int32 ActivePrimaryArchetypeCount = 0;
 	int32 ActiveSecondaryArchetypeCount = 0;
 	int32 DebugDrawSelectedCount = 0;
@@ -159,6 +147,10 @@ public:
 	bool IsBulletAlive(const FBulletHandle& Handle) const;
 	const FBulletInstance* FindBullet(const FBulletHandle& Handle) const;
 	const TArray<FBulletInstance>& GetBulletInstances() const { return Bullets; }
+	int32 ApplyRuntimeModifier(const FBulletRuntimeModifier& Modifier);
+
+	UFUNCTION(Callable, Category="Bullet Hell|Homing")
+	int32 SetActiveHomingConeHalfAngle(float ConeHalfAngleDegrees, int32 ArchetypeIndex);
 
 	UFUNCTION(Callable, Category="Bullet Hell")
 	void ClearBullets();
@@ -181,7 +173,6 @@ private:
 	};
 
 	void TickBullets(float DeltaTime);
-	void UpdateBulletBehavior(FBulletInstance& Bullet, float DeltaTime);
 	void UpdateHomingBehavior(FBulletInstance& Bullet, float DeltaTime);
 	void UpdateBehaviorDebugStats();
 	EBulletCollisionKillReason CheckBulletCollision(const FBulletInstance& Bullet);

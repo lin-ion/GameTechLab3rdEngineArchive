@@ -13,11 +13,9 @@ struct FBulletHellStatsSnapshot
 	uint32 CollisionHitCount = 0;
 	uint32 CollisionKilledCount = 0;
 	uint32 EraseKilledCount = 0;
-	uint32 BehaviorTransitionCount = 0;
-	uint32 ActiveLinearCount = 0;
+	uint32 RuntimeModificationCount = 0;
+	uint32 ActiveNonHomingCount = 0;
 	uint32 ActiveHomingCount = 0;
-	uint32 ActiveColdLaunchCount = 0;
-	uint32 ActiveTimedVelocityChangeCount = 0;
 	uint32 ActivePrimaryArchetypeCount = 0;
 	uint32 ActiveSecondaryArchetypeCount = 0;
 	uint32 DebugDrawSelectedCount = 0;
@@ -41,11 +39,9 @@ struct FBulletHellStats
 	static uint32 CollisionHitCount;
 	static uint32 CollisionKilledCount;
 	static uint32 EraseKilledCount;
-	static uint32 BehaviorTransitionCount;
-	static uint32 ActiveLinearCount;
+	static uint32 RuntimeModificationCount;
+	static uint32 ActiveNonHomingCount;
 	static uint32 ActiveHomingCount;
-	static uint32 ActiveColdLaunchCount;
-	static uint32 ActiveTimedVelocityChangeCount;
 	static uint32 ActivePrimaryArchetypeCount;
 	static uint32 ActiveSecondaryArchetypeCount;
 	static uint32 DebugDrawSelectedCount;

@@ -717,12 +717,10 @@ void FOverlayStatSystem::BuildBulletHellLines(TArray<FString>& OutLines) const
 		FBulletHellStats::EraseKilledCount);
 	OutLines.push_back(FString(Buffer));
 
-	snprintf(Buffer, sizeof(Buffer), "Behavior : Transitions %u   Linear/Homing/Cold/Timed %u/%u/%u/%u",
-		FBulletHellStats::BehaviorTransitionCount,
-		FBulletHellStats::ActiveLinearCount,
-		FBulletHellStats::ActiveHomingCount,
-		FBulletHellStats::ActiveColdLaunchCount,
-		FBulletHellStats::ActiveTimedVelocityChangeCount);
+	snprintf(Buffer, sizeof(Buffer), "Runtime : Mods %u   NonHoming/Homing %u/%u",
+		FBulletHellStats::RuntimeModificationCount,
+		FBulletHellStats::ActiveNonHomingCount,
+		FBulletHellStats::ActiveHomingCount);
 	OutLines.push_back(FString(Buffer));
 
 	snprintf(Buffer, sizeof(Buffer), "Archetype : Primary %u   Secondary %u",
