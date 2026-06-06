@@ -470,13 +470,25 @@
             "bIsActive" : true,
             "bTickEnable" : true
           }
+        }, {
+          "ClassName" : "UBulletHellDamageReceiverComponent",
+          "ObjectId" : 25,
+          "Properties" : {
+            "HitCount" : 0,
+            "TotalDamageForwarded" : 0.000000,
+            "bAutoActivate" : true,
+            "bEditorOnly" : false,
+            "bHiddenInComponentTree" : false,
+            "bIsActive" : true,
+            "bTickEnable" : true
+          }
         }],
       "ObjectId" : 16,
       "Properties" : {
-        "CurrentHealth" : 10.000000,
+        "CurrentHealth" : 100.000000,
         "HealthHitCount" : 0,
-        "MaxHealth" : 10.000000,
-        "PendingActorLocation" : [-45.000000, 0.000000, 2.000000],
+        "MaxHealth" : 100.000000,
+        "PendingActorLocation" : [-45.000000, 0.000000, 2.052592],
         "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
         "PendingActorScale" : [1.000000, 1.000000, 1.000000],
         "PendingActorVisible" : true,
@@ -667,7 +679,7 @@
           "CollisionEnabled" : 0,
           "Mass" : 1.000000,
           "ObjectType" : 0,
-          "RelativeTransform.Location" : [-45.000000, 0.000000, 2.000000],
+          "RelativeTransform.Location" : [-45.000000, 0.000000, 2.052592],
           "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
           "ResponseContainer" : {
             "Responses[0]" : 2,
@@ -698,7 +710,7 @@
       "Name" : "ABossCharacter_0",
       "NonSceneComponents" : [{
           "ClassName" : "UCharacterMovementComponent",
-          "ObjectId" : 29,
+          "ObjectId" : 30,
           "Properties" : {
             "BrakingFriction" : 8.000000,
             "FloorProbeDistance" : 0.100000,
@@ -721,7 +733,7 @@
           }
         }, {
           "ClassName" : "UBossPatternSelectorComponent",
-          "ObjectId" : 30,
+          "ObjectId" : 31,
           "Properties" : {
             "CancelPatternRequest" : false,
             "DebugBossHealthRatio" : 1.000000,
@@ -752,7 +764,7 @@
           }
         }, {
           "ClassName" : "UBulletHellComponent",
-          "ObjectId" : 31,
+          "ObjectId" : 32,
           "Properties" : {
             "CollisionTraceChannel" : 3,
             "RenderOrientationMode" : 0,
@@ -777,7 +789,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_AimedRingVolley",
-          "ObjectId" : 32,
+          "ObjectId" : 33,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "AngleOffsetDegrees" : 0.000000,
@@ -792,15 +804,15 @@
             "PhaseWeight2" : 1.000000,
             "ProjectileCount" : 16,
             "ProjectileLifetime" : 6.000000,
-            "ProjectileRadius" : 0.250000,
+            "ProjectileRadius" : 1.000000,
             "ProjectileRenderScale" : 0.200000,
-            "ProjectileSpeed" : 12.000000,
-            "RecoveryDuration" : 0.350000,
+            "ProjectileSpeed" : 17.000000,
+            "RecoveryDuration" : 1.000000,
             "RingRadius" : 3.000000,
             "SpawnForwardOffset" : 0.000000,
             "SpawnUpOffset" : 1.000000,
             "Weight" : 1.000000,
-            "WindupDuration" : 0.350000,
+            "WindupDuration" : 0.700000,
             "bAutoActivate" : true,
             "bBlockImmediateRepeat" : true,
             "bEditorOnly" : false,
@@ -813,12 +825,12 @@
           }
         }, {
           "ClassName" : "UBossPattern_HomingOrbTrail",
-          "ObjectId" : 33,
+          "ObjectId" : 34,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "Cooldown" : 2.500000,
-            "HomingConeHalfAngleDegrees" : 180.000000,
-            "HomingMaxTurnRateDegrees" : 180.000000,
+            "HomingConeHalfAngleDegrees" : 60.000000,
+            "HomingMaxTurnRateDegrees" : 90.000000,
             "HomingStrength" : 8.000000,
             "InitialCooldown" : 0.000000,
             "LaunchDelay" : 0.600000,
@@ -830,17 +842,17 @@
             "PhaseWeight2" : 1.000000,
             "ProjectileCount" : 12,
             "ProjectileLifetime" : 6.000000,
-            "ProjectileRadius" : 0.250000,
+            "ProjectileRadius" : 1.000000,
             "ProjectileRenderScale" : 0.200000,
             "ProjectileSpeed" : 10.000000,
-            "RecoveryDuration" : 0.350000,
+            "RecoveryDuration" : 3.000000,
             "SpawnDuration" : 2.000000,
             "SpawnForwardOffset" : 0.000000,
             "SpawnIntervalOverride" : 0.000000,
             "SpawnRadiusAroundBoss" : 1.500000,
             "SpawnUpOffset" : 1.000000,
             "Weight" : 1.000000,
-            "WindupDuration" : 0.250000,
+            "WindupDuration" : 0.700000,
             "bAutoActivate" : true,
             "bBlockImmediateRepeat" : true,
             "bEditorOnly" : false,
@@ -852,7 +864,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_SphericalPulseBarrage",
-          "ObjectId" : 34,
+          "ObjectId" : 35,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "Cooldown" : 3.000000,
@@ -864,7 +876,7 @@
             "PhaseWeight1" : 1.000000,
             "PhaseWeight2" : 1.000000,
             "ProjectileLifetime" : 5.000000,
-            "ProjectileRadius" : 0.220000,
+            "ProjectileRadius" : 1.000000,
             "ProjectileRenderScale" : 0.180000,
             "ProjectileSpeed" : 8.000000,
             "ProjectilesPerPulse" : 48,
@@ -872,10 +884,10 @@
             "PulseDuration" : 2.000000,
             "PulseIntervalOverride" : 0.000000,
             "RandomSeedOffset" : 0,
-            "RecoveryDuration" : 0.400000,
+            "RecoveryDuration" : 1.000000,
             "SphereRadius" : 2.000000,
             "Weight" : 1.000000,
-            "WindupDuration" : 0.300000,
+            "WindupDuration" : 0.700000,
             "bAutoActivate" : true,
             "bBlockImmediateRepeat" : true,
             "bEditorOnly" : false,
@@ -888,7 +900,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_ThunderclapCascade",
-          "ObjectId" : 35,
+          "ObjectId" : 36,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "Cooldown" : 3.500000,
@@ -903,7 +915,7 @@
             "PhaseWeight0" : 1.000000,
             "PhaseWeight1" : 1.000000,
             "PhaseWeight2" : 1.000000,
-            "RecoveryDuration" : 0.450000,
+            "RecoveryDuration" : 2.000000,
             "ShockwaveHeightOffset" : 0.250000,
             "ShockwaveLifetime" : 4.000000,
             "ShockwaveProjectileCount" : 24,
@@ -914,12 +926,12 @@
             "StrikeFallSpeed" : 18.000000,
             "StrikeForwardDistance" : 6.000000,
             "StrikeLifetime" : 1.500000,
-            "StrikeProjectileRadius" : 0.350000,
+            "StrikeProjectileRadius" : 1.000000,
             "StrikeRandomXYRadius" : 0.000000,
             "StrikeRenderScale" : 0.300000,
             "StrikeSpawnHeight" : 8.000000,
             "Weight" : 1.000000,
-            "WindupDuration" : 0.350000,
+            "WindupDuration" : 0.700000,
             "bAutoActivate" : true,
             "bBlockImmediateRepeat" : true,
             "bEditorOnly" : false,
@@ -931,7 +943,7 @@
           }
         }, {
           "ClassName" : "ULuaBlueprintComponent",
-          "ObjectId" : 36,
+          "ObjectId" : 37,
           "Properties" : {
             "BlueprintPath" : "Content/Data/BossJiao/BP_BossJiao.uasset",
             "bAutoActivate" : true,
@@ -941,7 +953,7 @@
             "bTickEnable" : true
           }
         }],
-      "ObjectId" : 25,
+      "ObjectId" : 26,
       "Properties" : {
         "CurrentHealth" : 10.000000,
         "HealthHitCount" : 0,
@@ -963,7 +975,7 @@
         "Children" : [{
             "Children" : [],
             "ClassName" : "USkeletalMeshComponent",
-            "ObjectId" : 27,
+            "ObjectId" : 28,
             "Properties" : {
               "AnimInstance" : {
                 "ClassName" : "UAnimGraphInstance",
@@ -1037,7 +1049,7 @@
           }, {
             "Children" : [],
             "ClassName" : "UInstancedStaticMeshComponent",
-            "ObjectId" : 28,
+            "ObjectId" : 29,
             "Properties" : {
               "AttachSocketName" : "Name_None",
               "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -1073,7 +1085,7 @@
             }
           }],
         "ClassName" : "UCapsuleComponent",
-        "ObjectId" : 26,
+        "ObjectId" : 27,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, -179.999969, 0.000000],
@@ -1118,9 +1130,9 @@
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [-48.266602, -0.412580, 3.732970],
+    "Location" : [-44.990189, 3.637584, 1.984270],
     "NearClip" : 0.100000,
-    "Rotation" : [0.000000, 19.814810, 6.598894]
+    "Rotation" : [0.000000, 7.364720, -82.200920]
   },
   "Version" : 2,
   "WorldSettings" : {

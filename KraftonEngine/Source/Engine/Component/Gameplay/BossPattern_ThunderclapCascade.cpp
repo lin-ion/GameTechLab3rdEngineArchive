@@ -1,6 +1,7 @@
 #include "BossPattern_ThunderclapCascade.h"
 
 #include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
 
 #include <algorithm>
 #include <cmath>
@@ -197,13 +198,65 @@ void UBossPattern_ThunderclapCascade::TickActiveCycles(float DeltaTime, const FB
 void UBossPattern_ThunderclapCascade::StartCycle(const FBossPatternContext& Context)
 {
 	FThunderclapCycleState Cycle;
-	Cycle.ImpactLocation =
+	const FVector CandidateLocation =
 		Context.BossLocation
-		+ SafeDirection(Context.BossForward, FVector::ForwardVector) * StrikeForwardDistance;
-	Cycle.ImpactLocation += RandomPointInXYDisk(StrikeRandomXYRadius);
-	Cycle.ImpactLocation.Z += GroundHeightOffset;
+		+ SafeDirection(Context.BossForward, FVector::ForwardVector) * StrikeForwardDistance
+		+ RandomPointInXYDisk(StrikeRandomXYRadius);
+	Cycle.ImpactLocation = ResolveImpactLocation(Context, CandidateLocation);
 	SpawnStrike(Cycle, Context);
 	ActiveCycles.push_back(Cycle);
+}
+
+FVector UBossPattern_ThunderclapCascade::ResolveImpactLocation(const FBossPatternContext& Context, const FVector& CandidateLocation) const
+{
+	FVector ImpactLocation = CandidateLocation;
+
+	float GroundZ = CandidateLocation.Z;
+	if (SampleGroundHeight(Context, CandidateLocation, GroundZ))
+	{
+		ImpactLocation.Z = GroundZ;
+	}
+
+	ImpactLocation.Z += GroundHeightOffset;
+	return ImpactLocation;
+}
+
+bool UBossPattern_ThunderclapCascade::SampleGroundHeight(const FBossPatternContext& Context, const FVector& CandidateLocation, float& OutGroundZ) const
+{
+	UWorld* World = Context.BossActor ? Context.BossActor->GetWorld() : GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	const float StartHeight = (std::max)(0.0f, GroundTraceStartHeight);
+	const float DownDistance = (std::max)(0.0f, GroundTraceDownDistance);
+	const float MaxDistance = StartHeight + DownDistance;
+	if (MaxDistance <= 0.0f)
+	{
+		return false;
+	}
+
+	const FVector TraceStart = CandidateLocation + FVector::UpVector * StartHeight;
+	FHitResult Hit;
+	if (!World->PhysicsRaycastByObjectTypes(
+		TraceStart,
+		FVector::DownVector,
+		MaxDistance,
+		Hit,
+		ObjectTypeBit(ECollisionChannel::WorldStatic),
+		Context.BossActor))
+	{
+		return false;
+	}
+
+	if (!Hit.bHit)
+	{
+		return false;
+	}
+
+	OutGroundZ = Hit.WorldHitLocation.Z;
+	return true;
 }
 
 void UBossPattern_ThunderclapCascade::SpawnStrike(FThunderclapCycleState& Cycle, const FBossPatternContext& Context)
