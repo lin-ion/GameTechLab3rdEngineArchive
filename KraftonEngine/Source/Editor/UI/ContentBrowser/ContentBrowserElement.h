@@ -243,3 +243,14 @@ protected:
 	const char* GetTypeLabel() const override { return "Lua Blueprint"; }
 	uint32 GetAccentColor() const override { return IM_COL32(90, 180, 230, 255); }
 };
+
+class UIAssetElement final : public ContentBrowserElement
+{
+public:
+	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
+	const char* GetDragItemType() override { return "UIContentItem"; }
+
+protected:
+	const char* GetTypeLabel() const override { return "UI"; }
+	uint32 GetAccentColor() const override { return IM_COL32(120, 200, 140, 255); }
+};

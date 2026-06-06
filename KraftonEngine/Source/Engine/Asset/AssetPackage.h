@@ -19,6 +19,7 @@ enum class EAssetPackageType : uint32
 	VectorField,
 	LuaBlueprint,
 	PhysicsAsset,
+	UI,
 };
 
 enum class EAssetPackageSerializationVersion : uint32

@@ -8,6 +8,10 @@
 #include "FloatCurve/FloatCurveAsset.h"
 #include "LuaBlueprint/LuaBlueprintAsset.h"
 #include "LuaBlueprint/LuaBlueprintManager.h"
+#include "Serialization/SceneSaveManager.h"
+#include "UI/Canvas/UICanvas.h"
+#include "UI/UIAsset.h"
+#include "UI/UIAssetManager.h"
 #include "Object/Reflection/ObjectFactory.h"
 #include "Platform/Paths.h"
 #include "Materials/MaterialManager.h"
@@ -333,6 +337,50 @@ bool FAssetFactory::CreateLuaBlueprint(const FString& DirectoryPath, const FStri
 	NewAsset->InitializeDefault();
 
 	const bool bSaved = FLuaBlueprintManager::Get().Save(NewAsset);
+	UObjectManager::Get().DestroyObject(NewAsset);
+
+	if (!bSaved)
+	{
+		return false;
+	}
+
+	OutCreatedPath = FPaths::ToUtf8(AssetPath.wstring());
+	return true;
+}
+
+bool FAssetFactory::CreateUI(const FString& DirectoryPath, const FString& AssetName, FString& OutCreatedPath)
+{
+	const std::filesystem::path Directory(FPaths::ToWide(DirectoryPath));
+	if (!std::filesystem::exists(Directory) || !std::filesystem::is_directory(Directory))
+	{
+		return false;
+	}
+
+	const std::filesystem::path AssetPath = BuildUniqueAssetPath(
+		Directory,
+		AssetName.empty() ? "NewUI" : AssetName,
+		L".uasset");
+
+	// 기본 UI 트리: 루트 Canvas 1개. 기존 컴포넌트-트리 직렬화로 본문 JSON 을 만든다(진단 B).
+	// 임시 Canvas 는 어디에도 참조되지 않으므로 다음 GC 에서 회수된다(ownerless 컴포넌트의
+	// BeginDestroy/EndPlay 경로를 피하려고 명시적 Destroy 는 하지 않음).
+	UUICanvas* Canvas = UObjectManager::Get().CreateObject<UUICanvas>();
+	if (!Canvas)
+	{
+		return false;
+	}
+	const FString CanvasData = FSceneSaveManager::SerializeUITree(Canvas);
+
+	UUIAsset* NewAsset = UObjectManager::Get().CreateObject<UUIAsset>();
+	if (!NewAsset)
+	{
+		return false;
+	}
+
+	NewAsset->SetSourcePath(FPaths::ToUtf8(AssetPath.wstring()));
+	NewAsset->SetCanvasData(CanvasData);
+
+	const bool bSaved = FUIAssetManager::Get().Save(NewAsset);
 	UObjectManager::Get().DestroyObject(NewAsset);
 
 	if (!bSaved)

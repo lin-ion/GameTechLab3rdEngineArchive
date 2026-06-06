@@ -52,6 +52,10 @@ public:
 
 	static TArray<FString> GetSceneFileList();
 
+	// 단일 컴포넌트 서브트리(예: UI Canvas)를 기존 씬 컴포넌트-트리 직렬화로 JSON 문자열로 만든다.
+	// 독립 .uasset(UUIAsset) 저장이 이 진입점을 재사용한다(진단 B, 사이클 1). 월드/액터 불필요.
+	static FString SerializeUITree(USceneComponent* Root);
+
 	struct FSceneSaveContext
 	{
 		TMap<const UObject*, uint32> ObjectToId;

@@ -448,6 +448,21 @@ json::JSON FSceneSaveManager::SerializeSceneComponentTree(USceneComponent* Comp,
 	return c;
 }
 
+FString FSceneSaveManager::SerializeUITree(USceneComponent* Root)
+{
+	// .Scene 임베드(사이클 8)와 동일한 컴포넌트-트리 재귀를 그대로 재사용해 한 서브트리를
+	// JSON 으로 만든다. 씬 전체가 아니라 독립 .uasset(UUIAsset) 한 개를 위해 호출되며,
+	// 월드/액터 없이 동작한다(저장 방향은 Owner 불필요).
+	if (!IsSceneSerializableObject(Root))
+	{
+		return FString();
+	}
+
+	FSceneSaveContext SaveContext;
+	json::JSON        Node = SerializeSceneComponentTree(Root, SaveContext);
+	return Node.dump();
+}
+
 json::JSON FSceneSaveManager::SerializeProperties(UObject* Obj, FSceneSaveContext& Context)
 {
 	using namespace json;

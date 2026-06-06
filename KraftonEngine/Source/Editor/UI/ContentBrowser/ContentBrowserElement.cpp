@@ -11,6 +11,8 @@
 #include "Animation/Graph/AnimGraphManager.h"
 #include "LuaBlueprint/LuaBlueprintAsset.h"
 #include "LuaBlueprint/LuaBlueprintManager.h"
+#include "UI/UIAsset.h"
+#include "UI/UIAssetManager.h"
 #include "Platform/Paths.h"
 #include "Serialization/SceneSaveManager.h"
 #include "Mesh/Static/StaticMesh.h"
@@ -704,6 +706,19 @@ void LuaBlueprintElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 	if (ULuaBlueprintAsset* BlueprintAsset = FLuaBlueprintManager::Get().Load(FilePath))
 	{
 		Context.EditorEngine->OpenAssetEditorForObject(BlueprintAsset);
+	}
+}
+
+void UIAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+{
+	if (!Context.EditorEngine)
+	{
+		return;
+	}
+	const FString FilePath = FPaths::ToUtf8(ContentItem.Path.wstring());
+	if (UUIAsset* UIAsset = FUIAssetManager::Get().Load(FilePath))
+	{
+		Context.EditorEngine->OpenAssetEditorForObject(UIAsset);
 	}
 }
 

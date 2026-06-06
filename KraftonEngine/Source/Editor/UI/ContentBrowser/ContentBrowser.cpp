@@ -13,6 +13,8 @@
 #include "FloatCurve/FloatCurveManager.h"
 #include "LuaBlueprint/LuaBlueprintAsset.h"
 #include "LuaBlueprint/LuaBlueprintManager.h"
+#include "UI/UIAsset.h"
+#include "UI/UIAssetManager.h"
 #include "Mesh/MeshManager.h"
 #include "Mesh/Skeletal/SkeletalMesh.h"
 #include "Editor/UI/Asset/Mesh/MeshEditorWidget.h"
@@ -510,6 +512,9 @@ void FEditorContentBrowserWidget::RefreshContent()
 				case EAssetPackageType::Material:
 					Element = std::make_shared<MaterialElement>();
 					break;
+				case EAssetPackageType::UI:
+					Element = std::make_shared<UIAssetElement>();
+					break;
 				default:
 					Element = std::make_shared<ContentBrowserElement>();
 					break;
@@ -691,7 +696,22 @@ void FEditorContentBrowserWidget::DrawContents()
 					}
 				}
 			}
-			if (ImGui::MenuItem("Particle System"))
+			if (ImGui::MenuItem("UI"))
+				{
+					FString CreatedPath;
+					if (FAssetFactory::CreateUI(FPaths::ToUtf8(BrowserContext.CurrentPath), "NewUI", CreatedPath))
+					{
+						Refresh();
+						if (BrowserContext.EditorEngine)
+						{
+							if (UUIAsset* Asset = FUIAssetManager::Get().Load(CreatedPath))
+							{
+								BrowserContext.EditorEngine->OpenAssetEditorForObject(Asset);
+							}
+						}
+					}
+				}
+				if (ImGui::MenuItem("Particle System"))
 			{
 				FString CreatedPath;
 				if (FAssetFactory::CreateParticleSystem(
