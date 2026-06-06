@@ -326,9 +326,18 @@ void FUIEditorWidget::RenderViewportPanel()
 		return;
 	}
 
-	// 휠 줌(뷰포트 호버 시). 기본 스케일 = 뷰포트 높이를 레퍼런스 1080 에 맞춤(진단 §C).
-	const ImGuiIO& IO = ImGui::GetIO();
-	if (ImGui::IsWindowHovered() && IO.MouseWheel != 0.0f)
+	// 입력 캡처 표면 — 뷰포트 위 좌클릭/드래그를 InvisibleButton 이 흡수해 ImGui 창 이동으로
+	// 전파되지 않게 한다(사이클 ⑦). 영역 점유도 겸하므로 끝의 별도 Dummy 불필요.
+	if (Avail.x > 0.0f && Avail.y > 0.0f)
+	{
+		ImGui::InvisibleButton("##UIViewportSurface", Avail, ImGuiButtonFlags_MouseButtonLeft);
+	}
+	const bool     bHovered = ImGui::IsItemHovered();
+	const bool     bActive  = ImGui::IsItemActive();
+	const ImGuiIO& IO       = ImGui::GetIO();
+
+	// 휠 줌(표면 호버 시). 기본 스케일 = 뷰포트 높이를 레퍼런스 1080 에 맞춤(진단 §C).
+	if (bHovered && IO.MouseWheel != 0.0f)
 	{
 		ViewportZoom *= (1.0f + IO.MouseWheel * 0.1f);
 		if (ViewportZoom < 0.1f) ViewportZoom = 0.1f;
@@ -342,11 +351,19 @@ void FUIEditorWidget::RenderViewportPanel()
 	// 단일 캔버스 레이아웃(전역 레지스트리 미사용 seam) → 각 요소 ScreenRect 갱신.
 	FUICanvasManager::Get().LayoutCanvas(Canvas, Scale);
 
-	// 좌클릭 → 뷰포트 마우스를 캔버스 원점 기준으로 역변환해 히트테스트 → 선택(진단 §C/E, 사이클 ④).
-	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	// 프레스 순간 → 히트테스트로 선택(빈 곳은 해제). 좌표는 캔버스 원점 기준 역변환(진단 §C/E, 사이클 ④).
+	if (ImGui::IsItemActivated())
 	{
 		const ImVec2 M = ImGui::GetMousePos();
 		Selected = FUICanvasManager::Get().HitTestCanvas(Canvas, FVector2(M.x - Origin.x, M.y - Origin.y));
+	}
+
+	// 드래그 → 선택 요소 이동. 화면 델타를 Scale 로 나눠 레퍼런스 공간 델타로(사이클 7 TickEditor 로직 재사용).
+	if (bActive && Selected && (IO.MouseDelta.x != 0.0f || IO.MouseDelta.y != 0.0f))
+	{
+		const float S = (Scale > 0.0f) ? Scale : 1.0f;
+		Selected->SetPosition(Selected->GetPosition() + FVector2(IO.MouseDelta.x / S, IO.MouseDelta.y / S));
+		MarkDirty();
 	}
 
 	// 레퍼런스 해상도(1920x1080) 경계 + 그리드.
@@ -373,8 +390,7 @@ void FUIEditorWidget::RenderViewportPanel()
 	}
 	DL->PopClipRect();
 
-	DL->AddText(ImVec2(Origin.x + 6.0f, Origin.y + 6.0f), IM_COL32(170, 170, 180, 255), "Canvas Viewport (wheel: zoom)");
-	ImGui::Dummy(Avail);  // 레이아웃 영역 점유.
+	DL->AddText(ImVec2(Origin.x + 6.0f, Origin.y + 6.0f), IM_COL32(170, 170, 180, 255), "Canvas Viewport (drag: move, wheel: zoom)");
 }
 
 void FUIEditorWidget::RenderDetailsPanel()
