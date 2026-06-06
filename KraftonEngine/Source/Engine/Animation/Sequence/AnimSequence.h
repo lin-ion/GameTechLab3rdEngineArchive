@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Animation/Sequence/AnimSequenceBase.h"
 #include "Animation/Sequence/BoneAnimationTrack.h"
@@ -109,8 +109,8 @@ public:
 
     // ─────────────────────────────────────────────────────────────
     // Root Motion (UE 의 bEnableRootMotion 과 동등).
-    //   true 면 GetBonePose 에서 RootMotionBoneName 본의 translation 을 bind 로 고정
-    //   (= Force Root Lock 의 strict 버전) 하고, 대신 ExtractRootMotion 으로 delta 를
+    //   true 면 GetBonePose 에서 RootMotionBoneName 본의 translation/rotation 을
+    //   애니메이션 시작 샘플로 고정하고, 대신 ExtractRootMotion 으로 같은 트랙의 delta 를
     //   추출해 AnimInstance 가 owning actor 의 transform 에 반영한다.
     //   → 캐릭터가 anim 의 motion 으로 실제로 world 에서 움직임.
     // Force Root Lock 과 상호 배제 (둘 다 root translation 을 다루므로 동시 활성 안 됨).
