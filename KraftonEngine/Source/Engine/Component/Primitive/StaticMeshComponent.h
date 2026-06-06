@@ -43,6 +43,7 @@ public:
 	UStaticMesh* GetStaticMesh() const;
 	UFUNCTION(Pure, Category="Mesh")
 	FString GetStaticMeshPathValue() const { return StaticMeshPath.ToString(); }
+	bool ShouldUseMeshTriangleCollision() const { return bUseMeshTriangleCollision; }
 
 	UFUNCTION(Callable, Category="Materials")
 	void SetMaterial(int32 ElementIndex, UMaterial* InMaterial);
@@ -74,6 +75,8 @@ private:
 	TArray<UMaterial*> OverrideMaterials;
 	UPROPERTY(Edit, Save, EditFixedSize, Category="Materials", DisplayName="Materials", AssetType="Material")
 	TArray<FSoftObjectPtr> MaterialSlots;
+	UPROPERTY(Edit, Save, Category="Collision", DisplayName="Use Mesh Triangle Collision")
+	bool bUseMeshTriangleCollision = false;
 
 	FVector CachedLocalCenter = { 0, 0, 0 };
 	FVector CachedLocalExtent = { 0.5f, 0.5f, 0.5f };

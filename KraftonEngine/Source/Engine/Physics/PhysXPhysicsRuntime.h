@@ -18,6 +18,7 @@ class FPhysXVehicleRuntime;
 namespace physx
 {
     class PxPhysics;
+    class PxCooking;
     class PxScene;
     class PxDefaultCpuDispatcher;
     class PxMaterial;
@@ -45,6 +46,7 @@ public:
     void Initialize(
         UWorld*            InWorld,
         physx::PxPhysics*  InPhysics,
+        physx::PxCooking*  InCooking,
         physx::PxScene*    InScene,
         physx::PxMaterial* InDefaultMaterial
     );
@@ -247,6 +249,7 @@ private:
     mutable std::mutex RuntimeStateMutex;
 
     physx::PxPhysics*  Physics         = nullptr;
+    physx::PxCooking*  Cooking         = nullptr;
     physx::PxScene*    Scene           = nullptr;
     physx::PxMaterial* DefaultMaterial = nullptr;
 

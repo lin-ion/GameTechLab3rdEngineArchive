@@ -2,7 +2,7 @@
 
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
-#include "Component/Gameplay/BulletHellHealthProbeComponent.h"
+#include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Core/Logging/Log.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -610,6 +610,58 @@ const FBulletInstance* UBulletHellComponent::FindBullet(const FBulletHandle& Han
 	return Bullet.bAlive && Bullet.Generation == Handle.Generation ? &Bullet : nullptr;
 }
 
+bool UBulletHellComponent::LaunchBullet(const FBulletHandle& Handle, const FBulletLaunchParams& Params)
+{
+	if (!Handle.IsValid())
+	{
+		return false;
+	}
+
+	auto It = BulletIndexById.find(Handle.Id);
+	if (It == BulletIndexById.end())
+	{
+		return false;
+	}
+
+	const int32 BulletIndex = It->second;
+	if (BulletIndex < 0 || BulletIndex >= static_cast<int32>(Bullets.size()))
+	{
+		BulletIndexById.erase(It);
+		return false;
+	}
+
+	FBulletInstance& Bullet = Bullets[BulletIndex];
+	if (!Bullet.bAlive || Bullet.Generation != Handle.Generation)
+	{
+		return false;
+	}
+
+	Bullet.Velocity = Params.Velocity;
+	if (Params.bSetHoming)
+	{
+		Bullet.bHoming = Params.bHoming;
+		Bullet.HomingTargetPosition = Params.HomingTargetPosition;
+		Bullet.HomingTargetActor = Params.HomingTargetActor;
+		Bullet.HomingStrength = (std::max)(0.0f, Params.HomingStrength);
+		Bullet.HomingMaxTurnRateDegrees = (std::max)(0.0f, Params.HomingMaxTurnRateDegrees);
+		Bullet.HomingConeHalfAngleDegrees = ClampFloat(Params.HomingConeHalfAngleDegrees, 0.0f, 180.0f);
+	}
+
+	if (Params.bResetAge)
+	{
+		Bullet.Age = 0.0f;
+	}
+
+	if (Params.bSetLifetime)
+	{
+		Bullet.Lifetime = Params.Lifetime;
+	}
+
+	++DebugStats.RuntimeModificationCount;
+	UpdateBehaviorDebugStats();
+	return true;
+}
+
 int32 UBulletHellComponent::ApplyRuntimeModifier(const FBulletRuntimeModifier& Modifier)
 {
 	int32 UpdatedCount = 0;
@@ -975,9 +1027,9 @@ void UBulletHellComponent::ApplyDamageToHitTarget(const FBulletInstance& Bullet,
 		return;
 	}
 
-	if (UBulletHellHealthProbeComponent* HealthProbe = TargetActor->GetComponentByClass<UBulletHellHealthProbeComponent>())
+	if (UBulletHellDamageReceiverComponent* DamageReceiver = TargetActor->GetComponentByClass<UBulletHellDamageReceiverComponent>())
 	{
-		HealthProbe->ApplyDamage(Bullet.Damage);
+		DamageReceiver->ApplyDamage(Bullet.Damage);
 	}
 }
 

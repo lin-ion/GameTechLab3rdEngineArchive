@@ -17,6 +17,7 @@
 #include "GameFramework/Light/PointLightActor.h"
 #include "GameFramework/Light/SpotLightActor.h"
 #include "GameFramework/Actor/SkeletalMeshActor.h"
+#include "GameFramework/Pawn/BossCharacter.h"
 #include "GameFramework/Pawn/Character.h"
 #include "GameFramework/Pawn/LuaCharacter.h"
 #include "GameFramework/Pawn/WheeledVehiclePawn.h"
@@ -1738,6 +1739,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Trigger Volume (Particle)", EViewportPlaceActorType::TriggerVolumeParticle);
 		PlaceActorMenuItem("Skeletal Mesh Actor", EViewportPlaceActorType::SkeletalMesh);
 		PlaceActorMenuItem("Character",           EViewportPlaceActorType::Character);
+		PlaceActorMenuItem("Boss Character", EViewportPlaceActorType::BossCharacter);
 		PlaceActorMenuItem("Lua Character", EViewportPlaceActorType::LuaCharacter);
 		PlaceActorMenuItem("Wheeled Vehicle", EViewportPlaceActorType::WheeledVehicle);
 		PlaceActorMenuItem("Particle System",       EViewportPlaceActorType::ParticleSystem);
@@ -2021,6 +2023,16 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		if (Actor)
 		{
 			// SkeletalMeshActor 와 동일 default mesh — 검증된 fbx.
+			Actor->InitDefaultComponents("Content/Data/Samba Dancing (10).fbx");
+			SpawnedActor = Actor;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::BossCharacter:
+	{
+		ABossCharacter* Actor = World->SpawnActor<ABossCharacter>();
+		if (Actor)
+		{
 			Actor->InitDefaultComponents("Content/Data/Samba Dancing (10).fbx");
 			SpawnedActor = Actor;
 		}

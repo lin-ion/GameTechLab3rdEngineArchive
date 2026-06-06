@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <PxPhysicsAPI.h>
+#include <cooking/PxCooking.h>
 
 using namespace physx;
 
@@ -19,6 +20,57 @@ namespace
     float ClampPhysXGeometryExtent(float Value)
     {
         return (std::max)(Value, MinPhysXGeometryExtent);
+    }
+
+    bool CreateTriangleMeshGeometry(
+        PxPhysics* Physics,
+        PxCooking* Cooking,
+        const FPhysicsShapeDesc& Desc,
+        PxTriangleMesh*& OutTriangleMesh,
+        PxTriangleMeshGeometry& OutGeometry
+    )
+    {
+        OutTriangleMesh = nullptr;
+        if (!Physics || !Cooking)
+        {
+            return false;
+        }
+        if (Desc.TriangleVertices.size() < 3 || Desc.TriangleIndices.size() < 3)
+        {
+            return false;
+        }
+
+        PxTriangleMeshDesc TriangleMeshDesc;
+        TriangleMeshDesc.points.count = static_cast<PxU32>(Desc.TriangleVertices.size());
+        TriangleMeshDesc.points.stride = sizeof(FVector);
+        TriangleMeshDesc.points.data = Desc.TriangleVertices.data();
+        TriangleMeshDesc.triangles.count = static_cast<PxU32>(Desc.TriangleIndices.size() / 3);
+        TriangleMeshDesc.triangles.stride = sizeof(uint32) * 3;
+        TriangleMeshDesc.triangles.data = Desc.TriangleIndices.data();
+
+        if (!TriangleMeshDesc.isValid())
+        {
+            return false;
+        }
+
+        OutTriangleMesh = Cooking->createTriangleMesh(
+            TriangleMeshDesc,
+            Physics->getPhysicsInsertionCallback()
+        );
+        if (!OutTriangleMesh)
+        {
+            return false;
+        }
+
+        OutGeometry = PxTriangleMeshGeometry(OutTriangleMesh);
+        if (!OutGeometry.isValid())
+        {
+            OutTriangleMesh->release();
+            OutTriangleMesh = nullptr;
+            return false;
+        }
+
+        return true;
     }
 
     PxFilterData ToPxFilterData(const FPhysicsFilterData& In)
@@ -130,7 +182,12 @@ PxRigidActor* FPhysXBodyBuilder::CreateRigidActor(PxPhysics* Physics, const FBod
     return Dynamic;
 }
 
-PxShape* FPhysXBodyBuilder::CreateShape(PxPhysics* Physics, PxMaterial* DefaultMaterial, const FPhysicsShapeDesc& Desc)
+PxShape* FPhysXBodyBuilder::CreateShape(
+    PxPhysics* Physics,
+    PxCooking* Cooking,
+    PxMaterial* DefaultMaterial,
+    const FPhysicsShapeDesc& Desc
+)
 {
     if (!Physics || !DefaultMaterial)
     {
@@ -140,6 +197,7 @@ PxShape* FPhysXBodyBuilder::CreateShape(PxPhysics* Physics, PxMaterial* DefaultM
     PxGeometryHolder Geometry;
     bool bHasGeometry = false;
     PxQuat ShapeAxisRotation(PxIdentity);
+    PxTriangleMesh* TempTriangleMesh = nullptr;
 
     if (Desc.Type == EPhysicsShapeType::Box)
     {
@@ -182,6 +240,17 @@ PxShape* FPhysXBodyBuilder::CreateShape(PxPhysics* Physics, PxMaterial* DefaultM
         ShapeAxisRotation = PxQuat(-PxHalfPi, PxVec3(0.0f, 1.0f, 0.0f));
         bHasGeometry = true;
     }
+    else if (Desc.Type == EPhysicsShapeType::TriangleMesh)
+    {
+        PxTriangleMeshGeometry TriangleMeshGeometry;
+        if (!CreateTriangleMeshGeometry(Physics, Cooking, Desc, TempTriangleMesh, TriangleMeshGeometry))
+        {
+            return nullptr;
+        }
+
+        Geometry = TriangleMeshGeometry;
+        bHasGeometry = true;
+    }
 
     if (!bHasGeometry)
     {
@@ -189,6 +258,11 @@ PxShape* FPhysXBodyBuilder::CreateShape(PxPhysics* Physics, PxMaterial* DefaultM
     }
 
     PxShape* Shape = Physics->createShape(Geometry.any(), *DefaultMaterial, true);
+    if (TempTriangleMesh)
+    {
+        TempTriangleMesh->release();
+        TempTriangleMesh = nullptr;
+    }
     if (!Shape)
     {
         return nullptr;

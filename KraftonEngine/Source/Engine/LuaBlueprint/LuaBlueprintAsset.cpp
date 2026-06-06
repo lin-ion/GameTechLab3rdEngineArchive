@@ -1,4 +1,4 @@
-#include "LuaBlueprint/LuaBlueprintAsset.h"
+﻿#include "LuaBlueprint/LuaBlueprintAsset.h"
 #include "Input/InputKeyCodes.h"
 
 #include "Core/Types/PropertyTypes.h"
@@ -513,6 +513,20 @@ namespace
             return "Set Animation Playing";
         case ELuaBlueprintNodeType::GetAnimInstance:
             return "Get Anim Instance";
+        case ELuaBlueprintNodeType::LoadMontage:
+            return "Load Montage";
+        case ELuaBlueprintNodeType::PlayMontage:
+            return "Play Montage";
+        case ELuaBlueprintNodeType::PlayMontageByPath:
+            return "Play Montage By Path";
+        case ELuaBlueprintNodeType::StopMontage:
+            return "Stop Montage";
+        case ELuaBlueprintNodeType::IsMontagePlaying:
+            return "Is Montage Playing";
+        case ELuaBlueprintNodeType::MontageJumpToSection:
+            return "Montage Jump To Section";
+        case ELuaBlueprintNodeType::MontageSetNextSection:
+            return "Montage Set Next Section";
         case ELuaBlueprintNodeType::SetAnimGraphVariableFloat:
             return "Set Anim Graph Float";
         case ELuaBlueprintNodeType::SetAnimGraphVariableBool:
@@ -621,6 +635,7 @@ namespace
         case ELuaBlueprintPinType::Material:
         case ELuaBlueprintPinType::Texture:
         case ELuaBlueprintPinType::AnimInstance:
+        case ELuaBlueprintPinType::AnimMontage:
         case ELuaBlueprintPinType::LuaBlueprintComponent:
         case ELuaBlueprintPinType::LuaScriptComponent:
         case ELuaBlueprintPinType::Class:
@@ -696,6 +711,10 @@ namespace
         if (IsClassOrChildOf("AActor"))
         {
             return ELuaBlueprintPinType::Actor;
+        }
+        if (IsClassOrChildOf("UAnimMontage"))
+        {
+            return ELuaBlueprintPinType::AnimMontage;
         }
         if (IsClassOrChildOf("UAnimInstance"))
         {
@@ -986,6 +1005,7 @@ bool ULuaBlueprintAsset::CanConvertPinTypes(ELuaBlueprintPinType FromType, ELuaB
         case ELuaBlueprintPinType::Material:
         case ELuaBlueprintPinType::Texture:
         case ELuaBlueprintPinType::AnimInstance:
+        case ELuaBlueprintPinType::AnimMontage:
         case ELuaBlueprintPinType::LuaBlueprintComponent:
         case ELuaBlueprintPinType::LuaScriptComponent:
         case ELuaBlueprintPinType::Class:
@@ -1015,6 +1035,7 @@ bool ULuaBlueprintAsset::CanConvertPinTypes(ELuaBlueprintPinType FromType, ELuaB
                     Derived == ELuaBlueprintPinType::Material ||
                     Derived == ELuaBlueprintPinType::Texture ||
                     Derived == ELuaBlueprintPinType::AnimInstance ||
+                    Derived == ELuaBlueprintPinType::AnimMontage ||
                     Derived == ELuaBlueprintPinType::LuaBlueprintComponent ||
                     Derived == ELuaBlueprintPinType::LuaScriptComponent;
         }
@@ -1937,6 +1958,75 @@ FLuaBlueprintNode* ULuaBlueprintAsset::AddNodeOfType(ELuaBlueprintNodeType Type,
         AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::SkeletalMeshComponent, FName("Component"));
         AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::AnimInstance, FName("AnimInstance"));
         break;
+    case ELuaBlueprintNodeType::LoadMontage:
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::String, FName("Path"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::AnimMontage, FName("Montage"));
+        break;
+    case ELuaBlueprintNodeType::PlayMontage:
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Exec, FName("In"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimInstance, FName("AnimInstance"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimMontage, FName("Montage"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Section"));
+        if (FLuaBlueprintPin* RatePin = AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Float, FName("Rate")))
+        {
+            RatePin->DefaultFloat = 1.0f;
+        }
+        if (FLuaBlueprintPin* BlendInPin = AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Float, FName("BlendInTime")))
+        {
+            BlendInPin->DefaultFloat = -1.0f;
+        }
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Slot"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Exec, FName("Then"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Bool, FName("Success"));
+        break;
+    case ELuaBlueprintNodeType::PlayMontageByPath:
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Exec, FName("In"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimInstance, FName("AnimInstance"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::String, FName("MontagePath"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Section"));
+        if (FLuaBlueprintPin* RatePin = AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Float, FName("Rate")))
+        {
+            RatePin->DefaultFloat = 1.0f;
+        }
+        if (FLuaBlueprintPin* BlendInPin = AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Float, FName("BlendInTime")))
+        {
+            BlendInPin->DefaultFloat = -1.0f;
+        }
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Slot"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Exec, FName("Then"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Bool, FName("Success"));
+        break;
+    case ELuaBlueprintNodeType::StopMontage:
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Exec, FName("In"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimInstance, FName("AnimInstance"));
+        if (FLuaBlueprintPin* BlendOutPin = AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Float, FName("BlendOutTime")))
+        {
+            BlendOutPin->DefaultFloat = -1.0f;
+        }
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Slot"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Exec, FName("Then"));
+        break;
+    case ELuaBlueprintNodeType::IsMontagePlaying:
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimInstance, FName("AnimInstance"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimMontage, FName("Montage"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Slot"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Bool, FName("Playing"));
+        break;
+    case ELuaBlueprintNodeType::MontageJumpToSection:
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Exec, FName("In"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimInstance, FName("AnimInstance"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Section"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Slot"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Exec, FName("Then"));
+        break;
+    case ELuaBlueprintNodeType::MontageSetNextSection:
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Exec, FName("In"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::AnimInstance, FName("AnimInstance"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("From"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("To"));
+        AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Name, FName("Slot"));
+        AddPin(*N, ELuaBlueprintPinKind::Output, ELuaBlueprintPinType::Exec, FName("Then"));
+        break;
     case ELuaBlueprintNodeType::SetAnimGraphVariableFloat:
         N->NameValue = FName("Speed");
         AddPin(*N, ELuaBlueprintPinKind::Input, ELuaBlueprintPinType::Exec, FName("In"));
@@ -2851,6 +2941,60 @@ void ULuaBlueprintAsset::RefreshNodePinTypes(FLuaBlueprintNode& Node)
     case ELuaBlueprintNodeType::ClearStaticMesh:
         SetPinTypeBySlot(ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::Exec);
         SetPinTypeNamedOrSlot("Component", ELuaBlueprintPinKind::Input, 1, ELuaBlueprintPinType::StaticMeshComponent);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::Exec);
+        break;
+    case ELuaBlueprintNodeType::LoadMontage:
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::String);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::AnimMontage);
+        break;
+    case ELuaBlueprintNodeType::PlayMontage:
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::Exec);
+        SetPinTypeNamedOrSlot("AnimInstance", ELuaBlueprintPinKind::Input, 1, ELuaBlueprintPinType::AnimInstance);
+        SetPinTypeNamedOrSlot("Montage", ELuaBlueprintPinKind::Input, 2, ELuaBlueprintPinType::AnimMontage);
+        SetPinTypeNamedOrSlot("Section", ELuaBlueprintPinKind::Input, 3, ELuaBlueprintPinType::Name);
+        SetPinTypeNamedOrSlot("Rate", ELuaBlueprintPinKind::Input, 4, ELuaBlueprintPinType::Float);
+        SetPinTypeNamedOrSlot("BlendInTime", ELuaBlueprintPinKind::Input, 5, ELuaBlueprintPinType::Float);
+        SetPinTypeNamedOrSlot("Slot", ELuaBlueprintPinKind::Input, 6, ELuaBlueprintPinType::Name);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::Exec);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 1, ELuaBlueprintPinType::Bool);
+        break;
+    case ELuaBlueprintNodeType::PlayMontageByPath:
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::Exec);
+        SetPinTypeNamedOrSlot("AnimInstance", ELuaBlueprintPinKind::Input, 1, ELuaBlueprintPinType::AnimInstance);
+        SetPinTypeNamedOrSlot("MontagePath", ELuaBlueprintPinKind::Input, 2, ELuaBlueprintPinType::String);
+        SetPinTypeNamedOrSlot("Section", ELuaBlueprintPinKind::Input, 3, ELuaBlueprintPinType::Name);
+        SetPinTypeNamedOrSlot("Rate", ELuaBlueprintPinKind::Input, 4, ELuaBlueprintPinType::Float);
+        SetPinTypeNamedOrSlot("BlendInTime", ELuaBlueprintPinKind::Input, 5, ELuaBlueprintPinType::Float);
+        SetPinTypeNamedOrSlot("Slot", ELuaBlueprintPinKind::Input, 6, ELuaBlueprintPinType::Name);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::Exec);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 1, ELuaBlueprintPinType::Bool);
+        break;
+    case ELuaBlueprintNodeType::StopMontage:
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::Exec);
+        SetPinTypeNamedOrSlot("AnimInstance", ELuaBlueprintPinKind::Input, 1, ELuaBlueprintPinType::AnimInstance);
+        SetPinTypeNamedOrSlot("BlendOutTime", ELuaBlueprintPinKind::Input, 2, ELuaBlueprintPinType::Float);
+        SetPinTypeNamedOrSlot("Slot", ELuaBlueprintPinKind::Input, 3, ELuaBlueprintPinType::Name);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::Exec);
+        break;
+    case ELuaBlueprintNodeType::IsMontagePlaying:
+        SetPinTypeNamedOrSlot("AnimInstance", ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::AnimInstance);
+        SetPinTypeNamedOrSlot("Montage", ELuaBlueprintPinKind::Input, 1, ELuaBlueprintPinType::AnimMontage);
+        SetPinTypeNamedOrSlot("Slot", ELuaBlueprintPinKind::Input, 2, ELuaBlueprintPinType::Name);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::Bool);
+        break;
+    case ELuaBlueprintNodeType::MontageJumpToSection:
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::Exec);
+        SetPinTypeNamedOrSlot("AnimInstance", ELuaBlueprintPinKind::Input, 1, ELuaBlueprintPinType::AnimInstance);
+        SetPinTypeNamedOrSlot("Section", ELuaBlueprintPinKind::Input, 2, ELuaBlueprintPinType::Name);
+        SetPinTypeNamedOrSlot("Slot", ELuaBlueprintPinKind::Input, 3, ELuaBlueprintPinType::Name);
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::Exec);
+        break;
+    case ELuaBlueprintNodeType::MontageSetNextSection:
+        SetPinTypeBySlot(ELuaBlueprintPinKind::Input, 0, ELuaBlueprintPinType::Exec);
+        SetPinTypeNamedOrSlot("AnimInstance", ELuaBlueprintPinKind::Input, 1, ELuaBlueprintPinType::AnimInstance);
+        SetPinTypeNamedOrSlot("From", ELuaBlueprintPinKind::Input, 2, ELuaBlueprintPinType::Name);
+        SetPinTypeNamedOrSlot("To", ELuaBlueprintPinKind::Input, 3, ELuaBlueprintPinType::Name);
+        SetPinTypeNamedOrSlot("Slot", ELuaBlueprintPinKind::Input, 4, ELuaBlueprintPinType::Name);
         SetPinTypeBySlot(ELuaBlueprintPinKind::Output, 0, ELuaBlueprintPinType::Exec);
         break;
 

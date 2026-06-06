@@ -204,6 +204,9 @@ struct FPhysicsShapeDesc
     float CapsuleRadius     = 50.0f;
     float CapsuleHalfHeight = 100.0f;
 
+    TArray<FVector> TriangleVertices;
+    TArray<uint32> TriangleIndices;
+
     ECollisionEnabled CollisionEnabled = ECollisionEnabled::QueryAndPhysics;
 
     FPhysicsFilterData FilterData;

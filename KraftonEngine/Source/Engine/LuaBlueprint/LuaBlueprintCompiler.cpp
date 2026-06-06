@@ -1,4 +1,4 @@
-#include "LuaBlueprint/LuaBlueprintCompiler.h"
+﻿#include "LuaBlueprint/LuaBlueprintCompiler.h"
 
 #include "Input/InputKeyCodes.h"
 #include "LuaBlueprint/LuaBlueprintAsset.h"
@@ -1206,6 +1206,21 @@ namespace
             case ELuaBlueprintNodeType::SetAnimationPlaying:
                 EmitSimpleCall(Out, Node, Indent, ExecStack, "if __bp_is_valid_object({Component}) then ({Component}):SetPlaying({Enabled}) end");
                 break;
+            case ELuaBlueprintNodeType::PlayMontage:
+                EmitExecResultCall(Out, Node, Indent, ExecStack, "Success", "false", "({AnimInstance}):PlayMontage({Montage}, {Section}, {Rate}, {BlendInTime}, {Slot})", "__bp_is_valid_object({AnimInstance})");
+                break;
+            case ELuaBlueprintNodeType::PlayMontageByPath:
+                EmitExecResultCall(Out, Node, Indent, ExecStack, "Success", "false", "({AnimInstance}):PlayMontage(__bp_lib_call(\"Animation\", \"LoadMontage\", {MontagePath}), {Section}, {Rate}, {BlendInTime}, {Slot})", "__bp_is_valid_object({AnimInstance})");
+                break;
+            case ELuaBlueprintNodeType::StopMontage:
+                EmitSimpleCall(Out, Node, Indent, ExecStack, "if __bp_is_valid_object({AnimInstance}) then ({AnimInstance}):StopMontage({BlendOutTime}, {Slot}) end");
+                break;
+            case ELuaBlueprintNodeType::MontageJumpToSection:
+                EmitSimpleCall(Out, Node, Indent, ExecStack, "if __bp_is_valid_object({AnimInstance}) then ({AnimInstance}):Montage_JumpToSection({Section}, {Slot}) end");
+                break;
+            case ELuaBlueprintNodeType::MontageSetNextSection:
+                EmitSimpleCall(Out, Node, Indent, ExecStack, "if __bp_is_valid_object({AnimInstance}) then ({AnimInstance}):Montage_SetNextSection({From}, {To}, {Slot}) end");
+                break;
             case ELuaBlueprintNodeType::SetAnimGraphVariableFloat:
                 EmitExecResultCall(Out, Node, Indent, ExecStack, "Success", "false", "({AnimInstance}):SetGraphVariableFloat({Variable}, {Value})", "__bp_is_valid_object({AnimInstance})");
                 break;
@@ -2169,6 +2184,7 @@ namespace
             case ELuaBlueprintPinType::Material:
             case ELuaBlueprintPinType::Texture:
             case ELuaBlueprintPinType::AnimInstance:
+            case ELuaBlueprintPinType::AnimMontage:
                 return Fallback;
             case ELuaBlueprintPinType::Any:
             case ELuaBlueprintPinType::Exec: default:
@@ -2661,6 +2677,8 @@ namespace
                 return FString("(") + GetInputExpression(Node, "Actor", "nil") + " and (" + GetInputExpression(Node, "Actor", "nil") + "):GetSkeletalMeshComponent() or nil)";
             case ELuaBlueprintNodeType::GetAnimInstance:
                 return FString("(") + GetInputExpression(Node, "Component", "nil") + " and (" + GetInputExpression(Node, "Component", "nil") + "):GetAnimInstance() or nil)";
+            case ELuaBlueprintNodeType::LoadMontage:
+                return FString("__bp_lib_call(\"Animation\", \"LoadMontage\", ") + GetInputExpression(Node, "Path", LuaQuoted("")) + ")";
             case ELuaBlueprintNodeType::GetAnimGraphVariableFloat:
             {
                 const FString Anim = GetInputExpression(Node, "AnimInstance", "nil");
@@ -2685,11 +2703,15 @@ namespace
                 if (PinName == "Found") return FString("((") + Anim + ") and (" + Anim + "):HasGraphVariableInt(" + Var + ") or false)";
                 return FString("((") + Anim + ") and (" + Anim + "):GetGraphVariableInt(" + Var + ", 0) or 0)";
             }
+            case ELuaBlueprintNodeType::IsMontagePlaying:
+                return FString("((") + GetInputExpression(Node, "AnimInstance", "nil") + ") and (" + GetInputExpression(Node, "AnimInstance", "nil") + "):IsMontagePlaying(" + GetInputExpression(Node, "Montage", "nil") + ", " + GetInputExpression(Node, "Slot", LuaQuoted("")) + ") or false)";
             case ELuaBlueprintNodeType::SetStaticMesh:
             case ELuaBlueprintNodeType::SetStaticMeshByPath:
             case ELuaBlueprintNodeType::SetSkeletalMeshByPath:
             case ELuaBlueprintNodeType::PlayAnimationByPath:
             case ELuaBlueprintNodeType::SetAnimationByPath:
+            case ELuaBlueprintNodeType::PlayMontage:
+            case ELuaBlueprintNodeType::PlayMontageByPath:
             case ELuaBlueprintNodeType::SetAnimGraphVariableFloat:
             case ELuaBlueprintNodeType::SetAnimGraphVariableBool:
             case ELuaBlueprintNodeType::SetAnimGraphVariableInt:

@@ -5,6 +5,7 @@
 namespace physx
 {
     class PxPhysics;
+    class PxCooking;
     class PxMaterial;
     class PxRigidActor;
     class PxRigidDynamic;
@@ -20,6 +21,7 @@ public:
     );
     static physx::PxShape* CreateShape(
         physx::PxPhysics*        Physics,
+        physx::PxCooking*        Cooking,
         physx::PxMaterial*       DefaultMaterial,
         const FPhysicsShapeDesc& Desc
     );

@@ -1,4 +1,4 @@
-#include "Editor/UI/Asset/LuaBlueprint/LuaBlueprintEditorWidget.h"
+﻿#include "Editor/UI/Asset/LuaBlueprint/LuaBlueprintEditorWidget.h"
 
 #include "Input/InputKeyCodes.h"
 #include "Lua/LuaDebugManager.h"
@@ -402,6 +402,7 @@ namespace
             case ELuaBlueprintPinType::Material:
             case ELuaBlueprintPinType::Texture:
             case ELuaBlueprintPinType::AnimInstance:
+            case ELuaBlueprintPinType::AnimMontage:
             case ELuaBlueprintPinType::LuaBlueprintComponent:
             case ELuaBlueprintPinType::LuaScriptComponent:
                 return true;
@@ -847,6 +848,20 @@ namespace
             return "Set Animation Playing";
         case ELuaBlueprintNodeType::GetAnimInstance:
             return "Get Anim Instance";
+        case ELuaBlueprintNodeType::LoadMontage:
+            return "Load Montage";
+        case ELuaBlueprintNodeType::PlayMontage:
+            return "Play Montage";
+        case ELuaBlueprintNodeType::PlayMontageByPath:
+            return "Play Montage By Path";
+        case ELuaBlueprintNodeType::StopMontage:
+            return "Stop Montage";
+        case ELuaBlueprintNodeType::IsMontagePlaying:
+            return "Is Montage Playing";
+        case ELuaBlueprintNodeType::MontageJumpToSection:
+            return "Montage Jump To Section";
+        case ELuaBlueprintNodeType::MontageSetNextSection:
+            return "Montage Set Next Section";
         case ELuaBlueprintNodeType::SetAnimGraphVariableFloat:
             return "Set Anim Graph Float";
         case ELuaBlueprintNodeType::SetAnimGraphVariableBool:
@@ -1341,6 +1356,20 @@ namespace
             return "Starts or pauses skeletal animation playback.";
         case ELuaBlueprintNodeType::GetAnimInstance:
             return "Returns the animation instance from a skeletal mesh component.";
+        case ELuaBlueprintNodeType::LoadMontage:
+            return "Loads a montage asset by path and returns the object.";
+        case ELuaBlueprintNodeType::PlayMontage:
+            return "Plays a montage object on an Anim Instance and returns whether playback started.";
+        case ELuaBlueprintNodeType::PlayMontageByPath:
+            return "Loads a montage asset by path and plays it on an Anim Instance.";
+        case ELuaBlueprintNodeType::StopMontage:
+            return "Stops montage playback on an Anim Instance.";
+        case ELuaBlueprintNodeType::IsMontagePlaying:
+            return "Checks whether the given montage is playing on an Anim Instance.";
+        case ELuaBlueprintNodeType::MontageJumpToSection:
+            return "Jumps the current montage playback to a section on an Anim Instance.";
+        case ELuaBlueprintNodeType::MontageSetNextSection:
+            return "Changes montage section flow from one section to the next.";
         case ELuaBlueprintNodeType::SetAnimGraphVariableFloat:
             return "Writes a float variable on an Anim Graph instance. Use this to drive state machine transition rules from Lua Blueprint.";
         case ELuaBlueprintNodeType::SetAnimGraphVariableBool:
@@ -1507,6 +1536,8 @@ namespace
             return "Texture";
         case ELuaBlueprintPinType::AnimInstance:
             return "AnimInstance";
+        case ELuaBlueprintPinType::AnimMontage:
+            return "AnimMontage";
         case ELuaBlueprintPinType::LuaBlueprintComponent:
             return "LuaBlueprintComponent";
         case ELuaBlueprintPinType::LuaScriptComponent:
@@ -1689,6 +1720,13 @@ namespace
         case ELuaBlueprintNodeType::SetAnimationLooping:
         case ELuaBlueprintNodeType::SetAnimationPlaying:
         case ELuaBlueprintNodeType::GetAnimInstance:
+        case ELuaBlueprintNodeType::LoadMontage:
+        case ELuaBlueprintNodeType::PlayMontage:
+        case ELuaBlueprintNodeType::PlayMontageByPath:
+        case ELuaBlueprintNodeType::StopMontage:
+        case ELuaBlueprintNodeType::IsMontagePlaying:
+        case ELuaBlueprintNodeType::MontageJumpToSection:
+        case ELuaBlueprintNodeType::MontageSetNextSection:
         case ELuaBlueprintNodeType::SetAnimGraphVariableFloat:
         case ELuaBlueprintNodeType::SetAnimGraphVariableBool:
         case ELuaBlueprintNodeType::SetAnimGraphVariableInt:
@@ -1816,6 +1854,7 @@ namespace
         case ELuaBlueprintPinType::Texture:
             return ImVec4(0.75f, 0.55f, 1.00f, 1.0f);
         case ELuaBlueprintPinType::AnimInstance:
+        case ELuaBlueprintPinType::AnimMontage:
             return ImVec4(0.55f, 0.80f, 1.00f, 1.0f);
         case ELuaBlueprintPinType::LuaFunction:
             return ImVec4(0.95f, 0.70f, 0.35f, 1.0f);
@@ -1864,6 +1903,10 @@ namespace
         case ELuaBlueprintNodeType::PlayAnimationByPath:
         case ELuaBlueprintNodeType::SetAnimationByPath:
             return LuaBlueprintPinNameMatches(PinName, "AnimationPath", "Path") ? "UAnimSequence" : nullptr;
+        case ELuaBlueprintNodeType::LoadMontage:
+            return LuaBlueprintPinNameMatches(PinName, "Path", "MontagePath") ? "UAnimMontage" : nullptr;
+        case ELuaBlueprintNodeType::PlayMontageByPath:
+            return LuaBlueprintPinNameMatches(PinName, "MontagePath", "Path") ? "UAnimMontage" : nullptr;
         case ELuaBlueprintNodeType::LoadMaterial:
             return LuaBlueprintPinNameMatches(PinName, "Path", "MaterialPath") ? "Material" : nullptr;
         case ELuaBlueprintNodeType::SetMaterialByPath:
@@ -2089,6 +2132,7 @@ namespace
         case ELuaBlueprintPinType::Material:
         case ELuaBlueprintPinType::Texture:
         case ELuaBlueprintPinType::AnimInstance:
+        case ELuaBlueprintPinType::AnimMontage:
         case ELuaBlueprintPinType::LuaBlueprintComponent:
         case ELuaBlueprintPinType::LuaScriptComponent:
         case ELuaBlueprintPinType::Rotator:
@@ -2163,10 +2207,12 @@ namespace
             return 26;
         case ELuaBlueprintPinType::AnimInstance:
             return 27;
-        case ELuaBlueprintPinType::LuaBlueprintComponent:
+        case ELuaBlueprintPinType::AnimMontage:
             return 28;
-        case ELuaBlueprintPinType::LuaScriptComponent:
+        case ELuaBlueprintPinType::LuaBlueprintComponent:
             return 29;
+        case ELuaBlueprintPinType::LuaScriptComponent:
+            return 30;
         default:
             return 2;
         }
@@ -2233,8 +2279,10 @@ namespace
         case 27:
             return ELuaBlueprintPinType::AnimInstance;
         case 28:
-            return ELuaBlueprintPinType::LuaBlueprintComponent;
+            return ELuaBlueprintPinType::AnimMontage;
         case 29:
+            return ELuaBlueprintPinType::LuaBlueprintComponent;
+        case 30:
             return ELuaBlueprintPinType::LuaScriptComponent;
         default:
             return ELuaBlueprintPinType::Float;
@@ -3062,6 +3110,7 @@ void FLuaBlueprintEditorWidget::RenderVariables(ULuaBlueprintAsset* Blueprint)
         AddVariableMenuItem(Blueprint, ELuaBlueprintPinType::Material, "Material");
         AddVariableMenuItem(Blueprint, ELuaBlueprintPinType::Texture, "Texture");
         AddVariableMenuItem(Blueprint, ELuaBlueprintPinType::AnimInstance, "AnimInstance");
+        AddVariableMenuItem(Blueprint, ELuaBlueprintPinType::AnimMontage, "AnimMontage");
         AddVariableMenuItem(Blueprint, ELuaBlueprintPinType::Rotator, "Rotator");
         AddVariableMenuItem(Blueprint, ELuaBlueprintPinType::LinearColor, "LinearColor");
         AddVariableMenuItem(Blueprint, ELuaBlueprintPinType::Vector4, "Vector4");
@@ -3179,6 +3228,13 @@ void FLuaBlueprintEditorWidget::RenderPalettePanel(ULuaBlueprintAsset* Blueprint
         { "Variables", ELuaBlueprintNodeType::Self },
         { "Anim Graph", ELuaBlueprintNodeType::GetSkeletalMeshComponent },
         { "Anim Graph", ELuaBlueprintNodeType::GetAnimInstance },
+        { "Anim Graph", ELuaBlueprintNodeType::LoadMontage },
+        { "Anim Graph", ELuaBlueprintNodeType::PlayMontage },
+        { "Anim Graph", ELuaBlueprintNodeType::PlayMontageByPath },
+        { "Anim Graph", ELuaBlueprintNodeType::StopMontage },
+        { "Anim Graph", ELuaBlueprintNodeType::IsMontagePlaying },
+        { "Anim Graph", ELuaBlueprintNodeType::MontageJumpToSection },
+        { "Anim Graph", ELuaBlueprintNodeType::MontageSetNextSection },
         { "Anim Graph", ELuaBlueprintNodeType::SetAnimGraphVariableFloat },
         { "Anim Graph", ELuaBlueprintNodeType::SetAnimGraphVariableBool },
         { "Anim Graph", ELuaBlueprintNodeType::SetAnimGraphVariableInt },
@@ -4975,7 +5031,7 @@ void FLuaBlueprintEditorWidget::RenderVariableEditor(
 
     Variable.Type            = NormalizeVariablePinTypeForEditor(Variable.Type);
     int         TypeIndex    = VariablePinTypeToComboIndex(Variable.Type);
-    const char* TypeLabels[] = { "Bool", "Int", "Float", "String", "Vector", "Object", "Array", "Actor", "Pawn", "PlayerController", "ActorComponent", "SceneComponent", "PrimitiveComponent", "Rotator", "LinearColor", "Vector4", "Class", "Enum", "Name", "StaticMesh", "StaticMeshComponent", "SkinnedMeshComponent", "SkeletalMeshComponent", "CameraComponent", "CineCameraComponent", "Material", "Texture", "AnimInstance", "LuaBlueprintComponent", "LuaScriptComponent" };
+    const char* TypeLabels[] = { "Bool", "Int", "Float", "String", "Vector", "Object", "Array", "Actor", "Pawn", "PlayerController", "ActorComponent", "SceneComponent", "PrimitiveComponent", "Rotator", "LinearColor", "Vector4", "Class", "Enum", "Name", "StaticMesh", "StaticMeshComponent", "SkinnedMeshComponent", "SkeletalMeshComponent", "CameraComponent", "CineCameraComponent", "Material", "Texture", "AnimInstance", "AnimMontage", "LuaBlueprintComponent", "LuaScriptComponent" };
     if (ImGui::Combo("Type", &TypeIndex, TypeLabels, IM_ARRAYSIZE(TypeLabels)))
     {
         Variable.Type = ComboIndexToVariablePinType(TypeIndex);
@@ -6148,6 +6204,14 @@ void FLuaBlueprintEditorWidget::RenderAddNodeMenu(ULuaBlueprintAsset* Blueprint)
             AddItem(ELuaBlueprintNodeType::SetAnimationLooping);
             AddItem(ELuaBlueprintNodeType::SetAnimationPlaying);
             AddItem(ELuaBlueprintNodeType::GetAnimInstance);
+            ImGui::Separator();
+            AddItem(ELuaBlueprintNodeType::LoadMontage);
+            AddItem(ELuaBlueprintNodeType::PlayMontage);
+            AddItem(ELuaBlueprintNodeType::PlayMontageByPath);
+            AddItem(ELuaBlueprintNodeType::StopMontage);
+            AddItem(ELuaBlueprintNodeType::IsMontagePlaying);
+            AddItem(ELuaBlueprintNodeType::MontageJumpToSection);
+            AddItem(ELuaBlueprintNodeType::MontageSetNextSection);
             ImGui::Separator();
             AddItem(ELuaBlueprintNodeType::SetAnimGraphVariableFloat);
             AddItem(ELuaBlueprintNodeType::SetAnimGraphVariableBool);

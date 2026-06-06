@@ -59,6 +59,7 @@ void UStaticMeshComponent::SetStaticMesh(UStaticMesh* InMesh)
 	CacheLocalBounds();
 	MarkRenderStateDirty();
 	MarkWorldBoundsDirty();
+	NotifyPhysicsBodyDirty();
 }
 
 void UStaticMeshComponent::CacheLocalBounds()
@@ -314,6 +315,7 @@ void UStaticMeshComponent::PostDuplicate()
 	CacheLocalBounds();
 	MarkRenderStateDirty();
 	MarkWorldBoundsDirty();
+	NotifyPhysicsBodyDirty();
 }
 
 void UStaticMeshComponent::PostEditProperty(const char* PropertyName)
@@ -334,6 +336,12 @@ void UStaticMeshComponent::PostEditProperty(const char* PropertyName)
 		}
 		CacheLocalBounds();
 		MarkWorldBoundsDirty();
+	}
+
+	if (strcmp(PropertyName, "bUseMeshTriangleCollision") == 0 ||
+		strcmp(PropertyName, "Use Mesh Triangle Collision") == 0)
+	{
+		NotifyPhysicsBodyDirty();
 	}
 
 	if (strncmp(PropertyName, "Element ", 8) == 0)

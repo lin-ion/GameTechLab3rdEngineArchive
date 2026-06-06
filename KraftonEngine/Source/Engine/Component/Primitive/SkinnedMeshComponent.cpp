@@ -270,35 +270,39 @@ bool USkinnedMeshComponent::HasSocket(const FName& SocketName) const
 	return Skeleton->ResolveSocketBoneIndex(*Socket, BoneIndex);
 }
 
-FTransform USkinnedMeshComponent::GetSocketTransform(const FName& SocketName) const
+FMatrix USkinnedMeshComponent::GetSocketMatrix(const FName& SocketName) const
 {
 	USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
 	if (!Skeleton)
 	{
-		return FTransform(GetWorldMatrix());
+		return GetWorldMatrix();
 	}
 
 	const FSkeletalMeshSocket* Socket = Skeleton->FindSocket(SocketName);
 	if (!Socket)
 	{
-		return FTransform(GetWorldMatrix());
+		return GetWorldMatrix();
 	}
 
 	int32 BoneIndex = -1;
 	if (!Skeleton->ResolveSocketBoneIndex(*Socket, BoneIndex))
 	{
-		return FTransform(GetWorldMatrix());
+		return GetWorldMatrix();
 	}
 
 	TArray<FMatrix> BoneGlobals;
 	GetCurrentBoneGlobalMatrices(BoneGlobals);
 	if (BoneIndex < 0 || BoneIndex >= static_cast<int32>(BoneGlobals.size()))
 	{
-		return FTransform(GetWorldMatrix());
+		return GetWorldMatrix();
 	}
 
-	const FMatrix SocketWorldMatrix = Socket->GetRelativeTransform() * BoneGlobals[BoneIndex] * GetWorldMatrix();
-	return FTransform(SocketWorldMatrix);
+	return Socket->GetRelativeTransform() * BoneGlobals[BoneIndex] * GetWorldMatrix();
+}
+
+FTransform USkinnedMeshComponent::GetSocketTransform(const FName& SocketName) const
+{
+	return FTransform(GetSocketMatrix(SocketName));
 }
 
 bool USkinnedMeshComponent::SetSkeletalMeshByPath(const FString& InPath)

@@ -101,12 +101,14 @@ FPhysXPhysicsRuntime::~FPhysXPhysicsRuntime() = default;
 void FPhysXPhysicsRuntime::Initialize(
     UWorld* InWorld,
     PxPhysics* InPhysics,
+    PxCooking* InCooking,
     PxScene* InScene,
     PxMaterial* InDefaultMaterial
 )
 {
     World = InWorld;
     Physics = InPhysics;
+    Cooking = InCooking;
     Scene = InScene;
     DefaultMaterial = InDefaultMaterial;
 
@@ -198,6 +200,7 @@ void FPhysXPhysicsRuntime::Shutdown()
 
     World = nullptr;
     Physics = nullptr;
+    Cooking = nullptr;
     Scene = nullptr;
     DefaultMaterial = nullptr;
 }
@@ -2144,7 +2147,7 @@ FPhysicsShapeHandle FPhysXPhysicsRuntime::AddShapeToBody(
         }
     }
 
-    PxShape* Shape = FPhysXBodyBuilder::CreateShape(Physics, DefaultMaterial, ShapeDesc);
+    PxShape* Shape = FPhysXBodyBuilder::CreateShape(Physics, Cooking, DefaultMaterial, ShapeDesc);
     if (!Shape)
     {
         return {};

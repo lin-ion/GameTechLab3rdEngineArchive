@@ -3,8 +3,11 @@ local AbilitySystem = require("AbilitySystem")
 local STEAM_PARTICLE_PATH = "Content/Particle/SteamParticle.uasset"
 local STEAM_SKILL_NAME = "SteamSkill"
 local STEAM_SKILL_KEY = "LeftMouseButton"
+local ATTACK_KEYS = { STEAM_SKILL_KEY, "GamepadX" }
+local STEAM_SKILL_KEYS = ATTACK_KEYS
 local DASH_SKILL_NAME = "Dash"
 local DASH_SKILL_KEY = "LeftShift"
+local DASH_SKILL_KEYS = { DASH_SKILL_KEY, "GamepadLeftTrigger" }
 local DASH_DISTANCE = 3.0
 local DASH_DURATION = 0.3
 local DASH_AFTERIMAGE_INTENSITY = 1.0
@@ -35,6 +38,28 @@ local movement_locks = {}
 
 local function log(message)
     print("[HaruController] " .. message)
+end
+
+local function join_keys(keys)
+    if keys == nil then
+        return ""
+    end
+    return table.concat(keys, ", ")
+end
+
+local function first_pressed_key(keys)
+    if Input == nil or Input.GetKeyDown == nil or keys == nil then
+        return nil
+    end
+
+    for index = 1, #keys do
+        local key = keys[index]
+        if key ~= nil and Input.GetKeyDown(key) then
+            return key
+        end
+    end
+
+    return nil
 end
 
 local function format_vec3(value)
@@ -575,6 +600,7 @@ local function setup_abilities()
     ability_system:RegisterAbility({
         Name = STEAM_SKILL_NAME,
         Key = STEAM_SKILL_KEY,
+        Keys = STEAM_SKILL_KEYS,
         Duration = 2.0,
         Cooldown = 2.0,
         BlockWhileAnyActive = true,
@@ -585,6 +611,7 @@ local function setup_abilities()
     ability_system:RegisterAbility({
         Name = DASH_SKILL_NAME,
         Key = DASH_SKILL_KEY,
+        Keys = DASH_SKILL_KEYS,
         Duration = DASH_DURATION,
         Cooldown = 0.0,
         BlockWhileAnyActive = true,
@@ -610,8 +637,8 @@ local function setup_abilities()
         OnEnd = end_draw_arrow
     })
 
-    log("registered SteamSkill on " .. STEAM_SKILL_KEY)
-    log("registered Dash on " .. DASH_SKILL_KEY)
+    log("registered SteamSkill on " .. join_keys(STEAM_SKILL_KEYS))
+    log("registered Dash on " .. join_keys(DASH_SKILL_KEYS))
     log("registered Roll on " .. ROLL_SKILL_KEY)
     log("registered DrawArrow on " .. DRAW_SKILL_KEY)
 
@@ -663,17 +690,26 @@ function Tick(dt)
         return
     end
 
-    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(STEAM_SKILL_KEY) then
-        log("input pressed: " .. STEAM_SKILL_KEY)
-        local activated, reason = ability_system:TryActivateByKey(STEAM_SKILL_KEY)
+    local attack_key = first_pressed_key(ATTACK_KEYS)
+    if attack_key ~= nil then
+        log("input pressed: " .. attack_key)
+        local activated, reason = ability_system:TryActivateByKey(attack_key)
         if not activated then
             log("SteamSkill blocked: " .. (reason or "unknown"))
         end
+
+        if World ~= nil and World.FireCameraProjectile ~= nil then
+            local proj = World.FireCameraProjectile(PROJECTILE_SPEED, PROJECTILE_MUZZLE_OFFSET)
+            log("FireCameraProjectile -> " .. tostring(proj ~= nil))
+        else
+            log("FireCameraProjectile unavailable (World 바인딩 미등록?)")
+        end
     end
 
-    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(DASH_SKILL_KEY) then
-        log("input pressed: " .. DASH_SKILL_KEY)
-        local activated, reason = ability_system:TryActivateByKey(DASH_SKILL_KEY)
+    local dash_key = first_pressed_key(DASH_SKILL_KEYS)
+    if dash_key ~= nil then
+        log("input pressed: " .. dash_key)
+        local activated, reason = ability_system:TryActivateByKey(dash_key)
         if not activated then
             log("Dash blocked: " .. (reason or "unknown"))
         end

@@ -20,6 +20,12 @@ enum class EInputAxisSourceType : uint8
 	MouseX,
 	MouseY,
 	MouseWheel,
+	GamepadLeftStickX,
+	GamepadLeftStickY,
+	GamepadRightStickX,
+	GamepadRightStickY,
+	GamepadLeftTrigger,
+	GamepadRightTrigger,
 };
 
 // UE 의 UInputComponent 패턴 minimal:
@@ -41,12 +47,23 @@ public:
 	UInputComponent();
 	~UInputComponent() override = default;
 
+	// Gamepad analog options. InputSystem snapshots are normalized first; UInputComponent
+	// applies these dead zones while evaluating axis mappings.
+	UPROPERTY(Edit, Save, Category="Input|Gamepad", DisplayName="Left Stick Dead Zone", Min=0.0f, Max=1.0f, Speed=0.01f)
+	float GamepadLeftStickDeadZone = 0.24f;
+	UPROPERTY(Edit, Save, Category="Input|Gamepad", DisplayName="Right Stick Dead Zone", Min=0.0f, Max=1.0f, Speed=0.01f)
+	float GamepadRightStickDeadZone = 0.27f;
+	UPROPERTY(Edit, Save, Category="Input|Gamepad", DisplayName="Trigger Dead Zone", Min=0.0f, Max=1.0f, Speed=0.01f)
+	float GamepadTriggerDeadZone = 0.12f;
+
 	// 매핑 — 코드 또는 ProjectSettings(.ini) 가 호출. 같은 이름에 여러 source 가능.
 	void AddAxisMapping(const FString& Name, int VKey, float Scale = 1.0f);
 	UFUNCTION(Callable, Category="Input|Mapping")
 	void AddAxisMapping(const FString& Name, const FString& KeyName, float Scale = 1.0f);
 	UFUNCTION(Callable, Category="Input|Mapping")
 	void AddMouseAxisMapping(const FString& Name, EInputAxisSourceType Axis, float Scale = 1.0f);
+	UFUNCTION(Callable, Category="Input|Mapping")
+	void AddGamepadAxisMapping(const FString& Name, EInputAxisSourceType Axis, float Scale = 1.0f);
 	void AddActionMapping(const FString& Name, int VKey);
 	UFUNCTION(Callable, Category="Input|Mapping")
 	void AddActionMapping(const FString& Name, const FString& KeyName);
@@ -55,6 +72,7 @@ public:
 	void AddAxisMappingForOwner(const void* OwnerKey, const FString& Name, int VKey, float Scale = 1.0f);
 	void AddAxisMappingForOwner(const void* OwnerKey, const FString& Name, const FString& KeyName, float Scale = 1.0f);
 	void AddMouseAxisMappingForOwner(const void* OwnerKey, const FString& Name, EInputAxisSourceType Axis, float Scale = 1.0f);
+	void AddGamepadAxisMappingForOwner(const void* OwnerKey, const FString& Name, EInputAxisSourceType Axis, float Scale = 1.0f);
 	void AddActionMappingForOwner(const void* OwnerKey, const FString& Name, int VKey);
 	void AddActionMappingForOwner(const void* OwnerKey, const FString& Name, const FString& KeyName);
 
@@ -88,6 +106,7 @@ private:
 	struct FActionBinding { FString Name; EInputEvent Event = EInputEvent::Pressed; const void* OwnerKey = nullptr; TFunction<void()> Callback; };
 
 	float EvaluateAxisMapping(const FAxisMapping& Mapping, const FInputSystemSnapshot& Snapshot) const;
+	float ApplyAnalogDeadZone(float Value, float DeadZone, bool bSignedAxis) const;
 
 	TArray<FAxisMapping>   AxisMappings;
 	TArray<FActionMapping> ActionMappings;

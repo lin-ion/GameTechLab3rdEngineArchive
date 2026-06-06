@@ -102,6 +102,21 @@ struct FBulletRuntimeModifier
 	bool bHoming = true;
 };
 
+struct FBulletLaunchParams
+{
+	FVector Velocity = FVector::ForwardVector;
+	bool bSetHoming = true;
+	bool bHoming = false;
+	FVector HomingTargetPosition = FVector::ZeroVector;
+	TWeakObjectPtr<AActor> HomingTargetActor;
+	float HomingStrength = 0.0f;
+	float HomingMaxTurnRateDegrees = 0.0f;
+	float HomingConeHalfAngleDegrees = 180.0f;
+	bool bResetAge = true;
+	bool bSetLifetime = false;
+	float Lifetime = 1.0f;
+};
+
 struct FBulletDebugStats
 {
 	int32 ActiveBulletCount = 0;
@@ -148,6 +163,7 @@ public:
 	bool IsBulletAlive(const FBulletHandle& Handle) const;
 	const FBulletInstance* FindBullet(const FBulletHandle& Handle) const;
 	const TArray<FBulletInstance>& GetBulletInstances() const { return Bullets; }
+	bool LaunchBullet(const FBulletHandle& Handle, const FBulletLaunchParams& Params);
 	int32 ApplyRuntimeModifier(const FBulletRuntimeModifier& Modifier);
 	
 	// =========== 대량 스폰용 헬퍼 함수들 ===========

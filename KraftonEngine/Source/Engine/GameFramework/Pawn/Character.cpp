@@ -948,6 +948,8 @@ void ACharacter::SetupInputComponent()
 		InputComponent->AddAxisMapping("MoveForward", 'S', -1.0f);
 		InputComponent->AddAxisMapping("MoveRight",   'D',  1.0f);
 		InputComponent->AddAxisMapping("MoveRight",   'A', -1.0f);
+		InputComponent->AddGamepadAxisMapping("MoveForward", EInputAxisSourceType::GamepadLeftStickY, 1.0f);
+		InputComponent->AddGamepadAxisMapping("MoveRight", EInputAxisSourceType::GamepadLeftStickX, 1.0f);
 
 		// WASD 의 forward/right 는 ControlRotation.Yaw 기준 — capsule rotation 과 무관.
 		// "카메라가 보는 방향" (yaw 만, pitch 무시) 으로 이동.
@@ -955,17 +957,18 @@ void ACharacter::SetupInputComponent()
 		{
 			if (Value == 0.0f) return;
 			const FRotator YawOnly(0.0f, GetControlRotation().Yaw, 0.0f);
-			AddMovementInput(YawOnly.GetForwardVector(), Value);
+			AddMovementInput(YawOnly.GetForwardVector(), std::clamp(Value, -1.0f, 1.0f));
 		});
 		InputComponent->BindAxis("MoveRight", [this](float Value)
 		{
 			if (Value == 0.0f) return;
 			const FRotator YawOnly(0.0f, GetControlRotation().Yaw, 0.0f);
-			AddMovementInput(YawOnly.GetRightVector(), Value);
+			AddMovementInput(YawOnly.GetRightVector(), std::clamp(Value, -1.0f, 1.0f));
 		});
 
 		// Space = Jump. Walking 중에만 effective (CharacterMovement::Jump 가 guard).
 		InputComponent->AddActionMapping("Jump", 0x20);
+		InputComponent->AddActionMapping("Jump", "GamepadFaceButtonBottom");
 		InputComponent->BindAction("Jump", EInputEvent::Pressed, [this]()
 		{
 			Jump();
@@ -976,6 +979,8 @@ void ACharacter::SetupInputComponent()
 	{
 		InputComponent->AddMouseAxisMapping("Turn", EInputAxisSourceType::MouseX, MouseSensitivity);
 		InputComponent->AddMouseAxisMapping("LookUp", EInputAxisSourceType::MouseY, MouseSensitivity);
+		InputComponent->AddGamepadAxisMapping("Turn", EInputAxisSourceType::GamepadRightStickX, GamepadLookSensitivity);
+		InputComponent->AddGamepadAxisMapping("LookUp", EInputAxisSourceType::GamepadRightStickY, -GamepadLookSensitivity);
 
 		InputComponent->BindAxis("Turn", [this](float Value)
 		{
