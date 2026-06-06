@@ -20,6 +20,7 @@ namespace physx
 {
     class PxFoundation;
     class PxPhysics;
+    class PxCooking;
     class PxScene;
     class PxDefaultCpuDispatcher;
     class PxMaterial;
@@ -172,6 +173,7 @@ private:
 	// PhysX core objects
     physx::PxFoundation*           Foundation      = nullptr;
     physx::PxPhysics*              Physics         = nullptr;
+    physx::PxCooking*              Cooking         = nullptr;
     physx::PxScene*                Scene           = nullptr;
     physx::PxDefaultCpuDispatcher* Dispatcher      = nullptr;
     physx::PxMaterial*             DefaultMaterial = nullptr;

@@ -2,6 +2,7 @@
 
 #include "Component/PrimitiveComponent.h"
 #include "Component/Primitive/SkeletalMeshComponent.h"
+#include "Component/Primitive/StaticMeshComponent.h"
 #include "Component/Shape/BoxComponent.h"
 #include "Component/Shape/CapsuleComponent.h"
 #include "Component/Shape/SphereComponent.h"
@@ -14,6 +15,7 @@
 #include "Physics/PhysicsBodyInstance.h"
 #include "Physics/PhysicsShapeInstance.h"
 #include "Physics/PhysXConversion.h"
+#include "Mesh/Static/StaticMeshAsset.h"
 
 #include <algorithm>
 #include <chrono>
@@ -21,6 +23,7 @@
 #include <memory>
 #include <mutex>
 #include <PxPhysicsAPI.h>
+#include <cooking/PxCooking.h>
 #include <vehicle/PxVehicleSDK.h>
 #include <thread>
 #include <unordered_map>
@@ -1291,6 +1294,15 @@ void FPhysXPhysicsScene::Initialize(UWorld* InWorld)
         return;
     }
 
+    PxCookingParams CookingParams(Physics->getTolerancesScale());
+    Cooking = PxCreateCooking(PX_PHYSICS_VERSION, *Foundation, CookingParams);
+    if (!Cooking)
+    {
+        UE_LOG("[PhysX] Failed to create Cooking");
+        Shutdown();
+        return;
+    }
+
     const auto& PhysicsSettings   = FProjectSettings::Get().Physics;
     int32       WorkerThreadCount = PhysicsSettings.WorkerThreadCount;
     if (WorkerThreadCount <= 0)
@@ -1356,7 +1368,7 @@ void FPhysXPhysicsScene::Initialize(UWorld* InWorld)
         return;
     }
 
-    Runtime.Initialize(World, Physics, Scene, DefaultMaterial);
+    Runtime.Initialize(World, Physics, Cooking, Scene, DefaultMaterial);
     StartPhysicsThread();
 
     UE_LOG("[PhysX] Initialized successfully (Scene=%p)", Scene);
@@ -1375,6 +1387,11 @@ void FPhysXPhysicsScene::Shutdown()
     {
         DefaultMaterial->release();
         DefaultMaterial = nullptr;
+    }
+    if (Cooking)
+    {
+        Cooking->release();
+        Cooking = nullptr;
     }
     if (Scene)
     {
@@ -1681,23 +1698,7 @@ FPhysicsShapeDesc FPhysXPhysicsScene::BuildShapeDescFromComponent_GameThread(
             Comp->GetEnableCCD() || (RootComponent && RootComponent->GetEnableCCD());
     FillFilterDataFromComponent_GameThread(Desc.FilterData, Comp, Desc.bIsTrigger, bEnableCCDForShape);
 
-    if (auto* Box = Cast<UBoxComponent>(Comp))
-    {
-        Desc.Type          = EPhysicsShapeType::Box;
-        Desc.BoxHalfExtent = Box->GetScaledBoxExtent();
-    }
-    else if (auto* Sphere = Cast<USphereComponent>(Comp))
-    {
-        Desc.Type         = EPhysicsShapeType::Sphere;
-        Desc.SphereRadius = Sphere->GetScaledSphereRadius();
-    }
-    else if (auto* Capsule = Cast<UCapsuleComponent>(Comp))
-    {
-        Desc.Type              = EPhysicsShapeType::Capsule;
-        Desc.CapsuleRadius     = Capsule->GetScaledCapsuleRadius();
-        Desc.CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
-    }
-    else
+    auto BuildBoundsBoxDesc = [&Desc, Comp, RootComponent]()
     {
         const FBoundingBox Bounds      = Comp->GetWorldBoundingBox();
         const FVector      WorldCenter = Bounds.GetCenter();
@@ -1715,6 +1716,60 @@ FPhysicsShapeDesc FPhysXPhysicsScene::BuildShapeDescFromComponent_GameThread(
             GetComponentWorldRotationNoScale_GameThread(Comp),
             RootComponent
         );
+    };
+
+    if (auto* Box = Cast<UBoxComponent>(Comp))
+    {
+        Desc.Type          = EPhysicsShapeType::Box;
+        Desc.BoxHalfExtent = Box->GetScaledBoxExtent();
+    }
+    else if (auto* Sphere = Cast<USphereComponent>(Comp))
+    {
+        Desc.Type         = EPhysicsShapeType::Sphere;
+        Desc.SphereRadius = Sphere->GetScaledSphereRadius();
+    }
+    else if (auto* Capsule = Cast<UCapsuleComponent>(Comp))
+    {
+        Desc.Type              = EPhysicsShapeType::Capsule;
+        Desc.CapsuleRadius     = Capsule->GetScaledCapsuleRadius();
+        Desc.CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+    }
+    else if (auto* StaticMeshComp = Cast<UStaticMeshComponent>(Comp))
+    {
+        UStaticMesh* Mesh = StaticMeshComp->GetStaticMesh();
+        FStaticMesh* StaticMeshAsset = Mesh ? Mesh->GetStaticMeshAsset() : nullptr;
+        const bool bCanUseTriangleMesh =
+            StaticMeshComp->ShouldUseMeshTriangleCollision() &&
+            !Comp->GetSimulatePhysics() &&
+            !Comp->IsKinematic() &&
+            StaticMeshAsset &&
+            StaticMeshAsset->Vertices.size() >= 3 &&
+            StaticMeshAsset->Indices.size() >= 3;
+
+        if (bCanUseTriangleMesh)
+        {
+            const FVector WorldScale = Comp->GetWorldMatrix().GetScale();
+
+            Desc.Type = EPhysicsShapeType::TriangleMesh;
+            Desc.TriangleVertices.reserve(StaticMeshAsset->Vertices.size());
+            for (const FNormalVertex& Vertex : StaticMeshAsset->Vertices)
+            {
+                Desc.TriangleVertices.push_back(FVector(
+                    Vertex.pos.X * WorldScale.X,
+                    Vertex.pos.Y * WorldScale.Y,
+                    Vertex.pos.Z * WorldScale.Z
+                ));
+            }
+            Desc.TriangleIndices = StaticMeshAsset->Indices;
+        }
+        else
+        {
+            BuildBoundsBoxDesc();
+        }
+    }
+    else
+    {
+        BuildBoundsBoxDesc();
     }
 
     return Desc;
