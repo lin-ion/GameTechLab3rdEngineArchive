@@ -26,6 +26,7 @@ local actor = nil
 local ability_system = nil
 local movement = nil
 local anim_instance = nil
+local dash_trail_particle = nil
 local movement_locks = {}
 
 local function log(message)
@@ -92,6 +93,74 @@ local function get_character_movement(owner)
     end
 
     return movement
+end
+
+local function get_dash_trail_particle(owner)
+    if dash_trail_particle ~= nil then
+        return dash_trail_particle
+    end
+
+    if owner ~= nil and owner.GetParticleSystemComponent ~= nil then
+        dash_trail_particle = owner:GetParticleSystemComponent()
+    end
+
+    if dash_trail_particle == nil then
+        dash_trail_particle = find_component_by_class(owner, "UParticleSystemComponent")
+    end
+
+    return dash_trail_particle
+end
+
+local function reset_dash_trail(owner)
+    local particle = get_dash_trail_particle(owner)
+    if particle == nil then
+        return
+    end
+
+    if particle.SetAutoActivate ~= nil then
+        particle:SetAutoActivate(false)
+    end
+
+    if particle.SetResetOnActivate ~= nil then
+        particle:SetResetOnActivate(true)
+    end
+
+    if particle.Deactivate ~= nil then
+        particle:Deactivate()
+    end
+
+    if particle.ResetParticles ~= nil then
+        particle:ResetParticles()
+    end
+end
+
+local function start_dash_trail(owner)
+    local particle = get_dash_trail_particle(owner)
+    if particle == nil then
+        return
+    end
+
+    local ok, err = pcall(function()
+        if particle.Deactivate ~= nil then
+            particle:Deactivate()
+        end
+        if particle.Activate ~= nil then
+            particle:Activate(true)
+        elseif particle.ResetParticles ~= nil then
+            particle:ResetParticles()
+        end
+    end)
+
+    if not ok then
+        log("Dash trail start failed: " .. tostring(err))
+    end
+end
+
+local function stop_dash_trail(owner)
+    local particle = get_dash_trail_particle(owner)
+    if particle ~= nil and particle.Deactivate ~= nil then
+        particle:Deactivate()
+    end
 end
 
 local function set_owner_movement_blocked(owner, blocked)
@@ -384,6 +453,7 @@ local function activate_movement_ability(owner, ability, label, anim_var, distan
         end
 
         if label == "Dash" then
+            start_dash_trail(owner)
             start_dash_afterimage(owner, forward, duration)
         end
 
@@ -434,6 +504,7 @@ local function activate_movement_ability(owner, ability, label, anim_var, distan
     end
 
     if label == "Dash" then
+        start_dash_trail(owner)
         start_dash_afterimage(owner, forward, duration)
     end
 
@@ -450,6 +521,7 @@ local function end_dash(owner, ability)
     if owner ~= nil then
         set_anim_bool(owner, DASH_ANIM_VAR, false)
         unlock_movement(owner, "Dash")
+        stop_dash_trail(owner)
     end
     log("Dash ended")
 end
@@ -510,6 +582,7 @@ local function setup_abilities()
     set_anim_bool(owner, DASH_ANIM_VAR, false)
     set_anim_bool(owner, ROLL_ANIM_VAR, false)
     set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+    reset_dash_trail(owner)
 end
 
 function BeginPlay()
@@ -530,12 +603,14 @@ function EndPlay()
         set_anim_bool(actor, ATTACK_ANIM_VAR, false)
         movement_locks = {}
         set_owner_movement_blocked(actor, false)
+        reset_dash_trail(actor)
     end
 
     actor = nil
     ability_system = nil
     movement = nil
     anim_instance = nil
+    dash_trail_particle = nil
 end
 
 function OnOverlap(OtherActor)

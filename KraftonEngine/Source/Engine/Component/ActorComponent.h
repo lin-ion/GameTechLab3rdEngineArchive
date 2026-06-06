@@ -54,13 +54,15 @@ public:
 	void SetActive(bool bNewActive);
 	UFUNCTION(Callable, Category="Component|Activation")
 	inline void SetAutoActivate(bool bNewAutoActivate) { bAutoActivate = bNewAutoActivate; }
+	UFUNCTION(Pure, Category="Component|Activation")
+	inline bool GetAutoActivate() const { return bAutoActivate; }
 	UFUNCTION(Callable, Category="Component|Tick")
 	inline void SetComponentTickEnabled(bool bEnabled) {
 		PrimaryComponentTick.SetTickEnabled(bEnabled);
 	}
 
 	UFUNCTION(Pure, Category="Component|Activation")
-	inline bool IsActive() { return bIsActive; }
+	inline bool IsActive() const { return bIsActive; }
 
 	void SetOwner(AActor* Actor);
 	UFUNCTION(Pure, Category="Component|Owner")
