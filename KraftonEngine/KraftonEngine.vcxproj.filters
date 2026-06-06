@@ -1460,6 +1460,9 @@
     <ClCompile Include="Source\Engine\GameFramework\Light\SpotLightActor.cpp">
       <Filter>Source\Engine\GameFramework\Light</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\GameFramework\Pawn\BossCharacter.cpp">
+      <Filter>Source\Engine\GameFramework\Pawn</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\GameFramework\Pawn\Character.cpp">
       <Filter>Source\Engine\GameFramework\Pawn</Filter>
     </ClCompile>
@@ -2922,6 +2925,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\Light\SpotLightActor.h">
       <Filter>Source\Engine\GameFramework\Light</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\Pawn\BossCharacter.h">
+      <Filter>Source\Engine\GameFramework\Pawn</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\Pawn\Character.h">
       <Filter>Source\Engine\GameFramework\Pawn</Filter>

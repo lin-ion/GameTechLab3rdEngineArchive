@@ -89,6 +89,7 @@ public:
 		TriggerVolumeParticle,
 		SkeletalMesh,
 		Character,
+		BossCharacter,
 		LuaCharacter,
 		WheeledVehicle,
 		ParticleSystem,
