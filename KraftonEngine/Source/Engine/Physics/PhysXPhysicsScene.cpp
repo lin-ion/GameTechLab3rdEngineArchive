@@ -1,4 +1,4 @@
-#include "Physics/PhysXPhysicsScene.h"
+﻿#include "Physics/PhysXPhysicsScene.h"
 
 #include "Component/PrimitiveComponent.h"
 #include "Component/Primitive/SkeletalMeshComponent.h"
@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "GameFramework/ProjectilePoolSubSystem.h"
 
 using namespace physx;
 
@@ -1360,6 +1361,7 @@ void FPhysXPhysicsScene::Initialize(UWorld* InWorld)
 
     UE_LOG("[PhysX] Initialized successfully (Scene=%p)", Scene);
 }
+
 
 void FPhysXPhysicsScene::Shutdown()
 {

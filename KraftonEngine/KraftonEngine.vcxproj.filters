@@ -2118,6 +2118,8 @@
     <ClCompile Include="Intermediate\Generated\Reflection.generated.cpp">
       <Filter>Intermediate\Generated</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ProjectileActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -6104,6 +6106,9 @@
     <ClInclude Include="ThirdParty\sol2\include\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\include\sol\utility</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ProjectileActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.h" />
+    <ClInclude Include="Source\Engine\GameFramework\IPoolableProjectile.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />
