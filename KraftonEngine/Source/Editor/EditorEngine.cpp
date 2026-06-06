@@ -14,6 +14,7 @@
 #include "GameFramework/GameMode/GameModeBase.h"
 #include "Viewport/GameViewportClient.h"
 #include "UI/UIManager.h"
+#include "UI/Canvas/UICanvasActor.h"
 #include "Editor/Slate/SlateApplication.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Editor/UI/Util/EditorFileUtils.h"
@@ -115,6 +116,22 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	{
 		SCOPE_STARTUP_STAT("EditorRenderPipeline::Create");
 		SetRenderPipeline(std::make_unique<FEditorRenderPipeline>(this, Renderer));
+	}
+
+	// [DEBUG/TEST 임시 — ui-drop cycle 1] AUICanvasActor::LoadFromAsset 독립 검증용.
+	// 에디터 월드에 UI .uasset 액터를 하나 스폰한다(메시 드롭과 동형: Factory→로드→AddActor).
+	// 화면 등록은 BeginPlay 게이트라(진단 R1) 편집 모드에선 보이지 않고, Play(PIE) 진입 시
+	// 월드 복제 → BeginPlay → RegisterCanvas 로 비로소 화면에 뜬다. cycle 3(실제 드롭 배선)에서 제거.
+	if (UWorld* EditorWorld = GetWorld())
+	{
+		const FString DebugUIAssetPath =
+			FPaths::ToUtf8(FPaths::Combine(FPaths::RootDir(), L"Content", L"UI", L"NewUI.uasset"));
+		UObject* Created = FObjectFactory::Get().Create(AUICanvasActor::StaticClass()->GetName(), EditorWorld);
+		if (AUICanvasActor* UIActor = Cast<AUICanvasActor>(Created))
+		{
+			UIActor->LoadFromAsset(DebugUIAssetPath);
+			EditorWorld->AddActor(UIActor);
+		}
 	}
 }
 
