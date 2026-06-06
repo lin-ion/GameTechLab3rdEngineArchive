@@ -19,6 +19,22 @@
 #include <algorithm>
 #include <cmath>
 
+namespace
+{
+	const char* MovementModeToString(EMovementMode Mode)
+	{
+		switch (Mode)
+		{
+		case EMovementMode::Walking:
+			return "Walking";
+		case EMovementMode::Falling:
+			return "Falling";
+		default:
+			return "Unknown";
+		}
+	}
+}
+
 UCharacterMovementComponent::UCharacterMovementComponent()
 {
 	// USkeletalMeshComponent::TickComponent (TG_PrePhysics, default) 가 UpdateAnimation 으로
@@ -73,15 +89,63 @@ bool UCharacterMovementComponent::ConsumePendingRootMotion(FTransform& OutLocalD
 void UCharacterMovementComponent::SetMovementMode(EMovementMode NewMode)
 {
 	if (MovementMode == NewMode) return;
+	const EMovementMode OldMode = MovementMode;
 	MovementMode = NewMode;
+	const FVector Loc = GetUpdatedComponent() ? GetUpdatedComponent()->GetWorldLocation() : FVector::ZeroVector;
+	UE_LOG("[CharacterMovement] MovementMode changed actor=%s %s->%s loc=(%.3f,%.3f,%.3f) vel=(%.3f,%.3f,%.3f)",
+		GetOwner() ? GetOwner()->GetName().c_str() : "None",
+		MovementModeToString(OldMode),
+		MovementModeToString(NewMode),
+		Loc.X, Loc.Y, Loc.Z,
+		Velocity.X, Velocity.Y, Velocity.Z);
 	// 추후 OnMovementModeChanged delegate 위치.
 }
 
 void UCharacterMovementComponent::Jump()
 {
 	// Walking 중에만 점프 허용 — 공중 다단 점프 막음. (필요 시 자식 override.)
-	if (MovementMode != EMovementMode::Walking) return;
+	const FVector Loc = GetUpdatedComponent() ? GetUpdatedComponent()->GetWorldLocation() : FVector::ZeroVector;
+	UE_LOG("[CharacterMovement] Jump requested actor=%s mode=%s loc=(%.3f,%.3f,%.3f) vel=(%.3f,%.3f,%.3f) wantsJump=%s",
+		GetOwner() ? GetOwner()->GetName().c_str() : "None",
+		MovementModeToString(MovementMode),
+		Loc.X, Loc.Y, Loc.Z,
+		Velocity.X, Velocity.Y, Velocity.Z,
+		bWantsJump ? "true" : "false");
+
+	if (MovementMode != EMovementMode::Walking)
+	{
+		FHitResult Floor;
+		if (TraceFloor(Floor) && IsWalkableFloorHit(Floor))
+		{
+			if (USceneComponent* Updated = GetUpdatedComponent())
+			{
+				FVector RecoverLoc = Updated->GetWorldLocation();
+				RecoverLoc.Z = Floor.WorldHitLocation.Z + GetCapsuleHalfHeight();
+				Updated->SetWorldLocation(RecoverLoc);
+			}
+			Velocity.Z = 0.0f;
+			SetMovementMode(EMovementMode::Walking);
+			UE_LOG("[CharacterMovement] Jump recovered walking actor=%s floor=(%.3f,%.3f,%.3f) normal=(%.3f,%.3f,%.3f)",
+				GetOwner() ? GetOwner()->GetName().c_str() : "None",
+				Floor.WorldHitLocation.X, Floor.WorldHitLocation.Y, Floor.WorldHitLocation.Z,
+				Floor.WorldNormal.X, Floor.WorldNormal.Y, Floor.WorldNormal.Z);
+		}
+		else
+		{
+			UE_LOG("[CharacterMovement] Jump rejected actor=%s reason=not_walking mode=%s floorHit=%s loc=(%.3f,%.3f,%.3f) vel=(%.3f,%.3f,%.3f)",
+				GetOwner() ? GetOwner()->GetName().c_str() : "None",
+				MovementModeToString(MovementMode),
+				Floor.bHit ? "true" : "false",
+				Loc.X, Loc.Y, Loc.Z,
+				Velocity.X, Velocity.Y, Velocity.Z);
+			return;
+		}
+	}
+
 	bWantsJump = true;
+	UE_LOG("[CharacterMovement] Jump queued actor=%s jumpZ=%.3f",
+		GetOwner() ? GetOwner()->GetName().c_str() : "None",
+		JumpZVelocity);
 }
 
 void UCharacterMovementComponent::StopMovementImmediately()
@@ -357,9 +421,22 @@ void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& Ro
 	{
 		bWantsJump = false;
 		Velocity.Z = JumpZVelocity;
+		UE_LOG("[CharacterMovement] Jump launched actor=%s velocity=(%.3f,%.3f,%.3f)",
+			GetOwner() ? GetOwner()->GetName().c_str() : "None",
+			Velocity.X, Velocity.Y, Velocity.Z);
 		SetMovementMode(EMovementMode::Falling);
-		// XY 이동은 Falling 분기로 위임 — 한 frame 안 mode 전환이라 즉시 falling tick.
-		TickFalling(DeltaTime, RootMotionWorldXY);
+
+		// 바닥에 붙어있는 frame에서 즉시 falling sweep을 돌리면 capsule의 초기 floor 접촉이
+		// 충돌로 잡혀 Velocity.Z가 0이 되고 곧바로 Landed 처리될 수 있다. 점프 frame은
+		// 아주 살짝 들어 올리고 다음 tick부터 Falling 이동을 시작한다.
+		if (Updated)
+		{
+			const float Lift = (std::max)(0.02f, (std::min)(0.05f, FloorProbeDistance * 0.5f));
+			Updated->SetWorldLocation(Updated->GetWorldLocation() + FVector(0.0f, 0.0f, Lift));
+			UE_LOG("[CharacterMovement] Jump lift applied actor=%s lift=%.3f",
+				GetOwner() ? GetOwner()->GetName().c_str() : "None",
+				Lift);
+		}
 		return;
 	}
 
@@ -377,6 +454,12 @@ void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& Ro
 	FHitResult Floor;
 	if (!TraceFloor(Floor))
 	{
+		const FVector CurrentLoc = Updated ? Updated->GetWorldLocation() : FVector::ZeroVector;
+		UE_LOG("[CharacterMovement] Walking lost floor actor=%s loc=(%.3f,%.3f,%.3f) vel=(%.3f,%.3f,%.3f) probe=%.3f",
+			GetOwner() ? GetOwner()->GetName().c_str() : "None",
+			CurrentLoc.X, CurrentLoc.Y, CurrentLoc.Z,
+			Velocity.X, Velocity.Y, Velocity.Z,
+			FloorProbeDistance);
 		// 발 아래 floor 없음 (예: 절벽 끝) → falling 전환.
 		SetMovementMode(EMovementMode::Falling);
 		return;
@@ -418,6 +501,10 @@ void UCharacterMovementComponent::TickFalling(float DeltaTime, const FVector& Ro
 	LandLoc.Z = Floor.WorldHitLocation.Z + GetCapsuleHalfHeight();
 	Updated->SetWorldLocation(LandLoc);
 	Velocity.Z = 0.0f;
+	UE_LOG("[CharacterMovement] Landed actor=%s floor=(%.3f,%.3f,%.3f) loc=(%.3f,%.3f,%.3f)",
+		GetOwner() ? GetOwner()->GetName().c_str() : "None",
+		Floor.WorldHitLocation.X, Floor.WorldHitLocation.Y, Floor.WorldHitLocation.Z,
+		LandLoc.X, LandLoc.Y, LandLoc.Z);
 	SetMovementMode(EMovementMode::Walking);
 }
 
