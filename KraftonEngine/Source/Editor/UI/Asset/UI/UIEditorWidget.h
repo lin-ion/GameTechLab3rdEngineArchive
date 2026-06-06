@@ -26,6 +26,7 @@ private:
 	// (런타임 SimpleUIPass/LayoutAll 오염 방지) — 레이아웃/히트테스트는 per-canvas seam 사용.
 	void BuildLiveTree(UUIAsset* Asset);
 	void DestroyLiveTree();
+	void SaveToAsset();   // 편집 라이브 트리 → SerializeUITree → UUIAsset::CanvasData → 파일 저장(사이클 ⑥).
 
 	// 4분할 패널 내용(사이클 ①은 타이틀만, 후속 사이클이 알맹이를 채운다).
 	void RenderPalettePanel();    // 좌상 — Canvas/Button/Image 팔레트(사이클 ③)

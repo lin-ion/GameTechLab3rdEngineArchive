@@ -5,6 +5,7 @@
 #include "Object/Reflection/ObjectFactory.h"
 #include "Serialization/SceneSaveManager.h"
 #include "UI/UIAsset.h"
+#include "UI/UIAssetManager.h"
 #include "UI/Canvas/UICanvas.h"
 #include "UI/Canvas/UICanvasActor.h"
 #include "UI/Canvas/UICanvasManager.h"
@@ -146,6 +147,23 @@ void FUIEditorWidget::DestroyLiveTree()
 	}
 }
 
+void FUIEditorWidget::SaveToAsset()
+{
+	UUIAsset* Asset = Cast<UUIAsset>(EditedObject);
+	if (!Asset || !Canvas)
+	{
+		return;
+	}
+
+	// 편집된 라이브 트리를 다시 JSON 으로 직렬화(저장 방향은 ⓪에서 추가한 SerializeUITree 재사용)
+	// → 에셋 블롭 갱신 → FAssetPackage string payload 로 .uasset 기록.
+	Asset->SetCanvasData(FSceneSaveManager::SerializeUITree(Canvas));
+	if (FUIAssetManager::Get().Save(Asset))
+	{
+		ClearDirty();
+	}
+}
+
 void FUIEditorWidget::Render(float DeltaTime)
 {
 	(void)DeltaTime;
@@ -177,6 +195,15 @@ void FUIEditorWidget::Render(float DeltaTime)
 		}
 		return;
 	}
+
+	// 상단 툴바 — 저장(편집 트리 → .uasset 재직렬화) + dirty 표시(사이클 ⑥).
+	if (ImGui::Button("Save"))
+	{
+		SaveToAsset();
+	}
+	ImGui::SameLine();
+	ImGui::TextDisabled(IsDirty() ? "(modified)" : "(saved)");
+	ImGui::Separator();
 
 	// 4분할: [좌상 팔레트 / 좌하 계층트리] | [중앙 캔버스 뷰포트] | [우 디테일]. child 분할(진단 B).
 	const float  LeftWidth  = 200.0f;
