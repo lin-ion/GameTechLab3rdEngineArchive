@@ -18,9 +18,34 @@
 #include <imgui.h>
 
 #include <cstdio>
+#include <cstring>
 
 namespace
 {
+	// Font Weight / Text Align 의 "가능한 값"만 toggle 로 순환한다(자유 입력 금지). 모두 RmlUi 가
+	// 인식하는 값 — weight: normal|bold, align: left|center|right(단일행 라벨이라 justify 제외).
+	const char* const kFontWeightOptions[] = { "normal", "bold" };
+	const char* const kTextAlignOptions[]  = { "left", "center", "right" };
+
+	// 현재 값을 보여주는 버튼 — 클릭하면 Options 의 다음 값으로 순환. 바뀌면 OutNext 에 담고 true 반환.
+	// 보이는 라벨은 "Label: value", ImGui ID 는 ###Label 로 고정(값이 바뀌어도 동일 위젯 유지).
+	bool CycleButton(const char* Label, const char* const* Options, int Count,
+	                 const FString& Current, FString& OutNext)
+	{
+		int Index = 0;
+		for (int i = 0; i < Count; ++i)
+		{
+			if (strcmp(Current.c_str(), Options[i]) == 0) { Index = i; break; }
+		}
+		const FString Caption = FString(Label) + ": " + Options[Index] + "###" + Label;
+		if (ImGui::Button(Caption.c_str()))
+		{
+			OutNext = FString(Options[(Index + 1) % Count]);
+			return true;
+		}
+		return false;
+	}
+
 	// 뷰포트 드로우 — FSimpleUIPass::CollectVisible 로직을 ImGui DrawList 로 미러(진단 §C, Option B).
 	// 가시 요소의 ScreenRect(=레퍼런스*Scale, 캔버스 원점 기준)를 Origin 더해 사각형으로 그린다.
 	void DrawUIElementRect(UUIElement* Element, ImDrawList* DL, const ImVec2& Origin, float Scale)
@@ -482,19 +507,18 @@ void FUIEditorWidget::RenderDetailsPanel()
 			MarkDirty();
 		}
 
-		char WeightBuf[64];
-		snprintf(WeightBuf, sizeof(WeightBuf), "%s", TextElem->GetFontWeight().c_str());
-		if (ImGui::InputText("Font Weight", WeightBuf, sizeof(WeightBuf)))
+		// Font Weight / Text Align — 자유 입력 대신 유효 값만 순환하는 toggle 버튼(클릭 시 다음 값).
+		FString NextWeight;
+		if (CycleButton("Font Weight", kFontWeightOptions, 2, TextElem->GetFontWeight(), NextWeight))
 		{
-			TextElem->SetFontWeight(FString(WeightBuf));
+			TextElem->SetFontWeight(NextWeight);
 			MarkDirty();
 		}
 
-		char AlignBuf[64];
-		snprintf(AlignBuf, sizeof(AlignBuf), "%s", TextElem->GetTextAlign().c_str());
-		if (ImGui::InputText("Text Align", AlignBuf, sizeof(AlignBuf)))
+		FString NextAlign;
+		if (CycleButton("Text Align", kTextAlignOptions, 3, TextElem->GetTextAlign(), NextAlign))
 		{
-			TextElem->SetTextAlign(FString(AlignBuf));
+			TextElem->SetTextAlign(NextAlign);
 			MarkDirty();
 		}
 
