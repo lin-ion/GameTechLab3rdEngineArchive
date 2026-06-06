@@ -6,6 +6,7 @@
 #include "Render/Scene/FScene.h"
 #include "Viewport/Viewport.h"
 #include "Viewport/GameViewportClient.h"
+#include "Component/Action/ActionVisualEffectComponent.h"
 #include "Component/Camera/CameraComponent.h"
 #include "Component/Camera/CineCameraComponent.h"
 #include "GameFramework/World.h"
@@ -35,6 +36,56 @@ namespace
 		}
 
 		POV.AspectRatio = (ViewportWidth / ViewportHeight) / VisibleHeightScale;
+	}
+
+	void CollectActionAfterImages(UWorld* World, FFrameContext& Frame)
+	{
+		Frame.ActionAfterImages.clear();
+		if (!World)
+		{
+			return;
+		}
+
+		for (AActor* Actor : World->GetActors())
+		{
+			if (!IsValid(Actor))
+			{
+				continue;
+			}
+
+			UActionVisualEffectComponent* VisualEffect = Actor->GetComponentByClass<UActionVisualEffectComponent>();
+			if (!VisualEffect || !VisualEffect->IsAfterImageActive())
+			{
+				continue;
+			}
+
+			FVector Direction = VisualEffect->GetAfterImageWorldDirection();
+			if (Direction.Length() <= FMath::Epsilon)
+			{
+				continue;
+			}
+			Direction.Normalize();
+
+			FVector2 ScreenDirection(Direction.Dot(Frame.CameraRight), -Direction.Dot(Frame.CameraUp));
+			if (ScreenDirection.Length() <= FMath::Epsilon)
+			{
+				continue;
+			}
+			ScreenDirection.Normalize();
+
+			FActionAfterImageRenderState State;
+			State.TargetActor = Actor;
+			State.WorldDirection = Direction;
+			State.ScreenDirection = ScreenDirection;
+			State.Intensity = VisualEffect->GetAfterImageIntensity();
+			State.Radius = VisualEffect->GetAfterImageRadius();
+			State.SampleCount = VisualEffect->GetAfterImageSampleCount();
+			State.StencilValue = 2;
+			if (State.IsValid())
+			{
+				Frame.ActionAfterImages.push_back(State);
+			}
+		}
 	}
 }
 
@@ -262,6 +313,7 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient* VC, const FMi
 	FMinimalViewInfo RenderPOV = POV;
 	ApplyLetterboxAspect(RenderPOV, Frame.CameraLetterbox, Frame.ViewportWidth, Frame.ViewportHeight);
 	Frame.SetCameraInfo(RenderPOV);
+	CollectActionAfterImages(World, Frame);
 
 	// Light View Override — 라이트 시점으로 View/Proj 교체.
 	// Directional CSM 은 viewer POV 의 frustum 으로 cascade 분할 → 위에서 추출한 POV 를 그대로 위임.
@@ -387,6 +439,7 @@ void FEditorRenderPipeline::RenderPreviewViewport(IEditorPreviewViewportClient* 
 	Frame.ClearViewportResources();
 	Frame.SetViewportInfo(VP);
 	Frame.SetCameraInfo(POV);
+	CollectActionAfterImages(World, Frame);
 	Frame.WorldType = World->GetWorldType();
 
 	Frame.SetRenderOptions(VC->GetRenderOptions());

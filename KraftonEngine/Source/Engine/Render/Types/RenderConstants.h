@@ -272,6 +272,12 @@ struct FFXAAConstants
 	float _pad[2];
 };
 
+struct FActionAfterImageConstants
+{
+	FVector4 Params0; // xy: screen direction, z: intensity, w: radius in pixels
+	FVector4 Params1; // xy: inverse viewport size, z: sample count, w: stencil value
+};
+
 struct FGammaCorrectionConstants
 {
 	float Gamma;

@@ -101,6 +101,7 @@ void FDepthStencilStateManager::Set(ID3D11DeviceContext* InContext, EDepthStenci
 	case EDepthStencilState::DepthGreaterEqual:   InContext->OMSetDepthStencilState(DepthGreaterEqual, 0); break;
 	case EDepthStencilState::DepthReadOnly:        InContext->OMSetDepthStencilState(DepthReadOnly, 0);    break;
 	case EDepthStencilState::StencilWrite:         InContext->OMSetDepthStencilState(StencilWrite, 1);     break;
+	case EDepthStencilState::ActionMaskWrite:      InContext->OMSetDepthStencilState(StencilWrite, 2);     break;
 	case EDepthStencilState::StencilWriteOnlyEqual:InContext->OMSetDepthStencilState(StencilMaskEqual, 1); break;
 	case EDepthStencilState::NoDepth:              InContext->OMSetDepthStencilState(NoDepth, 0);          break;
 	case EDepthStencilState::GizmoInside:          InContext->OMSetDepthStencilState(GizmoInside, 1);      break;

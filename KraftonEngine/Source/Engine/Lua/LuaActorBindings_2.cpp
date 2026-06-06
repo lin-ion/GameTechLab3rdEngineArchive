@@ -350,6 +350,18 @@ void FLuaScriptManager::RegisterActorBindings_2(sol::state& Lua)
         &UActionComponent::StopAllActions
     );
 
+    Lua.new_usertype<UActionVisualEffectComponent>(
+        "ActionVisualEffectComponent",
+        sol::base_classes,
+        sol::bases<UActorComponent, UObject>(),
+        "StartAfterImage",
+        &UActionVisualEffectComponent::StartAfterImage,
+        "StopAfterImage",
+        &UActionVisualEffectComponent::StopAfterImage,
+        "IsAfterImageActive",
+        &UActionVisualEffectComponent::IsAfterImageActive
+    );
+
     Lua.new_usertype<UFloatingPawnMovementComponent>(
         "FloatingPawnMovementComponent",
         sol::base_classes,
@@ -618,6 +630,14 @@ void FLuaScriptManager::RegisterActorBindings_2(sol::state& Lua)
         &UParticleSystemComponent::ResetParticles,
         "IsActive",
         &UParticleSystemComponent::IsActive,
+        "SetAutoActivate",
+        &UParticleSystemComponent::SetAutoActivate,
+        "GetAutoActivate",
+        &UParticleSystemComponent::GetAutoActivate,
+        "SetResetOnActivate",
+        &UParticleSystemComponent::SetResetOnActivate,
+        "GetResetOnActivate",
+        &UParticleSystemComponent::GetResetOnActivate,
         "GetEmitterInstanceCount",
         &UParticleSystemComponent::GetEmitterInstanceCount,
         "GetCurrentLODIndex",

@@ -142,7 +142,7 @@ void UParticleSystemComponent::BeginPlay()
 		ClampCurrentLODIndex();
 	}
 
-	if (bAutoActivate) Activate(bResetOnActivate);
+	if (GetAutoActivate()) Activate(bResetOnActivate);
 }
 
 void UParticleSystemComponent::EndPlay()
@@ -378,7 +378,7 @@ void UParticleSystemComponent::PostDuplicate()
 
 	LoadTemplateFromPath();
 
-	if (bAutoActivate)
+	if (GetAutoActivate())
 	{
 		Activate(true);
 	}
@@ -499,6 +499,10 @@ void UParticleSystemComponent::RebuildInstances(bool bReset)
 UParticleSystemComponent::FDynamicData* UParticleSystemComponent::BuildDynamicData()
 {
 	FDynamicData* Data = new FDynamicData();
+	if (!bActive)
+	{
+		return Data;
+	}
 
 	for (FParticleEmitterInstance* Inst : EmitterInstances)
 	{

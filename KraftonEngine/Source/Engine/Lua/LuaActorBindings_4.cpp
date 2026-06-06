@@ -241,6 +241,46 @@ void FLuaScriptManager::RegisterActorBindings_4(sol::state& Lua)
             return Actor.GetComponentByClass<UActionComponent>();
         },
 
+        "GetActionVisualEffectComponent",
+        [](AActor& Actor)
+        {
+            return Actor.GetComponentByClass<UActionVisualEffectComponent>();
+        },
+
+        "StartAfterImage",
+        [](AActor& Actor, const FVector& WorldDirection, float Duration, sol::optional<float> Intensity,
+            sol::optional<float> Radius, sol::optional<int32> SampleCount) -> bool
+        {
+            UActionVisualEffectComponent* VisualEffect = Actor.GetComponentByClass<UActionVisualEffectComponent>();
+            if (!VisualEffect)
+            {
+                VisualEffect = Actor.AddComponent<UActionVisualEffectComponent>();
+            }
+
+            if (!VisualEffect)
+            {
+                return false;
+            }
+
+            VisualEffect->StartAfterImage(
+                WorldDirection,
+                Duration,
+                Intensity.value_or(0.85f),
+                Radius.value_or(18.0f),
+                SampleCount.value_or(10)
+            );
+            return VisualEffect->IsAfterImageActive();
+        },
+
+        "StopAfterImage",
+        [](AActor& Actor)
+        {
+            if (UActionVisualEffectComponent* VisualEffect = Actor.GetComponentByClass<UActionVisualEffectComponent>())
+            {
+                VisualEffect->StopAfterImage();
+            }
+        },
+
         "GetRootComponent",
         [](AActor& Actor) -> USceneComponent*
         {

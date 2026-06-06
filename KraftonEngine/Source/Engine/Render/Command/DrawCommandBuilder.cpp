@@ -17,6 +17,36 @@
 #include "Render/Pipeline/RenderCollector.h"
 #include "Materials/Material.h"
 #include "Texture/Texture2D.h"
+#include "Component/PrimitiveComponent.h"
+#include "GameFramework/AActor.h"
+
+namespace
+{
+	bool IsActionAfterImageTarget(const FFrameContext& Frame, const FPrimitiveSceneProxy* Proxy)
+	{
+		if (!Proxy || Frame.ActionAfterImages.empty())
+		{
+			return false;
+		}
+
+		UPrimitiveComponent* OwnerComponent = Proxy->GetOwnerComponent();
+		AActor* OwnerActor = OwnerComponent ? OwnerComponent->GetOwner() : nullptr;
+		if (!OwnerActor)
+		{
+			return false;
+		}
+
+		for (const FActionAfterImageRenderState& Effect : Frame.ActionAfterImages)
+		{
+			if (Effect.IsValid() && Effect.TargetActor == OwnerActor)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
 
 // UpdateProxyLOD defined in RenderCollector.cpp (shared)
 extern void UpdateProxyLOD(FPrimitiveSceneProxy* Proxy, const FLODUpdateContext& LODCtx);
@@ -40,6 +70,7 @@ void FDrawCommandBuilder::Create(ID3D11Device* InDevice, ID3D11DeviceContext* In
 	OutlineCB.Create(InDevice, sizeof(FOutlinePostProcessConstants), "OutlineCB");
 	SceneDepthCB.Create(InDevice, sizeof(FSceneDepthPConstants), "SceneDepthCB");
 	DoFCB.Create(InDevice, sizeof(FDoFConstants), "DoFCB");
+	ActionAfterImageCB.Create(InDevice, sizeof(FActionAfterImageConstants), "ActionAfterImageCB");
 	FXAACB.Create(InDevice, sizeof(FFXAAConstants), "FXAACB");
 	GammaCorrectionCB.Create(InDevice, sizeof(FGammaCorrectionConstants), "GammaCorrectionCB");
 
@@ -71,6 +102,7 @@ void FDrawCommandBuilder::Release()
 	OutlineCB.Release();
 	SceneDepthCB.Release();
 	DoFCB.Release();
+	ActionAfterImageCB.Release();
 	FXAACB.Release();
 	GammaCorrectionCB.Release();
 	
@@ -431,7 +463,7 @@ void FDrawCommandBuilder::BuildCommandForProxy(FScene& Scene, const FPrimitiveSc
 		if (Section.IndexCount == 0) continue;
 
 		// per-section 패스 라우팅: PreDepth 는 Opaque 섹션만, 머티리얼-home 패스는 섹션 패스 일치만 빌드.
-		// SelectionMask 같은 유틸 패스는 (선택된) 모든 섹션을 그려야 하므로 필터하지 않는다.
+		// SelectionMask/ActionAfterImageMask 같은 유틸 패스는 모든 섹션을 그려야 하므로 필터하지 않는다.
 		const ERenderPass SecPass = SectionRenderPass(Section);
 		if (bDepthOnly) { if (SecPass != ERenderPass::Opaque) continue; }
 		else if (bViewModeMeshReplace) { if (SecPass != ERenderPass::Opaque) continue; }
@@ -447,7 +479,7 @@ void FDrawCommandBuilder::BuildCommandForProxy(FScene& Scene, const FPrimitiveSc
 				continue;
 			}
 		}
-		else if (Pass != ERenderPass::SelectionMask && SecPass != Pass) continue;
+		else if (Pass != ERenderPass::SelectionMask && Pass != ERenderPass::ActionAfterImageMask && SecPass != Pass) continue;
 
 		// Section의 BufferOverride 있으면 사용, 없으면 proxy 공유 ProxyBuffer.
 		const FDrawCommandBuffer& EffBuffer = Section.BufferOverride.HasBuffers()
@@ -709,6 +741,9 @@ void FDrawCommandBuilder::BuildProxyCommands(const FFrameContext& Frame, FScene&
 
 		if (Proxy->IsSelected())
 			BuildSelectionCommands(Proxy, bShowBoundingVolume, Scene);
+
+		if (IsActionAfterImageTarget(Frame, Proxy) && Proxy->HasProxyFlag(EPrimitiveProxyFlags::SupportsOutline))
+			BuildCommandForProxy(Scene, *Proxy, ERenderPass::ActionAfterImageMask);
 	}
 }
 
@@ -1094,6 +1129,27 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			Cmd.InitFullscreenTriangle(DepthShader, ERenderPass::DebugViewModeResolve,
 				PassRenderStateTable->ToDrawCommandState(ERenderPass::DebugViewModeResolve, ViewMode));
 			Cmd.Bindings.PerShaderCB[0] = &SceneDepthCB;
+			Cmd.BuildSortKey(0);
+		}
+	}
+
+	// Actor-local action afterimage
+	if (!bPureDebugView && !Frame.ActionAfterImages.empty())
+	{
+		const FActionAfterImageRenderState& Effect = Frame.ActionAfterImages[0];
+		FShader* AfterImageShader = FShaderManager::Get().GetOrCreate(EShaderPath::ActionAfterImage);
+		if (AfterImageShader && Effect.IsValid() && Frame.ViewportWidth > 0.0f && Frame.ViewportHeight > 0.0f)
+		{
+			FActionAfterImageConstants AfterImageData = {};
+			AfterImageData.Params0 = FVector4(Effect.ScreenDirection.X, Effect.ScreenDirection.Y, Effect.Intensity, Effect.Radius);
+			AfterImageData.Params1 = FVector4(1.0f / Frame.ViewportWidth, 1.0f / Frame.ViewportHeight,
+				static_cast<float>(Effect.SampleCount), static_cast<float>(Effect.StencilValue));
+			ActionAfterImageCB.Update(Ctx, &AfterImageData, sizeof(FActionAfterImageConstants));
+
+			FDrawCommand& Cmd = DrawCommandList.AddCommand();
+			Cmd.InitFullscreenTriangle(AfterImageShader, ERenderPass::ActionAfterImage,
+				PassRenderStateTable->ToDrawCommandState(ERenderPass::ActionAfterImage, ViewMode));
+			Cmd.Bindings.PerShaderCB[0] = &ActionAfterImageCB;
 			Cmd.BuildSortKey(0);
 		}
 	}

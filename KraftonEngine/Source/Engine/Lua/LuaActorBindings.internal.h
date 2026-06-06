@@ -26,6 +26,7 @@
 #include "Component/Camera/CameraComponent.h"
 #include "Component/Camera/CineCameraComponent.h"
 #include "Component/Camera/SpringArmComponent.h"
+#include "Component/Action/ActionVisualEffectComponent.h"
 #include "Component/Input/ActionComponent.h"
 #include "Component/Input/InputComponent.h"
 #include "Component/Light/AmbientLightComponent.h"
