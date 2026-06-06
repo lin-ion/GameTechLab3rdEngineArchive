@@ -7,6 +7,7 @@
 #include "Engine/Profiling/Stats/ParticleStats.h"
 #include "Engine/Profiling/Stats/ClothCollisionStats.h"
 #include "Engine/Profiling/Stats/BulletHellStats.h"
+#include "Engine/Profiling/Stats/BossPatternStats.h"
 #include "Engine/Profiling/Stats/Stats.h"
 #include "GameFramework/World.h"
 #include "Physics/IPhysicsScene.h"
@@ -105,6 +106,14 @@ void FOverlayStatSystem::AppendLine(TArray<FOverlayStatLine>& OutLines, float Y,
 	Line.Text = Text;
 	Line.ScreenPosition = FVector2(Layout.StartX, Y);
 	OutLines.push_back(std::move(Line));
+}
+
+static FOverlayStatLine MakeOverlayLine(const FString& Text, const FVector4& Color)
+{
+	FOverlayStatLine Line;
+	Line.Text = Text;
+	Line.TextColor = Color;
+	return Line;
 }
 
 void FOverlayStatSystem::RecordPickingAttempt(double ElapsedMs)
@@ -745,6 +754,82 @@ void FOverlayStatSystem::BuildBulletHellLines(TArray<FString>& OutLines) const
 #endif
 }
 
+void FOverlayStatSystem::BuildBossPatternLines(TArray<FOverlayStatLine>& OutLines) const
+{
+#if STATS
+	const FVector4 HeaderColor(0.90f, 0.94f, 1.0f, 0.95f);
+	const FVector4 ReadyColor(0.35f, 1.0f, 0.45f, 0.95f);
+	const FVector4 ActiveColor(0.35f, 0.62f, 1.0f, 0.98f);
+	const FVector4 BlockedColor(1.0f, 0.30f, 0.28f, 0.95f);
+	const FVector4 MutedColor(0.74f, 0.76f, 0.80f, 0.88f);
+
+	char Buffer[512] = {};
+	snprintf(Buffer, sizeof(Buffer), "Components : %u", FBossPatternStats::ComponentCount);
+	OutLines.push_back(MakeOverlayLine(FString(Buffer), HeaderColor));
+
+	if (FBossPatternStats::Snapshots.empty())
+	{
+		OutLines.push_back(MakeOverlayLine("No boss pattern selector snapshot", MutedColor));
+		return;
+	}
+
+	for (const FBossPatternStatsSnapshot& Snapshot : FBossPatternStats::Snapshots)
+	{
+		snprintf(Buffer, sizeof(Buffer), "Owner : %s   Active : %s   Phase %d   HealthRatio %.2f   Select %d/%d   Total %d   Fallback %d",
+			Snapshot.OwnerName.c_str(),
+			Snapshot.ActivePatternName.c_str(),
+			Snapshot.BossPhase,
+			Snapshot.BossHealthRatio,
+			Snapshot.UsableCandidateCount,
+			Snapshot.CandidateCount,
+			Snapshot.SelectionCount,
+			Snapshot.FallbackCount);
+		OutLines.push_back(MakeOverlayLine(FString(Buffer), HeaderColor));
+
+		if (!Snapshot.bSelectionEnabled)
+		{
+			OutLines.push_back(MakeOverlayLine("Selector disabled or not started", MutedColor));
+		}
+
+		if (!Snapshot.LastRejectedReason.empty() && Snapshot.LastRejectedReason != "None")
+		{
+			snprintf(Buffer, sizeof(Buffer), "LastReject : %s", Snapshot.LastRejectedReason.c_str());
+			OutLines.push_back(MakeOverlayLine(FString(Buffer), MutedColor));
+		}
+
+		for (const FBossPatternStatEntry& Pattern : Snapshot.Patterns)
+		{
+			const char* StatusText = "BLOCK";
+			FVector4 Color = BlockedColor;
+			if (Pattern.Status == EBossPatternStatStatus::Active)
+			{
+				StatusText = "ACTIVE";
+				Color = ActiveColor;
+			}
+			else if (Pattern.Status == EBossPatternStatStatus::Ready)
+			{
+				StatusText = "READY";
+				Color = ReadyColor;
+			}
+
+			const char* DetailText = Pattern.Detail.empty() ? "" : Pattern.Detail.c_str();
+			snprintf(Buffer, sizeof(Buffer), "  [%s] %s  (%.2fs, %s)  W %.1f  Sel %d%s%s",
+				StatusText,
+				Pattern.PatternName.c_str(),
+				Pattern.CooldownRemaining,
+				Pattern.Reason.c_str(),
+				Pattern.Weight,
+				Pattern.SelectionCount,
+				Pattern.Detail.empty() ? "" : "  ",
+				DetailText);
+			OutLines.push_back(MakeOverlayLine(FString(Buffer), Color));
+		}
+	}
+#else
+	OutLines.push_back(MakeOverlayLine("BossPattern stats unavailable (STATS=0)", FVector4(1.0f, 1.0f, 1.0f, 0.95f)));
+#endif
+}
+
 void FOverlayStatSystem::BuildLines(const UEditorEngine& Editor, TArray<FOverlayStatLine>& OutLines) const
 {
 	OutLines.clear();
@@ -786,21 +871,38 @@ void FOverlayStatSystem::BuildLines(const UEditorEngine& Editor, TArray<FOverlay
 	{
 		EstimatedLineCount += 7;
 	}
+	if (bShowBossPattern)
+	{
+		EstimatedLineCount += 16;
+	}
 	OutLines.reserve(EstimatedLineCount);
 
 	TArray<FString> Lines;
+	TArray<FOverlayStatLine> ColoredLines;
 	float CurrentY = Layout.StartY;
-	auto AppendGroup = [&](const TArray<FString>& GroupLines)
+	auto AppendColoredGroup = [&](const TArray<FOverlayStatLine>& GroupLines)
 		{
-			for (const FString& Line : GroupLines)
+			for (const FOverlayStatLine& SourceLine : GroupLines)
 			{
-				AppendLine(OutLines, CurrentY, Line);
+				FOverlayStatLine Line = SourceLine;
+				Line.ScreenPosition = FVector2(Layout.StartX, CurrentY);
+				OutLines.push_back(Line);
 				CurrentY += Layout.LineHeight;
 			}
 			if (!GroupLines.empty())
 			{
 				CurrentY += Layout.GroupSpacing;
 			}
+		};
+	auto AppendGroup = [&](const TArray<FString>& GroupLines)
+		{
+			ColoredLines.clear();
+			ColoredLines.reserve(GroupLines.size());
+			for (const FString& Line : GroupLines)
+			{
+				ColoredLines.push_back(MakeOverlayLine(Line, FVector4(1.0f, 1.0f, 1.0f, 0.95f)));
+			}
+			AppendColoredGroup(ColoredLines);
 		};
 
 	if (bShowFPS)
@@ -857,6 +959,13 @@ void FOverlayStatSystem::BuildLines(const UEditorEngine& Editor, TArray<FOverlay
 		Lines.clear();
 		BuildBulletHellLines(Lines);
 		AppendGroup(Lines);
+	}
+
+	if (bShowBossPattern)
+	{
+		ColoredLines.clear();
+		BuildBossPatternLines(ColoredLines);
+		AppendColoredGroup(ColoredLines);
 	}
 }
 
@@ -896,7 +1005,18 @@ void FOverlayStatSystem::RenderImGui(const UEditorEngine& Editor, const FRect& V
 		ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoInputs;
 
-	auto RenderWindow = [&](const char* WindowID, const char* Title, const ImVec4& BgColor, const TArray<FString>& Lines)
+	auto MakeDefaultLines = [](const TArray<FString>& SourceLines)
+		{
+			TArray<FOverlayStatLine> Result;
+			Result.reserve(SourceLines.size());
+			for (const FString& SourceLine : SourceLines)
+			{
+				Result.push_back(MakeOverlayLine(SourceLine, FVector4(1.0f, 1.0f, 1.0f, 0.95f)));
+			}
+			return Result;
+		};
+
+	auto RenderWindow = [&](const char* WindowID, const char* Title, const ImVec4& BgColor, const TArray<FOverlayStatLine>& Lines)
 		{
 			if (Lines.empty())
 			{
@@ -923,9 +1043,10 @@ void FOverlayStatSystem::RenderImGui(const UEditorEngine& Editor, const FRect& V
 			ImGui::Begin(WindowID, nullptr, Flags);
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.95f), "%s", Title);
 			ImGui::Separator();
-			for (const FString& Line : Lines)
+			for (const FOverlayStatLine& Line : Lines)
 			{
-				ImGui::TextUnformatted(Line.c_str());
+				const FVector4& Color = Line.TextColor;
+				ImGui::TextColored(ImVec4(Color.X, Color.Y, Color.Z, Color.W), "%s", Line.Text.c_str());
 			}
 			const ImVec2 WindowSize = ImGui::GetWindowSize();
 			ImGui::End();
@@ -938,58 +1059,66 @@ void FOverlayStatSystem::RenderImGui(const UEditorEngine& Editor, const FRect& V
 		};
 
 	TArray<FString> Lines;
+	TArray<FOverlayStatLine> ColoredLines;
 	if (bShowFPS)
 	{
 		BuildFPSLines(Editor, Lines);
-		RenderWindow("##StatFPSOverlay", "Stat FPS", ImVec4(0.05f, 0.09f, 0.12f, 0.62f), Lines);
+		RenderWindow("##StatFPSOverlay", "Stat FPS", ImVec4(0.05f, 0.09f, 0.12f, 0.62f), MakeDefaultLines(Lines));
 	}
 
 	if (bShowMemory)
 	{
 		Lines.clear();
 		BuildMemoryLines(Lines);
-		RenderWindow("##StatMemoryOverlay", "Stat Memory", ImVec4(0.10f, 0.07f, 0.04f, 0.62f), Lines);
+		RenderWindow("##StatMemoryOverlay", "Stat Memory", ImVec4(0.10f, 0.07f, 0.04f, 0.62f), MakeDefaultLines(Lines));
 	}
 
 	if (bShowShadow)
 	{
 		Lines.clear();
 		BuildShadowLines(Lines);
-		RenderWindow("##StatShadowOverlay", "Stat Shadow", ImVec4(0.08f, 0.05f, 0.12f, 0.62f), Lines);
+		RenderWindow("##StatShadowOverlay", "Stat Shadow", ImVec4(0.08f, 0.05f, 0.12f, 0.62f), MakeDefaultLines(Lines));
 	}
 
 	if (bShowSkinning)
 	{
 		Lines.clear();
 		BuildSkinningLines(Lines);
-		RenderWindow("##StatSkinningOverlay", "Stat Skinning", ImVec4(0.05f, 0.10f, 0.08f, 0.62f), Lines);
+		RenderWindow("##StatSkinningOverlay", "Stat Skinning", ImVec4(0.05f, 0.10f, 0.08f, 0.62f), MakeDefaultLines(Lines));
 	}
 
 	if (bShowParticles)
 	{
 		Lines.clear();
 		BuildParticleLines(Lines);
-		RenderWindow("##StatParticlesOverlay", "Stat Particles", ImVec4(0.04f, 0.08f, 0.10f, 0.62f), Lines);
+		RenderWindow("##StatParticlesOverlay", "Stat Particles", ImVec4(0.04f, 0.08f, 0.10f, 0.62f), MakeDefaultLines(Lines));
 	}
 
 	if (bShowPhysics)
 	{
 		Lines.clear();
 		BuildPhysicsLines(Editor, Lines);
-		RenderWindow("##StatPhysicsOverlay", "Stat Physics", ImVec4(0.09f, 0.08f, 0.05f, 0.62f), Lines);
+		RenderWindow("##StatPhysicsOverlay", "Stat Physics", ImVec4(0.09f, 0.08f, 0.05f, 0.62f), MakeDefaultLines(Lines));
 	}
 
 	if (bShowClothCollision)
 	{
 		Lines.clear();
 		BuildClothCollisionLines(Lines);
-		RenderWindow("##StatClothCollisionOverlay", "Stat Cloth Collision", ImVec4(0.08f, 0.06f, 0.04f, 0.62f), Lines);
+		RenderWindow("##StatClothCollisionOverlay", "Stat Cloth Collision", ImVec4(0.08f, 0.06f, 0.04f, 0.62f), MakeDefaultLines(Lines));
 	}
 
 	if (bShowBulletHell)
 	{
 		Lines.clear();
 		BuildBulletHellLines(Lines);
-		RenderWindow("##StatBulletHellOverlay", "Stat BulletHell", ImVec4(0.04f, 0.08f, 0.07f, 0.62f), Lines);
+		RenderWindow("##StatBulletHellOverlay", "Stat BulletHell", ImVec4(0.04f, 0.08f, 0.07f, 0.62f), MakeDefaultLines(Lines));
+	}
+
+	if (bShowBossPattern)
+	{
+		ColoredLines.clear();
+		BuildBossPatternLines(ColoredLines);
+		RenderWindow("##StatBossPatternOverlay", "Stat BossPattern", ImVec4(0.05f, 0.06f, 0.09f, 0.70f), ColoredLines);
 	}
 }
