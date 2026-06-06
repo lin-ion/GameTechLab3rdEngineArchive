@@ -1,6 +1,7 @@
 #include "UI/Canvas/UICanvasManager.h"
 
 #include "UI/Canvas/UICanvas.h"
+#include "UI/Canvas/UIElement.h"
 #include "Object/Object.h"
 
 void FUICanvasManager::RegisterCanvas(UUICanvas* Canvas)
@@ -35,6 +36,35 @@ UUICanvas* FUICanvasManager::CreateCanvas()
 {
 	UUICanvas* Canvas = UObjectManager::Get().CreateObject<UUICanvas>();
 	RegisterCanvas(Canvas);
+	return Canvas;
+}
+
+UUICanvas* FUICanvasManager::CreateDebugTestCanvas()
+{
+	UUICanvas* Canvas = CreateCanvas();
+
+	auto MakeRect = [Canvas](const FVector2& Anchor, const FVector2& Pivot,
+	                         const FVector2& Position, const FVector2& Size, const FVector4& Color)
+	{
+		UUIElement* Element = UObjectManager::Get().CreateObject<UUIElement>();
+		Element->SetAnchor(Anchor);
+		Element->SetPivot(Pivot);
+		Element->SetPosition(Position);
+		Element->SetSize(Size);
+		Element->SetColor(Color);
+		Canvas->AddChild(Element);
+	};
+
+	// 좌상단 앵커/피벗 — 화면 좌상단에서 (50,50) 떨어진 곳.
+	MakeRect({ 0.0f, 0.0f }, { 0.0f, 0.0f }, { 50.0f, 50.0f }, { 300.0f, 120.0f },
+	         { 0.85f, 0.2f, 0.2f, 0.85f });
+	// 중앙 앵커 + 중앙 피벗 — 화면 정중앙에 정렬.
+	MakeRect({ 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.0f, 0.0f }, { 400.0f, 200.0f },
+	         { 0.2f, 0.7f, 0.3f, 0.85f });
+	// 우하단 앵커 + 우하단 피벗 — 화면 우하단에서 (-40,-40) 안쪽.
+	MakeRect({ 1.0f, 1.0f }, { 1.0f, 1.0f }, { -40.0f, -40.0f }, { 250.0f, 150.0f },
+	         { 0.2f, 0.4f, 0.9f, 0.85f });
+
 	return Canvas;
 }
 

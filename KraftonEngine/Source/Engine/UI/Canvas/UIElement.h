@@ -36,8 +36,13 @@ public:
 	bool IsVisibleRect() const { return bVisibleRect; }
 	void SetVisibleRect(bool bVisible) { bVisibleRect = bVisible; }
 
+	// 단색 배경색(RGBA). 드로우 패스가 ScreenRect 를 이 색의 쿼드로 그린다(사이클 5).
+	void SetColor(const FVector4& InColor) { BackgroundColor = InColor; }
+	FVector4 GetColor() const { return BackgroundColor; }
+
 protected:
 	FUIRectTransform RectTransform;   // 사이클 8에서 PF_Save 직렬화 대상이 됨
 	FUIRect ScreenRect;               // 레이아웃 결과 캐시(직렬화 안 함)
 	bool bVisibleRect = true;
+	FVector4 BackgroundColor{ 0.2f, 0.4f, 0.8f, 0.7f };
 };

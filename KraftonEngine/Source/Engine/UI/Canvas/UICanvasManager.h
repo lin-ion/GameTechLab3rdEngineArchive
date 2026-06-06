@@ -24,6 +24,10 @@ public:
 	// 액터 없이 런타임에서 직접 Canvas 를 만들 때(테스트 / HUD 부트스트랩). 매니저가 keepalive 한다.
 	UUICanvas* CreateCanvas();
 
+	// [DEBUG/TEST 스캐폴딩] anchor/pivot/position 이 서로 다른 사각형 몇 개를 가진 Canvas 를
+	// 만들어 드로우/레이아웃/GlobalScale 을 눈으로 검증한다(사이클 5/7 런타임 점검). 추후 제거.
+	UUICanvas* CreateDebugTestCanvas();
+
 	// 레이아웃 패스 — 등록된 모든 Canvas 를 top-down 전체 재계산해 노드별 화면 사각형을
 	// 갱신한다(진단 C1/C3/C4). UEngine::TickFrameBody 의 WorldTick 과 Render 사이에서 호출된다.
 	void LayoutAll();
