@@ -522,6 +522,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Profiling\GPUProfiler.cpp" />
     <ClCompile Include="Source\Engine\Profiling\StartupProfiler.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Stats\BulletHellStats.cpp" />
+    <ClCompile Include="Source\Engine\Profiling\Stats\BossPatternStats.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Stats\ClothCollisionStats.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Stats\MemoryStats.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Stats\ParticleStats.cpp" />
@@ -1084,6 +1085,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Profiling\GPUProfiler.h" />
     <ClInclude Include="Source\Engine\Profiling\StartupProfiler.h" />
     <ClInclude Include="Source\Engine\Profiling\Stats\BulletHellStats.h" />
+    <ClInclude Include="Source\Engine\Profiling\Stats\BossPatternStats.h" />
     <ClInclude Include="Source\Engine\Profiling\Stats\ClothCollisionStats.h" />
     <ClInclude Include="Source\Engine\Profiling\Stats\MemoryStats.h" />
     <ClInclude Include="Source\Engine\Profiling\Stats\ParticleStats.h" />

@@ -1808,6 +1808,9 @@
     <ClCompile Include="Source\Engine\Profiling\Stats\BulletHellStats.cpp">
       <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Profiling\Stats\BossPatternStats.cpp">
+      <Filter>Source\Engine\Profiling\Stats</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\Stats\ClothCollisionStats.cpp">
       <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClCompile>
@@ -3369,6 +3372,9 @@
       <Filter>Source\Engine\Profiling</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\Stats\BulletHellStats.h">
+      <Filter>Source\Engine\Profiling\Stats</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Profiling\Stats\BossPatternStats.h">
       <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\Stats\ClothCollisionStats.h">

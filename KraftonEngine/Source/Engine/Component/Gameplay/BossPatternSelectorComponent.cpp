@@ -2,14 +2,17 @@
 
 #include "Component/Gameplay/BulletHellComponent.h"
 #include "Core/Logging/Log.h"
+#include "Debug/DrawDebugHelpers.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/GameMode/GameplayStatics.h"
 #include "GameFramework/GameMode/PlayerController.h"
 #include "GameFramework/Pawn/Pawn.h"
 #include "GameFramework/World.h"
+#include "Profiling/Stats/BossPatternStats.h"
 
 #include <algorithm>
 #include <cstdlib>
+#include <cstdio>
 
 namespace
 {
@@ -21,6 +24,27 @@ namespace
 	float RandomUnitFloat()
 	{
 		return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+	}
+
+	const char* LexToString(EBossPatternStep Step)
+	{
+		switch (Step)
+		{
+		case EBossPatternStep::Windup:
+			return "Windup";
+		case EBossPatternStep::Task1:
+			return "Task1";
+		case EBossPatternStep::Task2:
+			return "Task2";
+		case EBossPatternStep::Task3:
+			return "Task3";
+		case EBossPatternStep::Recovery:
+			return "Recovery";
+		case EBossPatternStep::Finished:
+			return "Finished";
+		default:
+			return "None";
+		}
 	}
 }
 
@@ -68,11 +92,14 @@ void UBossPatternSelectorComponent::TickComponent(
 
 	if (!bSelectionStarted || !bEnablePatternSelection)
 	{
+		FBossPatternContext Context = BuildContext(DeltaTime);
 		UpdateDebugStateFromActive();
+		RecordOverlayStats(Context);
 		return;
 	}
 
 	FBossPatternContext Context = BuildContext(DeltaTime);
+	ConsumeDebugRequests(Context);
 	TickPatternCooldowns(DeltaTime);
 	TickFallbackIdle(DeltaTime);
 	TickActivePattern(DeltaTime, Context);
@@ -83,6 +110,9 @@ void UBossPatternSelectorComponent::TickComponent(
 	}
 
 	UpdateDebugStateFromActive();
+	RecordOverlayStats(Context);
+	DrawPatternDebug(Context);
+	LogPatternDebug(DeltaTime);
 }
 
 FBossPatternContext UBossPatternSelectorComponent::BuildContext(float DeltaTime)
@@ -195,6 +225,21 @@ void UBossPatternSelectorComponent::TickActivePattern(float DeltaTime, const FBo
 	}
 }
 
+void UBossPatternSelectorComponent::ConsumeDebugRequests(const FBossPatternContext& Context)
+{
+	if (CancelPatternRequest)
+	{
+		CancelPatternRequest = false;
+		CancelActivePattern(Context);
+	}
+
+	if (ForcePatternRequest)
+	{
+		ForcePatternRequest = false;
+		TryForcePattern(Context);
+	}
+}
+
 void UBossPatternSelectorComponent::TrySelectNextPattern(const FBossPatternContext& Context)
 {
 	if (PatternComponents.empty())
@@ -212,6 +257,84 @@ void UBossPatternSelectorComponent::TrySelectNextPattern(const FBossPatternConte
 	}
 
 	StartPattern(SelectedPattern, Context);
+}
+
+UBossPatternComponentBase* UBossPatternSelectorComponent::FindPatternByName(const FString& PatternName) const
+{
+	if (PatternName.empty())
+	{
+		return nullptr;
+	}
+
+	for (const TWeakObjectPtr<UBossPatternComponentBase>& PatternRef : PatternComponents)
+	{
+		UBossPatternComponentBase* Pattern = PatternRef.Get();
+		if (Pattern && Pattern->GetPatternName() == PatternName)
+		{
+			return Pattern;
+		}
+	}
+
+	return nullptr;
+}
+
+bool UBossPatternSelectorComponent::TryForcePattern(const FBossPatternContext& Context)
+{
+	UBossPatternComponentBase* Pattern = FindPatternByName(ForcedPatternName);
+	if (!Pattern)
+	{
+		DebugState.LastRejectedReason = "forced pattern not found: " + ForcedPatternName;
+		LogSelectionEvent("force failed", nullptr, DebugState.LastRejectedReason.c_str());
+		return false;
+	}
+
+	if (!bForcePatternIgnoreConditions)
+	{
+		FString RejectReason;
+		if (!Pattern->GetCanUse(Context, &RejectReason))
+		{
+			DebugState.LastRejectedReason = RejectReason.empty()
+				? "forced pattern rejected"
+				: RejectReason;
+			LogSelectionEvent("force rejected", Pattern, DebugState.LastRejectedReason.c_str());
+			return false;
+		}
+	}
+	else if (!Pattern->IsEnabled())
+	{
+		DebugState.LastRejectedReason = Pattern->GetPatternName() + ": disabled";
+		LogSelectionEvent("force rejected", Pattern, DebugState.LastRejectedReason.c_str());
+		return false;
+	}
+
+	if (ActivePattern.Get())
+	{
+		CancelActivePattern(Context);
+	}
+	FallbackIdleRemaining = 0.0f;
+	StartPattern(Pattern, Context);
+	LogSelectionEvent("forced", Pattern, bForcePatternIgnoreConditions ? "ignore conditions" : "respect conditions");
+	return true;
+}
+
+void UBossPatternSelectorComponent::CancelActivePattern(const FBossPatternContext& Context)
+{
+	UBossPatternComponentBase* Pattern = ActivePattern.Get();
+	if (!Pattern)
+	{
+		DebugState.LastRejectedReason = "cancel requested with no active pattern";
+		LogSelectionEvent("cancel ignored", nullptr, DebugState.LastRejectedReason.c_str());
+		return;
+	}
+
+	Pattern->CancelPattern(Context);
+	LogSelectionEvent("cancelled", Pattern, nullptr);
+	ActivePattern.Reset();
+
+	if (bCancelGoesToFallback)
+	{
+		EnterFallbackIdle();
+	}
 }
 
 UBossPatternComponentBase* UBossPatternSelectorComponent::SelectWeightedPattern(const FBossPatternContext& Context)
@@ -356,6 +479,62 @@ void UBossPatternSelectorComponent::LogSelectionEvent(
 		DebugState.UsableCandidateCount);
 }
 
+void UBossPatternSelectorComponent::DrawPatternDebug(const FBossPatternContext& Context)
+{
+	if (!bDrawPatternDebug || !Context.BossActor)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector Center = Context.BossLocation + FVector::UpVector * 1.5f;
+	const FColor Color = ActivePattern.Get() ? FColor::Green() : FColor(255, 180, 0);
+	DrawDebugSphere(World, Center, 0.25f, 12, Color, 0.0f);
+	DrawDebugLine(World, Center, Center + Context.DirectionToTarget * 1.5f, Color, 0.0f);
+}
+
+void UBossPatternSelectorComponent::LogPatternDebug(float DeltaTime)
+{
+	if (!bDrawPatternDebug && !bLogPatternSelection)
+	{
+		return;
+	}
+
+	if (DebugLogInterval <= 0.0f)
+	{
+		return;
+	}
+
+	DebugLogRemaining -= DeltaTime;
+	if (DebugLogRemaining > 0.0f)
+	{
+		return;
+	}
+
+	DebugLogRemaining = DebugLogInterval;
+	AActor* OwnerActor = GetOwner();
+	UE_LOG(
+		"BossPattern debug. Owner=%s Active=%s Step=%s StepElapsed=%.2f PatternElapsed=%.2f Candidates=%d Usable=%d Selections=%d Fallbacks=%d LastSelected=%s LastReject=%s ActiveSelected=%d Detail=%s",
+		OwnerActor ? OwnerActor->GetName().c_str() : "None",
+		DebugState.ActivePatternName.c_str(),
+		LexToString(DebugState.ActiveStep),
+		DebugState.ActiveStepElapsed,
+		DebugState.ActivePatternElapsed,
+		DebugState.CandidateCount,
+		DebugState.UsableCandidateCount,
+		DebugState.SelectionCount,
+		DebugState.FallbackCount,
+		DebugState.LastSelectedPatternName.c_str(),
+		DebugState.LastRejectedReason.c_str(),
+		DebugState.ActivePatternSelectionCount,
+		DebugState.ActivePatternDebugText.c_str());
+}
+
 void UBossPatternSelectorComponent::UpdateDebugStateFromActive()
 {
 	if (UBossPatternComponentBase* Pattern = ActivePattern.Get())
@@ -364,6 +543,8 @@ void UBossPatternSelectorComponent::UpdateDebugStateFromActive()
 		DebugState.ActiveStep = Pattern->GetCurrentStep();
 		DebugState.ActiveStepElapsed = Pattern->GetStepElapsed();
 		DebugState.ActivePatternElapsed = Pattern->GetPatternElapsed();
+		DebugState.ActivePatternDebugText = Pattern->GetRuntimeDebugText();
+		DebugState.ActivePatternSelectionCount = Pattern->GetSelectionCount();
 		return;
 	}
 
@@ -373,6 +554,8 @@ void UBossPatternSelectorComponent::UpdateDebugStateFromActive()
 		DebugState.ActiveStep = EBossPatternStep::None;
 		DebugState.ActiveStepElapsed = FallbackIdleDuration - FallbackIdleRemaining;
 		DebugState.ActivePatternElapsed = DebugState.ActiveStepElapsed;
+		DebugState.ActivePatternDebugText = "";
+		DebugState.ActivePatternSelectionCount = 0;
 		return;
 	}
 
@@ -380,4 +563,79 @@ void UBossPatternSelectorComponent::UpdateDebugStateFromActive()
 	DebugState.ActiveStep = EBossPatternStep::None;
 	DebugState.ActiveStepElapsed = 0.0f;
 	DebugState.ActivePatternElapsed = 0.0f;
+	DebugState.ActivePatternDebugText = "";
+	DebugState.ActivePatternSelectionCount = 0;
+}
+
+void UBossPatternSelectorComponent::RecordOverlayStats(const FBossPatternContext& Context) const
+{
+#if STATS
+	FBossPatternStatsSnapshot Snapshot;
+	AActor* OwnerActor = GetOwner();
+	Snapshot.OwnerName = OwnerActor ? OwnerActor->GetName() : "None";
+	Snapshot.ActivePatternName = DebugState.ActivePatternName;
+	Snapshot.LastSelectedPatternName = DebugState.LastSelectedPatternName;
+	Snapshot.LastRejectedReason = DebugState.LastRejectedReason;
+	Snapshot.ActiveDetail = DebugState.ActivePatternDebugText;
+	Snapshot.CandidateCount = DebugState.CandidateCount;
+	Snapshot.UsableCandidateCount = DebugState.UsableCandidateCount;
+	Snapshot.SelectionCount = DebugState.SelectionCount;
+	Snapshot.FallbackCount = DebugState.FallbackCount;
+	Snapshot.bSelectionEnabled = bSelectionStarted && bEnablePatternSelection;
+	Snapshot.Patterns.reserve(PatternComponents.size());
+
+	for (const TWeakObjectPtr<UBossPatternComponentBase>& PatternRef : PatternComponents)
+	{
+		UBossPatternComponentBase* Pattern = PatternRef.Get();
+		if (!Pattern)
+		{
+			continue;
+		}
+
+		FBossPatternStatEntry Entry;
+		Entry.PatternName = Pattern->GetPatternName();
+		Entry.Detail = Pattern->GetRuntimeDebugText();
+		Entry.CooldownRemaining = Pattern->GetCooldownRemaining();
+		Entry.Weight = Pattern->GetWeight();
+		Entry.SelectionCount = Pattern->GetSelectionCount();
+
+		if (ActivePattern.Get() == Pattern)
+		{
+			Entry.Status = EBossPatternStatStatus::Active;
+			Entry.Reason = "active";
+		}
+		else if (Pattern->GetCooldownRemaining() > 0.0f)
+		{
+			char Buffer[64] = {};
+			snprintf(Buffer, sizeof(Buffer), "cooldown %.2fs", Pattern->GetCooldownRemaining());
+			Entry.Status = EBossPatternStatStatus::Blocked;
+			Entry.Reason = Buffer;
+		}
+		else
+		{
+			FString RejectReason;
+			if (!Pattern->GetCanUse(Context, &RejectReason))
+			{
+				Entry.Status = EBossPatternStatStatus::Blocked;
+				Entry.Reason = RejectReason.empty() ? "blocked" : RejectReason;
+			}
+			else if (IsBlockedByRecentPattern(Pattern))
+			{
+				Entry.Status = EBossPatternStatStatus::Blocked;
+				Entry.Reason = "repeat blocked";
+			}
+			else
+			{
+				Entry.Status = EBossPatternStatStatus::Ready;
+				Entry.Reason = "ready";
+			}
+		}
+
+		Snapshot.Patterns.push_back(Entry);
+	}
+
+	BOSSPATTERN_STATS_ADD_COMPONENT(Snapshot);
+#else
+	(void)Context;
+#endif
 }

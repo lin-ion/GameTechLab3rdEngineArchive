@@ -146,6 +146,11 @@ bool UBossPatternComponentBase::IsPatternFinished() const
 	return bFinished;
 }
 
+FString UBossPatternComponentBase::GetRuntimeDebugText() const
+{
+	return "";
+}
+
 void UBossPatternComponentBase::NotifySelected()
 {
 	++SelectionCount;

@@ -49,6 +49,20 @@ bool UBossPattern_AimedRingVolley::GetCanUse(const FBossPatternContext& Context,
 	return true;
 }
 
+FString UBossPattern_AimedRingVolley::GetRuntimeDebugText() const
+{
+	int32 PendingCount = 0;
+	for (const FPendingBossProjectileLaunch& Pending : PendingLaunches)
+	{
+		if (!Pending.bLaunched)
+		{
+			++PendingCount;
+		}
+	}
+
+	return "PendingLaunches=" + std::to_string(PendingCount);
+}
+
 void UBossPattern_AimedRingVolley::OnPatternStart(const FBossPatternContext& Context)
 {
 	PendingLaunches.clear();

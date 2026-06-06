@@ -60,6 +60,21 @@ bool UBossPattern_ThunderclapCascade::GetCanUse(const FBossPatternContext& Conte
 	return true;
 }
 
+FString UBossPattern_ThunderclapCascade::GetRuntimeDebugText() const
+{
+	int32 ActiveCount = 0;
+	for (const FThunderclapCycleState& Cycle : ActiveCycles)
+	{
+		if (!Cycle.bFinished)
+		{
+			++ActiveCount;
+		}
+	}
+
+	return "StartedCycles=" + std::to_string(StartedCycleCount)
+		+ " ActiveCycles=" + std::to_string(ActiveCount);
+}
+
 void UBossPattern_ThunderclapCascade::OnPatternStart(const FBossPatternContext& Context)
 {
 	(void)Context;

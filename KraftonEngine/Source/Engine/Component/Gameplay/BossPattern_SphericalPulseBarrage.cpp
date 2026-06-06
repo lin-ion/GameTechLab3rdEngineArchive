@@ -47,6 +47,11 @@ bool UBossPattern_SphericalPulseBarrage::GetCanUse(const FBossPatternContext& Co
 	return true;
 }
 
+FString UBossPattern_SphericalPulseBarrage::GetRuntimeDebugText() const
+{
+	return "Pulses=" + std::to_string(SpawnedPulseCount);
+}
+
 void UBossPattern_SphericalPulseBarrage::OnPatternStart(const FBossPatternContext& Context)
 {
 	(void)Context;

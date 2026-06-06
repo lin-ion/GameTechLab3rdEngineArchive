@@ -24,6 +24,7 @@ public:
 	~UBossPattern_ThunderclapCascade() override = default;
 
 	bool GetCanUse(const FBossPatternContext& Context, FString* OutRejectReason) const override;
+	FString GetRuntimeDebugText() const override;
 
 protected:
 	void OnPatternStart(const FBossPatternContext& Context) override;

@@ -40,6 +40,21 @@ bool UBossPattern_HomingOrbTrail::GetCanUse(const FBossPatternContext& Context, 
 	return true;
 }
 
+FString UBossPattern_HomingOrbTrail::GetRuntimeDebugText() const
+{
+	int32 PendingCount = 0;
+	for (const FHomingOrbPendingLaunch& Pending : PendingLaunches)
+	{
+		if (!Pending.bLaunched)
+		{
+			++PendingCount;
+		}
+	}
+
+	return "Spawned=" + std::to_string(SpawnedCount)
+		+ " PendingLaunches=" + std::to_string(PendingCount);
+}
+
 void UBossPattern_HomingOrbTrail::OnPatternStart(const FBossPatternContext& Context)
 {
 	PendingLaunches.clear();

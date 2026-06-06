@@ -45,10 +45,12 @@ struct FBossPatternDebugState
 	EBossPatternStep ActiveStep = EBossPatternStep::None;
 	float ActiveStepElapsed = 0.0f;
 	float ActivePatternElapsed = 0.0f;
+	FString ActivePatternDebugText;
 	int32 CandidateCount = 0;
 	int32 UsableCandidateCount = 0;
 	int32 SelectionCount = 0;
 	int32 FallbackCount = 0;
+	int32 ActivePatternSelectionCount = 0;
 };
 
 UCLASS()
@@ -74,6 +76,7 @@ public:
 	int32 GetSelectionCount() const { return SelectionCount; }
 	bool IsEnabled() const { return bEnabled; }
 	bool BlocksImmediateRepeat() const { return bBlockImmediateRepeat; }
+	virtual FString GetRuntimeDebugText() const;
 
 	void NotifySelected();
 	void TickCooldown(float DeltaTime);
