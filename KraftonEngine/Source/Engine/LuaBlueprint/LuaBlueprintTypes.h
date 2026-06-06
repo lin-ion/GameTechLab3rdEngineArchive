@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/Types/CoreTypes.h"
 #include "Math/Vector.h"
@@ -51,7 +51,8 @@ enum class ELuaBlueprintPinType : uint8
     StaticMesh,
     LuaBlueprintComponent,
     LuaScriptComponent,
-    LuaFunction
+    LuaFunction,
+    AnimMontage
 };
 
 enum class ELuaBlueprintNodeType : uint8
@@ -325,6 +326,14 @@ enum class ELuaBlueprintNodeType : uint8
     GetSocketForwardVector,
     GetSocketRightVector,
     GetSocketUpVector,
+    // ── Montage nodes (appended to preserve serialized enum compatibility) ──
+    LoadMontage,
+    PlayMontage,
+    PlayMontageByPath,
+    StopMontage,
+    IsMontagePlaying,
+    MontageJumpToSection,
+    MontageSetNextSection,
     Count
 };
 

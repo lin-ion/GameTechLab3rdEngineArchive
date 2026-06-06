@@ -1,4 +1,4 @@
-#include "LuaActorBindings.internal.h"
+﻿#include "LuaActorBindings.internal.h"
 
 using namespace LuaActorBindingsDetail;
 
@@ -138,6 +138,15 @@ void FLuaScriptManager::RegisterActorBindings_2(sol::state& Lua)
         &UAnimMontage::EnsureDefaultSection
     );
 
+    sol::table Animation = Lua.create_named_table("Animation");
+    Animation.set_function(
+        "LoadMontage",
+        [](const FString& Path) -> UAnimMontage*
+        {
+            return Path.empty() ? nullptr : FAnimationManager::Get().LoadMontage(Path);
+        }
+    );
+
     Lua.new_usertype<USkeletalMesh>(
         "SkeletalMesh",
         sol::base_classes,
@@ -171,9 +180,20 @@ void FLuaScriptManager::RegisterActorBindings_2(sol::state& Lua)
             I.SetRootMotionMode(static_cast<ERootMotionMode>(Mode));
         },
         "PlayMontage",
-        [](UAnimInstance& I, UAnimMontage* M, sol::optional<FString> Section, sol::optional<float> Rate)
+        [](UAnimInstance& I, UAnimMontage* M, sol::optional<FString> Section, sol::optional<float> Rate, sol::optional<float> BlendIn, sol::optional<FString> Slot)
         {
-            if (IsValid(M)) I.PlayMontage(M, Section ? FName(Section.value()) : FName::None, Rate.value_or(1.0f));
+            if (!IsValid(M))
+            {
+                return false;
+            }
+            I.PlayMontage(
+                M,
+                Section ? FName(Section.value()) : FName::None,
+                Rate.value_or(1.0f),
+                BlendIn.value_or(-1.0f),
+                Slot ? FName(Slot.value()) : FName::None
+            );
+            return true;
         },
         "StopMontage",
         [](UAnimInstance& I, sol::optional<float> BlendOut, sol::optional<FString> Slot)

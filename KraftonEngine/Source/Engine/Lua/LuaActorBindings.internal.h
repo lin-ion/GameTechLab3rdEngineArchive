@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "LuaScriptManager.h"
 #include "Lua/LuaDebugManager.h"
 
@@ -13,6 +13,7 @@
 #include <sstream>
 #include <windows.h>  // PostQuitMessage
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimationManager.h"
 #include "Animation/Graph/AnimGraphInstance.h"
 #include "Animation/Instance/LuaAnimInstance.h"
 #include "Animation/Montage/AnimMontage.h"
