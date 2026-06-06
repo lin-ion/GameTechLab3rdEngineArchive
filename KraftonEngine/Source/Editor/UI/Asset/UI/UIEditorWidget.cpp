@@ -86,7 +86,7 @@ void FUIEditorWidget::Render(float DeltaTime)
 		VisibleTitle += UIAsset->GetSourcePath();
 	}
 
-	ImGui::SetNextWindowSize(ImVec2(480.0f, 360.0f), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(960.0f, 600.0f), ImGuiCond_Once);
 
 	// ### 뒤 고정 ID 로 제목이 바뀌어도 같은 창을 재사용(단일 인스턴스).
 	FString WindowTitle = VisibleTitle + "###UIEditor";
@@ -100,12 +100,41 @@ void FUIEditorWidget::Render(float DeltaTime)
 		return;
 	}
 
-	// 사이클 2: 빈 골격. 이후 사이클에서 계층 트리 / RectTransform 속성 / 뷰포트 드래그 / 텍스트를 얹는다.
-	ImGui::TextDisabled("UI Asset Editor");
-	ImGui::Separator();
-	ImGui::TextUnformatted(UIAsset->GetSourcePath().empty()
-		? "Unsaved UI asset"
-		: UIAsset->GetSourcePath().c_str());
+	// 4분할: [좌상 팔레트 / 좌하 계층트리] | [중앙 캔버스 뷰포트] | [우 디테일]. child 분할(진단 B).
+	const float  LeftWidth  = 200.0f;
+	const float  RightWidth = 260.0f;
+	const float  Spacing    = ImGui::GetStyle().ItemSpacing.x;
+	const ImVec2 Avail      = ImGui::GetContentRegionAvail();
+	float        CenterWidth = Avail.x - LeftWidth - RightWidth - Spacing * 2.0f;
+	if (CenterWidth < 80.0f) CenterWidth = 80.0f;
+
+	// 좌측 컬럼 — 팔레트(상) + 계층트리(하) 상하 분할.
+	ImGui::BeginChild("##UILeftColumn", ImVec2(LeftWidth, 0.0f), false);
+	{
+		const float PaletteHeight = ImGui::GetContentRegionAvail().y * 0.4f;
+		ImGui::BeginChild("##UIPalette", ImVec2(0.0f, PaletteHeight), true);
+		RenderPalettePanel();
+		ImGui::EndChild();
+
+		ImGui::BeginChild("##UIHierarchy", ImVec2(0.0f, 0.0f), true);
+		RenderHierarchyPanel();
+		ImGui::EndChild();
+	}
+	ImGui::EndChild();
+
+	ImGui::SameLine();
+
+	// 중앙 — 캔버스 뷰포트.
+	ImGui::BeginChild("##UIViewport", ImVec2(CenterWidth, 0.0f), true);
+	RenderViewportPanel();
+	ImGui::EndChild();
+
+	ImGui::SameLine();
+
+	// 우측 — 디테일(나머지 폭).
+	ImGui::BeginChild("##UIDetails", ImVec2(0.0f, 0.0f), true);
+	RenderDetailsPanel();
+	ImGui::EndChild();
 
 	ImGui::End();
 
@@ -113,4 +142,32 @@ void FUIEditorWidget::Render(float DeltaTime)
 	{
 		Close();
 	}
+}
+
+void FUIEditorWidget::RenderPalettePanel()
+{
+	// 사이클 ③에서 Canvas/Button/Image 팔레트 버튼을 채운다.
+	ImGui::TextUnformatted("Palette");
+	ImGui::Separator();
+}
+
+void FUIEditorWidget::RenderHierarchyPanel()
+{
+	// 사이클 ②에서 캔버스 트리(GetChildren 재귀)를 TreeNode 로 채운다.
+	ImGui::TextUnformatted("Hierarchy");
+	ImGui::Separator();
+}
+
+void FUIEditorWidget::RenderViewportPanel()
+{
+	// 사이클 ②에서 그리드 + 요소 쿼드(DrawList)를, 사이클 ④에서 클릭 선택을 채운다.
+	ImGui::TextUnformatted("Canvas Viewport");
+	ImGui::Separator();
+}
+
+void FUIEditorWidget::RenderDetailsPanel()
+{
+	// 사이클 ⑤에서 W/H·Offset·Pivot·Color 직접 편집 필드를 채운다.
+	ImGui::TextUnformatted("Details");
+	ImGui::Separator();
 }

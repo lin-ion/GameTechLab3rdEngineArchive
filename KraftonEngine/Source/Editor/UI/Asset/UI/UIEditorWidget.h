@@ -25,6 +25,12 @@ private:
 	void BuildLiveTree(UUIAsset* Asset);
 	void DestroyLiveTree();
 
+	// 4분할 패널 내용(사이클 ①은 타이틀만, 후속 사이클이 알맹이를 채운다).
+	void RenderPalettePanel();    // 좌상 — Canvas/Button/Image 팔레트(사이클 ③)
+	void RenderHierarchyPanel();  // 좌하 — 계층 트리(사이클 ②)
+	void RenderViewportPanel();   // 중앙 — 캔버스 뷰포트(사이클 ②), 선택/히트테스트(사이클 ④)
+	void RenderDetailsPanel();    // 우   — W/H·Offset·Pivot·Color 디테일(사이클 ⑤)
+
 	AUICanvasActor* OwnerActor = nullptr;  // 복원 트리의 소유자(에디터 수명). GC keepalive 대상.
 	UUICanvas*      Canvas     = nullptr;  // 복원된 루트 캔버스(편집/레이아웃/드로우 대상).
 };
