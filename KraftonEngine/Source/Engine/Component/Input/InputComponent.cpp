@@ -6,6 +6,7 @@
 #include "Object/Reflection/ObjectFactory.h"
 
 #include <algorithm>
+#include <cmath>
 
 UInputComponent::UInputComponent()
 {
@@ -49,6 +50,34 @@ void UInputComponent::AddMouseAxisMappingForOwner(const void* OwnerKey, const FS
 {
 	if (Axis == EInputAxisSourceType::Key)
 	{
+		return;
+	}
+
+	FAxisMapping M;
+	M.Name = Name;
+	M.SourceType = Axis;
+	M.Scale = Scale;
+	M.OwnerKey = OwnerKey;
+	AxisMappings.push_back(std::move(M));
+}
+
+void UInputComponent::AddGamepadAxisMapping(const FString& Name, EInputAxisSourceType Axis, float Scale)
+{
+	AddGamepadAxisMappingForOwner(nullptr, Name, Axis, Scale);
+}
+
+void UInputComponent::AddGamepadAxisMappingForOwner(const void* OwnerKey, const FString& Name, EInputAxisSourceType Axis, float Scale)
+{
+	switch (Axis)
+	{
+	case EInputAxisSourceType::GamepadLeftStickX:
+	case EInputAxisSourceType::GamepadLeftStickY:
+	case EInputAxisSourceType::GamepadRightStickX:
+	case EInputAxisSourceType::GamepadRightStickY:
+	case EInputAxisSourceType::GamepadLeftTrigger:
+	case EInputAxisSourceType::GamepadRightTrigger:
+		break;
+	default:
 		return;
 	}
 
@@ -154,9 +183,44 @@ float UInputComponent::EvaluateAxisMapping(const FAxisMapping& Mapping, const FI
 		return static_cast<float>(Snapshot.MouseDeltaY) * Mapping.Scale;
 	case EInputAxisSourceType::MouseWheel:
 		return static_cast<float>(Snapshot.ScrollDelta) * Mapping.Scale;
+	case EInputAxisSourceType::GamepadLeftStickX:
+		return ApplyAnalogDeadZone(Snapshot.GamepadLeftStickX, GamepadLeftStickDeadZone, true) * Mapping.Scale;
+	case EInputAxisSourceType::GamepadLeftStickY:
+		return ApplyAnalogDeadZone(Snapshot.GamepadLeftStickY, GamepadLeftStickDeadZone, true) * Mapping.Scale;
+	case EInputAxisSourceType::GamepadRightStickX:
+		return ApplyAnalogDeadZone(Snapshot.GamepadRightStickX, GamepadRightStickDeadZone, true) * Mapping.Scale;
+	case EInputAxisSourceType::GamepadRightStickY:
+		return ApplyAnalogDeadZone(Snapshot.GamepadRightStickY, GamepadRightStickDeadZone, true) * Mapping.Scale;
+	case EInputAxisSourceType::GamepadLeftTrigger:
+		return ApplyAnalogDeadZone(Snapshot.GamepadLeftTrigger, GamepadTriggerDeadZone, false) * Mapping.Scale;
+	case EInputAxisSourceType::GamepadRightTrigger:
+		return ApplyAnalogDeadZone(Snapshot.GamepadRightTrigger, GamepadTriggerDeadZone, false) * Mapping.Scale;
 	default:
 		return 0.0f;
 	}
+}
+
+float UInputComponent::ApplyAnalogDeadZone(float Value, float DeadZone, bool bSignedAxis) const
+{
+	const float ClampedDeadZone = std::clamp(DeadZone, 0.0f, 0.99f);
+	if (bSignedAxis)
+	{
+		const float AbsValue = std::abs(Value);
+		if (AbsValue <= ClampedDeadZone)
+		{
+			return 0.0f;
+		}
+
+		const float Normalized = (AbsValue - ClampedDeadZone) / (1.0f - ClampedDeadZone);
+		return std::copysign(std::clamp(Normalized, 0.0f, 1.0f), Value);
+	}
+
+	const float ClampedValue = std::clamp(Value, 0.0f, 1.0f);
+	if (ClampedValue <= ClampedDeadZone)
+	{
+		return 0.0f;
+	}
+	return std::clamp((ClampedValue - ClampedDeadZone) / (1.0f - ClampedDeadZone), 0.0f, 1.0f);
 }
 
 void UInputComponent::ProcessInput(const FInputSystemSnapshot& Snapshot, float /*DeltaTime*/)

@@ -72,11 +72,37 @@ namespace
             {"LeftAlt", 0xA4}, {"RightAlt", 0xA5},
             {"Semicolon", 0xBA}, {"Equals", 0xBB}, {"Comma", 0xBC}, {"Minus", 0xBD}, {"Period", 0xBE}, {"Slash", 0xBF},
             {"BackQuote", 0xC0}, {"LeftBracket", 0xDB}, {"Backslash", 0xDC}, {"RightBracket", 0xDD}, {"Apostrophe", 0xDE},
+            {"GamepadFaceButtonBottom", 0xC3}, // A on Xbox controllers.
+            {"GamepadFaceButtonRight", 0xC4},
+            {"GamepadFaceButtonLeft", 0xC5},
+            {"GamepadFaceButtonTop", 0xC6},
+            {"GamepadRightShoulder", 0xC7},
+            {"GamepadLeftShoulder", 0xC8},
+            {"GamepadLeftTrigger", 0xC9},
+            {"GamepadRightTrigger", 0xCA},
+            {"GamepadDPadUp", 0xCB},
+            {"GamepadDPadDown", 0xCC},
+            {"GamepadDPadLeft", 0xCD},
+            {"GamepadDPadRight", 0xCE},
+            {"GamepadMenu", 0xCF},
+            {"GamepadView", 0xD0},
+            {"GamepadLeftThumbstick", 0xD1},
+            {"GamepadRightThumbstick", 0xD2},
+            {"GamepadLeftStickUp", 0xD3},
+            {"GamepadLeftStickDown", 0xD4},
+            {"GamepadLeftStickRight", 0xD5},
+            {"GamepadLeftStickLeft", 0xD6},
+            {"GamepadRightStickUp", 0xD7},
+            {"GamepadRightStickDown", 0xD8},
+            {"GamepadRightStickRight", 0xD9},
+            {"GamepadRightStickLeft", 0xDA},
             // Aliases commonly used by designers.
             {"LMB", 0x01}, {"RMB", 0x02}, {"MMB", 0x04},
             {"MouseLeft", 0x01}, {"MouseRight", 0x02}, {"MouseMiddle", 0x04},
             {"Return", 0x0D}, {"Esc", 0x1B}, {"PgUp", 0x21}, {"PgDn", 0x22},
-            {"LeftControl", 0xA2}, {"RightControl", 0xA3}
+            {"LeftControl", 0xA2}, {"RightControl", 0xA3},
+            {"GamepadA", 0xC3}, {"GamepadB", 0xC4}, {"GamepadX", 0xC5}, {"GamepadY", 0xC6},
+            {"GamepadStart", 0xCF}, {"GamepadBack", 0xD0}
         };
         return Entries;
     }

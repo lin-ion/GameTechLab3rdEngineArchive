@@ -52,6 +52,14 @@ struct FInputSystemSnapshot
     bool bGuiUsingTextInput = false;
     bool bWindowFocused = true;
 
+    bool bGamepadConnected = false;
+    float GamepadLeftStickX = 0.0f;     // -1..+1
+    float GamepadLeftStickY = 0.0f;     // -1..+1
+    float GamepadRightStickX = 0.0f;    // -1..+1
+    float GamepadRightStickY = 0.0f;    // -1..+1
+    float GamepadLeftTrigger = 0.0f;    // 0..1
+    float GamepadRightTrigger = 0.0f;   // 0..1
+
     bool IsDown(int VK) const { return KeyDown[VK]; }
     bool WasPressed(int VK) const { return KeyPressed[VK]; }
     bool WasReleased(int VK) const { return KeyReleased[VK]; }
@@ -173,12 +181,23 @@ private:
     FInputSystemSnapshot CurrentSnapshot{};
     bool bWindowFocused = true;
 
+    bool bGamepadConnected = false;
+    float GamepadLeftStickX = 0.0f;
+    float GamepadLeftStickY = 0.0f;
+    float GamepadRightStickX = 0.0f;
+    float GamepadRightStickY = 0.0f;
+    float GamepadLeftTrigger = 0.0f;
+    float GamepadRightTrigger = 0.0f;
+
     static constexpr int DRAG_THRESHOLD = 5;
 
     // Internal drag threshold helper — unified Left/Right logic
     void FilterDragThreshold(
         bool& bCandidate, bool& bDragging, bool& bJustStarted,
         const POINT& MouseDownPos, POINT& DragStartPos);
+    void UpdateGamepadState();
+    void ClearGamepadState();
+    void SetGamepadButtonState(int VK, bool bDown);
     void UpdateCurrentSnapshot();
     void ResetDragState();
 };

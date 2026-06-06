@@ -35,6 +35,14 @@ function AbilitySystem.new(owner)
 
         self.abilities[ability.name] = ability
         self.abilities_by_key[ability.key] = ability
+        if config.Keys ~= nil then
+            for index = 1, #config.Keys do
+                local key = config.Keys[index]
+                if key ~= nil then
+                    self.abilities_by_key[key] = ability
+                end
+            end
+        end
         return ability
     end
 

@@ -127,6 +127,7 @@ public:
 	// 카메라만 회전. WASD 도 ControlRotation.Yaw 기준 forward/right 로 이동.
 	bool  bAutoInputMouseLook = true;
 	float MouseSensitivity    = 0.2f;   // deg / pixel — yaw/pitch 공통
+	float GamepadLookSensitivity = 2.0f; // deg / frame at full right-stick tilt
 	float MinCameraPitch      = -80.0f; // 위 한도 (마이너스 = 위)
 	float MaxCameraPitch      =  60.0f; // 아래 한도
 
