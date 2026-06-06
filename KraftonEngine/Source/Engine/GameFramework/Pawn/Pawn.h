@@ -57,6 +57,19 @@ public:
 	UFUNCTION(Pure, Category="Pawn|Input")
 	UInputComponent* GetInputComponent() const { return InputComponent; }
 
+	UFUNCTION(Callable, Category="Pawn|Health")
+	void ResetHealth();
+	UFUNCTION(Callable, Category="Pawn|Health")
+	float GetDamaged(float DamageAmount);
+	UFUNCTION(Pure, Category="Pawn|Health")
+	float GetCurrentHealth() const { return CurrentHealth; }
+	UFUNCTION(Pure, Category="Pawn|Health")
+	float GetMaxHealth() const { return MaxHealth; }
+	UFUNCTION(Pure, Category="Pawn|Health")
+	float GetHealthRatio() const;
+	UFUNCTION(Pure, Category="Pawn|Health")
+	int32 GetHealthHitCount() const { return HealthHitCount; }
+
 	// Control rotation — UE 패턴. capsule rotation 과 분리된 "사용자가 보고 있는 방향".
 	// SpringArm/Camera 가 bUsePawnControlRotation 통해 이걸 사용 → mouse look 이 카메라만 회전.
 	// capsule yaw 가 이걸 따라가게 하려면 자식이 bUseControllerRotationYaw 등 옵션으로 toggle.
@@ -93,6 +106,21 @@ protected:
 
 	UPROPERTY(Edit, Save, Category="Pawn", DisplayName="Auto Possess Player")
 	bool bAutoPossessPlayer = true;            // 직렬화 — GameMode가 시작 시 자동 Possess할 후보로 사용
+
+	UPROPERTY(Edit, Save, Category="Pawn|Health", DisplayName="Max Health", Min=0.0f, Max=1000000.0f, Speed=1.0f)
+	float MaxHealth = 10.0f;
+
+	UPROPERTY(Edit, Save, Category="Pawn|Health", DisplayName="Current Health", Min=0.0f, Max=1000000.0f, Speed=1.0f)
+	float CurrentHealth = 10.0f;
+
+	UPROPERTY(Edit, Save, Category="Pawn|Health", DisplayName="Reset Health On Begin Play")
+	bool bResetHealthOnBeginPlay = true;
+
+	UPROPERTY(Save, Category="Pawn|Health", DisplayName="Total Damage Taken")
+	float TotalDamageTaken = 0.0f;
+
+	UPROPERTY(Save, Category="Pawn|Health", DisplayName="Health Hit Count")
+	int32 HealthHitCount = 0;
 
 	// BeginPlay 가 자동 추가 — 자식의 SetupInputComponent 가 mapping/binding 등록.
 	TWeakObjectPtr<UInputComponent> InputComponent;

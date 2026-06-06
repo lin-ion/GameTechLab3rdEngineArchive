@@ -309,8 +309,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Debug\PhysicsAssetRagdollTestComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp" />
-    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.cpp" />
@@ -822,8 +822,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Debug\PhysicsAssetRagdollTestComponent.h" />
     <ClInclude Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h" />
-    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.h" />

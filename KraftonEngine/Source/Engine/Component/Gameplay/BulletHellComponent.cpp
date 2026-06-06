@@ -2,7 +2,7 @@
 
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
-#include "Component/Gameplay/BulletHellHealthProbeComponent.h"
+#include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Core/Logging/Log.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -1027,9 +1027,9 @@ void UBulletHellComponent::ApplyDamageToHitTarget(const FBulletInstance& Bullet,
 		return;
 	}
 
-	if (UBulletHellHealthProbeComponent* HealthProbe = TargetActor->GetComponentByClass<UBulletHellHealthProbeComponent>())
+	if (UBulletHellDamageReceiverComponent* DamageReceiver = TargetActor->GetComponentByClass<UBulletHellDamageReceiverComponent>())
 	{
-		HealthProbe->ApplyDamage(Bullet.Damage);
+		DamageReceiver->ApplyDamage(Bullet.Damage);
 	}
 }
 

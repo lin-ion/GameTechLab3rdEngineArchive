@@ -7,9 +7,15 @@
 #include "Core/Types/PropertyTypes.h"
 #include "Serialization/Archive.h"
 
+#include <algorithm>
 
 void APawn::BeginPlay()
 {
+	if (bResetHealthOnBeginPlay)
+	{
+		ResetHealth();
+	}
+
 	// InputComponent는 다른 컴포넌트의 BeginPlay보다 먼저 준비한다.
 	// LuaBlueprintComponent의 Event InputAction/InputAxis 자동 바인딩은 자기 BeginPlay에서
 	// Pawn::GetInputComponent()를 사용하므로, Super::BeginPlay() 전에 생성/Setup되어 있어야 한다.
@@ -28,6 +34,39 @@ void APawn::BeginPlay()
 	SetupInputComponent();
 
 	Super::BeginPlay();
+}
+
+void APawn::ResetHealth()
+{
+	MaxHealth = (std::max)(0.0f, MaxHealth);
+	CurrentHealth = MaxHealth;
+	TotalDamageTaken = 0.0f;
+	HealthHitCount = 0;
+}
+
+float APawn::GetDamaged(float DamageAmount)
+{
+	const float ClampedDamage = (std::max)(0.0f, DamageAmount);
+	if (ClampedDamage <= 0.0f || CurrentHealth <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	const float PreviousHealth = CurrentHealth;
+	CurrentHealth = (std::max)(0.0f, CurrentHealth - ClampedDamage);
+	const float AppliedDamage = PreviousHealth - CurrentHealth;
+	TotalDamageTaken += AppliedDamage;
+	++HealthHitCount;
+	return AppliedDamage;
+}
+
+float APawn::GetHealthRatio() const
+{
+	if (MaxHealth <= 0.0f)
+	{
+		return 1.0f;
+	}
+	return (std::max)(0.0f, (std::min)(1.0f, CurrentHealth / MaxHealth));
 }
 
 void APawn::ProcessPlayerInput(const FInputSystemSnapshot& Snapshot, float DeltaTime)

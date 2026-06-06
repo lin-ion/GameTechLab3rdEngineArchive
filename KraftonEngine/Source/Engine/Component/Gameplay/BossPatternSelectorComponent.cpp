@@ -1,7 +1,6 @@
 #include "BossPatternSelectorComponent.h"
 
 #include "Component/Gameplay/BulletHellComponent.h"
-#include "Component/Gameplay/BulletHellHealthProbeComponent.h"
 #include "Core/Logging/Log.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "GameFramework/AActor.h"
@@ -216,14 +215,13 @@ float UBossPatternSelectorComponent::ResolveBossHealthRatio() const
 		return 1.0f;
 	}
 
-	UBulletHellHealthProbeComponent* HealthProbe = OwnerActor->GetComponentByClass<UBulletHellHealthProbeComponent>();
-	if (!HealthProbe || HealthProbe->GetMaxHealth() <= 0.0f)
+	APawn* PawnOwner = Cast<APawn>(OwnerActor);
+	if (!PawnOwner)
 	{
 		return 1.0f;
 	}
 
-	const float Ratio = HealthProbe->GetCurrentHealth() / HealthProbe->GetMaxHealth();
-	return (std::max)(0.0f, (std::min)(1.0f, Ratio));
+	return PawnOwner->GetHealthRatio();
 }
 
 int32 UBossPatternSelectorComponent::ComputeBossPhase(float BossHealthRatio) const

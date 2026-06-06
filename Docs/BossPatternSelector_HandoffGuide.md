@@ -15,7 +15,24 @@
    - `UBossPattern_SphericalPulseBarrage`
    - `UBossPattern_ThunderclapCascade`
    - 필요하면 `UBossPattern_IdleTrackTarget`
-5. 체력 비율로 phase를 바꾸고 싶으면 같은 보스 actor에 `UBulletHellHealthProbeComponent`를 붙인다. 없으면 selector는 항상 `HealthRatio=1.0`, `Phase=0`으로 동작한다.
+5. 체력 비율로 phase를 바꾸고 싶으면 보스 actor가 `APawn` 계통인지 확인한다. selector는 owner pawn의 `Pawn|Health` 값에서 `HealthRatio`를 읽는다.
+6. 탄막 피격을 pawn 체력으로 전달해야 하는 actor에만 `UBulletHellDamageReceiverComponent`를 붙인다. 이 component는 체력을 소유하지 않고, owner가 `APawn`이면 `GetDamaged(damage)`만 호출한다.
+
+### Pawn 체력 조정
+
+1. 보스 또는 플레이어 pawn actor를 선택한다.
+2. Details 패널에서 actor 본체 또는 pawn component 설정이 노출되는 항목을 본다.
+3. `Pawn|Health` 카테고리의 `Max Health`를 조정한다.
+4. 시작할 때 항상 최대 체력으로 초기화하려면 `Reset Health On Begin Play`를 true로 둔다.
+5. 런타임 중 현재 체력을 직접 확인하거나 임시 조정해야 하면 같은 카테고리의 `Current Health`를 본다.
+6. 체력 기반 phase가 필요 없는 pawn은 기본값 그대로 둬도 된다.
+
+### 탄막 DamageReceiver 배치
+
+1. 탄막과 충돌했을 때 피해를 받아야 하는 pawn actor를 선택한다.
+2. component 목록에 `UBulletHellDamageReceiverComponent`를 추가한다.
+3. 이 component에는 체력 수치가 없다. 체력 수치는 owner pawn의 `Pawn|Health`에서 조정한다.
+4. 플레이어 공격이 탄막이 아닌 경우, 보스 체력 감소는 플레이어 공격 처리 코드에서 pawn의 `GetDamaged(damage)`를 직접 호출하거나 별도 공격 시스템에서 같은 API로 연결한다.
 
 ### 현재 상태를 화면에서 보기
 
@@ -74,11 +91,12 @@
 1. 보스 actor의 selector component를 선택한다.
 2. `Boss Pattern|Phase` 카테고리에서 `Phase 1 Health Ratio Threshold`, `Phase 2 Health Ratio Threshold`를 정한다.
    - 기본값은 0.66 이하부터 phase 1, 0.33 이하부터 phase 2다.
-3. 빠르게 테스트하려면 selector의 `Boss Pattern|Debug` 카테고리에서 `Use Debug Boss Health Ratio`를 켜고 `Debug Boss Health Ratio`를 바꾼다.
-4. 특정 pattern component를 선택한다.
-5. hard block이 필요하면 `Boss Pattern|Condition`의 `Allowed Phase Mask`를 조정한다.
-6. 선택 확률만 조정하려면 `Boss Pattern|Selection`의 `Phase Weight 0/1/2`를 조정한다.
-7. `stat bosspattern`에서 `Phase`, `HealthRatio`, blocked reason이 기대와 맞는지 본다.
+3. 실제 체력으로 테스트하려면 보스 pawn의 `Pawn|Health`에서 `Max Health`와 `Current Health`를 조정한다.
+4. 빠르게 테스트하려면 selector의 `Boss Pattern|Debug` 카테고리에서 `Use Debug Boss Health Ratio`를 켜고 `Debug Boss Health Ratio`를 바꾼다.
+5. 특정 pattern component를 선택한다.
+6. hard block이 필요하면 `Boss Pattern|Condition`의 `Allowed Phase Mask`를 조정한다.
+7. 선택 확률만 조정하려면 `Boss Pattern|Selection`의 `Phase Weight 0/1/2`를 조정한다.
+8. `stat bosspattern`에서 `Phase`, `HealthRatio`, blocked reason이 기대와 맞는지 본다.
 
 ### 특정 pattern 강제 실행
 
@@ -199,8 +217,13 @@ Selector-level selection then applies:
 ### Phase and health
 
 - `ResolveBossHealthRatio()` first checks selector debug override.
-- Without override, it reads `UBulletHellHealthProbeComponent` on the selector owner.
-- If no health probe exists or max health is invalid, health ratio is 1.0.
+- Without override, it casts the selector owner to `APawn` and reads `APawn::GetHealthRatio()`.
+- If the selector owner is not an `APawn`, health ratio is 1.0.
+- `APawn` owns health state: `MaxHealth`, `CurrentHealth`, `bResetHealthOnBeginPlay`, `TotalDamageTaken`, and `HealthHitCount`.
+- `APawn::BeginPlay()` resets health to `MaxHealth` when `bResetHealthOnBeginPlay` is true.
+- `APawn::GetDamaged(float DamageAmount)` clamps negative damage to zero, reduces `CurrentHealth`, accumulates applied damage, increments hit count, and returns the applied amount.
+- `UBulletHellDamageReceiverComponent` is a bullet-hit bridge only. It does not own health; it forwards valid bullet damage to `OwnerPawn->GetDamaged(damage)`.
+- The old component-level health probe path was removed. Code should depend on `UBulletHellDamageReceiverComponent` for bullet-hit forwarding or `APawn` health directly for health/phase queries.
 - `ComputeBossPhase()` uses selector thresholds. Default phase is 0, phase 1 starts at or below `Phase1HealthRatioThreshold`, and phase 2 starts at or below `Phase2HealthRatioThreshold`.
 - `AllowedPhaseMask` is a hard block. `PhaseWeightN=0` is also a block in selection, but semantically represents weight tuning.
 

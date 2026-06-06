@@ -1169,10 +1169,10 @@
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.cpp">
@@ -2585,10 +2585,10 @@
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h">
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h">
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.h">
