@@ -352,7 +352,47 @@ void FUIEditorWidget::RenderViewportPanel()
 
 void FUIEditorWidget::RenderDetailsPanel()
 {
-	// 사이클 ⑤에서 W/H·Offset·Pivot·Color 직접 편집 필드를 채운다.
 	ImGui::TextUnformatted("Details");
 	ImGui::Separator();
+	if (!Selected)
+	{
+		ImGui::TextDisabled("No selection");
+		return;
+	}
+
+	ImGui::TextDisabled("%s", Selected->GetClass()->GetName());
+	ImGui::Spacing();
+
+	// 5필드 직접 바인딩(진단 §E). 텍스트 전용 필드 없음. 편집 즉시 RectTransform 반영 →
+	// 다음 프레임 LayoutCanvas 가 ScreenRect 갱신 → 뷰포트 실시간 반영.
+	FUIRectTransform& RT = Selected->GetRectTransform();
+
+	float Size[2] = { RT.Size.X, RT.Size.Y };
+	if (ImGui::DragFloat2("Size (W/H)", Size, 1.0f))
+	{
+		RT.Size = FVector2(Size[0], Size[1]);
+		MarkDirty();
+	}
+
+	float Pos[2] = { RT.Position.X, RT.Position.Y };
+	if (ImGui::DragFloat2("Offset (X/Y)", Pos, 1.0f))
+	{
+		RT.Position = FVector2(Pos[0], Pos[1]);
+		MarkDirty();
+	}
+
+	float Pivot[2] = { RT.Pivot.X, RT.Pivot.Y };
+	if (ImGui::DragFloat2("Pivot", Pivot, 0.01f))
+	{
+		RT.Pivot = FVector2(Pivot[0], Pivot[1]);
+		MarkDirty();
+	}
+
+	FVector4 C      = Selected->GetColor();
+	float    Col[4] = { C.R, C.G, C.B, C.A };
+	if (ImGui::ColorEdit4("Color", Col))
+	{
+		Selected->SetColor(FVector4(Col[0], Col[1], Col[2], Col[3]));
+		MarkDirty();
+	}
 }
