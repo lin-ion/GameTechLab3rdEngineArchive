@@ -34,6 +34,10 @@ namespace PSKey
 	constexpr const char* GameSection = "Game";
 	constexpr const char* StartLevelName = "StartLevelName";
 	constexpr const char* GameModeClassName = "GameModeClassName";
+
+	constexpr const char* UISection = "UI";
+	constexpr const char* RefResX = "RefResX";
+	constexpr const char* RefResY = "RefResY";
 }
 
 void FProjectSettings::SaveToFile(const FString& Path) const
@@ -71,6 +75,11 @@ void FProjectSettings::SaveToFile(const FString& Path) const
 	GameObj[PSKey::StartLevelName] = Game.StartLevelName;
 	GameObj[PSKey::GameModeClassName] = Game.GameModeClassName;
 	Root[PSKey::GameSection] = GameObj;
+
+	JSON UIObj = Object();
+	UIObj[PSKey::RefResX] = UI.RefResX;
+	UIObj[PSKey::RefResY] = UI.RefResY;
+	Root[PSKey::UISection] = UIObj;
 
 	std::filesystem::path FilePath(FPaths::ToWide(Path));
 	if (FilePath.has_parent_path())
@@ -148,6 +157,21 @@ void FProjectSettings::LoadFromFile(const FString& Path)
 			Game.StartLevelName = G[PSKey::StartLevelName].ToString();
 		if (G.hasKey(PSKey::GameModeClassName))
 			Game.GameModeClassName = G[PSKey::GameModeClassName].ToString();
+	}
+
+	if (Root.hasKey(PSKey::UISection))
+	{
+		JSON U = Root[PSKey::UISection];
+		if (U.hasKey(PSKey::RefResX))
+		{
+			float v = static_cast<float>(U[PSKey::RefResX].ToFloat());
+			UI.RefResX = (v > 1.0f) ? v : 1920.0f;
+		}
+		if (U.hasKey(PSKey::RefResY))
+		{
+			float v = static_cast<float>(U[PSKey::RefResY].ToFloat());
+			UI.RefResY = (v > 1.0f) ? v : 1080.0f;   // 0 분모 방지
+		}
 	}
 
 	if (Root.hasKey(PSKey::Shadow))

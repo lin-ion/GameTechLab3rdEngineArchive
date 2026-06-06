@@ -14,6 +14,7 @@
 #include "Object/Reflection/UClass.h"
 #include "Core/ProjectSettings.h"
 #include "Core/Logging/Log.h"
+#include "UI/Canvas/UICanvasManager.h"
 
 void UGameEngine::Init(FWindowsWindow* InWindow)
 {
@@ -30,6 +31,15 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 		Renderer.GetFD3DDevice().GetDevice(),
 		static_cast<uint32>(InWindow->GetWidth()),
 		static_cast<uint32>(InWindow->GetHeight()));
+
+	// 초기 GlobalScale — 첫 리사이즈 콜백 전에도 첫 프레임부터 올바른 스케일 보장(진단 D2).
+	{
+		const float RefResY = FProjectSettings::Get().UI.RefResY;
+		if (RefResY > 0.0f)
+		{
+			FUICanvasManager::Get().SetGlobalScale(static_cast<float>(InWindow->GetHeight()) / RefResY);
+		}
+	}
 
 	GameViewportClient = UObjectManager::Get().CreateObject<UGameViewportClient>();
 	GameViewportClient->SetOwnerWindow(InWindow->GetHWND());

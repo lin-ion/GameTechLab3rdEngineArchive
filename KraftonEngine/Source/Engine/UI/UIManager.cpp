@@ -11,6 +11,7 @@
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Types/FrameContext.h"
 #include "UI/UserWidget.h"
+#include "UI/Canvas/UICanvasManager.h"
 #include "WICTextureLoader.h"
 
 #ifdef GetNextSibling
@@ -820,6 +821,11 @@ void UUIManager::Render(const FPassContext& Ctx)
 		static_cast<int>(Ctx.Frame.ViewportWidth),
 		static_cast<int>(Ctx.Frame.ViewportHeight)
 	});
+
+	// 신규 계층형 UI 와 동일한 GlobalScale 을 RmlUi 의 dp 단위에 적용한다.
+	// dp_ratio = GlobalScale = ClientHeight/RefResY 이므로, dp 로 작성한 라벨이 신규 UI 와
+	// 1:1 로 스케일·정렬된다(진단 D 참고, 사이클 6 라벨 마운트의 토대). px 단위 기존 콘텐츠는 무영향.
+	RmlContext->SetDensityIndependentPixelRatio(FUICanvasManager::Get().GetGlobalScale());
 
 	ProcessInput(Ctx.Frame);
 	FlushDeferredViewportRemovals();

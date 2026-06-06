@@ -59,10 +59,19 @@ class FProjectSettings : public TSingleton<FProjectSettings>
 		                            // 잘못된 이름이거나 AGameModeBase 파생이 아니면 디폴트 fallback.
 	};
 
+	// --- UI ---
+	struct FUIOption
+	{
+		// 신규 계층형 UI 의 레퍼런스 해상도(16:9 고정). GlobalScale = ClientHeight / RefResY.
+		float RefResX = 1920.0f;
+		float RefResY = 1080.0f;
+	};
+
 public:
 	FShadowOption Shadow;
 	FPhysicsOption Physics;
 	FGameOption Game;
+	FUIOption UI;
 
 	// --- 직렬화 ---
 	void SaveToFile(const FString& Path) const;

@@ -24,6 +24,7 @@
 #include "Lua/LuaScriptManager.h"
 #include "UI/UIManager.h"
 #include "UI/Canvas/UICanvasManager.h"
+#include "Core/ProjectSettings.h"
 #include "Audio/AudioManager.h"
 #include "Object/GarbageCollection.h"
 #include "LuaBlueprint/LuaBlueprintManager.h"
@@ -230,6 +231,14 @@ void UEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 	Renderer.GetFD3DDevice().OnResizeViewport(Width, Height);
 	Renderer.ResetRenderStateCache();
+
+	// 신규 계층형 UI 의 GlobalScale 갱신 — 레퍼런스 해상도(높이) 대비 균일 스케일(진단 D2/D4).
+	// 리사이즈마다 1회만 계산해 FUICanvasManager 에 저장하고, 레이아웃 패스가 픽셀 결과에 곱한다.
+	const float RefResY = FProjectSettings::Get().UI.RefResY;
+	if (RefResY > 0.0f)
+	{
+		FUICanvasManager::Get().SetGlobalScale(static_cast<float>(Height) / RefResY);
+	}
 }
 
 void UEngine::WorldTick(float DeltaTime)
