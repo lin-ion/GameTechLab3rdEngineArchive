@@ -1,7 +1,12 @@
 #include "UIEditorWidget.h"
 
 #include "Object/Object.h"
+#include "Object/GarbageCollection.h"
+#include "Serialization/SceneSaveManager.h"
 #include "UI/UIAsset.h"
+#include "UI/Canvas/UICanvas.h"
+#include "UI/Canvas/UICanvasActor.h"
+#include "UI/Canvas/UICanvasManager.h"
 
 #include <imgui.h>
 
@@ -17,9 +22,50 @@ void FUIEditorWidget::Open(UObject* Object)
 		return;
 	}
 
+	DestroyLiveTree();   // 단일 인스턴스 재사용 — 다른 에셋으로 재오픈 시 이전 트리 정리.
 	EditedObject = Object;
 	bOpen        = true;
 	ClearDirty();
+	BuildLiveTree(static_cast<UUIAsset*>(Object));
+}
+
+void FUIEditorWidget::Close()
+{
+	DestroyLiveTree();
+	FAssetEditorWidget::Close();
+}
+
+void FUIEditorWidget::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	FAssetEditorWidget::AddReferencedObjects(Collector);   // EditedObject(UUIAsset) keepalive
+	Collector.AddReferencedObject(OwnerActor);             // 소유자 액터 → OwnedComponents(캔버스 트리) keepalive
+}
+
+void FUIEditorWidget::BuildLiveTree(UUIAsset* Asset)
+{
+	if (!Asset)
+	{
+		return;
+	}
+
+	// JSON 블롭 → 라이브 트리. 소유자는 월드 없는 에디터 전용 액터.
+	OwnerActor = UObjectManager::Get().CreateObject<AUICanvasActor>();
+	USceneComponent* Root = FSceneSaveManager::DeserializeUITree(Asset->GetCanvasData(), OwnerActor);
+	Canvas = Cast<UUICanvas>(Root);
+	if (Canvas && OwnerActor)
+	{
+		OwnerActor->SetRootComponent(Canvas);   // AUICanvasActor 계약(RootComponent=Canvas) 유지.
+	}
+}
+
+void FUIEditorWidget::DestroyLiveTree()
+{
+	Canvas = nullptr;
+	if (OwnerActor)
+	{
+		UObjectManager::Get().DestroyObject(OwnerActor);   // 컴포넌트 트리까지 정리(2-phase GC).
+		OwnerActor = nullptr;
+	}
 }
 
 void FUIEditorWidget::Render(float DeltaTime)

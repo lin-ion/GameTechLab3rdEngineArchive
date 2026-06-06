@@ -463,6 +463,32 @@ FString FSceneSaveManager::SerializeUITree(USceneComponent* Root)
 	return Node.dump();
 }
 
+USceneComponent* FSceneSaveManager::DeserializeUITree(const FString& Json, AActor* Owner)
+{
+	// SerializeUITree 가 만든 JSON 을 라이브 트리로 복원. 씬 로드와 동일한 2-패스:
+	//   (1) DeserializeSceneComponentTree 로 컴포넌트 생성 + 트리 부착(프로퍼티는 큐잉)
+	//   (2) PendingProperties flush 로 리플렉션 프로퍼티 적용
+	// Node 는 큐가 가리키는 동안 살아있어야 하므로 flush 까지 로컬로 유지한다.
+	if (Json.empty() || !IsSceneSerializableObject(Owner))
+	{
+		return nullptr;
+	}
+
+	json::JSON         Node = json::JSON::Load(Json);
+	FSceneLoadContext  LoadContext;
+	USceneComponent*   Root = DeserializeSceneComponentTree(Node, Owner, LoadContext);
+
+	for (FPendingPropertyLoad& Pending : LoadContext.PendingProperties)
+	{
+		if (IsSceneSerializableObject(Pending.Object) && Pending.Properties)
+		{
+			DeserializeProperties(Pending.Object, *Pending.Properties, LoadContext);
+		}
+	}
+
+	return Root;
+}
+
 json::JSON FSceneSaveManager::SerializeProperties(UObject* Obj, FSceneSaveContext& Context)
 {
 	using namespace json;

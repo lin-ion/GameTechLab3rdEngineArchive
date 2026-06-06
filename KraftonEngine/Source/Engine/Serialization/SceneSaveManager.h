@@ -56,6 +56,12 @@ public:
 	// 독립 .uasset(UUIAsset) 저장이 이 진입점을 재사용한다(진단 B, 사이클 1). 월드/액터 불필요.
 	static FString SerializeUITree(USceneComponent* Root);
 
+	// SerializeUITree 의 역방향 — JSON 문자열을 라이브 컴포넌트 서브트리로 복원한다(사이클 ⓪).
+	// 기존 씬 역직렬화 재귀(DeserializeSceneComponentTree) + 지연 프로퍼티 flush 를 그대로 재사용.
+	// 생성된 컴포넌트는 Owner 액터에 등록된다(Owner 는 월드 없이도 가능 — 에디터 전용 소유자).
+	// 반환 = 루트 컴포넌트(보통 UUICanvas) 또는 nullptr.
+	static USceneComponent* DeserializeUITree(const FString& Json, AActor* Owner);
+
 	struct FSceneSaveContext
 	{
 		TMap<const UObject*, uint32> ObjectToId;
