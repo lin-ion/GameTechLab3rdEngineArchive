@@ -2,12 +2,15 @@
 
 #include "Object/Object.h"
 #include "Object/GarbageCollection.h"
+#include "Object/Reflection/ObjectFactory.h"
 #include "Serialization/SceneSaveManager.h"
 #include "UI/UIAsset.h"
 #include "UI/Canvas/UICanvas.h"
 #include "UI/Canvas/UICanvasActor.h"
 #include "UI/Canvas/UICanvasManager.h"
 #include "UI/Canvas/UIElement.h"
+#include "UI/Canvas/UIButton.h"
+#include "UI/Canvas/UIImage.h"
 #include "UI/Canvas/UIRect.h"
 
 #include <imgui.h>
@@ -126,7 +129,8 @@ void FUIEditorWidget::BuildLiveTree(UUIAsset* Asset)
 
 void FUIEditorWidget::DestroyLiveTree()
 {
-	Canvas = nullptr;
+	Canvas   = nullptr;
+	Selected = nullptr;
 	if (OwnerActor)
 	{
 		UObjectManager::Get().DestroyObject(OwnerActor);   // 컴포넌트 트리까지 정리(2-phase GC).
@@ -212,9 +216,52 @@ void FUIEditorWidget::Render(float DeltaTime)
 
 void FUIEditorWidget::RenderPalettePanel()
 {
-	// 사이클 ③에서 Canvas/Button/Image 팔레트 버튼을 채운다.
 	ImGui::TextUnformatted("Palette");
 	ImGui::Separator();
+	if (!Canvas)
+	{
+		ImGui::TextDisabled("No canvas");
+		return;
+	}
+
+	const float W = ImGui::GetContentRegionAvail().x;
+	if (ImGui::Button("Canvas", ImVec2(W, 0.0f))) { SpawnElement(UUICanvas::StaticClass()); }
+	if (ImGui::Button("Button", ImVec2(W, 0.0f))) { SpawnElement(UUIButton::StaticClass()); }
+	if (ImGui::Button("Image",  ImVec2(W, 0.0f))) { SpawnElement(UUIImage::StaticClass()); }
+
+	ImGui::Spacing();
+	ImGui::TextDisabled("Adds under selection,\nelse under Canvas.");
+}
+
+void FUIEditorWidget::SpawnElement(UClass* ElementClass)
+{
+	if (!ElementClass || !OwnerActor || !Canvas)
+	{
+		return;
+	}
+
+	// 진단 §D: AddComponentToActor 모델 — CreateObject + RegisterComponent + AttachToComponent.
+	UObject*    Obj     = FObjectFactory::Get().Create(ElementClass->GetName(), OwnerActor);
+	UUIElement* NewElem = Cast<UUIElement>(Obj);
+	if (!NewElem)
+	{
+		if (Obj) UObjectManager::Get().DestroyObject(Obj);
+		return;
+	}
+	OwnerActor->RegisterComponent(NewElem);
+
+	// 부모 = 선택 노드(없으면 캔버스 루트). 자식 수 기반 cascade 로 겹침 방지.
+	UUIElement* Parent     = Selected ? Selected : Canvas;
+	int32       ChildCount = 0;
+	for (USceneComponent* Child : Parent->GetChildren())
+	{
+		if (Cast<UUIElement>(Child)) ++ChildCount;
+	}
+	NewElem->SetPosition(FVector2(40.0f + ChildCount * 30.0f, 40.0f + ChildCount * 30.0f));
+	NewElem->AttachToComponent(Parent);
+
+	Selected = NewElem;   // 새로 만든 요소를 선택 상태로(디테일/다음 생성 부모).
+	MarkDirty();
 }
 
 void FUIEditorWidget::RenderHierarchyPanel()

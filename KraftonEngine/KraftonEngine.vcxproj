@@ -1227,6 +1227,8 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\UI\UIManager.h" />
     <ClInclude Include="Source\Engine\UI\UserWidget.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UICanvas.h" />
+    <ClInclude Include="Source\Engine\UI\Canvas\UIButton.h" />
+    <ClInclude Include="Source\Engine\UI\Canvas\UIImage.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UICanvasActor.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UICanvasManager.h" />
     <ClInclude Include="Source\Engine\UI\Canvas\UIElement.h" />
