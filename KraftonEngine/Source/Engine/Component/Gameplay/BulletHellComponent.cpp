@@ -13,9 +13,14 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <random>
 
 namespace
 {
+	constexpr float Pi = 3.1415926535f;
+	constexpr float TwoPi = 6.28318530718f;
+	constexpr float GoldenAngle = 2.39996322973f;
+
 	uint32 AdvanceNonZero(uint32 Value)
 	{
 		++Value;
@@ -30,6 +35,31 @@ namespace
 	float ClampFloat(float Value, float MinValue, float MaxValue)
 	{
 		return (std::max)(MinValue, (std::min)(MaxValue, Value));
+	}
+
+	FVector VelocityToTarget(const FVector& Position, const FVector& Target, float Speed)
+	{
+		return SafeDirection(Target - Position, FVector::ForwardVector) * Speed;
+	}
+
+	FVector VelocityInDirection(const FVector& Direction, float Speed)
+	{
+		return SafeDirection(Direction, FVector::ForwardVector) * Speed;
+	}
+
+	void MakePlaneBasis(const FVector& Normal, FVector& OutU, FVector& OutV)
+	{
+		const FVector N = SafeDirection(Normal, FVector::UpVector);
+		const FVector Reference = std::fabs(N.Z) < 0.9f ? FVector::UpVector : FVector::RightVector;
+		OutU = SafeDirection(Reference.Cross(N), FVector::RightVector);
+		OutV = SafeDirection(N.Cross(OutU), FVector::UpVector);
+	}
+
+	float RandomUnitFloat()
+	{
+		static thread_local std::mt19937 Generator(0x6c8e9cf5u);
+		static thread_local std::uniform_real_distribution<float> Distribution(0.0f, 1.0f);
+		return Distribution(Generator);
 	}
 
 	bool IsProperty(const char* PropertyName, const char* MemberName, const char* DisplayName)
@@ -166,6 +196,351 @@ FBulletHandle UBulletHellComponent::SpawnBullet(const FBulletSpawnParams& Params
 	UpdateRenderDebugStats();
 
 	return FBulletHandle{ Bullet.Id, Bullet.Generation };
+}
+
+int32 UBulletHellComponent::SpawnSphereSurfaceToTarget(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	float Radius,
+	int32 Count,
+	const FVector& Target,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	const float ClampedRadius = (std::max)(0.0f, Radius);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float T = (static_cast<float>(Index) + 0.5f) / static_cast<float>(Count);
+		const float Z = 1.0f - 2.0f * T;
+		const float RadiusXY = std::sqrt((std::max)(0.0f, 1.0f - Z * Z));
+		const float Theta = GoldenAngle * static_cast<float>(Index);
+		const FVector Direction(std::cos(Theta) * RadiusXY, std::sin(Theta) * RadiusXY, Z);
+		const FVector Position = Center + Direction * ClampedRadius;
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = Position;
+		Params.Velocity = VelocityToTarget(Position, Target, Speed);
+		Params.HomingTargetPosition = Target;
+		SpawnBullet(Params);
+	}
+
+	return Count;
+}
+
+int32 UBulletHellComponent::SpawnSphereSurfaceInDirection(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	float Radius,
+	int32 Count,
+	const FVector& Direction,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	const FVector Velocity = VelocityInDirection(Direction, Speed);
+	const float ClampedRadius = (std::max)(0.0f, Radius);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float T = (static_cast<float>(Index) + 0.5f) / static_cast<float>(Count);
+		const float Z = 1.0f - 2.0f * T;
+		const float RadiusXY = std::sqrt((std::max)(0.0f, 1.0f - Z * Z));
+		const float Theta = GoldenAngle * static_cast<float>(Index);
+		const FVector SurfaceDirection(std::cos(Theta) * RadiusXY, std::sin(Theta) * RadiusXY, Z);
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = Center + SurfaceDirection * ClampedRadius;
+		Params.Velocity = Velocity;
+		SpawnBullet(Params);
+	}
+
+	return Count;
+}
+
+int32 UBulletHellComponent::SpawnSphereVolumeRandomToTarget(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	float Radius,
+	int32 Count,
+	const FVector& Target,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	const float ClampedRadius = (std::max)(0.0f, Radius);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Z = 1.0f - 2.0f * RandomUnitFloat();
+		const float RadiusXY = std::sqrt((std::max)(0.0f, 1.0f - Z * Z));
+		const float Theta = TwoPi * RandomUnitFloat();
+		const float Distance = ClampedRadius * std::cbrt(RandomUnitFloat());
+		const FVector Direction(std::cos(Theta) * RadiusXY, std::sin(Theta) * RadiusXY, Z);
+		const FVector Position = Center + Direction * Distance;
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = Position;
+		Params.Velocity = VelocityToTarget(Position, Target, Speed);
+		Params.HomingTargetPosition = Target;
+		SpawnBullet(Params);
+	}
+
+	return Count;
+}
+
+int32 UBulletHellComponent::SpawnSphereVolumeRandomInDirection(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	float Radius,
+	int32 Count,
+	const FVector& Direction,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	const FVector Velocity = VelocityInDirection(Direction, Speed);
+	const float ClampedRadius = (std::max)(0.0f, Radius);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Z = 1.0f - 2.0f * RandomUnitFloat();
+		const float RadiusXY = std::sqrt((std::max)(0.0f, 1.0f - Z * Z));
+		const float Theta = TwoPi * RandomUnitFloat();
+		const float Distance = ClampedRadius * std::cbrt(RandomUnitFloat());
+		const FVector SurfaceDirection(std::cos(Theta) * RadiusXY, std::sin(Theta) * RadiusXY, Z);
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = Center + SurfaceDirection * Distance;
+		Params.Velocity = Velocity;
+		SpawnBullet(Params);
+	}
+
+	return Count;
+}
+
+int32 UBulletHellComponent::SpawnCircleToTarget(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	const FVector& Normal,
+	float Radius,
+	int32 Count,
+	const FVector& Target,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	FVector U;
+	FVector V;
+	MakePlaneBasis(Normal, U, V);
+
+	const float ClampedRadius = (std::max)(0.0f, Radius);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Angle = TwoPi * static_cast<float>(Index) / static_cast<float>(Count);
+		const FVector Position = Center + (U * std::cos(Angle) + V * std::sin(Angle)) * ClampedRadius;
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = Position;
+		Params.Velocity = VelocityToTarget(Position, Target, Speed);
+		Params.HomingTargetPosition = Target;
+		SpawnBullet(Params);
+	}
+
+	return Count;
+}
+
+int32 UBulletHellComponent::SpawnCircleInDirection(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	const FVector& Normal,
+	float Radius,
+	int32 Count,
+	const FVector& Direction,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	FVector U;
+	FVector V;
+	MakePlaneBasis(Normal, U, V);
+
+	const FVector Velocity = VelocityInDirection(Direction, Speed);
+	const float ClampedRadius = (std::max)(0.0f, Radius);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Angle = TwoPi * static_cast<float>(Index) / static_cast<float>(Count);
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = Center + (U * std::cos(Angle) + V * std::sin(Angle)) * ClampedRadius;
+		Params.Velocity = Velocity;
+		SpawnBullet(Params);
+	}
+
+	return Count;
+}
+
+int32 UBulletHellComponent::SpawnBoxToTarget(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	int32 CountX,
+	int32 CountY,
+	int32 CountZ,
+	float Spacing,
+	const FQuat& Rotation,
+	const FVector& Target,
+	float Speed)
+{
+	if (CountX <= 0 || CountY <= 0 || CountZ <= 0)
+	{
+		return 0;
+	}
+
+	int32 SpawnedCount = 0;
+	const FVector HalfExtents(
+		static_cast<float>(CountX - 1) * 0.5f,
+		static_cast<float>(CountY - 1) * 0.5f,
+		static_cast<float>(CountZ - 1) * 0.5f);
+
+	for (int32 Z = 0; Z < CountZ; ++Z)
+	{
+		for (int32 Y = 0; Y < CountY; ++Y)
+		{
+			for (int32 X = 0; X < CountX; ++X)
+			{
+				const FVector Local(
+					(static_cast<float>(X) - HalfExtents.X) * Spacing,
+					(static_cast<float>(Y) - HalfExtents.Y) * Spacing,
+					(static_cast<float>(Z) - HalfExtents.Z) * Spacing);
+				const FVector Position = Center + Rotation.RotateVector(Local);
+
+				FBulletSpawnParams Params = TemplateParams;
+				Params.Position = Position;
+				Params.Velocity = VelocityToTarget(Position, Target, Speed);
+				Params.HomingTargetPosition = Target;
+				SpawnBullet(Params);
+				++SpawnedCount;
+			}
+		}
+	}
+
+	return SpawnedCount;
+}
+
+int32 UBulletHellComponent::SpawnBoxInDirection(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Center,
+	int32 CountX,
+	int32 CountY,
+	int32 CountZ,
+	float Spacing,
+	const FQuat& Rotation,
+	const FVector& Direction,
+	float Speed)
+{
+	if (CountX <= 0 || CountY <= 0 || CountZ <= 0)
+	{
+		return 0;
+	}
+
+	const FVector Velocity = VelocityInDirection(Direction, Speed);
+	int32 SpawnedCount = 0;
+	const FVector HalfExtents(
+		static_cast<float>(CountX - 1) * 0.5f,
+		static_cast<float>(CountY - 1) * 0.5f,
+		static_cast<float>(CountZ - 1) * 0.5f);
+
+	for (int32 Z = 0; Z < CountZ; ++Z)
+	{
+		for (int32 Y = 0; Y < CountY; ++Y)
+		{
+			for (int32 X = 0; X < CountX; ++X)
+			{
+				const FVector Local(
+					(static_cast<float>(X) - HalfExtents.X) * Spacing,
+					(static_cast<float>(Y) - HalfExtents.Y) * Spacing,
+					(static_cast<float>(Z) - HalfExtents.Z) * Spacing);
+
+				FBulletSpawnParams Params = TemplateParams;
+				Params.Position = Center + Rotation.RotateVector(Local);
+				Params.Velocity = Velocity;
+				SpawnBullet(Params);
+				++SpawnedCount;
+			}
+		}
+	}
+
+	return SpawnedCount;
+}
+
+int32 UBulletHellComponent::SpawnLineToTarget(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Start,
+	const FVector& End,
+	int32 Count,
+	const FVector& Target,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Alpha = Count == 1 ? 0.0f : static_cast<float>(Index) / static_cast<float>(Count - 1);
+		const FVector Position = FVector::Lerp(Start, End, Alpha);
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = Position;
+		Params.Velocity = VelocityToTarget(Position, Target, Speed);
+		Params.HomingTargetPosition = Target;
+		SpawnBullet(Params);
+	}
+
+	return Count;
+}
+
+int32 UBulletHellComponent::SpawnLineInDirection(
+	const FBulletSpawnParams& TemplateParams,
+	const FVector& Start,
+	const FVector& End,
+	int32 Count,
+	const FVector& Direction,
+	float Speed)
+{
+	if (Count <= 0)
+	{
+		return 0;
+	}
+
+	const FVector Velocity = VelocityInDirection(Direction, Speed);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Alpha = Count == 1 ? 0.0f : static_cast<float>(Index) / static_cast<float>(Count - 1);
+
+		FBulletSpawnParams Params = TemplateParams;
+		Params.Position = FVector::Lerp(Start, End, Alpha);
+		Params.Velocity = Velocity;
+		SpawnBullet(Params);
+	}
+
+	return Count;
 }
 
 bool UBulletHellComponent::KillBullet(const FBulletHandle& Handle)

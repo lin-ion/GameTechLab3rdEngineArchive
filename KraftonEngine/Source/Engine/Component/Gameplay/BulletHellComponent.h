@@ -3,6 +3,7 @@
 #include "Component/ActorComponent.h"
 #include "Core/Types/CollisionTypes.h"
 #include "Core/Types/EngineTypes.h"
+#include "Math/Quat.h"
 #include "Math/Transform.h"
 #include "Math/Vector.h"
 #include "Object/Ptr/WeakObjectPtr.h"
@@ -148,6 +149,86 @@ public:
 	const FBulletInstance* FindBullet(const FBulletHandle& Handle) const;
 	const TArray<FBulletInstance>& GetBulletInstances() const { return Bullets; }
 	int32 ApplyRuntimeModifier(const FBulletRuntimeModifier& Modifier);
+	
+	// =========== 대량 스폰용 헬퍼 함수들 ===========
+	int32 SpawnSphereSurfaceToTarget(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		float Radius,
+		int32 Count,
+		const FVector& Target,
+		float Speed);
+	int32 SpawnSphereSurfaceInDirection(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		float Radius,
+		int32 Count,
+		const FVector& Direction,
+		float Speed);
+	int32 SpawnSphereVolumeRandomToTarget(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		float Radius,
+		int32 Count,
+		const FVector& Target,
+		float Speed);
+	int32 SpawnSphereVolumeRandomInDirection(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		float Radius,
+		int32 Count,
+		const FVector& Direction,
+		float Speed);
+	int32 SpawnCircleToTarget(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		const FVector& Normal,
+		float Radius,
+		int32 Count,
+		const FVector& Target,
+		float Speed);
+	int32 SpawnCircleInDirection(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		const FVector& Normal,
+		float Radius,
+		int32 Count,
+		const FVector& Direction,
+		float Speed);
+	int32 SpawnBoxToTarget(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		int32 CountX,
+		int32 CountY,
+		int32 CountZ,
+		float Spacing,
+		const FQuat& Rotation,
+		const FVector& Target,
+		float Speed);
+	int32 SpawnBoxInDirection(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Center,
+		int32 CountX,
+		int32 CountY,
+		int32 CountZ,
+		float Spacing,
+		const FQuat& Rotation,
+		const FVector& Direction,
+		float Speed);
+	int32 SpawnLineToTarget(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Start,
+		const FVector& End,
+		int32 Count,
+		const FVector& Target,
+		float Speed);
+	int32 SpawnLineInDirection(
+		const FBulletSpawnParams& TemplateParams,
+		const FVector& Start,
+		const FVector& End,
+		int32 Count,
+		const FVector& Direction,
+		float Speed);
 
 	UFUNCTION(Callable, Category="Bullet Hell|Homing")
 	int32 SetActiveHomingConeHalfAngle(float ConeHalfAngleDegrees, int32 ArchetypeIndex);
