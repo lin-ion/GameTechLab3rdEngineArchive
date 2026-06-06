@@ -12,15 +12,18 @@
 #include "UI/Canvas/UIElement.h"
 #include "UI/Canvas/UIButton.h"
 #include "UI/Canvas/UIImage.h"
+#include "UI/Canvas/UITextElement.h"
 #include "UI/Canvas/UIRect.h"
 
 #include <imgui.h>
+
+#include <cstdio>
 
 namespace
 {
 	// 뷰포트 드로우 — FSimpleUIPass::CollectVisible 로직을 ImGui DrawList 로 미러(진단 §C, Option B).
 	// 가시 요소의 ScreenRect(=레퍼런스*Scale, 캔버스 원점 기준)를 Origin 더해 사각형으로 그린다.
-	void DrawUIElementRect(UUIElement* Element, ImDrawList* DL, const ImVec2& Origin)
+	void DrawUIElementRect(UUIElement* Element, ImDrawList* DL, const ImVec2& Origin, float Scale)
 	{
 		if (!Element)
 		{
@@ -35,11 +38,28 @@ namespace
 			DL->AddRectFilled(Min, Max, ImGui::GetColorU32(ImVec4(C.R, C.G, C.B, C.A)));
 			DL->AddRect(Min, Max, IM_COL32(0, 0, 0, 60));
 		}
+		// [R5] 텍스트 미러 — bVisibleRect 무관하게 Text 가 있으면 글자를 그린다(배경 없는 Text 프리셋도
+		// 에디터에 보이도록). 런타임 텍스트는 RmlUi(에디터에선 R1 게이트로 비활성), 에디터는 이 ImGui 미러.
+		// FontSize*Scale·TextColor 는 반영하되, font-weight/align 은 ImGui 기본 폰트라 미반영(런타임만 적용).
+		if (UUITextElement* TextElem = Cast<UUITextElement>(Element))
+		{
+			const FString& Txt = TextElem->GetText();
+			if (!Txt.empty())
+			{
+				const FUIRect& R = Element->GetScreenRect();
+				const FVector4 TC = TextElem->GetTextColor();
+				float FontPx = TextElem->GetFontSize() * Scale;
+				if (FontPx < 1.0f) FontPx = 1.0f;
+				const ImVec2 TextPos(Origin.x + R.Pos.X, Origin.y + R.Pos.Y);
+				DL->AddText(ImGui::GetFont(), FontPx, TextPos,
+				            ImGui::GetColorU32(ImVec4(TC.R, TC.G, TC.B, TC.A)), Txt.c_str());
+			}
+		}
 		for (USceneComponent* Child : Element->GetChildren())
 		{
 			if (UUIElement* ChildElement = Cast<UUIElement>(Child))
 			{
-				DrawUIElementRect(ChildElement, DL, Origin);
+				DrawUIElementRect(ChildElement, DL, Origin, Scale);
 			}
 		}
 	}
@@ -380,7 +400,7 @@ void FUIEditorWidget::RenderViewportPanel()
 
 	// 요소 드로우(뷰포트 영역 클리핑) + 선택 강조.
 	DL->PushClipRect(Origin, RegionMax, true);
-	DrawUIElementRect(Canvas, DL, Origin);
+	DrawUIElementRect(Canvas, DL, Origin, Scale);
 	if (Selected)
 	{
 		const FUIRect& SR = Selected->GetScreenRect();
@@ -406,8 +426,8 @@ void FUIEditorWidget::RenderDetailsPanel()
 	ImGui::TextDisabled("%s", Selected->GetClass()->GetName());
 	ImGui::Spacing();
 
-	// 5필드 직접 바인딩(진단 §E). 텍스트 전용 필드 없음. 편집 즉시 RectTransform 반영 →
-	// 다음 프레임 LayoutCanvas 가 ScreenRect 갱신 → 뷰포트 실시간 반영.
+	// 공통 RectTransform/Color 직접 바인딩 + (텍스트 요소면) 텍스트 5필드. 편집 즉시 멤버 반영 →
+	// 다음 프레임 LayoutCanvas 가 ScreenRect 갱신 → 뷰포트 실시간 반영(텍스트는 아래 ImGui 미러).
 	FUIRectTransform& RT = Selected->GetRectTransform();
 
 	float Size[2] = { RT.Size.X, RT.Size.Y };
@@ -437,5 +457,53 @@ void FUIEditorWidget::RenderDetailsPanel()
 	{
 		Selected->SetColor(FVector4(Col[0], Col[1], Col[2], Col[3]));
 		MarkDirty();
+	}
+
+	// 텍스트 5필드 — 중간 클래스 UUITextElement(Button/Image/Label)에만 노출. Canvas/Group(순수
+	// UUIElement)은 캐스트 실패 → 표시 안 함. Color(BackgroundColor)와 별개의 Text Color.
+	if (UUITextElement* TextElem = Cast<UUITextElement>(Selected))
+	{
+		ImGui::Spacing();
+		ImGui::TextDisabled("Text");
+		ImGui::Separator();
+
+		char TextBuf[256];
+		snprintf(TextBuf, sizeof(TextBuf), "%s", TextElem->GetText().c_str());
+		if (ImGui::InputText("Text", TextBuf, sizeof(TextBuf)))
+		{
+			TextElem->SetText(FString(TextBuf));
+			MarkDirty();
+		}
+
+		float FontSize = TextElem->GetFontSize();
+		if (ImGui::DragFloat("Font Size", &FontSize, 0.5f, 1.0f, 512.0f, "%.0f"))
+		{
+			TextElem->SetFontSize(FontSize);
+			MarkDirty();
+		}
+
+		char WeightBuf[64];
+		snprintf(WeightBuf, sizeof(WeightBuf), "%s", TextElem->GetFontWeight().c_str());
+		if (ImGui::InputText("Font Weight", WeightBuf, sizeof(WeightBuf)))
+		{
+			TextElem->SetFontWeight(FString(WeightBuf));
+			MarkDirty();
+		}
+
+		char AlignBuf[64];
+		snprintf(AlignBuf, sizeof(AlignBuf), "%s", TextElem->GetTextAlign().c_str());
+		if (ImGui::InputText("Text Align", AlignBuf, sizeof(AlignBuf)))
+		{
+			TextElem->SetTextAlign(FString(AlignBuf));
+			MarkDirty();
+		}
+
+		FVector4 TC      = TextElem->GetTextColor();
+		float    TCol[4] = { TC.R, TC.G, TC.B, TC.A };
+		if (ImGui::ColorEdit4("Text Color", TCol))
+		{
+			TextElem->SetTextColor(FVector4(TCol[0], TCol[1], TCol[2], TCol[3]));
+			MarkDirty();
+		}
 	}
 }
