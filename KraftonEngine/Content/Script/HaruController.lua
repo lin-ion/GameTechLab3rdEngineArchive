@@ -14,6 +14,9 @@ local ROLL_SKILL_NAME = "Roll"
 local ROLL_SKILL_KEY = "LeftControl"
 local ROLL_DISTANCE = 6.0
 local ROLL_DURATION = 1.2
+local DRAW_SKILL_NAME = "DrawArrow"
+local DRAW_SKILL_KEY = "RightMouseButton"
+local DRAW_DURATION = 1.0                -- Standing Draw Arrow 클립 길이에 맞춰 조정
 -- ProjectilePool 발사 테스트(좌클릭). 주의: STEAM_SKILL_KEY 도 LeftMouseButton 이라 둘 다 발동됨.
 local FIRE_PROJECTILE_KEY = "LeftMouseButton"
 local PROJECTILE_SPEED = 3.0            -- m/s (물리 등속)
@@ -21,6 +24,7 @@ local PROJECTILE_MUZZLE_OFFSET = 1.0    -- m (카메라 앞 발사 원점, meter
 local DASH_ANIM_VAR = "Dash"
 local ROLL_ANIM_VAR = "Roll"
 local ATTACK_ANIM_VAR = "Attack"
+local DRAW_ANIM_VAR = "DrawArrow"
 
 local actor = nil
 local ability_system = nil
@@ -538,6 +542,28 @@ local function end_roll(owner, ability)
     log("Roll ended")
 end
 
+-- DrawArrow: 우클릭 시 Standing Draw Arrow 재생. Attack(Steam) 패턴과 동일하게
+-- 이동을 잠그고 DrawArrow 변수를 true 로 세팅 → AnimGraph 의 DrawArrow state 로 진입.
+local function activate_draw_arrow(owner, ability)
+    if owner == nil then
+        log("DrawArrow activate failed: owner is nil")
+        ability.active_remaining = 0.0
+        return
+    end
+
+    lock_movement(owner, DRAW_SKILL_NAME)
+    set_anim_bool(owner, DRAW_ANIM_VAR, true)
+    log("DrawArrow activated")
+end
+
+local function end_draw_arrow(owner, ability)
+    if owner ~= nil then
+        set_anim_bool(owner, DRAW_ANIM_VAR, false)
+        unlock_movement(owner, DRAW_SKILL_NAME)
+    end
+    log("DrawArrow ended")
+end
+
 local function setup_abilities()
     local owner = resolve_actor()
     if owner == nil then
@@ -574,14 +600,25 @@ local function setup_abilities()
         OnActivate = activate_roll,
         OnEnd = end_roll
     })
+    ability_system:RegisterAbility({
+        Name = DRAW_SKILL_NAME,
+        Key = DRAW_SKILL_KEY,
+        Duration = DRAW_DURATION,
+        Cooldown = 0.0,
+        BlockWhileAnyActive = true,
+        OnActivate = activate_draw_arrow,
+        OnEnd = end_draw_arrow
+    })
 
     log("registered SteamSkill on " .. STEAM_SKILL_KEY)
     log("registered Dash on " .. DASH_SKILL_KEY)
     log("registered Roll on " .. ROLL_SKILL_KEY)
+    log("registered DrawArrow on " .. DRAW_SKILL_KEY)
 
     set_anim_bool(owner, DASH_ANIM_VAR, false)
     set_anim_bool(owner, ROLL_ANIM_VAR, false)
     set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+    set_anim_bool(owner, DRAW_ANIM_VAR, false)
     reset_dash_trail(owner)
 end
 
@@ -601,6 +638,7 @@ function EndPlay()
         set_anim_bool(actor, DASH_ANIM_VAR, false)
         set_anim_bool(actor, ROLL_ANIM_VAR, false)
         set_anim_bool(actor, ATTACK_ANIM_VAR, false)
+        set_anim_bool(actor, DRAW_ANIM_VAR, false)
         movement_locks = {}
         set_owner_movement_blocked(actor, false)
         reset_dash_trail(actor)
@@ -646,6 +684,14 @@ function Tick(dt)
         local activated, reason = ability_system:TryActivateByKey(ROLL_SKILL_KEY)
         if not activated then
             log("Roll blocked: " .. (reason or "unknown"))
+        end
+    end
+
+    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(DRAW_SKILL_KEY) then
+        log("input pressed: " .. DRAW_SKILL_KEY)
+        local activated, reason = ability_system:TryActivateByKey(DRAW_SKILL_KEY)
+        if not activated then
+            log("DrawArrow blocked: " .. (reason or "unknown"))
         end
     end
 
