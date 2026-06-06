@@ -1175,10 +1175,22 @@
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_SphericalPulseBarrage.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_ThunderclapCascade.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.cpp">
@@ -2576,10 +2588,22 @@
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_SphericalPulseBarrage.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_ThunderclapCascade.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.h">
