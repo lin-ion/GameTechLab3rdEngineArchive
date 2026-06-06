@@ -1175,6 +1175,15 @@
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
@@ -2565,6 +2574,15 @@
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h">

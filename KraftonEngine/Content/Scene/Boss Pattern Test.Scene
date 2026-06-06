@@ -1,0 +1,164 @@
+{
+  "Actors" : [{
+      "ClassName" : "AStaticMeshActor",
+      "Name" : "BossTestActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "UBossPatternSelectorComponent",
+          "ObjectId" : 4,
+          "Properties" : {
+            "CancelPatternRequest" : false,
+            "FallbackIdleDuration" : 0.500000,
+            "ForcePatternRequest" : false,
+            "ForcedPatternName" : "",
+            "RepeatBlockCount" : 1,
+            "TargetActorName" : "Test Target",
+            "TargetTag" : "Name_None",
+            "bAutoActivate" : true,
+            "bAutoResolvePlayerTarget" : true,
+            "bAutoStart" : true,
+            "bDrawPatternDebug" : false,
+            "bEditorOnly" : false,
+            "bEnablePatternSelection" : true,
+            "bHiddenInComponentTree" : false,
+            "bIsActive" : true,
+            "bLogPatternSelection" : true,
+            "bTickEnable" : true
+          }
+        }, {
+          "ClassName" : "UBossPattern_IdleTrackTarget",
+          "ObjectId" : 5,
+          "Properties" : {
+            "AllowedPhaseMask" : 2147483647,
+            "Cooldown" : 1.000000,
+            "IdleDuration" : 0.500000,
+            "InitialCooldown" : 0.000000,
+            "MaxTargetDistance" : 100000.000000,
+            "MinTargetDistance" : 0.000000,
+            "PatternName" : "IdleTrackTarget",
+            "RecoveryDuration" : 0.000000,
+            "Weight" : 1.000000,
+            "WindupDuration" : 0.000000,
+            "bAutoActivate" : true,
+            "bBlockImmediateRepeat" : false,
+            "bEditorOnly" : false,
+            "bEnabled" : true,
+            "bFaceTargetDuringPattern" : true,
+            "bHiddenInComponentTree" : false,
+            "bIsActive" : true,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectId" : 2,
+      "Properties" : {
+        "PendingActorLocation" : [0.541429, -0.433188, 1.484247],
+        "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
+        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
+        "PendingActorVisible" : true,
+        "PendingTagsString" : "",
+        "bNeedsTick" : true
+      },
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectId" : 3,
+        "Properties" : {
+          "AttachSocketName" : "Name_None",
+          "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+          "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+          "CollisionEnabled" : 0,
+          "Mass" : 1.000000,
+          "MaterialSlots" : ["Content/Material/Auto/UVGrid.002.uasset"],
+          "ObjectType" : 0,
+          "RelativeTransform.Location" : [0.541429, -0.433188, 1.484247],
+          "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+          "ResponseContainer" : {
+            "Responses[0]" : 2,
+            "Responses[1]" : 2,
+            "Responses[2]" : 2,
+            "Responses[3]" : 2,
+            "Responses[4]" : 2
+          },
+          "StaticMeshPath" : "Content/Data/Staff/Staff_StaticMesh.uasset",
+          "bAutoActivate" : true,
+          "bCastShadow" : true,
+          "bCastShadowAsTwoSided" : false,
+          "bEditorOnly" : false,
+          "bEnableCCD" : false,
+          "bGenerateOverlapEvents" : false,
+          "bHiddenInComponentTree" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bKinematic" : false,
+          "bSimulatePhysics" : false,
+          "bTickEnable" : true
+        }
+      }
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "Name" : "Test Target",
+      "NonSceneComponents" : [],
+      "ObjectId" : 6,
+      "Properties" : {
+        "PendingActorLocation" : [-6.269416, 1.353707, 5.944499],
+        "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
+        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
+        "PendingActorVisible" : true,
+        "PendingTagsString" : "",
+        "bNeedsTick" : true
+      },
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectId" : 7,
+        "Properties" : {
+          "AttachSocketName" : "Name_None",
+          "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+          "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+          "CollisionEnabled" : 0,
+          "Mass" : 1.000000,
+          "MaterialSlots" : ["Content/Material/Auto/BasicShapeMaterial.uasset"],
+          "ObjectType" : 0,
+          "RelativeTransform.Location" : [-6.269416, 1.353707, 5.944499],
+          "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+          "ResponseContainer" : {
+            "Responses[0]" : 2,
+            "Responses[1]" : 2,
+            "Responses[2]" : 2,
+            "Responses[3]" : 2,
+            "Responses[4]" : 2
+          },
+          "StaticMeshPath" : "Content/Data/BasicShape/Sphere_StaticMesh.uasset",
+          "bAutoActivate" : true,
+          "bCastShadow" : true,
+          "bCastShadowAsTwoSided" : false,
+          "bEditorOnly" : false,
+          "bEnableCCD" : false,
+          "bGenerateOverlapEvents" : false,
+          "bHiddenInComponentTree" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bKinematic" : false,
+          "bSimulatePhysics" : false,
+          "bTickEnable" : true
+        }
+      }
+    }],
+  "ClassName" : "UWorld",
+  "ContextHandle" : "NewScene",
+  "ContextName" : "New Scene",
+  "Name" : "Boss Pattern Test",
+  "ObjectId" : 1,
+  "PerspectiveCamera" : {
+    "FOV" : 1.047198,
+    "FarClip" : 1000.000000,
+    "Location" : [12.222770, 2.498102, 9.957749],
+    "NearClip" : 0.100000,
+    "Rotation" : [0.000000, 16.815033, 175.650131]
+  },
+  "Version" : 2,
+  "WorldSettings" : {
+    "GameMode" : "",
+    "Gravity" : [0.000000, 0.000000, -9.810000]
+  },
+  "WorldType" : "Editor"
+}

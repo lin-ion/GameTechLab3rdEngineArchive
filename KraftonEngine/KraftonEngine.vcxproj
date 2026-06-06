@@ -311,6 +311,9 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Input\ActionComponent.cpp" />
@@ -816,6 +819,9 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellHealthProbeComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceHitscanComponent.h" />
     <ClInclude Include="Source\Engine\Component\Input\ActionComponent.h" />
