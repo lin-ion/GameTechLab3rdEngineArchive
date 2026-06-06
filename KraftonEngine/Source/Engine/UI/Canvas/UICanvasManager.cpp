@@ -178,6 +178,13 @@ UUIElement* FUICanvasManager::HitTest(const FVector2& MousePos) const
 	return Top;
 }
 
+UUIElement* FUICanvasManager::HitTestCanvas(UUICanvas* Canvas, const FVector2& MousePos) const
+{
+	UUIElement* Top = nullptr;
+	HitTestRecursive(Canvas, MousePos, Top);
+	return Top;
+}
+
 void FUICanvasManager::TickEditor()
 {
 	InputSystem& Input = InputSystem::Get();

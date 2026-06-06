@@ -43,8 +43,8 @@ namespace
 		}
 	}
 
-	// 계층 트리 — 캔버스 GetChildren 재귀를 ImGui::TreeNode 로(진단 §B). 선택 동기화는 사이클 ④.
-	void DrawHierarchyNode(UUIElement* Element)
+	// 계층 트리 — 캔버스 GetChildren 재귀를 ImGui::TreeNode 로(진단 §B). 선택 하이라이트 + 클릭 선택(사이클 ④).
+	void DrawHierarchyNode(UUIElement* Element, UUIElement*& Selected)
 	{
 		if (!Element)
 		{
@@ -63,15 +63,23 @@ namespace
 		{
 			Flags |= ImGuiTreeNodeFlags_Leaf;
 		}
+		if (Element == Selected)
+		{
+			Flags |= ImGuiTreeNodeFlags_Selected;
+		}
 
 		const bool bOpen = ImGui::TreeNodeEx((void*)Element, Flags, "%s", Element->GetClass()->GetName());
+		if (ImGui::IsItemClicked())
+		{
+			Selected = Element;   // 트리 클릭 → 선택(뷰포트/디테일과 공유).
+		}
 		if (bOpen)
 		{
 			for (USceneComponent* Child : Element->GetChildren())
 			{
 				if (UUIElement* ChildElement = Cast<UUIElement>(Child))
 				{
-					DrawHierarchyNode(ChildElement);
+					DrawHierarchyNode(ChildElement, Selected);
 				}
 			}
 			ImGui::TreePop();
@@ -273,7 +281,7 @@ void FUIEditorWidget::RenderHierarchyPanel()
 		ImGui::TextDisabled("No canvas");
 		return;
 	}
-	DrawHierarchyNode(Canvas);
+	DrawHierarchyNode(Canvas, Selected);
 }
 
 void FUIEditorWidget::RenderViewportPanel()
@@ -307,6 +315,13 @@ void FUIEditorWidget::RenderViewportPanel()
 	// 단일 캔버스 레이아웃(전역 레지스트리 미사용 seam) → 각 요소 ScreenRect 갱신.
 	FUICanvasManager::Get().LayoutCanvas(Canvas, Scale);
 
+	// 좌클릭 → 뷰포트 마우스를 캔버스 원점 기준으로 역변환해 히트테스트 → 선택(진단 §C/E, 사이클 ④).
+	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		const ImVec2 M = ImGui::GetMousePos();
+		Selected = FUICanvasManager::Get().HitTestCanvas(Canvas, FVector2(M.x - Origin.x, M.y - Origin.y));
+	}
+
 	// 레퍼런스 해상도(1920x1080) 경계 + 그리드.
 	const ImVec2 RefMax(Origin.x + RefW * Scale, Origin.y + RefH * Scale);
 	const float  Step = 120.0f * Scale;
@@ -319,9 +334,16 @@ void FUIEditorWidget::RenderViewportPanel()
 	}
 	DL->AddRect(Origin, RefMax, IM_COL32(120, 120, 135, 255));
 
-	// 요소 드로우(뷰포트 영역 클리핑).
+	// 요소 드로우(뷰포트 영역 클리핑) + 선택 강조.
 	DL->PushClipRect(Origin, RegionMax, true);
 	DrawUIElementRect(Canvas, DL, Origin);
+	if (Selected)
+	{
+		const FUIRect& SR = Selected->GetScreenRect();
+		const ImVec2   SMin(Origin.x + SR.Pos.X, Origin.y + SR.Pos.Y);
+		const ImVec2   SMax(SMin.x + SR.Size.X, SMin.y + SR.Size.Y);
+		DL->AddRect(SMin, SMax, IM_COL32(255, 180, 40, 255), 0.0f, 0, 2.0f);
+	}
 	DL->PopClipRect();
 
 	DL->AddText(ImVec2(Origin.x + 6.0f, Origin.y + 6.0f), IM_COL32(170, 170, 180, 255), "Canvas Viewport (wheel: zoom)");

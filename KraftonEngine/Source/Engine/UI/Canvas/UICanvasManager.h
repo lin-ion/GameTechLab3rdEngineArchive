@@ -51,6 +51,10 @@ public:
 	// 마우스(클라이언트 px, 좌상단 원점) 아래의 최상위 가시 Element 를 반환(진단 E1).
 	UUIElement* HitTest(const FVector2& MousePos) const;
 
+	// 등록 없이 단일 캔버스 트리에만 히트테스트한다(에디터 전용 seam). MousePos 는 캔버스
+	// 원점(0,0) 기준 화면 px(=뷰포트 마우스 - 캔버스 화면 원점). 전역 레지스트리 미사용.
+	UUIElement* HitTestCanvas(UUICanvas* Canvas, const FVector2& MousePos) const;
+
 	// FGCObject — 등록된 Canvas(및 그 자식 트리)를 GC sweep 으로부터 보호한다.
 	// 각 노드의 자식은 USceneComponent::AddReferencedObjects 가 재귀로 보고한다(진단 A1).
 	void AddReferencedObjects(FReferenceCollector& Collector) override;
