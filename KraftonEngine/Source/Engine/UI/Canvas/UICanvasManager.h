@@ -3,6 +3,7 @@
 #include "Core/Types/CoreTypes.h"
 #include "Core/Singleton.h"
 #include "Object/GarbageCollection.h"
+#include "Object/Ptr/WeakObjectPtr.h"
 #include "Math/Vector.h"
 
 class UUICanvas;
@@ -36,6 +37,16 @@ public:
 	float GetGlobalScale() const { return GlobalScale; }
 	void SetGlobalScale(float InScale) { GlobalScale = InScale; }
 
+	// --- 런타임 드래그 에디터(진단 E, 사이클 7) ---
+	// 매 프레임 토글키/마우스 드래그를 처리한다. LayoutAll 직전(드래그가 position 을 바꾸면
+	// 같은 프레임에 재레이아웃되도록)에 호출된다. 입력은 raw InputSystem 에서 직접 읽는다.
+	void TickEditor();
+	bool IsEditorMode() const { return bEditorMode; }
+	void SetEditorMode(bool bOn) { bEditorMode = bOn; if (!bOn) { GrabbedElement = nullptr; } }
+
+	// 마우스(클라이언트 px, 좌상단 원점) 아래의 최상위 가시 Element 를 반환(진단 E1).
+	UUIElement* HitTest(const FVector2& MousePos) const;
+
 	// FGCObject — 등록된 Canvas(및 그 자식 트리)를 GC sweep 으로부터 보호한다.
 	// 각 노드의 자식은 USceneComponent::AddReferencedObjects 가 재귀로 보고한다(진단 A1).
 	void AddReferencedObjects(FReferenceCollector& Collector) override;
@@ -50,6 +61,14 @@ private:
 	static void LayoutElement(UUIElement* Element, const FVector2& ParentOrigin,
 	                          const FVector2& ParentSize, float Scale);
 
+	// 트리를 pre-order(그린 순서)로 순회하며 마우스를 포함하는 가시 Element 중 마지막(=최상위)을
+	// OutTop 에 남긴다(진단 E1: 최후-그림/최심 우선).
+	static void HitTestRecursive(UUIElement* Element, const FVector2& MousePos, UUIElement*& OutTop);
+
 	TArray<UUICanvas*> Canvases;
 	float GlobalScale = 1.0f;
+
+	// 드래그 에디터 상태.
+	bool bEditorMode = false;
+	TWeakObjectPtr<UUIElement> GrabbedElement;
 };

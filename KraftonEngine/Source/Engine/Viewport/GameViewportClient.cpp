@@ -4,6 +4,7 @@
 #include "Engine/Input/InputSystem.h"
 #include "Math/MathUtils.h"
 #include "UI/UIManager.h"
+#include "UI/Canvas/UICanvasManager.h"
 #include "Core/Logging/Log.h"
 
 #include <windows.h>
@@ -106,7 +107,14 @@ void UGameViewportClient::ProcessInput(const FInputSystemSnapshot& Snapshot, flo
 		return;
 	}
 
-	const FUIInputCaptureState UIState = UUIManager::Get().GetViewportInputCaptureState();
+	FUIInputCaptureState UIState = UUIManager::Get().GetViewportInputCaptureState();
+	if (FUICanvasManager::Get().IsEditorMode())
+	{
+		// 신규 UI 드래그 에디터 모드 — 시스템 커서를 보이고 게임 마우스 입력을 차단한다.
+		// 기존 RmlUi 와 동일한 FUIInputCaptureState 계약에 합류(진단 E3/F1).
+		UIState.bWantsMouse = true;
+		UIState.bBlocksGameMouseLook = true;
+	}
 	ApplyGameCapturePolicy(UIState);
 
 	if (InputMode == EGameInputMode::UIOnly || UIState.bBlocksGameInput)

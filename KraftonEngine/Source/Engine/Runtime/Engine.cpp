@@ -178,6 +178,10 @@ void UEngine::TickFrameBody(float DeltaTime)
 	FAudioManager::Get().Tick();
 	WorldTick(DeltaTime);
 
+	// 런타임 UI 드래그 에디터 — 토글키/드래그로 Element.position 을 갱신한다(진단 E2).
+	// 레이아웃 전에 호출해 같은 프레임에 갱신 결과가 반영되도록 한다.
+	FUICanvasManager::Get().TickEditor();
+
 	// 신규 계층형 UI 레이아웃 패스 — 게임플레이/월드 틱 정산 후, 렌더 제출 전에 1회
 	// top-down 전체 재계산(진단 C1). 레이아웃은 렌더패스가 아니라 게임스레드에서 한다.
 	FUICanvasManager::Get().LayoutAll();
