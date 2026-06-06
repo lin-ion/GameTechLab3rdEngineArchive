@@ -31,6 +31,7 @@ private:
 	void RenderViewportPanel();   // 중앙 — 캔버스 뷰포트(사이클 ②), 선택/히트테스트(사이클 ④)
 	void RenderDetailsPanel();    // 우   — W/H·Offset·Pivot·Color 디테일(사이클 ⑤)
 
-	AUICanvasActor* OwnerActor = nullptr;  // 복원 트리의 소유자(에디터 수명). GC keepalive 대상.
-	UUICanvas*      Canvas     = nullptr;  // 복원된 루트 캔버스(편집/레이아웃/드로우 대상).
+	AUICanvasActor* OwnerActor   = nullptr;  // 복원 트리의 소유자(에디터 수명). GC keepalive 대상.
+	UUICanvas*      Canvas       = nullptr;  // 복원된 루트 캔버스(편집/레이아웃/드로우 대상).
+	float           ViewportZoom = 1.0f;     // 뷰포트 줌(높이맞춤 기본 스케일에 곱). 휠로 조절.
 };

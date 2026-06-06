@@ -102,6 +102,17 @@ void FUICanvasManager::LayoutAll()
 	}
 }
 
+void FUICanvasManager::LayoutCanvas(UUICanvas* Canvas, float Scale)
+{
+	if (!Canvas)
+	{
+		return;
+	}
+	// LayoutAll 과 동일 규칙(origin=(0,0), parentSize=Canvas 레퍼런스 크기)으로 한 트리만 계산.
+	const FVector2 CanvasSize = Canvas->GetRectTransform().Size;
+	LayoutElement(Canvas, FVector2(0.0f, 0.0f), CanvasSize, Scale);
+}
+
 void FUICanvasManager::LayoutElement(UUIElement* Element, const FVector2& ParentOrigin,
                                      const FVector2& ParentSize, float Scale)
 {

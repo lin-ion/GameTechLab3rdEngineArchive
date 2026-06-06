@@ -33,6 +33,10 @@ public:
 	// 갱신한다(진단 C1/C3/C4). UEngine::TickFrameBody 의 WorldTick 과 Render 사이에서 호출된다.
 	void LayoutAll();
 
+	// 등록 없이 단일 캔버스 트리만 레이아웃한다(에디터 전용 seam, 진단 §C). 전역 레지스트리/
+	// GlobalScale 에 영향을 주지 않으므로 런타임 LayoutAll/SimpleUIPass 와 격리된다.
+	void LayoutCanvas(UUICanvas* Canvas, float Scale);
+
 	// 화면/레퍼런스 해상도 스케일. 레이아웃 픽셀 결과에 곱한다(진단 D3). 사이클 4에서 설정.
 	float GetGlobalScale() const { return GlobalScale; }
 	void SetGlobalScale(float InScale) { GlobalScale = InScale; }

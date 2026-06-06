@@ -7,8 +7,74 @@
 #include "UI/Canvas/UICanvas.h"
 #include "UI/Canvas/UICanvasActor.h"
 #include "UI/Canvas/UICanvasManager.h"
+#include "UI/Canvas/UIElement.h"
+#include "UI/Canvas/UIRect.h"
 
 #include <imgui.h>
+
+namespace
+{
+	// 뷰포트 드로우 — FSimpleUIPass::CollectVisible 로직을 ImGui DrawList 로 미러(진단 §C, Option B).
+	// 가시 요소의 ScreenRect(=레퍼런스*Scale, 캔버스 원점 기준)를 Origin 더해 사각형으로 그린다.
+	void DrawUIElementRect(UUIElement* Element, ImDrawList* DL, const ImVec2& Origin)
+	{
+		if (!Element)
+		{
+			return;
+		}
+		if (Element->IsVisibleRect())
+		{
+			const FUIRect& R = Element->GetScreenRect();
+			const FVector4 C = Element->GetColor();
+			const ImVec2   Min(Origin.x + R.Pos.X, Origin.y + R.Pos.Y);
+			const ImVec2   Max(Min.x + R.Size.X, Min.y + R.Size.Y);
+			DL->AddRectFilled(Min, Max, ImGui::GetColorU32(ImVec4(C.R, C.G, C.B, C.A)));
+			DL->AddRect(Min, Max, IM_COL32(0, 0, 0, 60));
+		}
+		for (USceneComponent* Child : Element->GetChildren())
+		{
+			if (UUIElement* ChildElement = Cast<UUIElement>(Child))
+			{
+				DrawUIElementRect(ChildElement, DL, Origin);
+			}
+		}
+	}
+
+	// 계층 트리 — 캔버스 GetChildren 재귀를 ImGui::TreeNode 로(진단 §B). 선택 동기화는 사이클 ④.
+	void DrawHierarchyNode(UUIElement* Element)
+	{
+		if (!Element)
+		{
+			return;
+		}
+
+		bool bHasChild = false;
+		for (USceneComponent* Child : Element->GetChildren())
+		{
+			if (Cast<UUIElement>(Child)) { bHasChild = true; break; }
+		}
+
+		ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
+			| ImGuiTreeNodeFlags_SpanAvailWidth;
+		if (!bHasChild)
+		{
+			Flags |= ImGuiTreeNodeFlags_Leaf;
+		}
+
+		const bool bOpen = ImGui::TreeNodeEx((void*)Element, Flags, "%s", Element->GetClass()->GetName());
+		if (bOpen)
+		{
+			for (USceneComponent* Child : Element->GetChildren())
+			{
+				if (UUIElement* ChildElement = Cast<UUIElement>(Child))
+				{
+					DrawHierarchyNode(ChildElement);
+				}
+			}
+			ImGui::TreePop();
+		}
+	}
+}
 
 bool FUIEditorWidget::CanEdit(UObject* Object) const
 {
@@ -153,16 +219,66 @@ void FUIEditorWidget::RenderPalettePanel()
 
 void FUIEditorWidget::RenderHierarchyPanel()
 {
-	// 사이클 ②에서 캔버스 트리(GetChildren 재귀)를 TreeNode 로 채운다.
 	ImGui::TextUnformatted("Hierarchy");
 	ImGui::Separator();
+	if (!Canvas)
+	{
+		ImGui::TextDisabled("No canvas");
+		return;
+	}
+	DrawHierarchyNode(Canvas);
 }
 
 void FUIEditorWidget::RenderViewportPanel()
 {
-	// 사이클 ②에서 그리드 + 요소 쿼드(DrawList)를, 사이클 ④에서 클릭 선택을 채운다.
-	ImGui::TextUnformatted("Canvas Viewport");
-	ImGui::Separator();
+	ImDrawList*  DL     = ImGui::GetWindowDrawList();
+	const ImVec2 Origin = ImGui::GetCursorScreenPos();
+	const ImVec2 Avail  = ImGui::GetContentRegionAvail();
+	const ImVec2 RegionMax(Origin.x + Avail.x, Origin.y + Avail.y);
+
+	DL->AddRectFilled(Origin, RegionMax, IM_COL32(28, 28, 32, 255));
+
+	if (!Canvas)
+	{
+		ImGui::TextDisabled("No canvas");
+		return;
+	}
+
+	// 휠 줌(뷰포트 호버 시). 기본 스케일 = 뷰포트 높이를 레퍼런스 1080 에 맞춤(진단 §C).
+	const ImGuiIO& IO = ImGui::GetIO();
+	if (ImGui::IsWindowHovered() && IO.MouseWheel != 0.0f)
+	{
+		ViewportZoom *= (1.0f + IO.MouseWheel * 0.1f);
+		if (ViewportZoom < 0.1f) ViewportZoom = 0.1f;
+		if (ViewportZoom > 5.0f) ViewportZoom = 5.0f;
+	}
+
+	const float RefW  = 1920.0f;
+	const float RefH  = 1080.0f;
+	const float Scale = ((Avail.y > 0.0f) ? (Avail.y / RefH) : 1.0f) * ViewportZoom;
+
+	// 단일 캔버스 레이아웃(전역 레지스트리 미사용 seam) → 각 요소 ScreenRect 갱신.
+	FUICanvasManager::Get().LayoutCanvas(Canvas, Scale);
+
+	// 레퍼런스 해상도(1920x1080) 경계 + 그리드.
+	const ImVec2 RefMax(Origin.x + RefW * Scale, Origin.y + RefH * Scale);
+	const float  Step = 120.0f * Scale;
+	if (Step >= 4.0f)
+	{
+		for (float x = Origin.x; x <= RefMax.x && x <= RegionMax.x; x += Step)
+			DL->AddLine(ImVec2(x, Origin.y), ImVec2(x, (RefMax.y < RegionMax.y ? RefMax.y : RegionMax.y)), IM_COL32(55, 55, 62, 255));
+		for (float y = Origin.y; y <= RefMax.y && y <= RegionMax.y; y += Step)
+			DL->AddLine(ImVec2(Origin.x, y), ImVec2((RefMax.x < RegionMax.x ? RefMax.x : RegionMax.x), y), IM_COL32(55, 55, 62, 255));
+	}
+	DL->AddRect(Origin, RefMax, IM_COL32(120, 120, 135, 255));
+
+	// 요소 드로우(뷰포트 영역 클리핑).
+	DL->PushClipRect(Origin, RegionMax, true);
+	DrawUIElementRect(Canvas, DL, Origin);
+	DL->PopClipRect();
+
+	DL->AddText(ImVec2(Origin.x + 6.0f, Origin.y + 6.0f), IM_COL32(170, 170, 180, 255), "Canvas Viewport (wheel: zoom)");
+	ImGui::Dummy(Avail);  // 레이아웃 영역 점유.
 }
 
 void FUIEditorWidget::RenderDetailsPanel()
