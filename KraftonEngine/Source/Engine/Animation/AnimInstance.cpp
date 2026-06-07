@@ -13,6 +13,7 @@
 #include "Object/Object.h"
 
 #include <algorithm>
+#include <cmath>
 
 // Static 멤버 정의 — slot 이름 미지정 시 fallback. 가독성 위해 cpp 상단에 둠.
 const FName UAnimInstance::DefaultMontageSlot = FName("DefaultSlot");
@@ -370,6 +371,19 @@ FTransform UAnimInstance::ConsumeRootMotion()
 	const FTransform Out = PendingRootMotion;
 	PendingRootMotion = FTransform();   // Identity 로 reset
 	return Out;
+}
+
+bool UAnimInstance::HasPendingRootMotion() const
+{
+	constexpr float LocationEpsilon = 1.0e-6f;
+	constexpr float RotationEpsilon = 1.0e-6f;
+	return std::fabs(PendingRootMotion.Location.X) > LocationEpsilon ||
+		std::fabs(PendingRootMotion.Location.Y) > LocationEpsilon ||
+		std::fabs(PendingRootMotion.Location.Z) > LocationEpsilon ||
+		std::fabs(PendingRootMotion.Rotation.X) > RotationEpsilon ||
+		std::fabs(PendingRootMotion.Rotation.Y) > RotationEpsilon ||
+		std::fabs(PendingRootMotion.Rotation.Z) > RotationEpsilon ||
+		std::fabs(PendingRootMotion.Rotation.W - 1.0f) > RotationEpsilon;
 }
 
 void UAnimInstance::DispatchQueuedAnimEvents()

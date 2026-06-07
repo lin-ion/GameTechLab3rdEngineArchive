@@ -120,6 +120,9 @@ public:
 	// RootMotionMode 가 누적 소스를 결정 (현재 dormant — 후속 step 에서 분기에 반영).
 	void AccumulateRootMotion(const FTransform& Delta);
 	FTransform ConsumeRootMotion();
+	// Root node can accumulate identity deltas from non-root-motion branches, so this reports
+	// only meaningful pending motion rather than "AccumulateRootMotion was called".
+	bool HasPendingRootMotion() const;
 
 	UFUNCTION(Pure, Category="Animation|RootMotion")
 	ERootMotionMode GetRootMotionMode() const { return RootMotionMode; }

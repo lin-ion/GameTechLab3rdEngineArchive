@@ -1004,7 +1004,9 @@ FTransform UAnimSequence::ExtractRootMotion(float PrevTime, float CurTime, bool 
         const FMatrix DeltaMatrix = T0.ToMatrix().GetInverse() * T1.ToMatrix();
 
         FTransform D;
-        D.Location = FVector(DeltaMatrix.M[3][0], DeltaMatrix.M[3][1], DeltaMatrix.M[3][2]);
+        // Translation must stay in the animation/root track frame. Using the full relative
+        // matrix here makes root rotation steer the extracted movement during turn sections.
+        D.Location = P1 - P0;
         D.Rotation = DeltaMatrix.ToQuat().GetNormalized();
         return D;
     };
@@ -1021,9 +1023,8 @@ FTransform UAnimSequence::ExtractRootMotion(float PrevTime, float CurTime, bool 
         SampleAt(0.0f,   PA, RA);
         SampleAt(CurTime, PB, RB);
         const FTransform D2 = ComputeDelta(PA, RA, PB, RB);
-        const FMatrix Combined = D1.ToMatrix() * D2.ToMatrix();
-        Delta.Location = FVector(Combined.M[3][0], Combined.M[3][1], Combined.M[3][2]);
-        Delta.Rotation = Combined.ToQuat().GetNormalized();
+        Delta.Location = D1.Location + D2.Location;
+        Delta.Rotation = (D1.Rotation * D2.Rotation).GetNormalized();
         return Delta;
     }
 

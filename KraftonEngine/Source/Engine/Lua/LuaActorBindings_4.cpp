@@ -73,6 +73,50 @@ void FLuaScriptManager::RegisterActorBindings_4(sol::state& Lua)
             return Pawn ? Pawn->GetControlRotation().ToVector() : FVector(0.0f, 0.0f, 0.0f);
         },
 
+        "ResetHealth",
+        [](AActor& Actor)
+        {
+            if (APawn* Pawn = Cast<APawn>(&Actor))
+            {
+                Pawn->ResetHealth();
+            }
+        },
+
+        "GetDamaged",
+        [](AActor& Actor, float DamageAmount)
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            return Pawn ? Pawn->GetDamaged(DamageAmount) : 0.0f;
+        },
+
+        "GetCurrentHealth",
+        [](AActor& Actor)
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            return Pawn ? Pawn->GetCurrentHealth() : 0.0f;
+        },
+
+        "GetMaxHealth",
+        [](AActor& Actor)
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            return Pawn ? Pawn->GetMaxHealth() : 0.0f;
+        },
+
+        "GetHealthRatio",
+        [](AActor& Actor)
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            return Pawn ? Pawn->GetHealthRatio() : 0.0f;
+        },
+
+        "GetHealthHitCount",
+        [](AActor& Actor)
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            return Pawn ? Pawn->GetHealthHitCount() : 0;
+        },
+
         "Right",
         sol::property(
             [](AActor& Actor)
