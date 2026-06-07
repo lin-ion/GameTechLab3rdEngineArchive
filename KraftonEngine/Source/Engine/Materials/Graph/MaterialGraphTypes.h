@@ -96,6 +96,15 @@ enum class EMaterialGraphNodeType : uint8
     // 에디터 편의 노드 — Blueprint editor 와 같은 workflow 를 위한 노드.
     Reroute,
     Comment,
+
+    // Surface semantic inputs. 기존 enum ordinal 호환을 위해 Comment 뒤에 추가한다.
+    WorldNormal,
+    WorldPosition,
+    CameraPosition,
+    ViewDirection,
+
+    // Convenience node for repeated rim/fresnel material authoring.
+    Fresnel,
 };
 
 struct FMaterialGraphPin

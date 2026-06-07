@@ -60,6 +60,12 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Aimed Ring Volley", DisplayName="Projectile Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float ProjectileRenderScale = 0.2f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Aimed Ring Volley", DisplayName="Projectile Mesh Path", AssetType="StaticMesh")
+	FString ProjectileMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Aimed Ring Volley", DisplayName="Projectile Material Path", AssetType="Material")
+	FString ProjectileMaterialPath = "None";
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Aimed Ring Volley", DisplayName="Spawn Forward Offset", Min=-1000.0f, Max=1000.0f, Speed=0.1f)
 	float SpawnForwardOffset = 0.0f;
 

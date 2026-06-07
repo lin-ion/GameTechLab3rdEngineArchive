@@ -74,6 +74,12 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Strike Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float StrikeRenderScale = 0.3f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Strike Mesh Path", AssetType="StaticMesh")
+	FString StrikeMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Strike Material Path", AssetType="Material")
+	FString StrikeMaterialPath = "None";
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Ground Height Offset", Min=-1000.0f, Max=1000.0f, Speed=0.1f)
 	float GroundHeightOffset = 0.0f;
 
@@ -103,6 +109,12 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Shockwave Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float ShockwaveRenderScale = 0.18f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Shockwave Mesh Path", AssetType="StaticMesh")
+	FString ShockwaveMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Shockwave Material Path", AssetType="Material")
+	FString ShockwaveMaterialPath = "None";
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Max Pattern Duration", Min=0.1f, Max=300.0f, Speed=0.1f)
 	float MaxPatternDuration = 8.0f;

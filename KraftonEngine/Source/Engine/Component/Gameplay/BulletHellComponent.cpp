@@ -82,7 +82,6 @@ void UBulletHellComponent::BeginPlay()
 
 	if (bEnableRendering)
 	{
-		EnsureRenderComponent();
 		RebuildRendererFromBullets();
 	}
 }
@@ -91,9 +90,7 @@ void UBulletHellComponent::PostEditProperty(const char* PropertyName)
 {
 	UActorComponent::PostEditProperty(PropertyName);
 
-	if (IsProperty(PropertyName, "RendererMeshPath", "Renderer Mesh Path") ||
-		IsProperty(PropertyName, "RendererMaterialPath", "Renderer Material Path") ||
-		IsProperty(PropertyName, "bEnableRendering", "Enable Rendering") ||
+	if (IsProperty(PropertyName, "bEnableRendering", "Enable Rendering") ||
 		IsProperty(PropertyName, "bAutoCreateRenderer", "Auto Create Renderer") ||
 		IsProperty(PropertyName, "RenderScale", "Render Scale"))
 	{
@@ -134,8 +131,6 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 	FBulletSpawnParams Params;
 	Params.Position = Position;
 	Params.Velocity = Velocity;
-	Params.Archetype.MeshPath = RendererMeshPath;
-	Params.Archetype.MaterialPath = RendererMaterialPath;
 	Params.Archetype.Radius = Radius;
 	Params.Archetype.Speed = Velocity.Length();
 	Params.Archetype.Lifetime = Lifetime;
@@ -1102,8 +1097,6 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderComponent()
 {
 	FBulletArchetype DefaultArchetype;
-	DefaultArchetype.MeshPath = RendererMeshPath;
-	DefaultArchetype.MaterialPath = RendererMaterialPath;
 	DefaultArchetype.RenderScale = RenderScale;
 	const int32 SlotIndex = FindOrCreateRenderSlot(DefaultArchetype);
 	return SlotIndex >= 0 ? EnsureRenderSlotComponent(SlotIndex) : nullptr;
@@ -1129,9 +1122,52 @@ int32 UBulletHellComponent::FindOrCreateRenderSlot(const FBulletArchetype& Arche
 	NewSlot.MeshPath = Archetype.MeshPath;
 	NewSlot.MaterialPath = Archetype.MaterialPath;
 	RenderSlots.push_back(NewSlot);
-	const int32 NewSlotIndex = static_cast<int32>(RenderSlots.size()) - 1;
-	EnsureRenderSlotComponent(NewSlotIndex);
-	return NewSlotIndex;
+	return static_cast<int32>(RenderSlots.size()) - 1;
+}
+
+UInstancedStaticMeshComponent* UBulletHellComponent::FindExistingRenderSlotComponent(int32 SlotIndex) const
+{
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return nullptr;
+	}
+
+	char NameBuffer[64];
+	std::snprintf(NameBuffer, sizeof(NameBuffer), "BulletHellRenderer%d", SlotIndex);
+	const FName ExpectedName(NameBuffer);
+	for (UActorComponent* Component : OwnerActor->GetComponents())
+	{
+		UInstancedStaticMeshComponent* Renderer = Cast<UInstancedStaticMeshComponent>(Component);
+		if (Renderer && Renderer->GetOwner() == OwnerActor && Renderer->GetFName() == ExpectedName)
+		{
+			return Renderer;
+		}
+	}
+
+	return nullptr;
+}
+
+bool UBulletHellComponent::CanAutoCreateRenderComponent() const
+{
+	if (!bAutoCreateRenderer)
+	{
+		return false;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return false;
+	}
+
+	if (OwnerActor->HasActorBegunPlay())
+	{
+		return true;
+	}
+
+	UWorld* World = GetWorld();
+	return World && World->HasBegunPlay();
 }
 
 UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderSlotComponent(int32 SlotIndex)
@@ -1154,7 +1190,26 @@ UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderSlotComponent(i
 	}
 
 	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor || !bAutoCreateRenderer)
+	if (!OwnerActor)
+	{
+		UpdateRenderDebugStats();
+		return nullptr;
+	}
+
+	Renderer = FindExistingRenderSlotComponent(SlotIndex);
+	if (Renderer)
+	{
+		Slot.Renderer = Renderer;
+		if (SlotIndex == 0)
+		{
+			RenderComponent = Renderer;
+		}
+		ApplyRenderSlotAssets(SlotIndex);
+		UpdateRenderDebugStats();
+		return Renderer;
+	}
+
+	if (!CanAutoCreateRenderComponent())
 	{
 		UpdateRenderDebugStats();
 		return nullptr;
@@ -1223,7 +1278,7 @@ void UBulletHellComponent::ApplyRenderSlotAssets(int32 SlotIndex)
 		Renderer->SetStaticMeshByPath(Slot.MeshPath);
 	}
 
-	if (!Slot.MaterialPath.empty() && Slot.MaterialPath != "None" && Renderer->GetMaterialSlotCount() > 0)
+	if (!Slot.MaterialPath.empty() && Slot.MaterialPath != "None")
 	{
 		Renderer->SetMaterialByPath(0, Slot.MaterialPath);
 	}

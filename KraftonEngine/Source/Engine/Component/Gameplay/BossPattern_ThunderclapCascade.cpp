@@ -336,6 +336,8 @@ FBulletSpawnParams UBossPattern_ThunderclapCascade::MakeStrikeParams(const FVect
 	Params.Archetype.Speed = StrikeFallSpeed;
 	Params.Archetype.Lifetime = StrikeLifetime;
 	Params.Archetype.RenderScale = StrikeRenderScale;
+	Params.Archetype.MeshPath = StrikeMeshPath;
+	Params.Archetype.MaterialPath = StrikeMaterialPath;
 	Params.bHoming = false;
 	return Params;
 }
@@ -349,6 +351,8 @@ FBulletSpawnParams UBossPattern_ThunderclapCascade::MakeShockwaveParams(const FV
 	Params.Archetype.Speed = ShockwaveSpeed;
 	Params.Archetype.Lifetime = ShockwaveLifetime;
 	Params.Archetype.RenderScale = ShockwaveRenderScale;
+	Params.Archetype.MeshPath = ShockwaveMeshPath;
+	Params.Archetype.MaterialPath = ShockwaveMaterialPath;
 	Params.bHoming = false;
 	return Params;
 }

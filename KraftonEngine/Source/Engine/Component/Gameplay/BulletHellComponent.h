@@ -282,6 +282,8 @@ private:
 	UInstancedStaticMeshComponent* EnsureRenderComponent();
 	UInstancedStaticMeshComponent* GetRenderComponent() const;
 	int32 FindOrCreateRenderSlot(const FBulletArchetype& Archetype);
+	UInstancedStaticMeshComponent* FindExistingRenderSlotComponent(int32 SlotIndex) const;
+	bool CanAutoCreateRenderComponent() const;
 	UInstancedStaticMeshComponent* EnsureRenderSlotComponent(int32 SlotIndex);
 	UInstancedStaticMeshComponent* GetRenderSlotComponent(int32 SlotIndex) const;
 	void ApplyRenderAssets();
@@ -300,12 +302,6 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Auto Create Renderer")
 	bool bAutoCreateRenderer = true;
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Renderer Mesh Path", AssetType="StaticMesh")
-	FString RendererMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Renderer Material Path", AssetType="Material")
-	FString RendererMaterialPath = "None";
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Render Scale", Min=0.01f, Max=1000.0f, Speed=0.1f)
 	float RenderScale = 0.1f;
