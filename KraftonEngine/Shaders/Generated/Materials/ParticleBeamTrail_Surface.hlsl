@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Preview/Materials/Material_Vulcan_Surface.hlsl
 // Generated from C:/Github/Week14/Jungle_Week14_Team4/KraftonEngine/Content/Material/Auto/Material_Vulcan.uasset
+========
+// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/Particle/ParticleBeamTrail.uasset
+>>>>>>>> feature/bullet-trail:KraftonEngine/Shaders/Generated/Materials/ParticleBeamTrail_Surface.hlsl
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
@@ -40,6 +44,7 @@ struct FMaterialResult
     float Opacity;
 };
 
+<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Preview/Materials/Material_Vulcan_Surface.hlsl
 Texture2D Tex_DiffuseTexture : register(t0);
 Texture2D Tex_EmissiveTexture : register(t4);
 
@@ -54,12 +59,30 @@ FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
     float n_31 = 1.000000f;
     FMaterialResult Result;
     Result.BaseColor = (n_3).rgb;
+========
+Texture2D Tex_Diffuse : register(t0);
+
+FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
+{
+    float4 n_5 = Tex_Diffuse.Sample(LinearWrapSampler, Input.UV0);
+    float4 n_138 = Input.VertexColor;
+    float3 n_145 = ((n_5).rgb * (n_138).rgb);
+    float n_167 = ((n_5).a * (n_138).a);
+    FMaterialResult Result;
+    Result.BaseColor = n_145;
+>>>>>>>> feature/bullet-trail:KraftonEngine/Shaders/Generated/Materials/ParticleBeamTrail_Surface.hlsl
     Result.Normal = float3(0, 0, 1);
     Result.Roughness = n_27;
     Result.Metallic = 0.0f;
+<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Preview/Materials/Material_Vulcan_Surface.hlsl
     Result.Specular = n_29;
     Result.Emissive = n_59;
     Result.Opacity = n_31;
+========
+    Result.Specular = float3(1, 1, 1);
+    Result.Emissive = float3(0, 0, 0);
+    Result.Opacity = n_167;
+>>>>>>>> feature/bullet-trail:KraftonEngine/Shaders/Generated/Materials/ParticleBeamTrail_Surface.hlsl
     return Result;
 }
 
@@ -125,6 +148,7 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float3 N = normalize(input.normal);
 
+<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Preview/Materials/Material_Vulcan_Surface.hlsl
     float3 V = normalize(CameraWorldPos - input.worldPos);
     float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
     float materialRoughness = clamp(Result.Roughness, 0.02f, 1.0f);
@@ -133,6 +157,9 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
 
     float3 finalRgb = Result.BaseColor * diffuse + specular + Result.Emissive;
     float OutOpacity = saturate(Result.Opacity);
+========
+    float3 finalRgb = Result.BaseColor + Result.Emissive;
+>>>>>>>> feature/bullet-trail:KraftonEngine/Shaders/Generated/Materials/ParticleBeamTrail_Surface.hlsl
 
-    return float4(finalRgb, OutOpacity);
+    return float4(finalRgb, saturate(Result.Opacity));
 }

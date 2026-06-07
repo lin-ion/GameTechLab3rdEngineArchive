@@ -313,6 +313,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Debug\PhysicsAssetRagdollTestComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletTrailComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.cpp" />
@@ -548,6 +549,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Render\Pipeline\RenderCollector.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\BillboardSceneProxy.cpp" />
+    <ClCompile Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\CylindricalBillboardSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\DecalSceneProxy.cpp" />
@@ -835,6 +837,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Debug\PhysicsAssetRagdollTestComponent.h" />
     <ClInclude Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletTrailComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.h" />
@@ -1123,6 +1126,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollector.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\BillboardSceneProxy.h" />
+    <ClInclude Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\CylindricalBillboardSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\DecalSceneProxy.h" />

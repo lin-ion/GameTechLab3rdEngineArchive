@@ -15,7 +15,8 @@ enum class EMaterialGraphTarget : uint8
     ParticleSprite,
     ParticleMesh,
     Decal,
-    PostProcess
+    PostProcess,
+    ParticleBeamTrail
 };
 
 enum class EMaterialGraphPinKind : uint8

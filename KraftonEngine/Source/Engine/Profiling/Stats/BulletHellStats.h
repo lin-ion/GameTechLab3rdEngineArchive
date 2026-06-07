@@ -25,6 +25,13 @@ struct FBulletHellStatsSnapshot
 	uint32 RendererSlot0InstanceCount = 0;
 	uint32 RendererSlot1InstanceCount = 0;
 	uint32 RenderMismatchCount = 0;
+	uint32 TrailEnabledBulletCount = 0;
+	uint32 TrailSampleCount = 0;
+	uint32 TrailBatchCount = 0;
+	uint32 TrailVertexCount = 0;
+	uint32 TrailIndexCount = 0;
+	uint32 TrailTruncatedCount = 0;
+	uint32 TrailMaterialMissingCount = 0;
 };
 
 #if STATS
@@ -51,6 +58,13 @@ struct FBulletHellStats
 	static uint32 RendererSlot0InstanceCount;
 	static uint32 RendererSlot1InstanceCount;
 	static uint32 RenderMismatchCount;
+	static uint32 TrailEnabledBulletCount;
+	static uint32 TrailSampleCount;
+	static uint32 TrailBatchCount;
+	static uint32 TrailVertexCount;
+	static uint32 TrailIndexCount;
+	static uint32 TrailTruncatedCount;
+	static uint32 TrailMaterialMissingCount;
 
 	static void Reset();
 	static void AddComponent(const FBulletHellStatsSnapshot& Snapshot);

@@ -1192,6 +1192,7 @@ void FMaterialEditorWidget::RenderSettingsPanel(UMaterial* Material)
         const EMaterialGraphTarget Targets[] = {
             EMaterialGraphTarget::Surface, EMaterialGraphTarget::Decal, EMaterialGraphTarget::PostProcess,
             EMaterialGraphTarget::ParticleSprite, EMaterialGraphTarget::ParticleMesh,
+            EMaterialGraphTarget::ParticleBeamTrail,
         };
         for (EMaterialGraphTarget Candidate : Targets)
         {

@@ -179,6 +179,41 @@ static FShader* GetGraphMaterialShader(UMaterial* Mat, EVertexFactoryType VFType
 		return nullptr;
 	}
 
+	const bool bParticleVertexFactory =
+		VFType == EVertexFactoryType::ParticleSprite ||
+		VFType == EVertexFactoryType::ParticleMesh ||
+		VFType == EVertexFactoryType::ParticleBeam ||
+		VFType == EVertexFactoryType::ParticleRibbon;
+	const EMaterialGraphTarget Target = Mat->GetGraphDocument().Target;
+	switch (Target)
+	{
+	case EMaterialGraphTarget::ParticleSprite:
+		if (VFType != EVertexFactoryType::ParticleSprite) return nullptr;
+		break;
+	case EMaterialGraphTarget::ParticleMesh:
+		if (VFType != EVertexFactoryType::ParticleMesh) return nullptr;
+		break;
+	case EMaterialGraphTarget::ParticleBeamTrail:
+		if (VFType != EVertexFactoryType::ParticleBeam &&
+			VFType != EVertexFactoryType::ParticleRibbon)
+		{
+			return nullptr;
+		}
+		break;
+	case EMaterialGraphTarget::Surface:
+		if (bParticleVertexFactory)
+		{
+			return nullptr;
+		}
+		break;
+	case EMaterialGraphTarget::Decal:
+	case EMaterialGraphTarget::PostProcess:
+		if (bParticleVertexFactory) return nullptr;
+		break;
+	default:
+		break;
+	}
+
 	if (VFType == EVertexFactoryType::InstancedStaticMesh && Mat->GetDomain() == EMaterialDomain::Surface)
 	{
 		const FString& ShaderPath = Mat->GetShaderPathForSerialize();
@@ -249,7 +284,8 @@ FShader* FDrawCommandBuilder::ResolveSectionShader(UMaterial* Mat, EVertexFactor
     }
 
     // 2. custom override 강제 (CreateTransient: Gizmo/Decal/Text/SubUV, 비표준 셰이더 .mat)
-	if (Mat && Mat->HasCustomShader() && !bDerivableSurfaceTransparent)
+    // Graph material은 위 호환성 검사에서 통과한 경우에만 사용한다.
+	if (Mat && Mat->GetSourceKind() != EMaterialSourceKind::Graph && Mat->HasCustomShader() && !bDerivableSurfaceTransparent)
 		return Mat->GetCustomShader();
 
     // 3. 파티클 정점 팩토리 → 전용 셰이더 (FParticleVertexFactory 가 만들던 것과 동일 키)

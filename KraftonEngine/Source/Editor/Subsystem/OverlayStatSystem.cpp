@@ -745,6 +745,19 @@ void FOverlayStatSystem::BuildBulletHellLines(TArray<FString>& OutLines) const
 		FBulletHellStats::RenderMismatchCount);
 	OutLines.push_back(FString(Buffer));
 
+	snprintf(Buffer, sizeof(Buffer), "Trail : Enabled %u   Samples %u   Batches %u   Vtx/Idx %u/%u",
+		FBulletHellStats::TrailEnabledBulletCount,
+		FBulletHellStats::TrailSampleCount,
+		FBulletHellStats::TrailBatchCount,
+		FBulletHellStats::TrailVertexCount,
+		FBulletHellStats::TrailIndexCount);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "Trail Budget : Truncated %u   MissingMaterial %u",
+		FBulletHellStats::TrailTruncatedCount,
+		FBulletHellStats::TrailMaterialMissingCount);
+	OutLines.push_back(FString(Buffer));
+
 	snprintf(Buffer, sizeof(Buffer), "DebugDraw : Selected %u   Truncated %u",
 		FBulletHellStats::DebugDrawSelectedCount,
 		FBulletHellStats::DebugDrawTruncatedCount);

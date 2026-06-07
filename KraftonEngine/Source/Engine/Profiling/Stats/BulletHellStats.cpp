@@ -22,6 +22,13 @@ uint32 FBulletHellStats::RendererSlotCount = 0;
 uint32 FBulletHellStats::RendererSlot0InstanceCount = 0;
 uint32 FBulletHellStats::RendererSlot1InstanceCount = 0;
 uint32 FBulletHellStats::RenderMismatchCount = 0;
+uint32 FBulletHellStats::TrailEnabledBulletCount = 0;
+uint32 FBulletHellStats::TrailSampleCount = 0;
+uint32 FBulletHellStats::TrailBatchCount = 0;
+uint32 FBulletHellStats::TrailVertexCount = 0;
+uint32 FBulletHellStats::TrailIndexCount = 0;
+uint32 FBulletHellStats::TrailTruncatedCount = 0;
+uint32 FBulletHellStats::TrailMaterialMissingCount = 0;
 
 void FBulletHellStats::Reset()
 {
@@ -46,6 +53,13 @@ void FBulletHellStats::Reset()
 	RendererSlot0InstanceCount = 0;
 	RendererSlot1InstanceCount = 0;
 	RenderMismatchCount = 0;
+	TrailEnabledBulletCount = 0;
+	TrailSampleCount = 0;
+	TrailBatchCount = 0;
+	TrailVertexCount = 0;
+	TrailIndexCount = 0;
+	TrailTruncatedCount = 0;
+	TrailMaterialMissingCount = 0;
 }
 
 void FBulletHellStats::AddComponent(const FBulletHellStatsSnapshot& Snapshot)
@@ -71,5 +85,12 @@ void FBulletHellStats::AddComponent(const FBulletHellStatsSnapshot& Snapshot)
 	RendererSlot0InstanceCount += Snapshot.RendererSlot0InstanceCount;
 	RendererSlot1InstanceCount += Snapshot.RendererSlot1InstanceCount;
 	RenderMismatchCount += Snapshot.RenderMismatchCount;
+	TrailEnabledBulletCount += Snapshot.TrailEnabledBulletCount;
+	TrailSampleCount += Snapshot.TrailSampleCount;
+	TrailBatchCount += Snapshot.TrailBatchCount;
+	TrailVertexCount += Snapshot.TrailVertexCount;
+	TrailIndexCount += Snapshot.TrailIndexCount;
+	TrailTruncatedCount += Snapshot.TrailTruncatedCount;
+	TrailMaterialMissingCount += Snapshot.TrailMaterialMissingCount;
 }
 #endif
