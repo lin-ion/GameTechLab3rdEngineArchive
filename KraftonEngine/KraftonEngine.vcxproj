@@ -632,6 +632,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\UI\UserWidget.cpp" />
     <ClCompile Include="Source\Engine\UI\Canvas\UICanvasActor.cpp" />
     <ClCompile Include="Source\Engine\UI\Canvas\UICanvasManager.cpp" />
+    <ClCompile Include="Source\Engine\UI\Canvas\UIImage.cpp" />
     <ClCompile Include="Source\Engine\UI\Canvas\UILabel.cpp" />
     <ClCompile Include="Source\Engine\UI\Canvas\UITextElement.cpp" />
     <ClCompile Include="Source\Engine\Viewport\GameViewportClient.cpp" />

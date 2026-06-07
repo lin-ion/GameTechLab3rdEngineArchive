@@ -24,6 +24,11 @@ cbuffer SimpleUICB : register(b0)
 	column_major float4x4 Transform;
 };
 
+// [사이클 8] 텍스처 × 정점색. 텍스처 없는 단색 요소는 패스가 1×1 흰색 SRV 를 바인드해 곱셈 항등.
+// 샘플러 s0 는 프레임 단위 시스템 샘플러(LinearClamp) — 패스가 별도 바인드하지 않음.
+Texture2D    tex  : register(t0);
+SamplerState samp : register(s0);
+
 VSOutput VS(VSInput Input)
 {
 	VSOutput Output;
@@ -42,5 +47,5 @@ VSOutput VS(VSInput Input)
 
 float4 PS(VSOutput Input) : SV_Target
 {
-	return Input.Color;
+	return tex.Sample(samp, Input.TexCoord) * Input.Color;
 }

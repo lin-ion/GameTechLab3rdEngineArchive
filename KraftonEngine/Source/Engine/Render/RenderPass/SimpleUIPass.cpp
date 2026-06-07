@@ -11,6 +11,7 @@
 #include "UI/Canvas/UICanvasManager.h"
 #include "UI/Canvas/UICanvas.h"
 #include "UI/Canvas/UIElement.h"
+#include "UI/Canvas/UIImage.h"
 #include "Object/Object.h"
 
 #include <d3d11.h>
@@ -43,8 +44,12 @@ namespace
 
 	constexpr const char* SimpleUIShaderPath = "Shaders/UI/SimpleUI.hlsl";
 
-	// 가시 노드의 ScreenRect 를 쿼드(4정점 / 6인덱스)로 누적. top-down 트리 순회.
-	void CollectVisible(UUIElement* Element, TArray<FSimpleUIVertex>& Verts, TArray<uint32>& Indices)
+	// [사이클 8] 같은 SRV(텍스처) 연속 쿼드의 인덱스 런. 트리 순서대로 쌓아 텍스처 경계에서만 분리.
+	struct FUIBatch { ID3D11ShaderResourceView* SRV; UINT IndexCount; };
+
+	// 가시 노드의 ScreenRect 를 쿼드(4정점 / 6인덱스)로 누적 + 요소별 SRV 로 배칭. top-down 트리 순회.
+	void CollectVisible(UUIElement* Element, ID3D11Device* Device, ID3D11ShaderResourceView* WhiteSRV,
+	                    TArray<FSimpleUIVertex>& Verts, TArray<uint32>& Indices, TArray<FUIBatch>& Batches)
 	{
 		if (!Element)
 		{
@@ -53,6 +58,16 @@ namespace
 
 		if (Element->IsVisibleRect())
 		{
+			// [사이클 8] UUIImage 의 텍스처 SRV, 없으면(또는 비-이미지면) 1×1 흰색 fallback.
+			ID3D11ShaderResourceView* SRV = WhiteSRV;
+			if (UUIImage* Img = Cast<UUIImage>(Element))
+			{
+				if (ID3D11ShaderResourceView* Tex = Img->ResolveTextureSRV(Device))
+				{
+					SRV = Tex;
+				}
+			}
+
 			const FUIRect& R = Element->GetScreenRect();
 			const FVector4 C = Element->GetColor();
 			const uint32 Base = static_cast<uint32>(Verts.size());
@@ -73,13 +88,23 @@ namespace
 			Indices.push_back(Base + 0);
 			Indices.push_back(Base + 2);
 			Indices.push_back(Base + 3);
+
+			// [A-1] 직전 런과 같은 SRV 면 확장, 다르면 새 draw call(텍스처 경계). z-순서(트리 순서) 보존.
+			if (!Batches.empty() && Batches.back().SRV == SRV)
+			{
+				Batches.back().IndexCount += 6;
+			}
+			else
+			{
+				Batches.push_back({ SRV, 6 });
+			}
 		}
 
 		for (USceneComponent* Child : Element->GetChildren())
 		{
 			if (UUIElement* ChildElement = Cast<UUIElement>(Child))
 			{
-				CollectVisible(ChildElement, Verts, Indices);
+				CollectVisible(ChildElement, Device, WhiteSRV, Verts, Indices, Batches);
 			}
 		}
 	}
@@ -114,6 +139,46 @@ FSimpleUIPass::FSimpleUIPass()
 	                ERasterizerState::SolidNoCull, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
 }
 
+FSimpleUIPass::~FSimpleUIPass()
+{
+	if (WhiteSRV)
+	{
+		WhiteSRV->Release();
+		WhiteSRV = nullptr;
+	}
+}
+
+// [사이클 8] 텍스처 없는 단색 요소도 텍스처 셰이더를 통과하도록 1×1 흰색 SRV 를 1회 생성·캐시.
+ID3D11ShaderResourceView* FSimpleUIPass::GetWhiteSRV(ID3D11Device* Device)
+{
+	if (WhiteSRV || !Device)
+	{
+		return WhiteSRV;
+	}
+	const uint32 WhitePixel = 0xffffffff;
+	D3D11_TEXTURE2D_DESC TexDesc = {};
+	TexDesc.Width = 1;
+	TexDesc.Height = 1;
+	TexDesc.MipLevels = 1;
+	TexDesc.ArraySize = 1;
+	TexDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	TexDesc.SampleDesc.Count = 1;
+	TexDesc.Usage = D3D11_USAGE_DEFAULT;
+	TexDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	D3D11_SUBRESOURCE_DATA Init = {};
+	Init.pSysMem = &WhitePixel;
+	Init.SysMemPitch = sizeof(uint32);
+
+	ID3D11Texture2D* Tex = nullptr;
+	if (SUCCEEDED(Device->CreateTexture2D(&TexDesc, &Init, &Tex)))
+	{
+		Device->CreateShaderResourceView(Tex, nullptr, &WhiteSRV);
+		Tex->Release();
+	}
+	return WhiteSRV;
+}
+
 bool FSimpleUIPass::BeginPass(const FPassContext& Ctx)
 {
 	// 그릴 Canvas 가 하나도 없거나 뷰포트 RTV 가 없으면 패스 스킵.
@@ -129,12 +194,14 @@ void FSimpleUIPass::Execute(const FPassContext& Ctx)
 		return;
 	}
 
-	// 1) 레이아웃 패스가 캐시한 ScreenRect 들을 쿼드로 모은다(여기서 레이아웃은 하지 않음).
+	// 1) 레이아웃 패스가 캐시한 ScreenRect 들을 쿼드로 모은다(텍스처별 런으로 배칭). 레이아웃 없음.
 	TArray<FSimpleUIVertex> Verts;
 	TArray<uint32> Indices;
+	TArray<FUIBatch> Batches;
+	ID3D11ShaderResourceView* White = GetWhiteSRV(Device);
 	for (UUICanvas* Canvas : FUICanvasManager::Get().GetCanvases())
 	{
-		CollectVisible(Canvas, Verts, Indices);
+		CollectVisible(Canvas, Device, White, Verts, Indices, Batches);
 	}
 	if (Indices.empty())
 	{
@@ -190,7 +257,16 @@ void FSimpleUIPass::Execute(const FPassContext& Ctx)
 	UINT Offset = 0;
 	DC->IASetVertexBuffers(0, 1, &VB, &Stride, &Offset);
 	DC->IASetIndexBuffer(IB, DXGI_FORMAT_R32_UINT, 0);
-	DC->DrawIndexed(static_cast<UINT>(Indices.size()), 0, 0);
+
+	// [사이클 8, A-1] 텍스처 런마다 SRV(t0) 바인드 후 DrawIndexed. 트리 순서대로 재생 → z-순서 보존.
+	// 샘플러 s0 는 BeginFrame 이 프레임 단위로 바인드(시스템 LinearClamp) — 여기서 설정 불필요.
+	UINT StartIndex = 0;
+	for (const FUIBatch& Batch : Batches)
+	{
+		DC->PSSetShaderResources(0, 1, &Batch.SRV);
+		DC->DrawIndexed(Batch.IndexCount, StartIndex, 0);
+		StartIndex += Batch.IndexCount;
+	}
 
 	VB->Release();
 	IB->Release();

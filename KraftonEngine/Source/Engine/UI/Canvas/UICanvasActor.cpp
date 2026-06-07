@@ -9,6 +9,11 @@
 #include "GameFramework/World.h"
 #include "GameFramework/Pawn/Pawn.h"
 #include "GameFramework/GameMode/PlayerController.h"
+#include "Component/Gameplay/BossPatternSelectorComponent.h"
+#include "Component/Gameplay/BossPatternComponentBase.h"
+#include "Render/Types/MinimalViewInfo.h"
+#include "Runtime/Engine.h"
+#include "Platform/WindowsWindow.h"
 #include "Core/Logging/Log.h"
 
 #include <cstdio>
@@ -32,7 +37,21 @@ namespace
 		                0.15f, 1.0f);
 	}
 
-	// [사이클 4] 바인딩 값 → 바 비율 [0,1]. 체력 값은 GetHealthRatio, GameTime 은 의미 없어 full(1).
+	// [사이클 5] 보스 컴포넌트의 디버그 상태(BossHealthRatio/BossPhase/ActivePatternName). 없으면 nullptr.
+	const FBossPatternDebugState* GetBossState(APawn* Pawn)
+	{
+		if (!Pawn)
+		{
+			return nullptr;
+		}
+		if (UBossPatternSelectorComponent* Boss = Pawn->GetComponentByClass<UBossPatternSelectorComponent>())
+		{
+			return &Boss->GetBossPatternDebugState();
+		}
+		return nullptr;
+	}
+
+	// [사이클 4/5] 바인딩 값 → 바 비율 [0,1]. 체력=GetHealthRatio, 보스HP=컴포넌트, 페이즈=색매핑, 그 외=full.
 	float ValueAsRatio(EHudBindingValue Value, APawn* Pawn)
 	{
 		switch (Value)
@@ -41,8 +60,19 @@ namespace
 		case EHudBindingValue::HealthOverMax:
 		case EHudBindingValue::HealthPercent:
 			return Pawn ? Pawn->GetHealthRatio() : 0.0f;
-		case EHudBindingValue::GameTime:
+		case EHudBindingValue::BossHealthRatio:
+			if (const FBossPatternDebugState* S = GetBossState(Pawn)) { return S->BossHealthRatio; }
+			return Pawn ? Pawn->GetHealthRatio() : 0.0f;       // 컴포넌트 없으면 폰 체력 폴백
+		case EHudBindingValue::BossPhase:
+			// 페이즈 0→1.0(녹) · 1→0.5(노) · 2+→0.0(적) → BarColor 가 페이즈색이 된다.
+			if (const FBossPatternDebugState* S = GetBossState(Pawn))
+			{
+				return S->BossPhase <= 0 ? 1.0f : (S->BossPhase == 1 ? 0.5f : 0.0f);
+			}
 			return 1.0f;
+		case EHudBindingValue::BossPatternName:
+		case EHudBindingValue::GameTime:
+			return 1.0f;       // 비-비율 값은 바에서 full
 		}
 		return 0.0f;
 	}
@@ -61,6 +91,15 @@ namespace
 			break;
 		case EHudBindingValue::HealthPercent:
 			if (Pawn) { snprintf(Buf, sizeof(Buf), "%d%%", (int)(Pawn->GetHealthRatio() * 100.0f + 0.5f)); return FString(Buf); }
+			break;
+		case EHudBindingValue::BossHealthRatio:
+			if (const FBossPatternDebugState* S = GetBossState(Pawn)) { snprintf(Buf, sizeof(Buf), "%d%%", (int)(S->BossHealthRatio * 100.0f + 0.5f)); return FString(Buf); }
+			break;
+		case EHudBindingValue::BossPhase:
+			if (const FBossPatternDebugState* S = GetBossState(Pawn)) { snprintf(Buf, sizeof(Buf), "Phase %d", S->BossPhase); return FString(Buf); }
+			break;
+		case EHudBindingValue::BossPatternName:
+			if (const FBossPatternDebugState* S = GetBossState(Pawn)) { return S->ActivePatternName; }
 			break;
 		case EHudBindingValue::GameTime:
 			if (World) { snprintf(Buf, sizeof(Buf), "%ds", (int)World->GetGameTimeSeconds()); return FString(Buf); }
@@ -265,6 +304,41 @@ void AUICanvasActor::UpdateDataBindings()
 			if (UUITextElement* TextEl = Cast<UUITextElement>(El))
 			{
 				TextEl->SetText(FormatBindingValue(B.Value, Source, W));
+			}
+			break;
+		}
+		case EHudBindingChannel::WorldAnchor:
+		{
+			// [사이클 6] 소스 액터 월드 위치(+높이)를 화면에 투영해 Position 설정(옵션: 머리 위 추적).
+			// Position 은 design px(=실제px / GlobalScale). 요소는 Anchor=(0,0)·Pivot=(0.5,1.0) 저작 권장.
+			if (!Source)
+			{
+				break;
+			}
+			FMinimalViewInfo POV;
+			if (!W->GetActivePOV(POV))
+			{
+				break;   // 아직 카메라 없음(초기 프레임)
+			}
+			FWindowsWindow* Win = GEngine ? GEngine->GetWindow() : nullptr;
+			if (!Win)
+			{
+				break;
+			}
+			const float Scale = FUICanvasManager::Get().GetGlobalScale();
+			if (Scale <= 0.0f)
+			{
+				break;
+			}
+			const FVector Head = Source->GetActorLocation() + FVector(0.0f, 0.0f, B.WorldAnchorHeight);
+			FVector2 P;
+			if (POV.ProjectWorldToScreen(Head, Win->GetWidth(), Win->GetHeight(), P))
+			{
+				El->SetPosition(FVector2(P.X / Scale, P.Y / Scale));
+			}
+			else
+			{
+				El->SetPosition(FVector2(-10000.0f, -10000.0f));   // 카메라 뒤 → 화면 밖으로
 			}
 			break;
 		}

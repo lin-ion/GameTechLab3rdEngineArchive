@@ -45,4 +45,8 @@ struct FMinimalViewInfo
 
 	// 화면 좌표(Pixel) → 월드 Ray. UCameraComponent::DeprojectScreenToWorld 와 동등.
 	FRay DeprojectScreenToWorld(float MouseX, float MouseY, float ScreenWidth, float ScreenHeight) const;
+
+	// 월드 좌표 → 화면 좌표(Pixel, 좌상단 원점/Y-down). DeprojectScreenToWorld 의 역.
+	// 카메라 뒤(또는 시점 평면 위)면 false 반환(OutScreen 미정의) — HUD 가 숨기도록.
+	bool ProjectWorldToScreen(const FVector& WorldPos, float ScreenWidth, float ScreenHeight, FVector2& OutScreen) const;
 };

@@ -14,9 +14,10 @@ class APawn;
 UENUM()
 enum class EHudBindingChannel : uint8
 {
-	BarWidth,   // 값의 비율을 가로 폭에 반영(좌피벗 권장 — 폭 감소가 좌→우)
-	BarColor,   // 값의 비율을 색으로(가득=녹 → 절반=노 → 고갈=적)
-	Text,       // 값을 문자열로 표시(대상이 UUITextElement 계열일 때)
+	BarWidth,     // 값의 비율을 가로 폭에 반영(좌피벗 권장 — 폭 감소가 좌→우)
+	BarColor,     // 값의 비율을 색으로(가득=녹 → 절반=노 → 고갈=적)
+	Text,         // 값을 문자열로 표시(대상이 UUITextElement 계열일 때)
+	WorldAnchor,  // [사이클 6] 소스 액터 월드 위치(+높이)를 화면에 투영해 요소 Position 추적(머리 위 HP). 옵션.
 };
 
 // [사이클 4] 바인딩이 읽어올 게임플레이 값. 바 채널은 체력 비율을, 텍스트 채널은 아래 포맷을 쓴다.
@@ -27,6 +28,10 @@ enum class EHudBindingValue : uint8
 	HealthOverMax,   // "현재 / 최대"    / 바: 체력 비율
 	HealthPercent,   // "NN%"           / 바: 체력 비율
 	GameTime,        // 경과 시간(초)    / 바: 의미 없음(full)
+	// [사이클 5] 보스(UBossPatternSelectorComponent) 값 — 소스 액터가 보스일 때:
+	BossHealthRatio, // 바: 보스 HP 비율 / 텍스트: "NN%"  (컴포넌트, 없으면 폰 체력 폴백)
+	BossPhase,       // 바색: 페이즈→녹/노/적 / 텍스트: "Phase N"
+	BossPatternName, // 텍스트: 현재 공격 패턴 이름
 };
 
 // [사이클 4] HUD 데이터 바인딩 1건. 에디터 Details 의 Bindings 배열에서 행 단위로 +/- 편집한다.
@@ -48,6 +53,10 @@ struct FHudBinding
 
 	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Value", Enum=EHudBindingValue)
 	EHudBindingValue Value = EHudBindingValue::HealthCurrent;
+
+	// [사이클 6] WorldAnchor 채널 전용: 소스 액터 위치 +Z 오프셋(머리 위, 월드 단위). 다른 채널은 무시.
+	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="World Anchor Height")
+	float WorldAnchorHeight = 100.0f;
 
 	// ── 런타임 캐시(UPROPERTY 아님 → 반사/직렬화 제외) ──
 	TWeakObjectPtr<APawn> SourceCache;            // 소스 액터 해석 결과
