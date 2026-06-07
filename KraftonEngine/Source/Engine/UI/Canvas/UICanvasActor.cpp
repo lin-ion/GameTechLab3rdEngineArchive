@@ -32,26 +32,66 @@ namespace
 		                0.15f, 1.0f);
 	}
 
-	// [사이클 3] 텍스트 소스 → 표시 문자열. 소스 무효 시 "--". snprintf 로 FString(const char*) 구성.
-	FString FormatHudText(EHudTextSource Source, APawn* Pawn, UWorld* World)
+	// [사이클 4] 바인딩 값 → 바 비율 [0,1]. 체력 값은 GetHealthRatio, GameTime 은 의미 없어 full(1).
+	float ValueAsRatio(EHudBindingValue Value, APawn* Pawn)
+	{
+		switch (Value)
+		{
+		case EHudBindingValue::HealthCurrent:
+		case EHudBindingValue::HealthOverMax:
+		case EHudBindingValue::HealthPercent:
+			return Pawn ? Pawn->GetHealthRatio() : 0.0f;
+		case EHudBindingValue::GameTime:
+			return 1.0f;
+		}
+		return 0.0f;
+	}
+
+	// [사이클 4] 바인딩 값 → 표시 문자열(텍스트 채널). 소스 무효 시 "--". snprintf 로 FString(const char*) 구성.
+	FString FormatBindingValue(EHudBindingValue Value, APawn* Pawn, UWorld* World)
 	{
 		char Buf[64] = {};
-		switch (Source)
+		switch (Value)
 		{
-		case EHudTextSource::Health:
+		case EHudBindingValue::HealthCurrent:
 			if (Pawn) { snprintf(Buf, sizeof(Buf), "%d", (int)(Pawn->GetCurrentHealth() + 0.5f)); return FString(Buf); }
 			break;
-		case EHudTextSource::HealthOverMax:
+		case EHudBindingValue::HealthOverMax:
 			if (Pawn) { snprintf(Buf, sizeof(Buf), "%d / %d", (int)(Pawn->GetCurrentHealth() + 0.5f), (int)(Pawn->GetMaxHealth() + 0.5f)); return FString(Buf); }
 			break;
-		case EHudTextSource::HealthPercent:
+		case EHudBindingValue::HealthPercent:
 			if (Pawn) { snprintf(Buf, sizeof(Buf), "%d%%", (int)(Pawn->GetHealthRatio() * 100.0f + 0.5f)); return FString(Buf); }
 			break;
-		case EHudTextSource::GameTime:
+		case EHudBindingValue::GameTime:
 			if (World) { snprintf(Buf, sizeof(Buf), "%ds", (int)World->GetGameTimeSeconds()); return FString(Buf); }
 			break;
 		}
 		return FString("--");
+	}
+
+	// [사이클 4] 소스 폰 해석. 빈 이름=로컬 플레이어(possessed pawn), 지정 시 그 이름(GetFName)의 액터.
+	APawn* ResolveSourcePawn(UWorld* World, const FString& Name)
+	{
+		if (!World)
+		{
+			return nullptr;
+		}
+		if (Name.empty())
+		{
+			if (APlayerController* PC = World->GetFirstPlayerController())
+			{
+				return PC->GetPossessedPawn();
+			}
+			return nullptr;
+		}
+		for (AActor* A : World->GetActors())
+		{
+			if (IsValid(A) && A->GetFName().ToString() == Name)
+			{
+				return Cast<APawn>(A);
+			}
+		}
+		return nullptr;
 	}
 }
 
@@ -177,62 +217,57 @@ void AUICanvasActor::UpdateDataBindings()
 		return;
 	}
 
-	// 소스 폰 해석(체력바·체력 텍스트가 공유) — 캐시 우선, 무효일 때만 재해석(매 프레임 선형 스캔 회피).
-	//  - HealthSourceActorName 이 비면 로컬 플레이어(possessed pawn) 기본 타깃, 지정 시 그 이름의 액터(override).
-	APawn* Source = HealthSource.Get();
-	if (!IsValid(Source))
+	// [사이클 4] 각 바인딩을 독립 적용: 소스 폰 해석(캐시) → 대상 요소 조회 → 채널별 setter.
+	for (FHudBinding& B : Bindings)
 	{
-		Source = nullptr;
-		if (HealthSourceActorName.empty())
+		if (B.TargetElement.empty())
 		{
-			// 기본: 로컬 플레이어의 possessed pawn. 체인 전체가 null-safe.
-			if (APlayerController* PC = W->GetFirstPlayerController())
-			{
-				Source = PC->GetPossessedPawn();
-			}
+			continue;
 		}
-		else
-		{
-			// override: 지정된 이름의 액터를 스캔.
-			for (AActor* A : W->GetActors())
-			{
-				if (IsValid(A) && A->GetFName().ToString() == HealthSourceActorName)
-				{
-					Source = Cast<APawn>(A);
-					break;
-				}
-			}
-		}
-		HealthSource = Source;
-	}
 
-	// ── 체력바: 소스 체력 비율을 width 에 반영(+ 옵션 색 피드백, 사이클 1·2) ──
-	if (Source && !HealthBarElementName.empty())
-	{
-		if (UUIElement* Bar = C->FindByName(HealthBarElementName))
+		// 소스 폰 해석 — 캐시 우선, 무효일 때만 재해석(매 프레임 선형 스캔 회피).
+		APawn* Source = B.SourceCache.Get();
+		if (!IsValid(Source))
 		{
-			// 최초 바인딩 시 저작 폭을 100% 기준으로 캡처(음수 sentinel 일 때만).
-			if (HealthBarFullWidth < 0.0f)
-			{
-				HealthBarFullWidth = Bar->GetSize().X;
-			}
-			const float    Ratio   = Source->GetHealthRatio();   // [0,1] (MaxHealth<=0 이면 1)
-			const FVector2 CurSize = Bar->GetSize();
-			Bar->SetSize(FVector2(HealthBarFullWidth * Ratio, CurSize.Y));
-			if (bHealthBarColorFeedback)
-			{
-				Bar->SetColor(HealthRatioToColor(Ratio));
-			}
+			Source = ResolveSourcePawn(W, B.SourceActor);
+			B.SourceCache = Source;
 		}
-	}
 
-	// ── [사이클 3] 숫자 텍스트 readout: 선택한 소스 값을 매 프레임 SetText
-	//    (UUITextElement::OnLayoutUpdated 가 RmlUi 위젯에 재푸시 — 재마운트 아님). ──
-	if (!TextElementName.empty())
-	{
-		if (UUITextElement* TextEl = Cast<UUITextElement>(C->FindByName(TextElementName)))
+		UUIElement* El = C->FindByName(B.TargetElement);
+		if (!El)
 		{
-			TextEl->SetText(FormatHudText(TextSource, Source, W));
+			continue;
+		}
+
+		switch (B.Channel)
+		{
+		case EHudBindingChannel::BarWidth:
+		{
+			// 최초 적용 시 저작 폭을 100% 기준으로 캡처(음수 sentinel 일 때만).
+			if (B.BarFullWidth < 0.0f)
+			{
+				B.BarFullWidth = El->GetSize().X;
+			}
+			const float    Ratio = ValueAsRatio(B.Value, Source);
+			const FVector2 Cur   = El->GetSize();
+			El->SetSize(FVector2(B.BarFullWidth * Ratio, Cur.Y));
+			break;
+		}
+		case EHudBindingChannel::BarColor:
+		{
+			// draw 가 BackgroundColor 를 매 프레임 live read 하므로 relayout 불필요(D2).
+			El->SetColor(HealthRatioToColor(ValueAsRatio(B.Value, Source)));
+			break;
+		}
+		case EHudBindingChannel::Text:
+		{
+			// UUITextElement 계열만 텍스트 표시. OnLayoutUpdated 가 RmlUi 에 재푸시(재마운트 아님).
+			if (UUITextElement* TextEl = Cast<UUITextElement>(El))
+			{
+				TextEl->SetText(FormatBindingValue(B.Value, Source, W));
+			}
+			break;
+		}
 		}
 	}
 }

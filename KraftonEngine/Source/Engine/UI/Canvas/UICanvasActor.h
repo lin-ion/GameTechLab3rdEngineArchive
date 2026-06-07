@@ -10,14 +10,48 @@
 class UUICanvas;
 class APawn;
 
-// [사이클 3] 숫자 텍스트 readout 이 표시할 값.
+// [사이클 4] 바인딩이 대상 요소에 적용하는 시각 채널.
 UENUM()
-enum class EHudTextSource : uint8
+enum class EHudBindingChannel : uint8
 {
-	Health,         // 현재 체력(정수)
-	HealthOverMax,  // "현재 / 최대"
-	HealthPercent,  // "NN%"
-	GameTime,       // 경과 시간(초)
+	BarWidth,   // 값의 비율을 가로 폭에 반영(좌피벗 권장 — 폭 감소가 좌→우)
+	BarColor,   // 값의 비율을 색으로(가득=녹 → 절반=노 → 고갈=적)
+	Text,       // 값을 문자열로 표시(대상이 UUITextElement 계열일 때)
+};
+
+// [사이클 4] 바인딩이 읽어올 게임플레이 값. 바 채널은 체력 비율을, 텍스트 채널은 아래 포맷을 쓴다.
+UENUM()
+enum class EHudBindingValue : uint8
+{
+	HealthCurrent,   // 현재 체력(정수) / 바: 체력 비율
+	HealthOverMax,   // "현재 / 최대"    / 바: 체력 비율
+	HealthPercent,   // "NN%"           / 바: 체력 비율
+	GameTime,        // 경과 시간(초)    / 바: 의미 없음(full)
+};
+
+// [사이클 4] HUD 데이터 바인딩 1건. 에디터 Details 의 Bindings 배열에서 행 단위로 +/- 편집한다.
+USTRUCT()
+struct FHudBinding
+{
+	GENERATED_BODY()
+
+	// 대상 UI 요소(UUIElement::ElementName). UIElementPicker: 이 액터의 UUIElement 후보 콤보.
+	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Target Element", UIElementPicker=true)
+	FString TargetElement;
+
+	// 값을 읽을 월드 액터(GetFName). 비면 로컬 플레이어(possessed pawn). WorldActorPicker: 월드 APawn 콤보.
+	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Source Actor", WorldActorPicker=true)
+	FString SourceActor;
+
+	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Channel", Enum=EHudBindingChannel)
+	EHudBindingChannel Channel = EHudBindingChannel::BarWidth;
+
+	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Value", Enum=EHudBindingValue)
+	EHudBindingValue Value = EHudBindingValue::HealthCurrent;
+
+	// ── 런타임 캐시(UPROPERTY 아님 → 반사/직렬화 제외) ──
+	TWeakObjectPtr<APawn> SourceCache;            // 소스 액터 해석 결과
+	float                 BarFullWidth = -1.0f;   // BarWidth 최초 캡처한 100% 기준 폭
 };
 
 // 신규 계층형 UI Canvas 를 소유하는 액터(진단 결정: Actor + Component → .Scene 직렬화).
@@ -68,30 +102,8 @@ private:
 	UPROPERTY(Edit, Save, Category="UI", DisplayName="UI Asset", AssetType="UIAsset")
 	FSoftObjectPtr UIAssetPath;
 
-	// 대상 UI 요소 식별자(UUIElement::ElementName, UI 에디터에서 부여). 캔버스 루트에서 FindByName.
-	// UIElementPicker: Details 에서 이 액터의 UUIElement 후보 콤보로 선택(자유 텍스트 대신).
-	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Health Bar Element", UIElementPicker=true)
-	FString HealthBarElementName;
-
-	// 체력을 읽을 월드 액터 이름(GetFName().ToString()). 비면 로컬 플레이어(possessed pawn)를 기본 타깃으로,
-	// 지정 시 그 이름의 액터를 타깃으로 한다(override). 해석된 APawn 은 아래에 캐시.
-	// WorldActorPicker: Details 에서 월드의 APawn 후보 콤보로 선택(자유 텍스트 대신).
-	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Health Source Actor", WorldActorPicker=true)
-	FString HealthSourceActorName;
-
-	// [사이클 2] 체력 비율을 색으로도 피드백할지(가득=녹 → 절반=노 → 고갈=적). 기본 off.
-	// 켜면 매 프레임 대상 바의 BackgroundColor 를 덮어쓴다(저작 색 무시) — 단색 외형 유지하려면 off.
-	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Health Bar Color Feedback")
-	bool bHealthBarColorFeedback = false;
-
-	// [사이클 3] 숫자 텍스트 readout 대상 UUITextElement 식별자(ElementName). 비면 비활성.
-	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Text Element", UIElementPicker=true)
-	FString TextElementName;
-
-	// [사이클 3] 위 텍스트 요소에 표시할 값. 소스 폰은 Health Source(비면 로컬 플레이어)를 공유.
-	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Text Source", Enum=EHudTextSource)
-	EHudTextSource TextSource = EHudTextSource::Health;
-
-	TWeakObjectPtr<APawn> HealthSource;     // 이름 해석 결과 캐시(매 프레임 선형 스캔 회피). 직렬화 안 함.
-	float                 HealthBarFullWidth = -1.0f;  // 최초 바인딩 시 캡처한 100% 기준 폭. 직렬화 안 함.
+	// [사이클 4] 다중 데이터 바인딩 디스크립터 배열. 각 항목 = {대상 요소, 소스 액터, 채널, 값}.
+	// HUD 의 체력바·색·텍스트를 행 단위로 자유 구성(에디터 +/- 로 추가/삭제). 런타임 캐시는 FHudBinding 내부.
+	UPROPERTY(Edit, Save, Category="UI|Binding", DisplayName="Bindings", Type=Array, Struct=FHudBinding)
+	TArray<FHudBinding> Bindings;
 };
