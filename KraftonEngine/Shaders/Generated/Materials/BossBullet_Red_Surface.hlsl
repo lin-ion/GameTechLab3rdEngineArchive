@@ -1,4 +1,4 @@
-// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/BossBullet_1.uasset
+// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/BossBullet_Red.uasset
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
@@ -40,11 +40,9 @@ struct FMaterialResult
 
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-    float3 n_36 = float3(0.586498f, 0.000000f, 0.000000f);
-    float3 n_42 = Input.WorldNormal;
-    float3 n_39 = Input.ViewDirection;
-    float n_52 = 3.000000f;
-    float n_29 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((n_42), float3(0, 0, 1)), SafeNormalize3((n_39), float3(0, 0, 1))), 0.0f, 1.0f), n_52) * 1.000000f + 0.000000f);
+    float3 n_36 = float3(0.835443f, 0.000000f, 0.000000f);
+    float n_52 = 1.000000f;
+    float n_29 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_52) * 1.000000f + 0.000000f);
     float3 n_1 = float3(1.000000f, 1.000000f, 1.000000f);
     float3 n_45 = (float3(n_29, n_29, n_29) * n_1);
     float n_3 = 1.000000f;

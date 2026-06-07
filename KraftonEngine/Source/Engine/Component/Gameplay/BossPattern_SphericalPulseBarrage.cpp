@@ -147,6 +147,8 @@ FBulletSpawnParams UBossPattern_SphericalPulseBarrage::MakeBulletParams(const FV
 	Params.Archetype.Speed = ProjectileSpeed;
 	Params.Archetype.Lifetime = ProjectileLifetime;
 	Params.Archetype.RenderScale = ProjectileRenderScale;
+	Params.Archetype.MeshPath = ProjectileMeshPath;
+	Params.Archetype.MaterialPath = ProjectileMaterialPath;
 	Params.bHoming = false;
 	Params.HomingStrength = 0.0f;
 	Params.HomingMaxTurnRateDegrees = 0.0f;

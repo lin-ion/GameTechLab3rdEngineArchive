@@ -67,6 +67,12 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Projectile Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float ProjectileRenderScale = 0.2f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Projectile Mesh Path", AssetType="StaticMesh")
+	FString ProjectileMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Projectile Material Path", AssetType="Material")
+	FString ProjectileMaterialPath = "None";
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Homing Strength", Min=0.0f, Max=1000.0f, Speed=0.1f)
 	float HomingStrength = 8.0f;
 

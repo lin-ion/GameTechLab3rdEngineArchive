@@ -57,6 +57,12 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage", DisplayName="Projectile Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float ProjectileRenderScale = 0.18f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage", DisplayName="Projectile Mesh Path", AssetType="StaticMesh")
+	FString ProjectileMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage", DisplayName="Projectile Material Path", AssetType="Material")
+	FString ProjectileMaterialPath = "None";
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage", DisplayName="Use Random Sphere Points")
 	bool bUseRandomSpherePoints = false;
 

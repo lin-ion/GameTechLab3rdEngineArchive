@@ -82,7 +82,6 @@ void UBulletHellComponent::BeginPlay()
 
 	if (bEnableRendering)
 	{
-		EnsureRenderComponent();
 		RebuildRendererFromBullets();
 	}
 }
@@ -91,9 +90,7 @@ void UBulletHellComponent::PostEditProperty(const char* PropertyName)
 {
 	UActorComponent::PostEditProperty(PropertyName);
 
-	if (IsProperty(PropertyName, "RendererMeshPath", "Renderer Mesh Path") ||
-		IsProperty(PropertyName, "RendererMaterialPath", "Renderer Material Path") ||
-		IsProperty(PropertyName, "bEnableRendering", "Enable Rendering") ||
+	if (IsProperty(PropertyName, "bEnableRendering", "Enable Rendering") ||
 		IsProperty(PropertyName, "bAutoCreateRenderer", "Auto Create Renderer") ||
 		IsProperty(PropertyName, "RenderScale", "Render Scale"))
 	{
@@ -134,8 +131,6 @@ FBulletHandle UBulletHellComponent::SpawnBullet(
 	FBulletSpawnParams Params;
 	Params.Position = Position;
 	Params.Velocity = Velocity;
-	Params.Archetype.MeshPath = RendererMeshPath;
-	Params.Archetype.MaterialPath = RendererMaterialPath;
 	Params.Archetype.Radius = Radius;
 	Params.Archetype.Speed = Velocity.Length();
 	Params.Archetype.Lifetime = Lifetime;
@@ -1102,8 +1097,6 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderComponent()
 {
 	FBulletArchetype DefaultArchetype;
-	DefaultArchetype.MeshPath = RendererMeshPath;
-	DefaultArchetype.MaterialPath = RendererMaterialPath;
 	DefaultArchetype.RenderScale = RenderScale;
 	const int32 SlotIndex = FindOrCreateRenderSlot(DefaultArchetype);
 	return SlotIndex >= 0 ? EnsureRenderSlotComponent(SlotIndex) : nullptr;
@@ -1285,7 +1278,7 @@ void UBulletHellComponent::ApplyRenderSlotAssets(int32 SlotIndex)
 		Renderer->SetStaticMeshByPath(Slot.MeshPath);
 	}
 
-	if (!Slot.MaterialPath.empty() && Slot.MaterialPath != "None" && Renderer->GetMaterialSlotCount() > 0)
+	if (!Slot.MaterialPath.empty() && Slot.MaterialPath != "None")
 	{
 		Renderer->SetMaterialByPath(0, Slot.MaterialPath);
 	}
