@@ -31,6 +31,7 @@ struct FObjMaterialInfo
 	FVector Kd = FVector(1.0f, 1.0f, 1.0f); // diffuse color
 	FVector Ke = FVector::ZeroVector; // emissive color
 	FString map_Kd; // diffuse texture file path
+	FString map_Ke; // emissive texture file path
 	FString map_Bump; // normal/bump texture file path
 
 	FVector Ka = FVector(1.0f, 1.0f, 1.0f); // ambient color
