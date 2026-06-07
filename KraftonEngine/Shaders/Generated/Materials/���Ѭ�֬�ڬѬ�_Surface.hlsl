@@ -1,4 +1,4 @@
-// Generated from C:/Github/Week14/Jungle_Week14_Team4/KraftonEngine/Content/Material/Auto/Front_Uncomb.003.uasset
+// Generated from C:/Github/Week14/Jungle_Week14_Team4/KraftonEngine/Content/Material/Auto/Материал.uasset
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
@@ -41,25 +41,22 @@ struct FMaterialResult
     float Opacity;
 };
 
-Texture2D Tex_DiffuseTexture : register(t0);
+Texture2D Tex_Diffuse : register(t0);
 
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-    float n_35 = 0.500000f;
-    float4 n_3 = Tex_DiffuseTexture.Sample(LinearWrapSampler, Input.UV0);
-    float3 n_37 = (float3(n_35, n_35, n_35) * (n_3).rgb);
-    float n_15 = 0.089087f;
-    float3 n_17 = float3(0.500000f, 0.500000f, 0.500000f);
-    float3 n_13 = float3(0.000000f, 0.000000f, 0.000000f);
-    float n_19 = 1.000000f;
+    float4 n_27 = Tex_Diffuse.Sample(LinearWrapSampler, Input.UV0);
+    float n_5 = 1.000000f;
+    float3 n_7 = float3(0.500000f, 0.500000f, 0.500000f);
+    float n_9 = 1.000000f;
     FMaterialResult Result;
-    Result.BaseColor = n_37;
+    Result.BaseColor = (n_27).rgb;
     Result.Normal = float3(0, 0, 1);
-    Result.Roughness = n_15;
+    Result.Roughness = n_5;
     Result.Metallic = 0.0f;
-    Result.Specular = n_17;
-    Result.Emissive = n_13;
-    Result.Opacity = n_19;
+    Result.Specular = n_7;
+    Result.Emissive = float3(0, 0, 0);
+    Result.Opacity = n_9;
     return Result;
 }
 

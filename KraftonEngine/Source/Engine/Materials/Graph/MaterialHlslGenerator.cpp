@@ -985,6 +985,10 @@ float4 ApplyFogTransparent(float4 color, float3 worldPos, float3 cameraWorldPos)
         {
             SS << "#include \"Common/ForwardLighting.hlsli\"\n";
         }
+        if (Domain == EMaterialGraphTarget::Surface)
+        {
+            SS << "#include \"Common/NormalMapping.hlsli\"\n";
+        }
         SS << "\n";
         SS << "float3 SafeNormalize3(float3 V, float3 Fallback)\n";
         SS << "{\n";
@@ -1274,6 +1278,7 @@ struct MaterialSurfaceVSOutput
     float4 color : COLOR0;
     float2 texcoord : TEXCOORD0;
     float3 worldPos : TEXCOORD1;
+    float4 tangent : TANGENT;
 };
 
 MaterialSurfaceVSOutput VS(VS_Input_PNCTT input)
@@ -1285,6 +1290,8 @@ MaterialSurfaceVSOutput VS(VS_Input_PNCTT input)
     output.normal = normalize(mul(input.normal, (float3x3)NormalMatrix));
     output.color = input.color;
     output.texcoord = input.texcoord;
+    float3 T = BuildOrthonormalTangent(output.normal, mul(input.tangent.xyz, (float3x3)Model));
+    output.tangent = float4(T, input.tangent.w);
     return output;
 }
 
@@ -1304,6 +1311,8 @@ MaterialSurfaceVSOutput VS_InstancedStaticMesh(VS_Input_InstancedPNCTT input)
     output.normal = normalize(mul(input.normal, (float3x3)WorldModel));
     output.color = input.color * input.instanceColor;
     output.texcoord = input.texcoord;
+    float3 T = BuildOrthonormalTangent(output.normal, mul(input.tangent.xyz, (float3x3)WorldModel));
+    output.tangent = float4(T, input.tangent.w);
     return output;
 }
 
@@ -1339,7 +1348,12 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     MaterialInput.ViewDirection = SafeNormalize3(CameraWorldPos - input.worldPos, MaterialInput.WorldNormal);
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
-    float3 N = normalize(input.normal);
+    float3 N = SafeNormalize3(input.normal, float3(0, 0, 1));
+    float3 materialNormal = Result.Normal;
+    float3 tangentNormal = all(abs(materialNormal - float3(0, 0, 1)) < 1e-5f)
+        ? float3(0, 0, 1)
+        : materialNormal * 2.0f - 1.0f;
+    N = ApplyTangentSpaceNormal(N, input.tangent.xyz, input.tangent.w, tangentNormal);
 )";
 
         if (bUnlit)
