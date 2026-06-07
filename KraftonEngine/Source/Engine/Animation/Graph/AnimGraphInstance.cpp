@@ -7,7 +7,10 @@
 #include "Animation/Sequence/AnimSequence.h"
 #include "Animation/AnimationManager.h"
 #include "Animation/Nodes/AnimNode_Base.h"
+#include "Component/Primitive/SkeletalMeshComponent.h"
+#include "Component/Script/LuaScriptComponent.h"
 #include "Core/Logging/Log.h"
+#include "GameFramework/AActor.h"
 #include "Mesh/Skeletal/SkeletalMesh.h"
 #include "Mesh/Skeletal/SkeletalMeshAsset.h"
 #include "Serialization/Archive.h"
@@ -96,6 +99,26 @@ void UAnimGraphInstance::NativeUpdateAnimation(float DeltaSeconds)
 	// in-editor live preview: 자산이 변경되면 다음 frame UpdateAnimation 의 RootNode->Update
 	// 호출 전에 트리 재생성. 새 트리는 즉시 그 frame 부터 평가.
 	RecompileTreeIfDirty();
+}
+
+void UAnimGraphInstance::HandleAnimNotify(const FAnimNotifyEvent& Notify)
+{
+	USkeletalMeshComponent* MeshComp = GetOwningComponent();
+	AActor* Owner = MeshComp ? MeshComp->GetOwner() : nullptr;
+	if (!Owner)
+	{
+		return;
+	}
+
+	const FString NotifyName = Notify.NotifyName.ToString();
+	for (UActorComponent* Component : Owner->GetComponents())
+	{
+		ULuaScriptComponent* LuaComponent = Cast<ULuaScriptComponent>(Component);
+		if (IsValid(LuaComponent))
+		{
+			LuaComponent->DispatchAnimNotify(NotifyName);
+		}
+	}
 }
 
 void UAnimGraphInstance::RecompileTreeIfDirty()

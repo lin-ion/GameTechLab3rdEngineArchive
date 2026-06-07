@@ -16,6 +16,7 @@
 #include "GameFramework/Camera/PlayerCameraManager.h"
 #include "GameFramework/ProjectilePoolSubSystem.h"
 #include "Actor/ProjectileActor.h"
+#include "Actor/ArrowProjectileActor.h"
 #include "Object/Reflection/UClass.h"
 #include "Profiling/Stats/Stats.h"
 #include "Profiling/Time/Timer.h"
@@ -582,6 +583,7 @@ void UWorld::BeginPlay()
 	}
 	// test를 위해서 editor 관리를 위해 initworld에서 prewarm
 	ProjectilePool->Prewarm<AProjectileActor>(64);
+	ProjectilePool->Prewarm<AArrowProjectileActor>(1);
 	if (PersistentLevel)
 	{
 		PersistentLevel->BeginPlay();

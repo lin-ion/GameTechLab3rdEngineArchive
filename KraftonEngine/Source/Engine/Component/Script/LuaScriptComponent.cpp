@@ -37,6 +37,7 @@ void ULuaScriptComponent::ClearLuaRuntime()
 	LuaOnEndOverlap = sol::nil;
 	LuaOnHit = sol::nil;
 	LuaOnEndHit = sol::nil;
+	LuaOnAnimNotify = sol::nil;
 	Env = sol::environment();
 	bHasCalledLuaEndPlay = false;
 	bPendingLuaEndPlay = false;
@@ -102,6 +103,7 @@ void ULuaScriptComponent::InitializeLua()
 	LuaOnEndOverlap = Env["OnEndOverlap"];
 	LuaOnHit = Env["OnHit"];
 	LuaOnEndHit = Env["OnEndHit"];
+	LuaOnAnimNotify = Env["OnAnimNotify"];
 }
 
 void ULuaScriptComponent::ReloadScript()
@@ -427,6 +429,52 @@ bool ULuaScriptComponent::CallFunction(const FString& FunctionName)
 		}
 	}
 	return bOk;
+}
+
+bool ULuaScriptComponent::DispatchAnimNotify(const FString& NotifyName)
+{
+	if (!Env.valid())
+	{
+		return false;
+	}
+
+	bool bHandled = false;
+	const FString SpecificFunctionName = FString("OnAnimNotify_") + NotifyName;
+	sol::object SpecificTarget = Env[SpecificFunctionName.c_str()];
+	if (SpecificTarget.valid() && SpecificTarget.get_type() == sol::type::function)
+	{
+		FLuaCallScope Scope(this);
+		sol::protected_function Fn = SpecificTarget;
+		sol::protected_function_result Result = Fn();
+		if (!Result.valid())
+		{
+			sol::error Err = Result;
+			UE_LOG("Lua %s error in %s: %s", SpecificFunctionName.c_str(), ScriptFile.c_str(), Err.what());
+			FLuaDebugManager::OnLuaError(ScriptFile, Err.what(), false);
+		}
+		else
+		{
+			bHandled = true;
+		}
+	}
+
+	if (LuaOnAnimNotify)
+	{
+		FLuaCallScope Scope(this);
+		sol::protected_function_result Result = LuaOnAnimNotify(NotifyName);
+		if (!Result.valid())
+		{
+			sol::error Err = Result;
+			UE_LOG("Lua OnAnimNotify error in %s: %s", ScriptFile.c_str(), Err.what());
+			FLuaDebugManager::OnLuaError(ScriptFile, Err.what(), false);
+		}
+		else
+		{
+			bHandled = true;
+		}
+	}
+
+	return bHandled;
 }
 
 void ULuaScriptComponent::DispatchOverlap(AActor* OtherActor)

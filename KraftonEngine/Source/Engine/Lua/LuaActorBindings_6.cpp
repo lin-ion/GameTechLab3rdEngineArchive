@@ -1,8 +1,39 @@
 ﻿#include "LuaActorBindings.internal.h"
 #include "GameFramework/ProjectilePoolSubSystem.h"   // FProjectilePoolSubsystem::Acquire<T>
 #include "GameFramework/Actor/ProjectileActor.h"     // AProjectileActor
+#include "GameFramework/Actor/ArrowProjectileActor.h"
 
 using namespace LuaActorBindingsDetail;
+
+namespace
+{
+    bool GetCameraProjectileFrame(UWorld* W, FVector& OutOrigin, FRotator& OutRotation)
+    {
+        if (!W) return false;
+
+        FMinimalViewInfo POV;
+        if (!W->GetActivePOV(POV)) return false;
+
+        OutOrigin = POV.Location;
+        OutRotation = POV.Rotation;
+        if (APlayerController* PC = W->GetFirstPlayerController())
+        {
+            if (APawn* Pawn = PC->GetPossessedPawn())
+            {
+                OutOrigin = Pawn->GetActorLocation();
+            }
+        }
+        return true;
+    }
+
+    FVector ComputeCameraProjectileLocation(const FVector& Origin, const FRotator& Rotation, const FVector& Offset)
+    {
+        return Origin
+            + Rotation.GetForwardVector() * Offset.X
+            + Rotation.GetRightVector() * Offset.Y
+            + Rotation.GetUpVector() * Offset.Z;
+    }
+}
 
 void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
 {
@@ -89,6 +120,113 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
                 (int)W->HasBegunPlay(), (int)W->GetWorldType(),
                 SpawnLoc.X, SpawnLoc.Y, SpawnLoc.Z, Vel.X, Vel.Y, Vel.Z, (int)(Proj != nullptr));
             return Proj;
+        }
+    );
+    World.set_function(
+        "FireCameraArrowProjectile",
+        [](sol::optional<float> Speed, sol::optional<FVector> SpawnOffset) -> AActor*
+        {
+            if (!GEngine) return nullptr;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return nullptr;
+
+            FProjectilePoolSubsystem* Pool = W->GetProjectilePool();
+            if (!Pool) return nullptr;
+
+            FVector Origin;
+            FRotator Rotation;
+            if (!GetCameraProjectileFrame(W, Origin, Rotation)) return nullptr;
+
+            const float   SpeedVal  = Speed.value_or(8.0f);
+            const FVector OffsetVal = SpawnOffset.value_or(FVector(1.0f, 0.0f, 1.0f));
+            const FVector Forward   = Rotation.GetForwardVector();
+            const FVector SpawnLoc  = ComputeCameraProjectileLocation(Origin, Rotation, OffsetVal);
+            const FVector Vel       = Forward * SpeedVal;
+
+            AActor* Proj = Pool->Acquire<AArrowProjectileActor>(SpawnLoc, Vel);
+            UE_LOG("[ArrowProjectileFire] PIE=%d type=%d spawn=(%.2f,%.2f,%.2f) vel=(%.3f,%.3f,%.3f) acquired=%d",
+                (int)W->HasBegunPlay(), (int)W->GetWorldType(),
+                SpawnLoc.X, SpawnLoc.Y, SpawnLoc.Z, Vel.X, Vel.Y, Vel.Z, (int)(Proj != nullptr));
+            return Proj;
+        }
+    );
+    World.set_function(
+        "PrepareCameraArrowProjectile",
+        [](sol::optional<FVector> SpawnOffset) -> AActor*
+        {
+            if (!GEngine) return nullptr;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return nullptr;
+
+            FProjectilePoolSubsystem* Pool = W->GetProjectilePool();
+            if (!Pool) return nullptr;
+
+            FVector Origin;
+            FRotator Rotation;
+            if (!GetCameraProjectileFrame(W, Origin, Rotation)) return nullptr;
+
+            const FVector OffsetVal = SpawnOffset.value_or(FVector(1.0f, 0.0f, 1.0f));
+            const FVector SpawnLoc = ComputeCameraProjectileLocation(Origin, Rotation, OffsetVal);
+            AArrowProjectileActor* Proj = Pool->Acquire<AArrowProjectileActor>(SpawnLoc, FVector::ZeroVector);
+            if (Proj)
+            {
+                Proj->HoldAt(SpawnLoc, Rotation.GetForwardVector());
+            }
+            UE_LOG("[ArrowProjectilePrepare] spawn=(%.2f,%.2f,%.2f) acquired=%d",
+                SpawnLoc.X, SpawnLoc.Y, SpawnLoc.Z, (int)(Proj != nullptr));
+            return Proj;
+        }
+    );
+    World.set_function(
+        "UpdateCameraArrowProjectile",
+        [](AActor* Projectile, sol::optional<FVector> SpawnOffset) -> bool
+        {
+            AArrowProjectileActor* Arrow = Cast<AArrowProjectileActor>(Projectile);
+            if (!Arrow || !GEngine) return false;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return false;
+
+            FVector Origin;
+            FRotator Rotation;
+            if (!GetCameraProjectileFrame(W, Origin, Rotation)) return false;
+
+            const FVector OffsetVal = SpawnOffset.value_or(FVector(1.0f, 0.0f, 1.0f));
+            Arrow->HoldAt(ComputeCameraProjectileLocation(Origin, Rotation, OffsetVal), Rotation.GetForwardVector());
+            return true;
+        }
+    );
+    World.set_function(
+        "LaunchCameraArrowProjectile",
+        [](AActor* Projectile, sol::optional<float> Speed, sol::optional<FVector> SpawnOffset) -> bool
+        {
+            AArrowProjectileActor* Arrow = Cast<AArrowProjectileActor>(Projectile);
+            if (!Arrow || !GEngine) return false;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return false;
+
+            FVector Origin;
+            FRotator Rotation;
+            if (!GetCameraProjectileFrame(W, Origin, Rotation)) return false;
+
+            const float SpeedVal = Speed.value_or(8.0f);
+            const FVector OffsetVal = SpawnOffset.value_or(FVector(1.0f, 0.0f, 1.0f));
+            const FVector Forward = Rotation.GetForwardVector();
+            Arrow->SetActorLocation(ComputeCameraProjectileLocation(Origin, Rotation, OffsetVal));
+            Arrow->Launch(Forward * SpeedVal);
+            return true;
+        }
+    );
+    World.set_function(
+        "ReleaseProjectile",
+        [](AActor* Projectile) -> bool
+        {
+            if (!Projectile || !GEngine) return false;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return false;
+            FProjectilePoolSubsystem* Pool = W->GetProjectilePool();
+            if (!Pool) return false;
+            Pool->Release(Projectile);
+            return true;
         }
     );
     World.set_function(

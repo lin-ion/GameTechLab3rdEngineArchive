@@ -20,13 +20,12 @@ local BOW_SKILL_KEY = "RightMouseButton"
 local BOW_AIM_GRAVITY = 0.1
 local BOW_AIM_MAX_DURATION = 60.0
 local BOW_CAMERA_ARM_LENGTH = 3.0
-local BOW_CAMERA_SOCKET_OFFSET = Vec3(0.0, -0.5, 1.0)
+local BOW_CAMERA_SOCKET_OFFSET = Vec3(0.0, 0.5, 1.0)
 local BOW_CAMERA_FOV = 0.55
-local BOW_CAMERA_BLEND_DURATION = 0.22
-local BOW_CAMERA_RESTORE_DURATION = 0.18
+local BOW_CAMERA_BLEND_DURATION = 0.3
+local BOW_CAMERA_RESTORE_DURATION = 0.22
 local BOW_PROJECTILE_SPEED = 15.0
-local BOW_PROJECTILE_MUZZLE_OFFSET = 2.0
-local BOW_PROJECTILE_SPAWN_HEIGHT = 1.2
+local BOW_PROJECTILE_OFFSET = Vec3(0.1, 0.15, 0.3)
 local BOW_RELEASE_SLOMO_DURATION = 0.3
 local BOW_RELEASE_SLOMO_DILATION = 0.15
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
@@ -35,6 +34,17 @@ local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
 local FIRE_PROJECTILE_KEY = "LeftMouseButton"
 local PROJECTILE_SPEED = 3.0
 local PROJECTILE_MUZZLE_OFFSET = 2.0
+-- Weapon Setting
+local STAFF_WEAPON_TRANSFORM = {
+    location = Vec3(0.0, 40.0, 0.0),
+    rotation = Vec3(-90.0, 0.0, 180.0),
+    scale = Vec3(25.0, 25.0, 25.0)
+}
+local BOW_WEAPON_TRANSFORM = {
+    location = Vec3(7.0, 50.0, 25.0),
+    rotation = Vec3(-90.0, 0.0, 170.0),
+    scale = Vec3(25.0, 25.0, 25.0)
+}
 local DASH_ANIM_VAR = "Dash"
 local ROLL_ANIM_VAR = "Roll"
 local ATTACK_ANIM_VAR = "Attack"
@@ -284,7 +294,40 @@ local function get_weapon_mesh(owner)
     return weapon_mesh
 end
 
-local function set_weapon_mesh(owner, mesh_path, label)
+local function apply_weapon_transform(mesh, transform, label)
+    if mesh == nil or transform == nil then
+        return
+    end
+
+    if transform.location ~= nil then
+        if mesh.RelativeLocation ~= nil then
+            mesh.RelativeLocation = transform.location
+        elseif mesh.SetLocation ~= nil then
+            mesh:SetLocation(transform.location)
+        end
+    end
+
+    if transform.rotation ~= nil then
+        if mesh.Rotation ~= nil then
+            mesh.Rotation = transform.rotation
+        elseif mesh.SetRotation ~= nil then
+            mesh:SetRotation(transform.rotation)
+        end
+    end
+
+    if transform.scale ~= nil then
+        if mesh.RelativeScale ~= nil then
+            mesh.RelativeScale = transform.scale
+        end
+    end
+
+    log("weapon transform applied: " .. tostring(label)
+        .. " location=" .. format_vec3(transform.location)
+        .. " rotation=" .. format_vec3(transform.rotation)
+        .. " scale=" .. format_vec3(transform.scale))
+end
+
+local function set_weapon_mesh(owner, mesh_path, label, transform)
     local mesh = get_weapon_mesh(owner)
     if mesh == nil or mesh.SetStaticMeshByPath == nil then
         log("weapon swap skipped: StaticMeshComponent unavailable label=" .. tostring(label))
@@ -297,6 +340,7 @@ local function set_weapon_mesh(owner, mesh_path, label)
 
     if ok and result then
         log("weapon swapped: " .. tostring(label) .. " path=" .. tostring(mesh_path))
+        apply_weapon_transform(mesh, transform, label)
         return true
     end
 
@@ -311,6 +355,10 @@ local function get_camera_state(owner)
     return {
         arm_length = arm ~= nil and arm.GetTargetArmLength ~= nil and arm:GetTargetArmLength() or nil,
         socket_offset = arm ~= nil and arm.GetSocketOffset ~= nil and arm:GetSocketOffset() or nil,
+        inherit_pitch = arm ~= nil and arm.GetInheritPitch ~= nil and arm:GetInheritPitch() or nil,
+        inherit_yaw = arm ~= nil and arm.GetInheritYaw ~= nil and arm:GetInheritYaw() or nil,
+        inherit_roll = arm ~= nil and arm.GetInheritRoll ~= nil and arm:GetInheritRoll() or nil,
+        camera_rotation = cam ~= nil and cam.GetRotation ~= nil and cam:GetRotation() or nil,
         fov = cam ~= nil and cam.GetFOV ~= nil and cam:GetFOV() or nil
     }
 end
@@ -328,9 +376,24 @@ local function apply_camera_state(owner, state)
         if state.socket_offset ~= nil and arm.SetSocketOffset ~= nil then
             arm:SetSocketOffset(state.socket_offset)
         end
+        if state.inherit_pitch ~= nil and arm.SetInheritPitch ~= nil then
+            arm:SetInheritPitch(state.inherit_pitch)
+        end
+        if state.inherit_yaw ~= nil and arm.SetInheritYaw ~= nil then
+            arm:SetInheritYaw(state.inherit_yaw)
+        end
+        if state.inherit_roll ~= nil and arm.SetInheritRoll ~= nil then
+            arm:SetInheritRoll(state.inherit_roll)
+        end
+        if arm.ResetLagState ~= nil then
+            arm:ResetLagState()
+        end
     end
 
     local cam = get_camera(owner)
+    if cam ~= nil and state.camera_rotation ~= nil and cam.SetRotation ~= nil then
+        cam:SetRotation(state.camera_rotation)
+    end
     if cam ~= nil and state.fov ~= nil and cam.SetFOV ~= nil then
         cam:SetFOV(state.fov)
     end
@@ -368,6 +431,10 @@ local function tick_camera_blend(dt)
     local state = {
         arm_length = lerp_number(camera_blend.from.arm_length, camera_blend.target.arm_length, alpha),
         socket_offset = lerp_vec3(camera_blend.from.socket_offset, camera_blend.target.socket_offset, alpha),
+        inherit_pitch = camera_blend.target.inherit_pitch,
+        inherit_yaw = camera_blend.target.inherit_yaw,
+        inherit_roll = camera_blend.target.inherit_roll,
+        camera_rotation = camera_blend.target.camera_rotation,
         fov = lerp_number(camera_blend.from.fov, camera_blend.target.fov, alpha)
     }
 
@@ -754,6 +821,63 @@ local function face_owner_to_camera_yaw(owner, ability)
     return false
 end
 
+local function set_bow_first_person_camera(owner, ability, enabled)
+    local arm = get_spring_arm(owner)
+    if arm == nil then
+        return false
+    end
+
+    if enabled then
+        if arm.SetInheritPitch ~= nil then
+            arm:SetInheritPitch(false)
+        elseif ability ~= nil and not ability.inherit_pitch_warning_logged then
+            ability.inherit_pitch_warning_logged = true
+            log("AirBowShot warning: SpringArmComponent.SetInheritPitch unavailable")
+        end
+    elseif ability ~= nil and ability.saved_inherit_pitch ~= nil and arm.SetInheritPitch ~= nil then
+        arm:SetInheritPitch(ability.saved_inherit_pitch)
+    end
+
+    if arm.ResetLagState ~= nil then
+        arm:ResetLagState()
+    end
+    return true
+end
+
+local function update_bow_first_person_camera(owner, ability)
+    if owner == nil then
+        return false
+    end
+
+    local cam = get_camera(owner)
+    if cam == nil or cam.SetRotation == nil or owner.GetControlRotation == nil then
+        return false
+    end
+
+    local control = owner:GetControlRotation()
+    if control == nil then
+        return false
+    end
+
+    if owner.Rotation ~= nil then
+        local saved = ability ~= nil and ability.saved_actor_rotation or nil
+        owner.Rotation = Vec3(saved ~= nil and (saved.X or 0.0) or 0.0, control.Y or 0.0, control.Z or 0.0)
+    end
+
+    cam:SetRotation(Vec3(0.0, 0.0, 0.0))
+    return true
+end
+
+local function restore_bow_actor_rotation(owner, ability)
+    if owner == nil or ability == nil or ability.saved_actor_rotation == nil or owner.Rotation == nil then
+        return
+    end
+
+    local current = owner.Rotation
+    local saved = ability.saved_actor_rotation
+    owner.Rotation = Vec3(saved.X or 0.0, saved.Y or 0.0, current ~= nil and (current.Z or 0.0) or (saved.Z or 0.0))
+end
+
 local function play_arrow_release_slomo(owner)
     if owner == nil then
         log("AirBowShot slomo skipped: owner is nil")
@@ -791,6 +915,70 @@ local function play_arrow_release_slomo(owner)
     return false
 end
 
+local function prepare_held_arrow(owner, ability, reason)
+    if ability == nil then
+        log("AirBowShot arrow prepare skipped: ability is nil reason=" .. tostring(reason))
+        return nil
+    end
+
+    if ability.arrow_projectile ~= nil then
+        if World ~= nil and World.UpdateCameraArrowProjectile ~= nil then
+            World.UpdateCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_OFFSET)
+        end
+        log("AirBowShot arrow prepare skipped: already prepared reason=" .. tostring(reason))
+        return ability.arrow_projectile
+    end
+
+    if owner ~= nil then
+        face_owner_to_camera_yaw(owner, ability)
+        update_bow_first_person_camera(owner, ability)
+    end
+
+    if World ~= nil and World.PrepareCameraArrowProjectile ~= nil then
+        ability.arrow_projectile = World.PrepareCameraArrowProjectile(BOW_PROJECTILE_OFFSET)
+        log("AirBowShot arrow prepared by " .. tostring(reason)
+            .. ": projectile=" .. tostring(ability.arrow_projectile ~= nil)
+            .. " offset=" .. format_vec3(BOW_PROJECTILE_OFFSET))
+    else
+        log("AirBowShot arrow prepare skipped: World.PrepareCameraArrowProjectile unavailable reason=" .. tostring(reason))
+    end
+
+    return ability.arrow_projectile
+end
+
+local function launch_prepared_arrow(owner, ability, reason)
+    if ability == nil then
+        log("AirBowShot launch skipped: ability is nil reason=" .. tostring(reason))
+        return false
+    end
+
+    if ability.arrow_released then
+        log("AirBowShot launch skipped: arrow already released reason=" .. tostring(reason))
+        return false
+    end
+
+    if ability.arrow_projectile == nil or World == nil or World.LaunchCameraArrowProjectile == nil then
+        log("AirBowShot launch failed: prepared arrow or World.LaunchCameraArrowProjectile unavailable reason=" .. tostring(reason))
+        return false
+    end
+
+    if owner ~= nil then
+        face_owner_to_camera_yaw(owner, ability)
+        update_bow_first_person_camera(owner, ability)
+    end
+
+    local launched = World.LaunchCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_SPEED, BOW_PROJECTILE_OFFSET)
+    log("AirBowShot launched by " .. tostring(reason) .. ": launched=" .. tostring(launched))
+    if launched then
+        ability.arrow_released = true
+        ability.arrow_projectile = nil
+        play_arrow_release_slomo(owner)
+        return true
+    end
+
+    return false
+end
+
 local function restore_bow_aim(owner, ability)
     if ability == nil then
         return
@@ -804,6 +992,10 @@ local function restore_bow_aim(owner, ability)
     start_camera_blend(owner, {
         arm_length = ability.saved_arm_length,
         socket_offset = ability.saved_socket_offset,
+        inherit_pitch = ability.saved_inherit_pitch,
+        inherit_yaw = ability.saved_inherit_yaw,
+        inherit_roll = ability.saved_inherit_roll,
+        camera_rotation = ability.saved_camera_rotation,
         fov = ability.saved_fov
     }, BOW_CAMERA_RESTORE_DURATION, "AirBowShot restore")
 
@@ -827,13 +1019,18 @@ local function activate_bow_aim(owner, ability)
     end
 
     ability.saved_gravity = character_movement.GetGravity ~= nil and character_movement:GetGravity() or nil
+    ability.saved_actor_rotation = owner.Rotation
 
     local arm = get_spring_arm(owner)
     if arm ~= nil then
         ability.saved_arm_length = arm.GetTargetArmLength ~= nil and arm:GetTargetArmLength() or nil
         ability.saved_socket_offset = arm.GetSocketOffset ~= nil and arm:GetSocketOffset() or nil
+        ability.saved_inherit_pitch = arm.GetInheritPitch ~= nil and arm:GetInheritPitch() or nil
+        ability.saved_inherit_yaw = arm.GetInheritYaw ~= nil and arm:GetInheritYaw() or nil
+        ability.saved_inherit_roll = arm.GetInheritRoll ~= nil and arm:GetInheritRoll() or nil
         log("AirBowShot spring arm found: savedArmLength=" .. tostring(ability.saved_arm_length)
             .. " savedSocketOffset=" .. format_vec3(ability.saved_socket_offset)
+            .. " savedInheritPitch=" .. tostring(ability.saved_inherit_pitch)
             .. " hasSetTargetArmLength=" .. tostring(arm.SetTargetArmLength ~= nil)
             .. " hasSetSocketOffset=" .. tostring(arm.SetSocketOffset ~= nil))
     else
@@ -843,6 +1040,7 @@ local function activate_bow_aim(owner, ability)
     local cam = get_camera(owner)
     if cam ~= nil then
         ability.saved_fov = cam.GetFOV ~= nil and cam:GetFOV() or nil
+        ability.saved_camera_rotation = cam.GetRotation ~= nil and cam:GetRotation() or nil
         log("AirBowShot camera found: savedFov=" .. tostring(ability.saved_fov)
             .. " hasSetFOV=" .. tostring(cam.SetFOV ~= nil))
     else
@@ -851,9 +1049,13 @@ local function activate_bow_aim(owner, ability)
 
     stop_owner_movement(owner)
     lock_movement(owner, BOW_SKILL_NAME)
-    set_weapon_mesh(owner, BOW_STATIC_MESH_PATH, "Bow")
+    set_weapon_mesh(owner, BOW_STATIC_MESH_PATH, "Bow", BOW_WEAPON_TRANSFORM)
     set_anim_bool(owner, ARROW_ANIM_VAR, true)
     face_owner_to_camera_yaw(owner, ability)
+    set_bow_first_person_camera(owner, ability, true)
+    update_bow_first_person_camera(owner, ability)
+    ability.arrow_projectile = nil
+    ability.arrow_released = false
 
     if character_movement.SetGravity ~= nil then
         character_movement:SetGravity(BOW_AIM_GRAVITY)
@@ -864,6 +1066,7 @@ local function activate_bow_aim(owner, ability)
     start_camera_blend(owner, {
         arm_length = BOW_CAMERA_ARM_LENGTH,
         socket_offset = BOW_CAMERA_SOCKET_OFFSET,
+        inherit_pitch = false,
         fov = BOW_CAMERA_FOV
     }, BOW_CAMERA_BLEND_DURATION, "AirBowShot aim")
 
@@ -871,10 +1074,17 @@ local function activate_bow_aim(owner, ability)
         .. " armLength=" .. tostring(BOW_CAMERA_ARM_LENGTH)
         .. " socketOffset=" .. format_vec3(BOW_CAMERA_SOCKET_OFFSET)
         .. " fov=" .. tostring(BOW_CAMERA_FOV))
+
+    log("AirBowShot waiting for FireArrow AnimNotify to prepare held arrow")
 end
 
 local function tick_bow_aim(owner, ability, dt)
     face_owner_to_camera_yaw(owner, ability)
+    update_bow_first_person_camera(owner, ability)
+
+    if ability.arrow_projectile ~= nil and World ~= nil and World.UpdateCameraArrowProjectile ~= nil then
+        World.UpdateCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_OFFSET)
+    end
 
     local character_movement = get_character_movement(owner)
     if character_movement ~= nil and not is_bow_airborne(character_movement) then
@@ -884,24 +1094,31 @@ local function tick_bow_aim(owner, ability, dt)
     end
 
     if Input ~= nil and Input.GetKeyUp ~= nil and Input.GetKeyUp(BOW_SKILL_KEY) then
-        if World ~= nil and World.FireCameraProjectile ~= nil then
-            local proj = World.FireCameraProjectile(BOW_PROJECTILE_SPEED, BOW_PROJECTILE_MUZZLE_OFFSET, BOW_PROJECTILE_SPAWN_HEIGHT)
-            log("AirBowShot released: projectile=" .. tostring(proj ~= nil))
-            if proj ~= nil then
-                play_arrow_release_slomo(owner)
-            end
-        else
-            log("AirBowShot release failed: World.FireCameraProjectile unavailable")
+        if ability.arrow_projectile == nil then
+            log("AirBowShot release requested before FireArrow AnimNotify: preparing arrow immediately")
+            prepare_held_arrow(owner, ability, "early release fallback")
         end
+
+        launch_prepared_arrow(owner, ability, "RightMouseButton release")
         ability_system:EndAbility(ability)
     end
 end
 
 local function end_bow_aim(owner, ability)
+    if ability ~= nil and ability.arrow_projectile ~= nil and not ability.arrow_released then
+        if World ~= nil and World.ReleaseProjectile ~= nil then
+            World.ReleaseProjectile(ability.arrow_projectile)
+            log("AirBowShot held arrow released back to pool")
+        end
+        ability.arrow_projectile = nil
+    end
+
     restore_bow_aim(owner, ability)
+    set_bow_first_person_camera(owner, ability, false)
+    restore_bow_actor_rotation(owner, ability)
     if owner ~= nil then
         set_anim_bool(owner, ARROW_ANIM_VAR, false)
-        set_weapon_mesh(owner, STAFF_STATIC_MESH_PATH, "Staff")
+        set_weapon_mesh(owner, STAFF_STATIC_MESH_PATH, "Staff", STAFF_WEAPON_TRANSFORM)
         unlock_movement(owner, BOW_SKILL_NAME)
     end
     log("AirBowShot ended")
@@ -953,6 +1170,7 @@ local function setup_abilities()
     set_anim_bool(owner, ROLL_ANIM_VAR, false)
     set_anim_bool(owner, ATTACK_ANIM_VAR, false)
     set_anim_bool(owner, ARROW_ANIM_VAR, false)
+    set_weapon_mesh(owner, STAFF_STATIC_MESH_PATH, "Staff", STAFF_WEAPON_TRANSFORM)
     reset_dash_trail(owner)
 end
 
@@ -973,7 +1191,7 @@ function EndPlay()
         set_anim_bool(actor, ROLL_ANIM_VAR, false)
         set_anim_bool(actor, ATTACK_ANIM_VAR, false)
         set_anim_bool(actor, ARROW_ANIM_VAR, false)
-        set_weapon_mesh(actor, STAFF_STATIC_MESH_PATH, "Staff")
+        set_weapon_mesh(actor, STAFF_STATIC_MESH_PATH, "Staff", STAFF_WEAPON_TRANSFORM)
         movement_locks = {}
         set_owner_movement_blocked(actor, false)
         reset_dash_trail(actor)
@@ -991,6 +1209,27 @@ function EndPlay()
 end
 
 function OnOverlap(OtherActor)
+end
+
+function OnAnimNotify(name)
+    log("AnimNotify received: " .. tostring(name))
+end
+
+function OnAnimNotify_FireArrow()
+    log("AnimNotify_FireArrow received")
+    if ability_system == nil then
+        log("AirBowShot notify ignored: ability system unavailable")
+        return
+    end
+
+    local ability = ability_system:GetAbility(BOW_SKILL_NAME)
+    if ability == nil or not ability.is_active then
+        log("AirBowShot notify ignored: ability is not active")
+        return
+    end
+
+    local owner = resolve_actor()
+    prepare_held_arrow(owner, ability, "FireArrow AnimNotify")
 end
 
 function Tick(dt)

@@ -535,6 +535,51 @@ void FLuaScriptManager::RegisterActorBindings_1(sol::state& Lua)
         [](USpringArmComponent& C)
         {
             return C.SocketOffset;
+        },
+        "SetUsePawnControlRotation",
+        [](USpringArmComponent& C, bool bUse)
+        {
+            C.bUsePawnControlRotation = bUse;
+        },
+        "GetUsePawnControlRotation",
+        [](USpringArmComponent& C)
+        {
+            return C.bUsePawnControlRotation;
+        },
+        "SetInheritPitch",
+        [](USpringArmComponent& C, bool bInherit)
+        {
+            C.bInheritPitch = bInherit;
+        },
+        "GetInheritPitch",
+        [](USpringArmComponent& C)
+        {
+            return C.bInheritPitch;
+        },
+        "SetInheritYaw",
+        [](USpringArmComponent& C, bool bInherit)
+        {
+            C.bInheritYaw = bInherit;
+        },
+        "GetInheritYaw",
+        [](USpringArmComponent& C)
+        {
+            return C.bInheritYaw;
+        },
+        "SetInheritRoll",
+        [](USpringArmComponent& C, bool bInherit)
+        {
+            C.bInheritRoll = bInherit;
+        },
+        "GetInheritRoll",
+        [](USpringArmComponent& C)
+        {
+            return C.bInheritRoll;
+        },
+        "ResetLagState",
+        [](USpringArmComponent& C)
+        {
+            C.ResetLagState();
         }
     );
     Lua.new_usertype<UCineCameraComponent>(
