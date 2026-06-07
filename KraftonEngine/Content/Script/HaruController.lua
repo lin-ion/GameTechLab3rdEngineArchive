@@ -1012,13 +1012,11 @@ local function activate_bow_aim(owner, ability)
     end
 
     local character_movement = get_character_movement(owner)
-    if not is_bow_airborne(character_movement) then
-        log("AirBowShot activate failed: character is not airborne; " .. get_movement_debug_state(character_movement))
-        ability.active_remaining = 0.0
-        return
-    end
+    ability.started_airborne = is_bow_airborne(character_movement)
+    log("AirBowShot activate: startedAirborne=" .. tostring(ability.started_airborne)
+        .. " " .. get_movement_debug_state(character_movement))
 
-    ability.saved_gravity = character_movement.GetGravity ~= nil and character_movement:GetGravity() or nil
+    ability.saved_gravity = ability.started_airborne and character_movement ~= nil and character_movement.GetGravity ~= nil and character_movement:GetGravity() or nil
     ability.saved_actor_rotation = owner.Rotation
 
     local arm = get_spring_arm(owner)
@@ -1057,10 +1055,12 @@ local function activate_bow_aim(owner, ability)
     ability.arrow_projectile = nil
     ability.arrow_released = false
 
-    if character_movement.SetGravity ~= nil then
+    if ability.started_airborne and character_movement ~= nil and character_movement.SetGravity ~= nil then
         character_movement:SetGravity(BOW_AIM_GRAVITY)
-    else
+    elseif ability.started_airborne then
         log("AirBowShot warning: CharacterMovementComponent.SetGravity unavailable")
+    else
+        log("AirBowShot ground aim: gravity unchanged")
     end
 
     start_camera_blend(owner, {
@@ -1084,13 +1084,6 @@ local function tick_bow_aim(owner, ability, dt)
 
     if ability.arrow_projectile ~= nil and World ~= nil and World.UpdateCameraArrowProjectile ~= nil then
         World.UpdateCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_OFFSET)
-    end
-
-    local character_movement = get_character_movement(owner)
-    if character_movement ~= nil and not is_bow_airborne(character_movement) then
-        log("AirBowShot cancelled: landed; " .. get_movement_debug_state(character_movement))
-        ability_system:EndAbility(ability)
-        return
     end
 
     if Input ~= nil and Input.GetKeyUp ~= nil and Input.GetKeyUp(BOW_SKILL_KEY) then
@@ -1261,14 +1254,9 @@ function Tick(dt)
     -- ProjectilePool 테스트: 좌클릭 → 카메라 시점으로 발사체 발사
     if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(BOW_SKILL_KEY) then
         log("input pressed: " .. BOW_SKILL_KEY)
-        local character_movement = get_character_movement(resolve_actor())
-        if not is_bow_airborne(character_movement) then
-            log("AirBowShot blocked: character is not airborne; " .. get_movement_debug_state(character_movement))
-        else
-            local activated, reason = ability_system:TryActivateByKey(BOW_SKILL_KEY)
-            if not activated then
-                log("AirBowShot blocked: " .. (reason or "unknown"))
-            end
+        local activated, reason = ability_system:TryActivateByKey(BOW_SKILL_KEY)
+        if not activated then
+            log("AirBowShot blocked: " .. (reason or "unknown"))
         end
     end
 
