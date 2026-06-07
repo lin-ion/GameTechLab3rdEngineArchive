@@ -5,6 +5,9 @@
 #include "UI/UIAsset.h"
 #include "UI/UIAssetManager.h"
 #include "Serialization/SceneSaveManager.h"
+#include "GameFramework/World.h"
+#include "GameFramework/Pawn/Pawn.h"
+#include "GameFramework/GameMode/PlayerController.h"
 #include "Core/Logging/Log.h"
 
 void AUICanvasActor::InitCanvas()
@@ -106,4 +109,79 @@ void AUICanvasActor::EndPlay()
 		FUICanvasManager::Get().UnregisterCanvas(C);
 	}
 	Super::EndPlay();
+}
+
+void AUICanvasActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	UpdateHealthBarBinding();
+}
+
+void AUICanvasActor::UpdateHealthBarBinding()
+{
+	// 캔버스 미구성(편집/미등록) 또는 대상 요소 미설정이면 비활성. 매 프레임 호출되므로 빠른 탈출 우선.
+	UUICanvas* C = Canvas.Get();
+	if (!C || HealthBarElementName.empty())
+	{
+		return;
+	}
+
+	UWorld* W = GetWorld();
+	if (!W)
+	{
+		return;
+	}
+
+	// 소스 액터 해석 — 캐시 우선, 무효일 때만 재해석(GameplayStatics 권고: 매 프레임 선형 스캔 회피).
+	//  - HealthSourceActorName 이 비어 있으면 로컬 플레이어(possessed pawn)를 기본 타깃으로 한다(권고 경로).
+	//  - 지정돼 있으면 그 이름(Outliner 표시명)의 액터를 타깃으로 한다(이름 = override, 특정 NPC 등).
+	APawn* Source = HealthSource.Get();
+	if (!IsValid(Source))
+	{
+		Source = nullptr;
+		if (HealthSourceActorName.empty())
+		{
+			// 기본: 로컬 플레이어의 possessed pawn. 체인 전체가 null-safe
+			// (GameMode 없으면 PC=null, 미possess/사망이면 GetPossessedPawn=null).
+			if (APlayerController* PC = W->GetFirstPlayerController())
+			{
+				Source = PC->GetPossessedPawn();
+			}
+		}
+		else
+		{
+			// override: 지정된 이름의 액터를 스캔.
+			for (AActor* A : W->GetActors())
+			{
+				if (IsValid(A) && A->GetFName().ToString() == HealthSourceActorName)
+				{
+					Source = Cast<APawn>(A);
+					break;
+				}
+			}
+		}
+		HealthSource = Source;
+		if (!Source)
+		{
+			return;
+		}
+	}
+
+	// 대상 요소(체력바)를 식별자로 조회. 빈 이름은 FindByName 이 매칭하지 않는다.
+	UUIElement* Bar = C->FindByName(HealthBarElementName);
+	if (!Bar)
+	{
+		return;
+	}
+
+	// 최초 바인딩 시 저작된 폭을 100% 기준으로 캡처(이후 비율로 스케일). BeginPlay 의 캔버스 재구성마다
+	// 저작 폭으로 리셋되도록, 캡처는 음수 sentinel 일 때만 수행.
+	if (HealthBarFullWidth < 0.0f)
+	{
+		HealthBarFullWidth = Bar->GetSize().X;
+	}
+
+	const float    Ratio   = Source->GetHealthRatio();   // [0,1] (MaxHealth<=0 이면 1)
+	const FVector2 CurSize  = Bar->GetSize();
+	Bar->SetSize(FVector2(HealthBarFullWidth * Ratio, CurSize.Y));
 }

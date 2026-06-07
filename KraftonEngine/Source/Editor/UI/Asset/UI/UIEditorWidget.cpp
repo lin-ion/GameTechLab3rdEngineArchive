@@ -507,6 +507,20 @@ void FUIEditorWidget::RenderDetailsPanel()
 
 	ImGui::Spacing();
 
+	// 요소 식별자 — 런타임 데이터 바인딩(체력바 등)이 캔버스 루트에서 이 이름으로 대상을 찾는다
+	// (UUIElement::FindByName). 빈 이름은 바인딩 대상에서 제외. Save 되어 .uasset 에 영속.
+	{
+		char NameBuf[128];
+		snprintf(NameBuf, sizeof(NameBuf), "%s", Selected->GetElementName().c_str());
+		if (ImGui::InputText("Element Name", NameBuf, sizeof(NameBuf)))
+		{
+			Selected->SetElementName(FString(NameBuf));
+			MarkDirty();
+		}
+	}
+
+	ImGui::Spacing();
+
 	// 공통 RectTransform/Color 직접 바인딩 + (텍스트 요소면) 텍스트 5필드. 편집 즉시 멤버 반영 →
 	// 다음 프레임 LayoutCanvas 가 ScreenRect 갱신 → 뷰포트 실시간 반영(텍스트는 아래 ImGui 미러).
 	FUIRectTransform& RT = Selected->GetRectTransform();

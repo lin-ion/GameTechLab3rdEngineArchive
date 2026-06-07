@@ -28,6 +28,33 @@ public:
 	FVector2 GetPosition() const { return RectTransform.Position; }
 	FVector2 GetSize() const { return RectTransform.Size; }
 
+	// 바인딩/조회용 사용자 식별자(예: "HealthBar"). 컴포넌트의 UObject 이름은 직렬화되지 않고
+	// 클래스명 기반이라 고유하지 않으므로(SerializeSceneComponentTree 는 Name 미기록), 별도
+	// Save 필드로 식별자를 보존한다. UI 에디터 Details 에서 편집한다(데이터 바인딩 사이클 1).
+	void SetElementName(const FString& InName) { ElementName = InName; }
+	const FString& GetElementName() const { return ElementName; }
+
+	// 이 노드와 하위 트리에서 ElementName 이 일치하는 첫 요소를 반환(없으면 nullptr). 빈 이름은 매칭 제외.
+	// 바인딩 컴포넌트가 캔버스 루트에서 대상 엘리먼트(예: 체력바)를 찾을 때 사용.
+	UUIElement* FindByName(const FString& InName)
+	{
+		if (!InName.empty() && ElementName == InName)
+		{
+			return this;
+		}
+		for (USceneComponent* Child : GetChildren())
+		{
+			if (UUIElement* UIChild = Cast<UUIElement>(Child))
+			{
+				if (UUIElement* Found = UIChild->FindByName(InName))
+				{
+					return Found;
+				}
+			}
+		}
+		return nullptr;
+	}
+
 	// 레이아웃 패스가 채우는 화면 사각형(스크린 픽셀, GlobalScale 반영). 사이클 3에서 갱신.
 	const FUIRect& GetScreenRect() const { return ScreenRect; }
 	void SetScreenRect(const FUIRect& InRect) { ScreenRect = InRect; }
@@ -57,6 +84,10 @@ protected:
 	FUIRectTransform RectTransform;
 
 	FUIRect ScreenRect;               // 레이아웃 결과 캐시(직렬화 안 함)
+
+	// 사용자 식별자(데이터 바인딩 대상 조회용). 기본 빈 문자열 — 명명된 요소만 바인딩 대상이 된다.
+	UPROPERTY(Save, Category="UI", DisplayName="Element Name")
+	FString ElementName;
 
 	UPROPERTY(Save, Category="UI", DisplayName="Visible Rect")
 	bool bVisibleRect = true;
