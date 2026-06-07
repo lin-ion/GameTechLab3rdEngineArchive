@@ -218,6 +218,17 @@ void FLuaScriptManager::RegisterActorBindings_3(sol::state& Lua)
             {
                 Component.SetRelativeLocation(V);
             }
+        ),
+        "RelativeScale",
+        sol::property(
+            [](USceneComponent& Component)
+            {
+                return Component.GetRelativeScale();
+            },
+            [](USceneComponent& Component, const FVector& V)
+            {
+                Component.SetRelativeScale(V);
+            }
         )
     );
 

@@ -37,6 +37,10 @@ private:
 	// 팔레트 → 요소 생성 + 부착(선택 노드, 없으면 캔버스 루트). 진단 §D: AddComponentToActor 모델.
 	void SpawnElement(UClass* ElementClass);
 
+	// 선택 요소(+서브트리) 삭제. AUICanvasActor::RemoveComponent 로 부모 detach + OwnedComponents 해제 +
+	// RouteComponentDestroyed(자식 재귀) + DestroyObject 일괄. 루트 캔버스는 삭제 불가(트리 루트 계약).
+	void DeleteSelected();
+
 	AUICanvasActor* OwnerActor   = nullptr;  // 복원 트리의 소유자(에디터 수명). GC keepalive 대상.
 	UUICanvas*      Canvas       = nullptr;  // 복원된 루트 캔버스(편집/레이아웃/드로우 대상).
 	UUIElement*     Selected     = nullptr;  // 현재 선택 요소(트리/뷰포트). 생성 부모 + 디테일 대상.

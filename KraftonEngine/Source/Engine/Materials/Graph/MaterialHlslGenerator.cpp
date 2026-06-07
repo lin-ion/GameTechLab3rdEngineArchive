@@ -534,6 +534,43 @@ namespace
                 ResultType = EMaterialGraphPinType::Float4;
                 break;
             }
+            case EMaterialGraphNodeType::WorldNormal:
+                RhsExpr = "Input.WorldNormal";
+                ResultType = EMaterialGraphPinType::Float3;
+                break;
+            case EMaterialGraphNodeType::WorldPosition:
+                RhsExpr = "Input.WorldPosition";
+                ResultType = EMaterialGraphPinType::Float3;
+                break;
+            case EMaterialGraphNodeType::CameraPosition:
+                RhsExpr = "Input.CameraPosition";
+                ResultType = EMaterialGraphPinType::Float3;
+                break;
+            case EMaterialGraphNodeType::ViewDirection:
+                RhsExpr = "Input.ViewDirection";
+                ResultType = EMaterialGraphPinType::Float3;
+                break;
+            case EMaterialGraphNodeType::Fresnel:
+            {
+                const FString N = InputExpr(Node, "Normal", "Input.WorldNormal", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3);
+                const FString V = InputExpr(Node, "ViewDirection", "Input.ViewDirection", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3);
+
+                char PowerDefault[40];
+                char BiasDefault[40];
+                char ScaleDefault[40];
+                std::snprintf(PowerDefault, sizeof(PowerDefault), "%.6ff", Node.Value.X != 0.0f ? Node.Value.X : 5.0f);
+                std::snprintf(BiasDefault, sizeof(BiasDefault), "%.6ff", Node.Value.Y);
+                std::snprintf(ScaleDefault, sizeof(ScaleDefault), "%.6ff", Node.Value.Z != 0.0f ? Node.Value.Z : 1.0f);
+
+                const FString Power = InputExpr(Node, "Power", PowerDefault, EMaterialGraphPinType::Float, EMaterialGraphPinType::Float);
+                const FString Bias  = InputExpr(Node, "Bias", BiasDefault, EMaterialGraphPinType::Float, EMaterialGraphPinType::Float);
+                const FString Scale = InputExpr(Node, "Scale", ScaleDefault, EMaterialGraphPinType::Float, EMaterialGraphPinType::Float);
+                const FString SafeN = "SafeNormalize3((" + N + "), float3(0, 0, 1))";
+                const FString SafeV = "SafeNormalize3((" + V + "), float3(0, 0, 1))";
+                RhsExpr             = "saturate(pow(1.0f - clamp(dot(" + SafeN + ", " + SafeV + "), 0.0f, 1.0f), " + Power + ") * " + Scale + " + " + Bias + ")";
+                ResultType          = EMaterialGraphPinType::Float;
+                break;
+            }
             case EMaterialGraphNodeType::MakeFloat2:
             {
                 const FString X = InputExpr(Node, "X", "0.0f", EMaterialGraphPinType::Float, EMaterialGraphPinType::Float);
@@ -851,13 +888,14 @@ namespace
             return SS.str();
         }
 
-        FString ColorExpr, NormalExpr, RoughExpr, MetalExpr, EmissiveExpr, OpacityExpr, UVOffsetExpr;
+        FString ColorExpr, NormalExpr, RoughExpr, MetalExpr, SpecularExpr, EmissiveExpr, OpacityExpr, UVOffsetExpr;
         if (Domain == EMaterialGraphTarget::Surface || Domain == EMaterialGraphTarget::Decal)
         {
             ColorExpr    = OutputInputExpr(Context, Graph, *Output, "BaseColor", "float3(1, 1, 1)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             NormalExpr   = OutputInputExpr(Context, Graph, *Output, "Normal", "float3(0, 0, 1)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             RoughExpr    = OutputInputExpr(Context, Graph, *Output, "Roughness", "0.5f", EMaterialGraphPinType::Float, EMaterialGraphPinType::Float, Result);
             MetalExpr    = OutputInputExpr(Context, Graph, *Output, "Metallic", "0.0f", EMaterialGraphPinType::Float, EMaterialGraphPinType::Float, Result);
+            SpecularExpr = OutputInputExpr(Context, Graph, *Output, "Specular", "float3(1, 1, 1)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             EmissiveExpr = OutputInputExpr(Context, Graph, *Output, "Emissive", "float3(0, 0, 0)", EMaterialGraphPinType::Float3, EMaterialGraphPinType::Float3, Result);
             OpacityExpr  = OutputInputExpr(Context, Graph, *Output, "Opacity", "1.0f", EMaterialGraphPinType::Float, EMaterialGraphPinType::Float, Result);
         }
@@ -880,6 +918,7 @@ namespace
             SS << "    Result.Normal = " << NormalExpr << ";\n";
             SS << "    Result.Roughness = " << RoughExpr << ";\n";
             SS << "    Result.Metallic = " << MetalExpr << ";\n";
+            SS << "    Result.Specular = " << SpecularExpr << ";\n";
             SS << "    Result.Emissive = " << EmissiveExpr << ";\n";
             SS << "    Result.Opacity = " << OpacityExpr << ";\n";
         }
@@ -903,7 +942,9 @@ namespace
         SS << "#include \"Common/Functions.hlsli\"\n";
         SS << "#include \"Common/SystemSamplers.hlsli\"\n";
         // AlphaBlend 도메인에서는 per-pixel fog 적용
-        if (Domain == EMaterialGraphTarget::ParticleSprite || Domain == EMaterialGraphTarget::ParticleMesh)
+        if (Domain == EMaterialGraphTarget::ParticleSprite ||
+            Domain == EMaterialGraphTarget::ParticleMesh ||
+            Domain == EMaterialGraphTarget::ParticleBeamTrail)
         {
             SS << "#define USE_FOG 1\n";
             SS << "#include \"Common/Fog.hlsli\"\n";
@@ -945,6 +986,11 @@ float4 ApplyFogTransparent(float4 color, float3 worldPos, float3 cameraWorldPos)
             SS << "#include \"Common/ForwardLighting.hlsli\"\n";
         }
         SS << "\n";
+        SS << "float3 SafeNormalize3(float3 V, float3 Fallback)\n";
+        SS << "{\n";
+        SS << "    float LenSq = dot(V, V);\n";
+        SS << "    return LenSq > 1e-8f ? V * rsqrt(LenSq) : Fallback;\n";
+        SS << "}\n\n";
         SS << "struct FMaterialPixelInput\n";
         SS << "{\n";
         SS << "    float2 UV0;\n";
@@ -955,6 +1001,10 @@ float4 ApplyFogTransparent(float4 color, float3 worldPos, float3 cameraWorldPos)
         SS << "    float  Time;\n";
         SS << "    float  SubImageIndex;\n";
         SS << "    float4 DynamicParam;\n";
+        SS << "    float3 WorldPosition;\n";
+        SS << "    float3 WorldNormal;\n";
+        SS << "    float3 CameraPosition;\n";
+        SS << "    float3 ViewDirection;\n";
         SS << "};\n\n";
         SS << "struct FMaterialResult\n";
         SS << "{\n";
@@ -964,6 +1014,7 @@ float4 ApplyFogTransparent(float4 color, float3 worldPos, float3 cameraWorldPos)
             SS << "    float3 Normal;\n";
             SS << "    float Roughness;\n";
             SS << "    float Metallic;\n";
+            SS << "    float3 Specular;\n";
             SS << "    float3 Emissive;\n";
             SS << "    float Opacity;\n";
         }
@@ -981,6 +1032,24 @@ float4 ApplyFogTransparent(float4 color, float3 worldPos, float3 cameraWorldPos)
     FString BuildParticleSpriteMain()
     {
         return R"(
+struct VS_Input_ParticleQuad
+{
+    float3 cornerSign : POSITION;
+    float2 baseUV     : TEXTCOORD;
+};
+
+struct VS_Input_ParticleInstance
+{
+    float3 position      : INSTANCE_CENTER;
+    float3 velocity      : INSTANCE_VELOCITY;
+    float2 size          : INSTANCE_SIZE;
+    float  rotation      : INSTANCE_ROTATION;
+    float4 color         : INSTANCE_COLOR;
+    int    subImageIndex : INSTANCE_SUBIMAGE;
+    int    alignment     : INSTANCE_ALIGNMENT;
+    float4 dynamicParam  : INSTANCE_DYNAMICPARAM;
+};
+
 struct PS_Input_MaterialParticle
 {
     float4 position       : SV_POSITION;
@@ -996,18 +1065,21 @@ PS_Input_MaterialParticle VS(VS_Input_ParticleQuad quad, VS_Input_ParticleInstan
     float sinR = sin(inst.rotation);
     float cosR = cos(inst.rotation);
 
+    float2 corner = quad.cornerSign.xy;
     float2 rotUV = float2(
-        quad.cornerUV.x * cosR - quad.cornerUV.y * sinR,
-        quad.cornerUV.x * sinR + quad.cornerUV.y * cosR
+        corner.x * cosR - corner.y * sinR,
+        corner.x * sinR + corner.y * cosR
     );
 
+    float3 cameraRight = float3(View._m00, View._m10, View._m20);
+    float3 cameraUp    = float3(View._m01, View._m11, View._m21);
     float3 worldPos = inst.position
-                    + FrameCameraRight * rotUV.x * inst.size
-                    + FrameCameraUp * rotUV.y * inst.size;
+                    + cameraRight * (rotUV.x * inst.size.x)
+                    + cameraUp    * (rotUV.y * inst.size.y);
 
     PS_Input_MaterialParticle output;
     output.position       = mul(float4(worldPos, 1.0f), mul(View, Projection));
-    output.texcoord       = quad.cornerUV + 0.5f;
+    output.texcoord       = quad.baseUV;
     output.color          = inst.color;
     output.subImageIndex  = inst.subImageIndex;
     output.dynamicParam   = inst.dynamicParam;
@@ -1026,6 +1098,10 @@ float4 PS(PS_Input_MaterialParticle input) : SV_TARGET
     MaterialInput.Time          = Time;
     MaterialInput.SubImageIndex = input.subImageIndex;
     MaterialInput.DynamicParam  = input.dynamicParam;
+    MaterialInput.WorldPosition = input.worldPos;
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = SafeNormalize3(CameraWorldPos - input.worldPos, float3(0, 0, 1));
+    MaterialInput.WorldNormal = MaterialInput.ViewDirection;
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float4 FinalColor = float4(Result.Color + Result.Emissive, Result.Opacity);
@@ -1039,6 +1115,17 @@ float4 PS(PS_Input_MaterialParticle input) : SV_TARGET
     {
         std::stringstream SS;
         SS << R"(
+struct VS_Input_MeshParticleInstance
+{
+    float4 transform0    : INSTANCE_TRANSFORM0;
+    float4 transform1    : INSTANCE_TRANSFORM1;
+    float4 transform2    : INSTANCE_TRANSFORM2;
+    float4 transform3    : INSTANCE_TRANSFORM3;
+    float4 color         : INSTANCE_COLOR;
+    int    subImageIndex : INSTANCE_SUBIMAGE;
+    float4 dynamicParam  : INSTANCE_DYNAMICPARAM;
+};
+
 struct PS_Input_MaterialMeshParticle
 {
     float4 position       : SV_POSITION;
@@ -1052,9 +1139,15 @@ struct PS_Input_MaterialMeshParticle
 
 PS_Input_MaterialMeshParticle VS(VS_Input_PNCT vert, VS_Input_MeshParticleInstance inst)
 {
-    float4 worldPos = mul(float4(vert.position, 1.0f), inst.transform);
+    float4x4 worldMatrix = float4x4(
+        inst.transform0,
+        inst.transform1,
+        inst.transform2,
+        inst.transform3
+    );
+    float4 worldPos = mul(float4(vert.position, 1.0f), worldMatrix);
     // 비균일 스케일에서 노말 왜곡 방지: 역전치 행렬 사용
-    float3x3 M = (float3x3)inst.transform;
+    float3x3 M = (float3x3)worldMatrix;
     float3x3 invTransM = transpose(float3x3(
         cross(M[1], M[2]),
         cross(M[2], M[0]),
@@ -1084,6 +1177,10 @@ float4 PS(PS_Input_MaterialMeshParticle input) : SV_TARGET
     MaterialInput.Time          = Time;
     MaterialInput.SubImageIndex = input.subImageIndex;
     MaterialInput.DynamicParam  = input.dynamicParam;
+    MaterialInput.WorldPosition = input.worldPos;
+    MaterialInput.WorldNormal = SafeNormalize3(input.normal, float3(0, 0, 1));
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = SafeNormalize3(CameraWorldPos - input.worldPos, MaterialInput.WorldNormal);
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float3 BaseColor = Result.Color;
@@ -1109,6 +1206,58 @@ float4 PS(PS_Input_MaterialMeshParticle input) : SV_TARGET
 }
 )";
         return SS.str();
+    }
+
+    FString BuildParticleBeamTrailMain()
+    {
+        return R"(
+struct VS_Input_MaterialBeamTrail
+{
+    float3 position : POSITION;
+    float4 color    : COLOR;
+    float2 texcoord : TEXTCOORD;
+};
+
+struct PS_Input_MaterialBeamTrail
+{
+    float4 position : SV_POSITION;
+    float2 texcoord : TEXCOORD0;
+    float4 color    : COLOR;
+    float3 worldPos : TEXCOORD1;
+};
+
+PS_Input_MaterialBeamTrail VS(VS_Input_MaterialBeamTrail input)
+{
+    PS_Input_MaterialBeamTrail output;
+    output.position = ApplyVP(input.position);
+    output.texcoord = input.texcoord;
+    output.color    = input.color;
+    output.worldPos = input.position;
+    return output;
+}
+
+float4 PS(PS_Input_MaterialBeamTrail input) : SV_TARGET
+{
+    FMaterialPixelInput MaterialInput;
+    MaterialInput.UV0           = input.texcoord;
+    MaterialInput.UV1           = float2(0, 0);
+    MaterialInput.UV2           = float2(0, 0);
+    MaterialInput.ParticleColor = input.color;
+    MaterialInput.VertexColor   = input.color;
+    MaterialInput.Time          = Time;
+    MaterialInput.SubImageIndex = 0.0f;
+    MaterialInput.DynamicParam  = float4(0, 0, 0, 0);
+    MaterialInput.WorldPosition = input.worldPos;
+    MaterialInput.WorldNormal = SafeNormalize3(CameraWorldPos - input.worldPos, float3(0, 0, 1));
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = MaterialInput.WorldNormal;
+
+    FMaterialResult Result = EvaluateMaterial(MaterialInput);
+    float4 FinalColor = float4(Result.Color + Result.Emissive, Result.Opacity);
+    clip(FinalColor.a - 0.01f);
+    return ApplyFogTransparent(FinalColor, input.worldPos, CameraWorldPos);
+}
+)";
     }
 
     FString BuildSurfaceMain(ERenderPass RenderPass, EBlendMode BlendMode, EMaterialShadingModel ShadingModel, bool bReceiveLighting, float OpacityMaskClipValue)
@@ -1184,6 +1333,10 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     MaterialInput.Time          = Time;
     MaterialInput.SubImageIndex = 0.0f;
     MaterialInput.DynamicParam  = float4(0, 0, 0, 0);
+    MaterialInput.WorldPosition = input.worldPos;
+    MaterialInput.WorldNormal = SafeNormalize3(input.normal, float3(0, 0, 1));
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = SafeNormalize3(CameraWorldPos - input.worldPos, MaterialInput.WorldNormal);
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float3 N = normalize(input.normal);
@@ -1200,16 +1353,17 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
         {
             // UberLit 과 동일한 라이팅 누적 — directional/point/spot + CSM/spot/point shadows.
             // ForwardLighting.hlsli 가 AccumulateDiffuse / AccumulateSpecular 를 제공한다.
-            const float Shininess = (ShadingModel == EMaterialShadingModel::Phong) ? 32.0f : 8.0f;
             const bool  bSpecular = (ShadingModel == EMaterialShadingModel::Phong || ShadingModel == EMaterialShadingModel::DefaultLit);
 
             SS << R"(
     float3 V = normalize(CameraWorldPos - input.worldPos);
     float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
+    float materialRoughness = clamp(Result.Roughness, 0.02f, 1.0f);
+    float materialShininess = max(1.0f, (2.0f / (materialRoughness * materialRoughness)) - 2.0f);
 )";
             if (bSpecular)
             {
-                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, " << Shininess << ".0f, input.position);\n";
+                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, materialShininess, input.position) * Result.Specular;\n";
             }
             else
             {
@@ -1286,6 +1440,10 @@ float4 PS(PS_Input_Decal input) : SV_TARGET
     MaterialInput.Time          = Time;
     MaterialInput.SubImageIndex = 0.0f;
     MaterialInput.DynamicParam  = float4(0, 0, 0, 0);
+    MaterialInput.WorldPosition = input.worldPos;
+    MaterialInput.WorldNormal = SafeNormalize3(input.normal, float3(0, 0, 1));
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = SafeNormalize3(CameraWorldPos - input.worldPos, MaterialInput.WorldNormal);
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float OutOpacity = saturate(Result.Opacity);
@@ -1302,15 +1460,16 @@ float4 PS(PS_Input_Decal input) : SV_TARGET
         }
         else
         {
-            const float Shininess = (ShadingModel == EMaterialShadingModel::Phong) ? 32.0f : 8.0f;
             const bool bSpecular = (ShadingModel == EMaterialShadingModel::Phong || ShadingModel == EMaterialShadingModel::DefaultLit);
             SS << R"(
     float3 V = normalize(CameraWorldPos - input.worldPos);
     float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
+    float materialRoughness = clamp(Result.Roughness, 0.02f, 1.0f);
+    float materialShininess = max(1.0f, (2.0f / (materialRoughness * materialRoughness)) - 2.0f);
 )";
             if (bSpecular)
             {
-                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, " << Shininess << ".0f, input.position);\n";
+                SS << "    float3 specular = AccumulateSpecular(input.worldPos, N, V, materialShininess, input.position) * Result.Specular;\n";
             }
             else
             {
@@ -1347,6 +1506,10 @@ float4 PS(PS_Input_UV input) : SV_TARGET
     MaterialInput.Time          = Time;
     MaterialInput.SubImageIndex = 0.0f;
     MaterialInput.DynamicParam  = float4(0, 0, 0, 0);
+    MaterialInput.WorldPosition = float3(0, 0, 0);
+    MaterialInput.WorldNormal = float3(0, 0, 1);
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = float3(0, 0, 1);
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     return float4(Result.Color + Result.Emissive, Result.Opacity);
@@ -1390,6 +1553,9 @@ bool FMaterialHlslGenerator::Generate(const FMaterialGraph& Graph, const FMateri
         break;
     case EMaterialGraphTarget::ParticleMesh:
         SS << BuildParticleMeshMain(Options.bReceiveLighting);
+        break;
+    case EMaterialGraphTarget::ParticleBeamTrail:
+        SS << BuildParticleBeamTrailMain();
         break;
     case EMaterialGraphTarget::PostProcess:
         SS << BuildPostProcessMain();

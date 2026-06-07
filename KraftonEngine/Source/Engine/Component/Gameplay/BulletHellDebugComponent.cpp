@@ -159,6 +159,14 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 		Archetype.Lifetime = SecondaryLifetime;
 		Archetype.RenderScale = (std::max)(0.01f, SecondaryRenderScale);
 		Archetype.Damage = (std::max)(0.0f, SecondaryDamage);
+		Archetype.Trail.bEnableTrail = bSecondaryTrailEnabled;
+		Archetype.Trail.MaterialPath = SecondaryTrailMaterialPath;
+		Archetype.Trail.Color = SecondaryTrailColor;
+		Archetype.Trail.Width = (std::max)(0.001f, SecondaryTrailWidth);
+		Archetype.Trail.Lifetime = (std::max)(0.001f, SecondaryTrailLifetime);
+		Archetype.Trail.MaxSamples = (std::max)(2, SecondaryTrailMaxSamples);
+		Archetype.Trail.SampleInterval = (std::max)(0.0f, SecondaryTrailSampleInterval);
+		Archetype.Trail.MinSampleDistance = (std::max)(0.0f, SecondaryTrailMinSampleDistance);
 		return Archetype;
 	}
 
@@ -169,6 +177,14 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 	Archetype.Lifetime = DebugSpawnLifetime;
 	Archetype.RenderScale = (std::max)(0.01f, PrimaryRenderScale);
 	Archetype.Damage = (std::max)(0.0f, PrimaryDamage);
+	Archetype.Trail.bEnableTrail = bPrimaryTrailEnabled;
+	Archetype.Trail.MaterialPath = PrimaryTrailMaterialPath;
+	Archetype.Trail.Color = PrimaryTrailColor;
+	Archetype.Trail.Width = (std::max)(0.001f, PrimaryTrailWidth);
+	Archetype.Trail.Lifetime = (std::max)(0.001f, PrimaryTrailLifetime);
+	Archetype.Trail.MaxSamples = (std::max)(2, PrimaryTrailMaxSamples);
+	Archetype.Trail.SampleInterval = (std::max)(0.0f, PrimaryTrailSampleInterval);
+	Archetype.Trail.MinSampleDistance = (std::max)(0.0f, PrimaryTrailMinSampleDistance);
 	return Archetype;
 }
 

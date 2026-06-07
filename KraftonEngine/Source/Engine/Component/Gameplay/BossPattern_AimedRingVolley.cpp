@@ -230,6 +230,16 @@ FBulletSpawnParams UBossPattern_AimedRingVolley::MakeStationaryBulletParams(cons
 	Params.Archetype.Speed = 0.0f;
 	Params.Archetype.Lifetime = ProjectileLifetime < 0.0f ? -1.0f : LaunchDelay + (std::max)(0.0f, ProjectileLifetime);
 	Params.Archetype.RenderScale = ProjectileRenderScale;
+	Params.Archetype.MeshPath = ProjectileMeshPath;
+	Params.Archetype.MaterialPath = ProjectileMaterialPath;
+	Params.Archetype.Trail.bEnableTrail = bProjectileTrailEnabled;
+	Params.Archetype.Trail.MaterialPath = ProjectileTrailMaterialPath;
+	Params.Archetype.Trail.Color = ProjectileTrailColor;
+	Params.Archetype.Trail.Width = (std::max)(0.001f, ProjectileTrailWidth);
+	Params.Archetype.Trail.Lifetime = (std::max)(0.001f, ProjectileTrailLifetime);
+	Params.Archetype.Trail.MaxSamples = (std::max)(2, ProjectileTrailMaxSamples);
+	Params.Archetype.Trail.SampleInterval = (std::max)(0.0f, ProjectileTrailSampleInterval);
+	Params.Archetype.Trail.MinSampleDistance = (std::max)(0.0f, ProjectileTrailMinSampleDistance);
 	Params.bHoming = false;
 	Params.HomingStrength = 0.0f;
 	Params.HomingMaxTurnRateDegrees = 0.0f;

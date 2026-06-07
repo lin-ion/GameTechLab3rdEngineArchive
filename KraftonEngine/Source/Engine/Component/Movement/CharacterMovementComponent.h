@@ -47,11 +47,10 @@ public:
 	UFUNCTION(Pure, Category="CharacterMovement|RootMotion")
 	bool HasPendingRootMotion() const { return bHasPendingRootMotion; }
 
-	// 직전 TickComponent 에서 root motion 의 yaw 가 capsule rotation 에 실제로 적용됐는지.
-	// ACharacter::Tick 이 control yaw 를 capsule 에 덮어쓰기 전에 query 해서 충돌 회피
-	// (root motion 회전이 활성 중인 frame 은 control yaw 가 덮으면 회전이 토글되어 끊김).
+	// 직전 TickComponent 에서 root motion 회전이 capsule rotation 에 실제로 적용됐는지.
+	// legacy name 유지. Character 가 control rotation 을 덮어쓰기 전에 query 해서 충돌을 피한다.
 	UFUNCTION(Pure, Category="CharacterMovement|RootMotion")
-	bool HasYawDrivenByRootMotion() const { return bAppliedRootMotionYawThisFrame; }
+	bool HasYawDrivenByRootMotion() const { return bAppliedRootMotionRotationThisFrame; }
 
 	const FVector& GetVelocity() const { return Velocity; }
 	UFUNCTION(Pure, Category="CharacterMovement")
@@ -123,11 +122,11 @@ protected:
 	// XY 입력을 velocity 에 반영 + Walking 시 braking. 양 mode 공통 호출.
 	void  ApplyInputToVelocity(const FVector& Input, float DeltaTime);
 
-	// Mode 별 Z 처리 + 위치 갱신.
-	// RootMotionWorldXY 는 이번 frame 의 root motion 평면 변위 (world frame, Z=0 보장).
-	// XY 적용 단계에 합산되고 floor stick / gravity 는 mode 가 자체 결정.
-	void  TickWalking(float DeltaTime, const FVector& RootMotionWorldXY);
-	void  TickFalling(float DeltaTime, const FVector& RootMotionWorldXY);
+	// Mode 별 root motion 소비 + 위치 갱신.
+	// RootMotionWorldDelta 는 이번 frame 의 root motion world 변위 전체.
+	// 각 mode 가 이 값을 자기 규칙으로 해석한다.
+	void  TickWalking(float DeltaTime, const FVector& RootMotionWorldDelta);
+	void  TickFalling(float DeltaTime, const FVector& RootMotionWorldDelta);
 	FVector ConsumeDashOffset(float DeltaTime);
 
 	// capsule 중심에서 down raycast — bHit + WorldHitLocation 사용.
@@ -150,9 +149,9 @@ protected:
 	FTransform    PendingRootMotion;
 	bool          bHasPendingRootMotion = false;
 
-	// 직전 TickComponent 에서 root motion yaw 가 실제 적용됐는지 (외부 query 용 — Character 의 yaw 가드).
-	// 매 Tick 시작에 reset 후 yaw 적용 시 true.
-	bool          bAppliedRootMotionYawThisFrame = false;
+	// 직전 TickComponent 에서 root motion 회전이 실제 적용됐는지 (외부 query 용).
+	// 매 Tick 시작에 reset 후 root motion rotation 적용 시 true.
+	bool          bAppliedRootMotionRotationThisFrame = false;
 
 	FVector       DashVelocity      = FVector(0.0f, 0.0f, 0.0f);
 	float         DashRemainingTime = 0.0f;

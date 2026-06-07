@@ -74,6 +74,36 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Strike Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float StrikeRenderScale = 0.3f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Strike Mesh Path", AssetType="StaticMesh")
+	FString StrikeMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Strike Material Path", AssetType="Material")
+	FString StrikeMaterialPath = "None";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Enabled")
+	bool bStrikeTrailEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Material Path", AssetType="Material")
+	FString StrikeTrailMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Color", Type=Color4)
+	FVector4 StrikeTrailColor = FVector4(1.0f, 0.6f, 0.15f, 1.0f);
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Width", Min=0.001f, Max=100.0f, Speed=0.01f)
+	float StrikeTrailWidth = 0.1f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Lifetime", Min=0.001f, Max=60.0f, Speed=0.01f)
+	float StrikeTrailLifetime = 0.18f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Max Samples", Min=2, Max=1024, Speed=1)
+	int32 StrikeTrailMaxSamples = 8;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Sample Interval", Min=0.0f, Max=1.0f, Speed=0.001f)
+	float StrikeTrailSampleInterval = 0.02f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
+	float StrikeTrailMinSampleDistance = 0.05f;
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Ground Height Offset", Min=-1000.0f, Max=1000.0f, Speed=0.1f)
 	float GroundHeightOffset = 0.0f;
 
@@ -103,6 +133,36 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Shockwave Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float ShockwaveRenderScale = 0.18f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Shockwave Mesh Path", AssetType="StaticMesh")
+	FString ShockwaveMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Shockwave Material Path", AssetType="Material")
+	FString ShockwaveMaterialPath = "None";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Enabled")
+	bool bShockwaveTrailEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Material Path", AssetType="Material")
+	FString ShockwaveTrailMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Color", Type=Color4)
+	FVector4 ShockwaveTrailColor = FVector4(0.3f, 0.8f, 1.0f, 1.0f);
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Width", Min=0.001f, Max=100.0f, Speed=0.01f)
+	float ShockwaveTrailWidth = 0.08f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Lifetime", Min=0.001f, Max=60.0f, Speed=0.01f)
+	float ShockwaveTrailLifetime = 0.12f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Max Samples", Min=2, Max=1024, Speed=1)
+	int32 ShockwaveTrailMaxSamples = 8;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Sample Interval", Min=0.0f, Max=1.0f, Speed=0.001f)
+	float ShockwaveTrailSampleInterval = 0.02f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
+	float ShockwaveTrailMinSampleDistance = 0.05f;
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Max Pattern Duration", Min=0.1f, Max=300.0f, Speed=0.1f)
 	float MaxPatternDuration = 8.0f;

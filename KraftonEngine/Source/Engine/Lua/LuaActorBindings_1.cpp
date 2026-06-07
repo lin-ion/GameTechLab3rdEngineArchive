@@ -227,6 +227,16 @@ void FLuaScriptManager::RegisterActorBindings_1(sol::state& Lua)
         &UCharacterMovementComponent::IsFalling,
         "Jump",
         &UCharacterMovementComponent::Jump,
+        "SetGravity",
+        [](UCharacterMovementComponent& C, float InGravity)
+        {
+            C.Gravity = InGravity;
+        },
+        "GetGravity",
+        [](UCharacterMovementComponent& C)
+        {
+            return C.Gravity;
+        },
         "StopMovementImmediately",
         &UCharacterMovementComponent::StopMovementImmediately,
         "SetMovementInputBlocked",
@@ -505,7 +515,72 @@ void FLuaScriptManager::RegisterActorBindings_1(sol::state& Lua)
     Lua.new_usertype<USpringArmComponent>(
         "SpringArmComponent",
         sol::base_classes,
-        sol::bases<USceneComponent, UActorComponent, UObject>()
+        sol::bases<USceneComponent, UActorComponent, UObject>(),
+        "SetTargetArmLength",
+        [](USpringArmComponent& C, float InTargetArmLength)
+        {
+            C.TargetArmLength = InTargetArmLength;
+        },
+        "GetTargetArmLength",
+        [](USpringArmComponent& C)
+        {
+            return C.TargetArmLength;
+        },
+        "SetSocketOffset",
+        [](USpringArmComponent& C, const FVector& InSocketOffset)
+        {
+            C.SocketOffset = InSocketOffset;
+        },
+        "GetSocketOffset",
+        [](USpringArmComponent& C)
+        {
+            return C.SocketOffset;
+        },
+        "SetUsePawnControlRotation",
+        [](USpringArmComponent& C, bool bUse)
+        {
+            C.bUsePawnControlRotation = bUse;
+        },
+        "GetUsePawnControlRotation",
+        [](USpringArmComponent& C)
+        {
+            return C.bUsePawnControlRotation;
+        },
+        "SetInheritPitch",
+        [](USpringArmComponent& C, bool bInherit)
+        {
+            C.bInheritPitch = bInherit;
+        },
+        "GetInheritPitch",
+        [](USpringArmComponent& C)
+        {
+            return C.bInheritPitch;
+        },
+        "SetInheritYaw",
+        [](USpringArmComponent& C, bool bInherit)
+        {
+            C.bInheritYaw = bInherit;
+        },
+        "GetInheritYaw",
+        [](USpringArmComponent& C)
+        {
+            return C.bInheritYaw;
+        },
+        "SetInheritRoll",
+        [](USpringArmComponent& C, bool bInherit)
+        {
+            C.bInheritRoll = bInherit;
+        },
+        "GetInheritRoll",
+        [](USpringArmComponent& C)
+        {
+            return C.bInheritRoll;
+        },
+        "ResetLagState",
+        [](USpringArmComponent& C)
+        {
+            C.ResetLagState();
+        }
     );
     Lua.new_usertype<UCineCameraComponent>(
         "CineCameraComponent",

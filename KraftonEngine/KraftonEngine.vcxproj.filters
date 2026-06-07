@@ -1067,6 +1067,9 @@
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.cpp">
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.cpp">
+      <Filter>Source\Engine\Animation\Notify</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.cpp">
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClCompile>
@@ -1182,6 +1185,9 @@
       <Filter>Source\Engine\Component\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletTrailComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp">
@@ -1892,6 +1898,9 @@
     <ClCompile Include="Source\Engine\Render\Proxy\BillboardSceneProxy.cpp">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.cpp">
+      <Filter>Source\Engine\Render\Proxy</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.cpp">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
@@ -2196,6 +2205,9 @@
     <ClCompile Include="Intermediate\Generated\Reflection.generated.cpp">
       <Filter>Intermediate\Generated</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ProjectileActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -2495,6 +2507,9 @@
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.h">
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.h">
+      <Filter>Source\Engine\Animation\Notify</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.h">
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClInclude>
@@ -2628,6 +2643,9 @@
       <Filter>Source\Engine\Component\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletTrailComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h">
@@ -3498,6 +3516,9 @@
       <Filter>Source\Engine\Render\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Proxy\BillboardSceneProxy.h">
+      <Filter>Source\Engine\Render\Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.h">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.h">
@@ -6266,6 +6287,10 @@
     <ClInclude Include="ThirdParty\sol2\include\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\include\sol\utility</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ProjectileActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.h" />
+    <ClInclude Include="Source\Engine\GameFramework\IPoolableProjectile.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />

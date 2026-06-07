@@ -1,4 +1,4 @@
-#include "AnimSequence.h"
+﻿#include "AnimSequence.h"
 
 #include "Animation/Sequence/AnimDataModel.h"
 #include "Object/GarbageCollection.h"
@@ -428,10 +428,9 @@ namespace
         FPoseContext&       Output,
         const FSkeletalMesh* Asset,
         int32               RootBoneIndex,
-        bool                bForceRootLock,
-        bool                bEnableRootMotion)
+        bool                bForceRootLock)
     {
-        if ((!bForceRootLock && !bEnableRootMotion) || !Asset)
+        if (!bForceRootLock || !Asset)
         {
             return;
         }
@@ -459,10 +458,6 @@ namespace
 
         DesiredLocation.X = BindLocation.X;
         DesiredLocation.Y = BindLocation.Y;
-        if (bEnableRootMotion)
-        {
-            DesiredLocation.Z = BindLocation.Z;
-        }
         DesiredGlobal.SetLocation(DesiredLocation);
 
         FMatrix DesiredLocal = DesiredGlobal;
@@ -734,6 +729,7 @@ void UAnimSequence::GetBonePose(FPoseContext& Output, const FAnimExtractContext&
     }
 
     int32 RootMotionLockBoneIndex = -1;
+    const FRawAnimSequenceTrack* RootMotionLockTrack = nullptr;
 
     for (const FBoneAnimationTrack& Track : Tracks)
     {
@@ -775,6 +771,7 @@ void UAnimSequence::GetBonePose(FPoseContext& Output, const FAnimExtractContext&
             Track.BoneName == RootMotionBoneName)
         {
             RootMotionLockBoneIndex = BoneIndex;
+            RootMotionLockTrack = &Track.InternalTrackData;
         }
 
         const FRawAnimSequenceTrack& Raw = Track.InternalTrackData;
@@ -820,7 +817,27 @@ void UAnimSequence::GetBonePose(FPoseContext& Output, const FAnimExtractContext&
         Output.Pose[BoneIndex] = Result;
     }
 
-    ApplyRootLockInComponentSpace(Output, Asset, RootMotionLockBoneIndex, bForceRootLock, bEnableRootMotion);
+    ApplyRootLockInComponentSpace(Output, Asset, RootMotionLockBoneIndex, bForceRootLock);
+
+    if (bEnableRootMotion &&
+        RootMotionLockTrack &&
+        RootMotionLockBoneIndex >= 0 &&
+        RootMotionLockBoneIndex < static_cast<int32>(Output.Pose.size()))
+    {
+        FTransform LockedRoot = Output.Pose[RootMotionLockBoneIndex];
+
+        if (!RootMotionLockTrack->PosKeys.empty())
+        {
+            LockedRoot.Location = RootMotionLockTrack->PosKeys[0];
+        }
+
+        if (!RootMotionLockTrack->RotKeys.empty())
+        {
+            LockedRoot.Rotation = RootMotionLockTrack->RotKeys[0].GetNormalized();
+        }
+
+        Output.Pose[RootMotionLockBoneIndex] = LockedRoot;
+    }
 }
 
 bool UAnimSequence::GetAnimationPose(float TimeSeconds, USkeletalMesh* InSkeletalMesh, TArray<FTransform>& OutLocalPose, bool bLooping) const
@@ -966,7 +983,6 @@ FTransform UAnimSequence::ExtractRootMotion(float PrevTime, float CurTime, bool 
     const int32 NumFrames = DataModel->NumFrames;
     if (Length <= 0.0f || NumFrames <= 0) return Delta;
 
-    // RootMotionBoneName 본의 track 찾기.
     const FRawAnimSequenceTrack* Raw = nullptr;
     for (const FBoneAnimationTrack& Track : DataModel->BoneAnimationTracks)
     {
@@ -983,9 +999,13 @@ FTransform UAnimSequence::ExtractRootMotion(float PrevTime, float CurTime, bool 
     };
 
     auto ComputeDelta = [](const FVector& P0, const FQuat& R0, const FVector& P1, const FQuat& R1) -> FTransform {
+        const FTransform T0(P0, R0, FVector(1.0f, 1.0f, 1.0f));
+        const FTransform T1(P1, R1, FVector(1.0f, 1.0f, 1.0f));
+        const FMatrix DeltaMatrix = T0.ToMatrix().GetInverse() * T1.ToMatrix();
+
         FTransform D;
-        D.Location = P1 - P0;
-        D.Rotation = (R1 * R0.Inverse()).GetNormalized();
+        D.Location = FVector(DeltaMatrix.M[3][0], DeltaMatrix.M[3][1], DeltaMatrix.M[3][2]);
+        D.Rotation = DeltaMatrix.ToQuat().GetNormalized();
         return D;
     };
 
@@ -1001,9 +1021,9 @@ FTransform UAnimSequence::ExtractRootMotion(float PrevTime, float CurTime, bool 
         SampleAt(0.0f,   PA, RA);
         SampleAt(CurTime, PB, RB);
         const FTransform D2 = ComputeDelta(PA, RA, PB, RB);
-        // 합산: D2 ∘ D1 — Position 단순 합, Rotation 곱.
-        Delta.Location = D1.Location + D2.Location;
-        Delta.Rotation = (D2.Rotation * D1.Rotation).GetNormalized();
+        const FMatrix Combined = D1.ToMatrix() * D2.ToMatrix();
+        Delta.Location = FVector(Combined.M[3][0], Combined.M[3][1], Combined.M[3][2]);
+        Delta.Rotation = Combined.ToQuat().GetNormalized();
         return Delta;
     }
 

@@ -359,12 +359,9 @@ void UAnimInstance::AccumulateRootMotion(const FTransform& Delta)
 	// (Step 5 에서 base 누적 호출 지점에 mode 체크가 들어간다 — 여기선 둘 다 통과).
 	if (RootMotionMode == ERootMotionMode::IgnoreRootMotion) return;
 
-	// 두 delta 합성 — row-vec 매트릭스로 정확히 누적 후 다시 분해.
-	// 단순한 합산은 회전 누적 시 부정확. 매트릭스 곱이 안전.
-	const FMatrix M = Delta.ToMatrix() * PendingRootMotion.ToMatrix();
+	const FMatrix M = PendingRootMotion.ToMatrix() * Delta.ToMatrix();
 	PendingRootMotion.Location = FVector(M.M[3][0], M.M[3][1], M.M[3][2]);
-	// 회전만 quaternion 합성 (정밀도 유지)
-	PendingRootMotion.Rotation = (Delta.Rotation * PendingRootMotion.Rotation).GetNormalized();
+	PendingRootMotion.Rotation = (PendingRootMotion.Rotation * Delta.Rotation).GetNormalized();
 	// Scale 은 root motion 에서 보통 1 이라 무시.
 }
 

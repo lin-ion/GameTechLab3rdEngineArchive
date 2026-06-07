@@ -65,11 +65,9 @@ void UCharacterMovementComponent::AddRootMotionDelta(const FTransform& LocalDelt
 		return;
 	}
 
-	// 누적 합성 — AnimInstance::AccumulateRootMotion 과 동일한 매트릭스 곱 패턴.
-	// 같은 frame 에 base + montage 처럼 여러 소스가 push 할 수 있어 합성 보장 필요.
-	const FMatrix M = LocalDelta.ToMatrix() * PendingRootMotion.ToMatrix();
+	const FMatrix M = PendingRootMotion.ToMatrix() * LocalDelta.ToMatrix();
 	PendingRootMotion.Location = FVector(M.M[3][0], M.M[3][1], M.M[3][2]);
-	PendingRootMotion.Rotation = (LocalDelta.Rotation * PendingRootMotion.Rotation).GetNormalized();
+	PendingRootMotion.Rotation = (PendingRootMotion.Rotation * LocalDelta.Rotation).GetNormalized();
 	// Scale 은 root motion 에서 보통 1 — 무시.
 }
 
@@ -212,9 +210,7 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	if (!Updated) return;
 	if (DeltaTime <= 0.0f) return;
 
-	// 매 Tick 회전 적용 상태 reset — 이번 frame 에 root motion 이 yaw 를 적용했는지를
-	// 외부 (Character::Tick) 가 query 할 수 있어야 yaw 충돌 회피 가능.
-	bAppliedRootMotionYawThisFrame = false;
+	bAppliedRootMotionRotationThisFrame = false;
 
 	FVector Input;
 	ConsumeInputVector(Input);
@@ -244,56 +240,49 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		}
 	}
 
-	// 2) Root motion 소비 — local delta 를 world frame 으로 변환 (Updated 의 yaw 기준).
-	//    XY 만 mode 분기로 위임. Z 는 두 mode 모두 무시:
-	//      Walking — floor stick 이 Z 결정
-	//      Falling — gravity 가 Z 결정
-	//    Climbing/Swimming 같은 mode 추가 시 그때 재검토.
+	// 2) Root motion 소비 — local delta 의 위치는 capsule 현재 축 기준이므로,
+	//    world-space 위치 delta 계산은 local delta 를 current world 앞에 곱해 구한다.
 	FTransform RootMotionDelta;
 	const bool bHadRootMotion = ConsumePendingRootMotion(RootMotionDelta);
-	FVector RootMotionWorldXY(0.0f, 0.0f, 0.0f);
+	FVector RootMotionWorldDelta(0.0f, 0.0f, 0.0f);
 	if (bHadRootMotion)
 	{
-		const FRotator ActorRot = Updated->GetWorldRotation();
-		const FQuat    YawOnly  = FRotator(0.0f, 0.0f, ActorRot.Yaw).ToQuaternion();
-		const FVector  World    = YawOnly.RotateVector(RootMotionDelta.Location);
-		RootMotionWorldXY.X     = World.X;
-		RootMotionWorldXY.Y     = World.Y;
+		const FMatrix CurrentWorldMatrix = Updated->GetWorldMatrix();
+		const FMatrix RootMotionWorldMatrix = CurrentWorldMatrix * RootMotionDelta.ToMatrix();
+		const FVector CurrentWorldLocation(CurrentWorldMatrix.M[3][0], CurrentWorldMatrix.M[3][1], CurrentWorldMatrix.M[3][2]);
+		const FVector NewWorldLocation(RootMotionWorldMatrix.M[3][0], RootMotionWorldMatrix.M[3][1], RootMotionWorldMatrix.M[3][2]);
+		RootMotionWorldDelta = NewWorldLocation - CurrentWorldLocation;
 	}
 
 	const FVector DashWorldXY = ConsumeDashOffset(DeltaTime);
-	const FVector ExtraWorldXY = RootMotionWorldXY + DashWorldXY;
+	const FVector ExtraWorldDelta = RootMotionWorldDelta + DashWorldXY;
 
-	// 3) Mode 별 Z 처리 + 위치 적용 (input velocity + root motion XY 합산).
+	// 3) Mode 별 root motion 해석 + 위치 적용.
 	if (MovementMode == EMovementMode::Walking)
 	{
-		TickWalking(DeltaTime, ExtraWorldXY);
+		TickWalking(DeltaTime, ExtraWorldDelta);
 	}
 	else
 	{
-		TickFalling(DeltaTime, ExtraWorldXY);
+		TickFalling(DeltaTime, ExtraWorldDelta);
 	}
 
-	// 4) Root motion yaw 적용. yaw 만 추출 — root motion 의 pitch/roll 은 캐릭터 capsule
-	//    회전에 일반적으로 의미 없음 (UE 도 yaw 만 적용).
-	//    yaw 가 적용되면 bAppliedRootMotionYawThisFrame 을 켜서 PhysOrientToMovement /
-	//    Character 의 control yaw 덮어쓰기 둘 다 같은 frame skip 되도록 한다.
+	// 4) Root motion rotation 적용. translation 과 같은 local delta 를 rotation 에도 그대로 쓴다.
 	if (bHadRootMotion)
 	{
 		const FRotator DeltaRot = RootMotionDelta.Rotation.ToRotator();
-		if (std::fabs(DeltaRot.Yaw) > 1e-4f)
+		if (std::fabs(DeltaRot.Pitch) > 1e-4f ||
+			std::fabs(DeltaRot.Yaw) > 1e-4f ||
+			std::fabs(DeltaRot.Roll) > 1e-4f)
 		{
-			FRotator R = Updated->GetRelativeRotation();
-			R.Yaw += DeltaRot.Yaw;
-			Updated->SetRelativeRotation(R);
-			bAppliedRootMotionYawThisFrame = true;
+			Updated->AddLocalRotation(RootMotionDelta.Rotation);
+			bAppliedRootMotionRotationThisFrame = true;
 		}
 	}
 
-	// 5) Orient yaw to movement direction. Root motion 이 yaw 를 잡고 있는 frame 은 skip —
-	//    그렇지 않으면 PhysOrient 가 root motion 회전을 Velocity 방향으로 다시 lerp 해
-	//    의도된 회전이 무효화된다 (turn-in-place anim 가장 큰 피해).
-	if (bOrientRotationToMovement && !bAppliedRootMotionYawThisFrame)
+	// 5) Orient yaw to movement direction. Root motion rotation 이 활성인 frame 은 skip —
+	//    그렇지 않으면 PhysOrient 가 root motion 회전을 다시 덮어쓴다.
+	if (bOrientRotationToMovement && !bAppliedRootMotionRotationThisFrame)
 	{
 		PhysOrientToMovement(DeltaTime);
 	}
@@ -412,7 +401,7 @@ FVector UCharacterMovementComponent::ConsumeDashOffset(float DeltaTime)
 	return Offset;
 }
 
-void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& RootMotionWorldXY)
+void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& RootMotionWorldDelta)
 {
 	USceneComponent* Updated = GetUpdatedComponent();
 
@@ -443,10 +432,10 @@ void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& Ro
 	// Walking 중 Z velocity 는 0 — floor stick 으로만 Z 결정.
 	Velocity.Z = 0.0f;
 
-	// XY 이동: input velocity * dt + root motion XY (이미 world frame).
+	// Walking 은 floor stick 이 Z 를 결정하므로 root motion 도 평면 이동만 소비.
 	const FVector XYOffset(
-		Velocity.X * DeltaTime + RootMotionWorldXY.X,
-		Velocity.Y * DeltaTime + RootMotionWorldXY.Y,
+		Velocity.X * DeltaTime + RootMotionWorldDelta.X,
+		Velocity.Y * DeltaTime + RootMotionWorldDelta.Y,
 		0.0f);
 	MoveAlongFloor(XYOffset);
 
@@ -471,18 +460,18 @@ void UCharacterMovementComponent::TickWalking(float DeltaTime, const FVector& Ro
 	Updated->SetWorldLocation(NewLoc);
 }
 
-void UCharacterMovementComponent::TickFalling(float DeltaTime, const FVector& RootMotionWorldXY)
+void UCharacterMovementComponent::TickFalling(float DeltaTime, const FVector& RootMotionWorldDelta)
 {
 	USceneComponent* Updated = GetUpdatedComponent();
 
 	// Gravity — Z 만. (양수 Gravity → -Z 가속)
 	Velocity.Z -= Gravity * DeltaTime;
 
-	// Velocity * dt 의 XY 에 root motion XY 합산. Z 는 gravity 가 책임이라 root motion 무시.
+	// Falling 은 root motion world delta 전체를 gravity 적분과 함께 소비한다.
 	const FVector Offset(
-		Velocity.X * DeltaTime + RootMotionWorldXY.X,
-		Velocity.Y * DeltaTime + RootMotionWorldXY.Y,
-		Velocity.Z * DeltaTime);
+		Velocity.X * DeltaTime + RootMotionWorldDelta.X,
+		Velocity.Y * DeltaTime + RootMotionWorldDelta.Y,
+		Velocity.Z * DeltaTime + RootMotionWorldDelta.Z);
 	SafeMoveUpdatedComponent(Offset);
 
 	// 올라가는 중 (점프 arc 상승) 엔 floor 체크 skip — 안 그러면 점프 직후 1 frame 의

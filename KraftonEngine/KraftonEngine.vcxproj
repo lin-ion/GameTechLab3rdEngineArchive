@@ -243,6 +243,9 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Editor\Viewport\Asset\MeshEditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Viewport\Asset\StaticMeshEditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Viewport\Level\FLevelViewportLayout.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ProjectileActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.cpp" />
     <ClCompile Include="Source\Engine\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -272,6 +275,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotifyState_LogDuration.cpp" />
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotifyState_Particle.cpp" />
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.cpp" />
+    <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.cpp" />
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.cpp" />
     <ClCompile Include="Source\Engine\Animation\Sequence\AnimDataModel.cpp" />
     <ClCompile Include="Source\Engine\Animation\Sequence\AnimSequence.cpp" />
@@ -311,6 +315,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Debug\PhysicsAssetRagdollTestComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletTrailComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.cpp" />
@@ -547,6 +552,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Render\Pipeline\RenderCollector.cpp" />
     <ClCompile Include="Source\Engine\Render\Pipeline\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\BillboardSceneProxy.cpp" />
+    <ClCompile Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\CylindricalBillboardSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\DecalSceneProxy.cpp" />
@@ -758,6 +764,10 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Editor\Viewport\Asset\StaticMeshEditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Viewport\Level\FLevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\Viewport\Level\LevelEditorViewportClient.h" />
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ProjectileActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\IPoolableProjectile.h" />
+    <ClInclude Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.h" />
     <ClInclude Include="Source\Engine\pch.h" />
     <ClInclude Include="Source\Engine\Animation\AnimExtractContext.h" />
     <ClInclude Include="Source\Engine\Animation\AnimInstance.h" />
@@ -792,6 +802,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotifyState_LogDuration.h" />
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotifyState_Particle.h" />
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.h" />
+    <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.h" />
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.h" />
     <ClInclude Include="Source\Engine\Animation\Sequence\AnimDataModel.h" />
     <ClInclude Include="Source\Engine\Animation\Sequence\AnimSequence.h" />
@@ -837,6 +848,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Debug\PhysicsAssetRagdollTestComponent.h" />
     <ClInclude Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletTrailComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.h" />
@@ -1127,6 +1139,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Render\Pipeline\RenderCollector.h" />
     <ClInclude Include="Source\Engine\Render\Pipeline\Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\BillboardSceneProxy.h" />
+    <ClInclude Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\CylindricalBillboardSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\DecalSceneProxy.h" />

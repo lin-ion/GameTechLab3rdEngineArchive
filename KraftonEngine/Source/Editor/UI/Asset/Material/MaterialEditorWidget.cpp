@@ -419,6 +419,10 @@ namespace
         case EMaterialGraphNodeType::TexCoord:
         case EMaterialGraphNodeType::Panner:
         case EMaterialGraphNodeType::Time:
+        case EMaterialGraphNodeType::WorldNormal:
+        case EMaterialGraphNodeType::WorldPosition:
+        case EMaterialGraphNodeType::CameraPosition:
+        case EMaterialGraphNodeType::ViewDirection:
             return ImVec4(0.95f, 0.85f, 0.40f, 1.0f);
 
         case EMaterialGraphNodeType::VertexColor:
@@ -426,6 +430,9 @@ namespace
         case EMaterialGraphNodeType::ParticleSubUV:
         case EMaterialGraphNodeType::DynamicParameter:
             return ImVec4(0.96f, 0.64f, 0.34f, 1.0f);
+
+        case EMaterialGraphNodeType::Fresnel:
+            return ImVec4(0.68f, 0.82f, 1.00f, 1.0f);
 
         case EMaterialGraphNodeType::Reroute:
         case EMaterialGraphNodeType::Comment:
@@ -455,12 +462,18 @@ namespace
         case EMaterialGraphNodeType::TexCoord:
         case EMaterialGraphNodeType::Panner:
         case EMaterialGraphNodeType::Time:
+        case EMaterialGraphNodeType::WorldNormal:
+        case EMaterialGraphNodeType::WorldPosition:
+        case EMaterialGraphNodeType::CameraPosition:
+        case EMaterialGraphNodeType::ViewDirection:
             return "Coordinates";
         case EMaterialGraphNodeType::VertexColor:
         case EMaterialGraphNodeType::ParticleColor:
         case EMaterialGraphNodeType::ParticleSubUV:
         case EMaterialGraphNodeType::DynamicParameter:
             return "Particle";
+        case EMaterialGraphNodeType::Fresnel:
+            return "Math";
         case EMaterialGraphNodeType::MakeFloat2:
         case EMaterialGraphNodeType::MakeFloat3:
         case EMaterialGraphNodeType::MakeFloat4:
@@ -1179,6 +1192,7 @@ void FMaterialEditorWidget::RenderSettingsPanel(UMaterial* Material)
         const EMaterialGraphTarget Targets[] = {
             EMaterialGraphTarget::Surface, EMaterialGraphTarget::Decal, EMaterialGraphTarget::PostProcess,
             EMaterialGraphTarget::ParticleSprite, EMaterialGraphTarget::ParticleMesh,
+            EMaterialGraphTarget::ParticleBeamTrail,
         };
         for (EMaterialGraphTarget Candidate : Targets)
         {
@@ -1548,6 +1562,7 @@ void FMaterialEditorWidget::RenderPalettePanel(UMaterial* Material)
         { "Math", EMaterialGraphNodeType::Normalize },
         { "Math", EMaterialGraphNodeType::Dot },
         { "Math", EMaterialGraphNodeType::Cross },
+        { "Math", EMaterialGraphNodeType::Fresnel },
         { "Math", EMaterialGraphNodeType::Append },
         { "Math", EMaterialGraphNodeType::ComponentMask },
         { "Conversion", EMaterialGraphNodeType::MakeFloat2 },
@@ -1559,6 +1574,10 @@ void FMaterialEditorWidget::RenderPalettePanel(UMaterial* Material)
         { "Coordinates", EMaterialGraphNodeType::TexCoord },
         { "Coordinates", EMaterialGraphNodeType::Panner },
         { "Coordinates", EMaterialGraphNodeType::Time },
+        { "Coordinates", EMaterialGraphNodeType::WorldNormal },
+        { "Coordinates", EMaterialGraphNodeType::WorldPosition },
+        { "Coordinates", EMaterialGraphNodeType::CameraPosition },
+        { "Coordinates", EMaterialGraphNodeType::ViewDirection },
         { "Particle", EMaterialGraphNodeType::VertexColor },
         { "Particle", EMaterialGraphNodeType::ParticleColor },
         { "Particle", EMaterialGraphNodeType::ParticleSubUV },
@@ -2344,6 +2363,7 @@ void FMaterialEditorWidget::RenderAddNodeMenuBody(UMaterial* Material)
         { "Math", EMaterialGraphNodeType::Normalize },
         { "Math", EMaterialGraphNodeType::Dot },
         { "Math", EMaterialGraphNodeType::Cross },
+        { "Math", EMaterialGraphNodeType::Fresnel },
         { "Math", EMaterialGraphNodeType::ComponentMask },
         { "Math", EMaterialGraphNodeType::Append },
         { "Conversion", EMaterialGraphNodeType::MakeFloat2 },
@@ -2355,6 +2375,10 @@ void FMaterialEditorWidget::RenderAddNodeMenuBody(UMaterial* Material)
         { "Coordinates", EMaterialGraphNodeType::TexCoord },
         { "Coordinates", EMaterialGraphNodeType::Panner },
         { "Coordinates", EMaterialGraphNodeType::Time },
+        { "Coordinates", EMaterialGraphNodeType::WorldNormal },
+        { "Coordinates", EMaterialGraphNodeType::WorldPosition },
+        { "Coordinates", EMaterialGraphNodeType::CameraPosition },
+        { "Coordinates", EMaterialGraphNodeType::ViewDirection },
         { "Particle", EMaterialGraphNodeType::VertexColor },
         { "Particle", EMaterialGraphNodeType::ParticleColor },
         { "Particle", EMaterialGraphNodeType::ParticleSubUV },
@@ -2404,7 +2428,10 @@ void FMaterialEditorWidget::RenderPinSpawnMenuBody(UMaterial* Material)
         EMaterialGraphNodeType::Divide, EMaterialGraphNodeType::Lerp, EMaterialGraphNodeType::OneMinus,
         EMaterialGraphNodeType::Saturate, EMaterialGraphNodeType::Clamp, EMaterialGraphNodeType::Power,
         EMaterialGraphNodeType::TextureSample, EMaterialGraphNodeType::ComponentMask, EMaterialGraphNodeType::Append,
-        EMaterialGraphNodeType::Normalize, EMaterialGraphNodeType::Dot, EMaterialGraphNodeType::Reroute,
+        EMaterialGraphNodeType::Normalize, EMaterialGraphNodeType::Dot, EMaterialGraphNodeType::Fresnel,
+        EMaterialGraphNodeType::WorldNormal, EMaterialGraphNodeType::WorldPosition,
+        EMaterialGraphNodeType::CameraPosition, EMaterialGraphNodeType::ViewDirection,
+        EMaterialGraphNodeType::Reroute,
     };
     bool bAny = false;
     for (EMaterialGraphNodeType Type : Candidates)

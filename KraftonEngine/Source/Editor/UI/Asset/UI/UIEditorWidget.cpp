@@ -348,6 +348,31 @@ void FUIEditorWidget::SpawnElement(UClass* ElementClass)
 	MarkDirty();
 }
 
+void FUIEditorWidget::DeleteSelected()
+{
+	if (!Selected || !OwnerActor)
+	{
+		return;
+	}
+
+	// 루트 캔버스는 삭제 불가 — 트리 루트이자 AUICanvasActor RootComponent 계약. 비우면 편집 불능.
+	if (Selected == Canvas)
+	{
+		return;
+	}
+
+	// 댕글링 방지 — 디테일/뷰포트/계층이 더 이상 참조하지 않도록 선택을 먼저 해제한 뒤 파괴.
+	UUIElement* ToDelete = Selected;
+	Selected = nullptr;
+
+	// 서브트리 일괄 정리: 부모 detach + OwnedComponents(키프얼라이브) 해제 + RouteComponentDestroyed
+	// (자식 재귀) + DestroyObject(2-phase GC). SpawnElement 의 RegisterComponent/Attach 와 대칭.
+	OwnerActor->RemoveComponent(ToDelete);
+
+	// 다음 SaveToAsset 의 SerializeUITree 가 살아있는 트리만 기록 → 삭제가 .uasset 에 영속화.
+	MarkDirty();
+}
+
 void FUIEditorWidget::RenderHierarchyPanel()
 {
 	ImGui::TextUnformatted("Hierarchy");
@@ -453,6 +478,33 @@ void FUIEditorWidget::RenderDetailsPanel()
 	}
 
 	ImGui::TextDisabled("%s", Selected->GetClass()->GetName());
+	ImGui::SameLine();
+
+	// 선택 요소(+서브트리) 삭제 — SpawnElement 의 역연산. 루트 캔버스는 비울 수 없으므로 비활성.
+	const bool bIsRoot = (Selected == Canvas);
+	if (bIsRoot)
+	{
+		ImGui::BeginDisabled();
+	}
+	ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(150, 45, 45, 255));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(185, 55, 55, 255));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(120, 35, 35, 255));
+	const bool bDeleteClicked = ImGui::Button("Delete");
+	ImGui::PopStyleColor(3);
+	if (bIsRoot)
+	{
+		ImGui::EndDisabled();
+	}
+
+	// Delete/Backspace 단축키 — 디테일 패널 포커스 시(루트 제외). 버튼과 동일 경로.
+	const bool bDeleteKey = !bIsRoot && ImGui::IsWindowFocused()
+		&& (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace));
+	if (bDeleteClicked || bDeleteKey)
+	{
+		DeleteSelected();
+		return;   // Selected 가 무효화됨 — 이번 프레임 나머지 디테일 바인딩 건너뜀.
+	}
+
 	ImGui::Spacing();
 
 	// 공통 RectTransform/Color 직접 바인딩 + (텍스트 요소면) 텍스트 5필드. 편집 즉시 멤버 반영 →

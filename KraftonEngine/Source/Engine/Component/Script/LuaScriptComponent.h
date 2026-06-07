@@ -43,6 +43,7 @@ public:
 	// nil 이면 조용히 false 반환 — 호출자는 lua 쪽 함수 정의 여부에 신경 쓸 필요 없음.
 	UFUNCTION(Callable, Exec, Category="Script")
 	bool CallFunction(const FString& FunctionName);
+	bool DispatchAnimNotify(const FString& NotifyName);
 
 protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
@@ -88,6 +89,7 @@ private:
 	sol::protected_function LuaOnEndOverlap;
 	sol::protected_function LuaOnHit;
 	sol::protected_function LuaOnEndHit;
+	sol::protected_function LuaOnAnimNotify;
 
 	bool bEndPlayRouted = false;
 	bool bHasCalledLuaEndPlay = false;

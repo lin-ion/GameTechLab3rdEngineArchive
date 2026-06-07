@@ -27,7 +27,6 @@ public:
 	void Deactivate() override;
 	void ResetState() override;
 
-
 	UFUNCTION(Pure, Category = "Actor|Components")
 	UStaticMeshComponent* GetStaticComponent() const { return StaticMeshComponent; }
 	

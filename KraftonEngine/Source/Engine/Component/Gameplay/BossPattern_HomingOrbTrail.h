@@ -67,6 +67,36 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Projectile Render Scale", Min=0.01f, Max=100.0f, Speed=0.01f)
 	float ProjectileRenderScale = 0.2f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Projectile Mesh Path", AssetType="StaticMesh")
+	FString ProjectileMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Projectile Material Path", AssetType="Material")
+	FString ProjectileMaterialPath = "None";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Enabled")
+	bool bProjectileTrailEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Material Path", AssetType="Material")
+	FString ProjectileTrailMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Color", Type=Color4)
+	FVector4 ProjectileTrailColor = FVector4(1.0f, 0.6f, 0.15f, 1.0f);
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Width", Min=0.001f, Max=100.0f, Speed=0.01f)
+	float ProjectileTrailWidth = 0.08f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Lifetime", Min=0.001f, Max=60.0f, Speed=0.01f)
+	float ProjectileTrailLifetime = 0.12f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Max Samples", Min=2, Max=1024, Speed=1)
+	int32 ProjectileTrailMaxSamples = 8;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Sample Interval", Min=0.0f, Max=1.0f, Speed=0.001f)
+	float ProjectileTrailSampleInterval = 0.02f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail|Trail", DisplayName="Projectile Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
+	float ProjectileTrailMinSampleDistance = 0.05f;
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Homing Orb Trail", DisplayName="Homing Strength", Min=0.0f, Max=1000.0f, Speed=0.1f)
 	float HomingStrength = 8.0f;
 

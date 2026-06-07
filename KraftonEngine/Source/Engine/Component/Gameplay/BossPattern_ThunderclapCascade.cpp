@@ -336,6 +336,16 @@ FBulletSpawnParams UBossPattern_ThunderclapCascade::MakeStrikeParams(const FVect
 	Params.Archetype.Speed = StrikeFallSpeed;
 	Params.Archetype.Lifetime = StrikeLifetime;
 	Params.Archetype.RenderScale = StrikeRenderScale;
+	Params.Archetype.MeshPath = StrikeMeshPath;
+	Params.Archetype.MaterialPath = StrikeMaterialPath;
+	Params.Archetype.Trail.bEnableTrail = bStrikeTrailEnabled;
+	Params.Archetype.Trail.MaterialPath = StrikeTrailMaterialPath;
+	Params.Archetype.Trail.Color = StrikeTrailColor;
+	Params.Archetype.Trail.Width = (std::max)(0.001f, StrikeTrailWidth);
+	Params.Archetype.Trail.Lifetime = (std::max)(0.001f, StrikeTrailLifetime);
+	Params.Archetype.Trail.MaxSamples = (std::max)(2, StrikeTrailMaxSamples);
+	Params.Archetype.Trail.SampleInterval = (std::max)(0.0f, StrikeTrailSampleInterval);
+	Params.Archetype.Trail.MinSampleDistance = (std::max)(0.0f, StrikeTrailMinSampleDistance);
 	Params.bHoming = false;
 	return Params;
 }
@@ -349,6 +359,16 @@ FBulletSpawnParams UBossPattern_ThunderclapCascade::MakeShockwaveParams(const FV
 	Params.Archetype.Speed = ShockwaveSpeed;
 	Params.Archetype.Lifetime = ShockwaveLifetime;
 	Params.Archetype.RenderScale = ShockwaveRenderScale;
+	Params.Archetype.MeshPath = ShockwaveMeshPath;
+	Params.Archetype.MaterialPath = ShockwaveMaterialPath;
+	Params.Archetype.Trail.bEnableTrail = bShockwaveTrailEnabled;
+	Params.Archetype.Trail.MaterialPath = ShockwaveTrailMaterialPath;
+	Params.Archetype.Trail.Color = ShockwaveTrailColor;
+	Params.Archetype.Trail.Width = (std::max)(0.001f, ShockwaveTrailWidth);
+	Params.Archetype.Trail.Lifetime = (std::max)(0.001f, ShockwaveTrailLifetime);
+	Params.Archetype.Trail.MaxSamples = (std::max)(2, ShockwaveTrailMaxSamples);
+	Params.Archetype.Trail.SampleInterval = (std::max)(0.0f, ShockwaveTrailSampleInterval);
+	Params.Archetype.Trail.MinSampleDistance = (std::max)(0.0f, ShockwaveTrailMinSampleDistance);
 	Params.bHoming = false;
 	return Params;
 }

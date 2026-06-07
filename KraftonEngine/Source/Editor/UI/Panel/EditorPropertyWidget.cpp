@@ -155,6 +155,25 @@ namespace
 		return Value.empty() || Value == "true" || Value == "1" || Value == "yes";
 	}
 
+	FString ToLowerAscii(FString Text)
+	{
+		std::transform(Text.begin(), Text.end(), Text.begin(), [](unsigned char Ch)
+		{
+			return static_cast<char>(std::tolower(Ch));
+		});
+		return Text;
+	}
+
+	bool ContainsCaseInsensitive(const FString& Text, const char* Filter)
+	{
+		if (!Filter || Filter[0] == '\0')
+		{
+			return true;
+		}
+
+		return ToLowerAscii(Text).find(ToLowerAscii(Filter)) != FString::npos;
+	}
+
 	bool HasTruthyPropertyMetadata(const FPropertyValue& Prop, const FString& Key)
 	{
 		if (const FString* Value = FindPropertyMetadata(Prop, Key))
@@ -1944,6 +1963,13 @@ bool FEditorPropertyWidget::RenderSoftObjectPropertyWidget(FPropertyValue& Prop)
 		FString Preview = (CurrentPath.empty() || CurrentPath == "None") ? "None" : CurrentPath;
 		if (ImGui::BeginCombo("##Material", Preview.c_str()))
 		{
+			FMaterialManager::Get().ScanMaterialAssets();
+
+			static char MaterialSearchBuffer[128] = {};
+			ImGui::SetNextItemWidth(-1.0f);
+			ImGui::InputTextWithHint("##MaterialSearch", "Search material...", MaterialSearchBuffer, sizeof(MaterialSearchBuffer));
+			ImGui::Separator();
+
 			bool bSelectedNone = (CurrentPath == "None" || CurrentPath.empty());
 			if (ImGui::Selectable("None", bSelectedNone))
 			{
@@ -1953,8 +1979,18 @@ bool FEditorPropertyWidget::RenderSoftObjectPropertyWidget(FPropertyValue& Prop)
 			if (bSelectedNone) ImGui::SetItemDefaultFocus();
 
 			const TArray<FMaterialAssetListItem>& MatFiles = FMaterialManager::Get().GetAvailableMaterialFiles();
+			int32 VisibleMaterialCount = 0;
 			for (const FMaterialAssetListItem& Item : MatFiles)
 			{
+				const bool bMatchesFilter =
+					ContainsCaseInsensitive(Item.DisplayName, MaterialSearchBuffer)
+					|| ContainsCaseInsensitive(Item.FullPath, MaterialSearchBuffer);
+				if (!bMatchesFilter)
+				{
+					continue;
+				}
+
+				++VisibleMaterialCount;
 				bool bSelected = (CurrentPath == Item.FullPath);
 				if (ImGui::Selectable(Item.DisplayName.c_str(), bSelected))
 				{
@@ -1962,6 +1998,15 @@ bool FEditorPropertyWidget::RenderSoftObjectPropertyWidget(FPropertyValue& Prop)
 					bChanged = true;
 				}
 				if (bSelected) ImGui::SetItemDefaultFocus();
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("%s", Item.FullPath.c_str());
+				}
+			}
+
+			if (VisibleMaterialCount == 0)
+			{
+				ImGui::TextDisabled("No matching materials");
 			}
 			ImGui::EndCombo();
 		}

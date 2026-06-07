@@ -19,6 +19,25 @@ enum class EBulletHellRenderOrientationMode : int32
 
 class AActor;
 class UInstancedStaticMeshComponent;
+class UBulletTrailComponent;
+
+struct FBulletTrailSettings
+{
+	bool bEnableTrail = false;
+	FString MaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
+	FVector4 Color = FVector4(1.0f, 0.6f, 0.15f, 1.0f);
+	float Width = 0.08f;
+	float Lifetime = 0.12f;
+	int32 MaxSamples = 8;
+	float SampleInterval = 0.02f;
+	float MinSampleDistance = 0.05f;
+};
+
+struct FBulletTrailSample
+{
+	FVector Position = FVector::ZeroVector;
+	float Age = 0.0f;
+};
 
 struct FBulletArchetype
 {
@@ -29,6 +48,7 @@ struct FBulletArchetype
 	float Lifetime = 1.0f;
 	float RenderScale = 1.0f;
 	float Damage = 1.0f;
+	FBulletTrailSettings Trail;
 };
 
 struct FBulletRenderSlot
@@ -64,6 +84,9 @@ struct FBulletInstance
 	int32 GroupId = 0;			// Group = 동일 Archetype 내에서 특정 탄들만 골라서 파라미터를 변경하거나 하고 싶을 때 쓰는 '라벨'
 	int32 RenderSlotIndex = -1;
 	float RenderScale = 1.0f;
+	FBulletTrailSettings Trail;
+	TArray<FBulletTrailSample> TrailSamples;
+	float TrailSampleAccumulator = 0.0f;
 	FVector HomingTargetPosition = FVector::ZeroVector;
 	TWeakObjectPtr<AActor> HomingTargetActor;
 	bool bHoming = false;
@@ -139,6 +162,13 @@ struct FBulletDebugStats
 	int32 RendererSlot0InstanceCount = 0;
 	int32 RendererSlot1InstanceCount = 0;
 	int32 RenderMismatchCount = 0;
+	int32 TrailEnabledBulletCount = 0;
+	int32 TrailSampleCount = 0;
+	int32 TrailBatchCount = 0;
+	int32 TrailVertexCount = 0;
+	int32 TrailIndexCount = 0;
+	int32 TrailTruncatedCount = 0;
+	int32 TrailMaterialMissingCount = 0;
 };
 
 UCLASS()
@@ -271,6 +301,8 @@ private:
 
 	void TickBullets(float DeltaTime);
 	void UpdateHomingBehavior(FBulletInstance& Bullet, float DeltaTime);
+	void ResetTrailSamples(FBulletInstance& Bullet);
+	void UpdateTrailSamples(FBulletInstance& Bullet, float DeltaTime);
 	void UpdateBehaviorDebugStats();
 	EBulletCollisionKillReason CheckBulletCollision(const FBulletInstance& Bullet);
 	bool SweepBulletByChannel(const FBulletInstance& Bullet, ECollisionChannel TraceChannel, FHitResult& OutHit);
@@ -281,14 +313,20 @@ private:
 	bool RemoveBulletAtIndex(int32 BulletIndex, bool bExpired);
 	UInstancedStaticMeshComponent* EnsureRenderComponent();
 	UInstancedStaticMeshComponent* GetRenderComponent() const;
+	UBulletTrailComponent* EnsureTrailComponent();
+	UBulletTrailComponent* GetTrailComponent() const;
 	int32 FindOrCreateRenderSlot(const FBulletArchetype& Archetype);
+	UInstancedStaticMeshComponent* FindExistingRenderSlotComponent(int32 SlotIndex) const;
+	bool CanAutoCreateRenderComponent() const;
 	UInstancedStaticMeshComponent* EnsureRenderSlotComponent(int32 SlotIndex);
 	UInstancedStaticMeshComponent* GetRenderSlotComponent(int32 SlotIndex) const;
 	void ApplyRenderAssets();
 	void ApplyRenderSlotAssets(int32 SlotIndex);
 	void RebuildRendererFromBullets();
 	void SyncRenderInstancesBulk();
+	void SyncTrailSegments();
 	void ClearRenderer();
+	void ClearTrailRenderer();
 	FTransform MakeBulletRenderTransform(const FBulletInstance& Bullet) const;
 	void UpdateRenderDebugStats();
 	void ResetPerFrameDebugStats();
@@ -301,17 +339,20 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Auto Create Renderer")
 	bool bAutoCreateRenderer = true;
 
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Renderer Mesh Path", AssetType="StaticMesh")
-	FString RendererMeshPath = "Content/Data/BasicShape/Sphere.OBJ";
-
-	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Renderer Material Path", AssetType="Material")
-	FString RendererMaterialPath = "None";
-
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Render Scale", Min=0.01f, Max=1000.0f, Speed=0.1f)
 	float RenderScale = 0.1f;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Render", DisplayName="Render Orientation Mode", Enum=EBulletHellRenderOrientationMode)
 	EBulletHellRenderOrientationMode RenderOrientationMode = EBulletHellRenderOrientationMode::Fixed;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Trail Budget", DisplayName="Max Trail Samples", Min=0, Max=10000000, Speed=1)
+	int32 MaxTrailSampleBudget = 0;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Trail Budget", DisplayName="Max Trail Vertices", Min=0, Max=10000000, Speed=1)
+	int32 MaxTrailVertexBudget = 0;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Trail Budget", DisplayName="Max Trail Indices", Min=0, Max=10000000, Speed=1)
+	int32 MaxTrailIndexBudget = 0;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Enable Collision")
 	bool bEnableCollision = true;
@@ -344,6 +385,7 @@ private:
 	TArray<FBulletRenderSlot> RenderSlots;
 	TMap<uint32, int32> BulletIndexById;
 	TWeakObjectPtr<UInstancedStaticMeshComponent> RenderComponent;
+	TWeakObjectPtr<UBulletTrailComponent> TrailComponent;
 	uint32 NextBulletId = 1;
 	uint32 NextBulletGeneration = 1;
 	FBulletDebugStats DebugStats;
