@@ -75,6 +75,11 @@ namespace
         case EMaterialGraphNodeType::BreakFloat2: return "Break Float2";
         case EMaterialGraphNodeType::BreakFloat3: return "Break Float3";
         case EMaterialGraphNodeType::BreakFloat4: return "Break Float4";
+        case EMaterialGraphNodeType::WorldNormal: return "World Normal";
+        case EMaterialGraphNodeType::WorldPosition: return "World Position";
+        case EMaterialGraphNodeType::CameraPosition: return "Camera Position";
+        case EMaterialGraphNodeType::ViewDirection: return "View Direction";
+        case EMaterialGraphNodeType::Fresnel: return "Fresnel";
         default: return ToString(Type);
         }
     }
@@ -261,6 +266,23 @@ namespace
             return {
                 { EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float4, "In" },
                 { EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float4, "Out" },
+            };
+        case EMaterialGraphNodeType::WorldNormal:
+            return { { EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, "Normal" } };
+        case EMaterialGraphNodeType::WorldPosition:
+            return { { EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, "Position" } };
+        case EMaterialGraphNodeType::CameraPosition:
+            return { { EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, "Position" } };
+        case EMaterialGraphNodeType::ViewDirection:
+            return { { EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, "Direction" } };
+        case EMaterialGraphNodeType::Fresnel:
+            return {
+                { EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float3, "Normal" },
+                { EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float3, "ViewDirection" },
+                { EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float, "Power" },
+                { EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float, "Bias" },
+                { EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float, "Scale" },
+                { EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float, "Result" },
             };
         case EMaterialGraphNodeType::Comment:
         default:
@@ -599,6 +621,42 @@ FMaterialGraphNode* FMaterialGraph::AddNodeOfType(EMaterialGraphNodeType Type, f
         AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float, FName("Y"));
         AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float, FName("Z"));
         AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float, FName("W"));
+        return N;
+    }
+    case EMaterialGraphNodeType::WorldNormal:
+    {
+        FMaterialGraphNode* N = AddNode(Type, FName("World Normal"), X, Y);
+        AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, FName("Normal"));
+        return N;
+    }
+    case EMaterialGraphNodeType::WorldPosition:
+    {
+        FMaterialGraphNode* N = AddNode(Type, FName("World Position"), X, Y);
+        AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, FName("Position"));
+        return N;
+    }
+    case EMaterialGraphNodeType::CameraPosition:
+    {
+        FMaterialGraphNode* N = AddNode(Type, FName("Camera Position"), X, Y);
+        AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, FName("Position"));
+        return N;
+    }
+    case EMaterialGraphNodeType::ViewDirection:
+    {
+        FMaterialGraphNode* N = AddNode(Type, FName("View Direction"), X, Y);
+        AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float3, FName("Direction"));
+        return N;
+    }
+    case EMaterialGraphNodeType::Fresnel:
+    {
+        FMaterialGraphNode* N = AddNode(Type, FName("Fresnel"), X, Y);
+        N->Value              = FVector4(5.0f, 0.0f, 1.0f, 0.0f); // Power, Bias, Scale
+        AddPin(*N, EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float3, FName("Normal"));
+        AddPin(*N, EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float3, FName("ViewDirection"));
+        AddPin(*N, EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float, FName("Power"));
+        AddPin(*N, EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float, FName("Bias"));
+        AddPin(*N, EMaterialGraphPinKind::Input, EMaterialGraphPinType::Float, FName("Scale"));
+        AddPin(*N, EMaterialGraphPinKind::Output, EMaterialGraphPinType::Float, FName("Result"));
         return N;
     }
     }
@@ -1253,6 +1311,16 @@ const char* ToString(EMaterialGraphNodeType Type)
         return "Reroute";
     case EMaterialGraphNodeType::Comment:
         return "Comment";
+    case EMaterialGraphNodeType::WorldNormal:
+        return "WorldNormal";
+    case EMaterialGraphNodeType::WorldPosition:
+        return "WorldPosition";
+    case EMaterialGraphNodeType::CameraPosition:
+        return "CameraPosition";
+    case EMaterialGraphNodeType::ViewDirection:
+        return "ViewDirection";
+    case EMaterialGraphNodeType::Fresnel:
+        return "Fresnel";
     }
     return "Output";
 }
@@ -1308,7 +1376,7 @@ EMaterialGraphPinType MaterialPinTypeFromString(const FString& Str, EMaterialGra
 
 EMaterialGraphNodeType MaterialNodeTypeFromString(const FString& Str, EMaterialGraphNodeType Default)
 {
-    for (int32 i = 0; i <= static_cast<int32>(EMaterialGraphNodeType::Comment); ++i)
+    for (int32 i = 0; i <= static_cast<int32>(EMaterialGraphNodeType::Fresnel); ++i)
     {
         const EMaterialGraphNodeType Type = static_cast<EMaterialGraphNodeType>(i);
         if (Str == ToString(Type)) return Type;

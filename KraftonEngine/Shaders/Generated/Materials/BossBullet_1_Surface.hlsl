@@ -1,10 +1,16 @@
-// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/NewMaterial.uasset
+// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/BossBullet_1.uasset
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
 #include "Common/VertexLayouts.hlsli"
 #include "Common/Functions.hlsli"
 #include "Common/SystemSamplers.hlsli"
+
+float3 SafeNormalize3(float3 V, float3 Fallback)
+{
+    float LenSq = dot(V, V);
+    return LenSq > 1e-8f ? V * rsqrt(LenSq) : Fallback;
+}
 
 struct FMaterialPixelInput
 {
@@ -16,6 +22,10 @@ struct FMaterialPixelInput
     float  Time;
     float  SubImageIndex;
     float4 DynamicParam;
+    float3 WorldPosition;
+    float3 WorldNormal;
+    float3 CameraPosition;
+    float3 ViewDirection;
 };
 
 struct FMaterialResult
@@ -28,20 +38,23 @@ struct FMaterialResult
     float Opacity;
 };
 
-Texture2D Tex_Diffuse : register(t0);
-
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-    float2 n_3 = Input.UV0;
-    float4 n_5 = Tex_Diffuse.Sample(LinearWrapSampler, n_3);
-    float n_47 = 0.400000f;
+    float3 n_36 = float3(0.586498f, 0.000000f, 0.000000f);
+    float3 n_42 = Input.WorldNormal;
+    float3 n_39 = Input.ViewDirection;
+    float n_52 = 3.000000f;
+    float n_29 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((n_42), float3(0, 0, 1)), SafeNormalize3((n_39), float3(0, 0, 1))), 0.0f, 1.0f), n_52) * 1.000000f + 0.000000f);
+    float3 n_1 = float3(1.000000f, 1.000000f, 1.000000f);
+    float3 n_45 = (float3(n_29, n_29, n_29) * n_1);
+    float n_3 = 1.000000f;
     FMaterialResult Result;
-    Result.BaseColor = (n_5).rgb;
+    Result.BaseColor = n_36;
     Result.Normal = float3(0, 0, 1);
     Result.Roughness = 0.5f;
     Result.Metallic = 0.0f;
-    Result.Emissive = float3(0, 0, 0);
-    Result.Opacity = n_47;
+    Result.Emissive = n_45;
+    Result.Opacity = n_3;
     return Result;
 }
 
@@ -99,11 +112,16 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     MaterialInput.Time          = Time;
     MaterialInput.SubImageIndex = 0.0f;
     MaterialInput.DynamicParam  = float4(0, 0, 0, 0);
+    MaterialInput.WorldPosition = input.worldPos;
+    MaterialInput.WorldNormal = SafeNormalize3(input.normal, float3(0, 0, 1));
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = SafeNormalize3(CameraWorldPos - input.worldPos, MaterialInput.WorldNormal);
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float3 N = normalize(input.normal);
 
     float3 finalRgb = Result.BaseColor + Result.Emissive;
+    float OutOpacity = saturate(Result.Opacity);
 
-    return float4(finalRgb, saturate(Result.Opacity));
+    return float4(finalRgb, OutOpacity);
 }
