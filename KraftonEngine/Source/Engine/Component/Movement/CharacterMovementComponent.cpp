@@ -234,24 +234,33 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tick
 			{
 				if (AI->GetRootMotionMode() != ERootMotionMode::IgnoreRootMotion)
 				{
-					AddRootMotionDelta(AI->ConsumeRootMotion());
+					if (AI->HasPendingRootMotion())
+					{
+						AddRootMotionDelta(AI->ConsumeRootMotion());
+					}
 				}
 			}
 		}
 	}
 
-	// 2) Root motion 소비 — local delta 의 위치는 capsule 현재 축 기준이므로,
-	//    world-space 위치 delta 계산은 local delta 를 current world 앞에 곱해 구한다.
+	// 2) Root motion 소비 — extracted translation is already authored in the sequence's
+	//    root-track frame. Keep one world-space basis for a continuous root-motion segment;
+	//    otherwise the root rotation applied to the capsule re-rotates later translation deltas.
 	FTransform RootMotionDelta;
 	const bool bHadRootMotion = ConsumePendingRootMotion(RootMotionDelta);
 	FVector RootMotionWorldDelta(0.0f, 0.0f, 0.0f);
 	if (bHadRootMotion)
 	{
-		const FMatrix CurrentWorldMatrix = Updated->GetWorldMatrix();
-		const FMatrix RootMotionWorldMatrix = CurrentWorldMatrix * RootMotionDelta.ToMatrix();
-		const FVector CurrentWorldLocation(CurrentWorldMatrix.M[3][0], CurrentWorldMatrix.M[3][1], CurrentWorldMatrix.M[3][2]);
-		const FVector NewWorldLocation(RootMotionWorldMatrix.M[3][0], RootMotionWorldMatrix.M[3][1], RootMotionWorldMatrix.M[3][2]);
-		RootMotionWorldDelta = NewWorldLocation - CurrentWorldLocation;
+		if (!bHasRootMotionTranslationBasis)
+		{
+			RootMotionTranslationBasis = Updated->GetWorldRotation().ToQuaternion().GetNormalized();
+			bHasRootMotionTranslationBasis = true;
+		}
+		RootMotionWorldDelta = RootMotionTranslationBasis.RotateVector(RootMotionDelta.Location);
+	}
+	else
+	{
+		bHasRootMotionTranslationBasis = false;
 	}
 
 	const FVector DashWorldXY = ConsumeDashOffset(DeltaTime);

@@ -1,5 +1,6 @@
 ﻿#include "GameFramework/Pawn/Character.h"
 
+#include "Animation/AnimInstance.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/Shape/CapsuleComponent.h"
 #include "Component/Input/InputComponent.h"
@@ -1030,23 +1031,36 @@ void ACharacter::Tick(float DeltaTime)
 			return;
 		}
 
+		bool bAnimHasPendingRootMotion = false;
+		if (Mesh)
+		{
+			if (UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
+			{
+				bAnimHasPendingRootMotion = AnimInstance->HasPendingRootMotion();
+			}
+		}
+
+		const bool bRootMotionOwnsRotation =
+			bAnimHasPendingRootMotion ||
+			(CharacterMovement && CharacterMovement->HasYawDrivenByRootMotion());
+
 		const bool bMovementHandlesRootMotionRotation = CharacterMovement &&
 			(CharacterMovement->bOrientRotationToMovement ||
 			 CharacterMovement->HasYawDrivenByRootMotion());
 
 		FRotator R = CapsuleComponent->GetRelativeRotation();
 		bool bChanged = false;
-		if (bUseControllerRotationYaw && !bMovementHandlesRootMotionRotation)
+		if (bUseControllerRotationYaw && !bMovementHandlesRootMotionRotation && !bRootMotionOwnsRotation)
 		{
 			R.Yaw   = ControlRotation.Yaw;
 			bChanged = true;
 		}
-		if (bUseControllerRotationPitch && !(CharacterMovement && CharacterMovement->HasYawDrivenByRootMotion()))
+		if (bUseControllerRotationPitch && !bRootMotionOwnsRotation)
 		{
 			R.Pitch = ControlRotation.Pitch;
 			bChanged = true;
 		}
-		if (bUseControllerRotationRoll && !(CharacterMovement && CharacterMovement->HasYawDrivenByRootMotion()))
+		if (bUseControllerRotationRoll && !bRootMotionOwnsRotation)
 		{
 			R.Roll  = ControlRotation.Roll;
 			bChanged = true;

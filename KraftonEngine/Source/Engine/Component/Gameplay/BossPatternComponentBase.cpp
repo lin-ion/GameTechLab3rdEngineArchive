@@ -1,6 +1,10 @@
 #include "BossPatternComponentBase.h"
 
+#include "Animation/AnimInstance.h"
+#include "Component/Movement/CharacterMovementComponent.h"
+#include "Component/Primitive/SkeletalMeshComponent.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/Pawn/Character.h"
 #include "Math/Rotator.h"
 
 #include <algorithm>
@@ -34,6 +38,29 @@ namespace
 		default:
 			return "None";
 		}
+	}
+
+	bool IsRootMotionDrivingRotation(const AActor* Actor)
+	{
+		const ACharacter* Character = Cast<ACharacter>(Actor);
+		if (!Character)
+		{
+			return false;
+		}
+
+		if (const USkeletalMeshComponent* Mesh = Character->GetMesh())
+		{
+			if (const UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
+			{
+				if (AnimInstance->HasPendingRootMotion())
+				{
+					return true;
+				}
+			}
+		}
+
+		const UCharacterMovementComponent* Movement = Character->GetCharacterMovement();
+		return Movement && Movement->HasYawDrivenByRootMotion();
 	}
 }
 
@@ -114,7 +141,7 @@ void UBossPatternComponentBase::TickPattern(float DeltaTime, const FBossPatternC
 	PatternElapsed += DeltaTime;
 	StepElapsed += DeltaTime;
 
-	if (bFaceTargetDuringPattern)
+	if (bFaceTargetDuringPattern && !IsRootMotionDrivingRotation(Context.BossActor))
 	{
 		FaceTarget(Context);
 	}
