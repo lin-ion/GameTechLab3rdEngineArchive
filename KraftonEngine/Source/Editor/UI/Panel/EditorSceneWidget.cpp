@@ -143,8 +143,10 @@ void FEditorSceneWidget::RenderActorOutliner()
 
 	if (PendingRemoveActor)
 	{
-		Selection.Select(PendingRemoveActor);
-		Selection.DeleteSelectedActors();
+		// 편집 모드의 AUICanvasActor 는 RootComponent(UUICanvas)가 BeginPlay 에서만 생겨 에디터에선
+		// 없다 → Select() 가 거부(ClearSelection)하므로 기존 Select→DeleteSelected 경로로는 안 지워졌다.
+		// 선택 의존 없이 직접 파괴해 mesh 없는(뷰포트 picking 불가) UI 액터도 Outliner 에서 제거 가능.
+		Selection.DeleteActor(PendingRemoveActor);
 	}
 }
 

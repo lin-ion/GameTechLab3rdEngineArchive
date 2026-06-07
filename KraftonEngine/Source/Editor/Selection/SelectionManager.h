@@ -23,6 +23,10 @@ public:
 	void Deselect(AActor* Actor);
 	void ClearSelection();
 	int32 DeleteSelectedActors();
+	// 선택 의존 없이 특정 액터를 즉시 파괴. 편집 모드의 AUICanvasActor 처럼 RootComponent 가 없어
+	// Select() 가 거부하는(=뷰포트 raycast picking 불가) 액터를 Outliner 우클릭 Remove 로 지우기 위함.
+	// 선택 중이던 액터면 dangling 기즈모/선택 방지를 위해 먼저 Deselect. 반환: 실제로 파괴했는지.
+	bool DeleteActor(AActor* Actor);
 	void Tick();
 
 	void SelectComponent(USceneComponent* Component);

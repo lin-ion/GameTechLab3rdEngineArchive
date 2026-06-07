@@ -302,6 +302,29 @@ int32 FSelectionManager::DeleteSelectedActors()
     return DeletedCount;
 }
 
+bool FSelectionManager::DeleteActor(AActor* Actor)
+{
+    PruneInvalidSelection();
+
+    if (!IsValid(Actor) || !IsValid(World.Get()))
+    {
+        return false;
+    }
+
+    // 선택 의존 경로(Select→DeleteSelectedActors)는 RootComponent 없는 액터를 Select() 가 거부해
+    // 지우지 못한다. 여기서는 선택 여부와 무관하게 직접 파괴하되, 선택 중이면 먼저 끊어 dangling 방지.
+    if (IsSelected(Actor))
+    {
+        Deselect(Actor);
+    }
+
+    World->BeginDeferredPickingBVHUpdate();
+    World->DestroyActor(Actor);
+    World->EndDeferredPickingBVHUpdate();
+
+    return true;
+}
+
 void FSelectionManager::Tick()
 {
     PruneInvalidSelection();
