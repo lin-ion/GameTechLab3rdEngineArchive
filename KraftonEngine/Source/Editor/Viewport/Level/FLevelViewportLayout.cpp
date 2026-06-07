@@ -36,6 +36,7 @@
 #include "UI/Toolbar/ViewportToolbar.h"
 
 #include "GameFramework/Actor/StaticMeshActor.h"
+#include "UI/Canvas/UICanvasActor.h"
 #include "GameFramework/Actor/BoxActor.h"
 #include "GameFramework/Actor/SphereActor.h"
 #include "GameFramework/Actor/CapsuleActor.h"
@@ -901,6 +902,22 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 				AStaticMeshActor* NewActor = Cast<AStaticMeshActor>(FObjectFactory::Get().Create(AStaticMeshActor::StaticClass()->GetName(), Editor->GetWorld()));
 				NewActor->InitDefaultComponents(FPaths::ToUtf8(ContentItem.Path));
 				Editor->GetWorld()->AddActor(NewActor);
+			}
+			// UI .uasset 드롭 → 화면공간 UI 액터(AUICanvasActor) spawn (메시 분기와 동형). 의미 1:
+			// 드롭 3D 좌표는 무시(transform 기본값/원점) — UI 는 카메라/월드와 무관하게 화면에 그려진다.
+			// 캔버스 트리 빌드 + 화면 등록은 액터 BeginPlay(PIE/런타임)에서 UIAssetPath 로 재구성한다
+			// (진단 R1/R4) → 편집 모드에선 액터만 생기고 화면엔 안 뜬다(정상).
+			else if (const ImGuiPayload* uiPayload = ImGui::AcceptDragDropPayload("UIContentItem"))
+			{
+				FContentItem ContentItem = *reinterpret_cast<const FContentItem*>(uiPayload->Data);
+
+				AUICanvasActor* NewActor = Cast<AUICanvasActor>(FObjectFactory::Get().Create(AUICanvasActor::StaticClass()->GetName(), Editor->GetWorld()));
+				if (NewActor)
+				{
+					// .Scene 포터빌리티: 참조 경로는 project-relative 로 저장(메시 StaticMeshPath 선례).
+					NewActor->SetUIAssetPath(FPaths::MakeProjectRelative(FPaths::ToUtf8(ContentItem.Path.wstring())));
+					Editor->GetWorld()->AddActor(NewActor);
+				}
 			}
 			ImGui::EndDragDropTarget();
 		}

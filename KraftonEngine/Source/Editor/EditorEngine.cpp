@@ -2,7 +2,6 @@
 
 #include "Profiling/StartupProfiler.h"
 #include "Core/Logging/Notification.h"
-#include "Core/Logging/Log.h"
 #include "Engine/Platform/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Engine/Platform/DirectoryWatcher.h"
@@ -15,7 +14,6 @@
 #include "GameFramework/GameMode/GameModeBase.h"
 #include "Viewport/GameViewportClient.h"
 #include "UI/UIManager.h"
-#include "UI/Canvas/UICanvasActor.h"
 #include "UI/Canvas/UICanvasManager.h"
 #include "Editor/Slate/SlateApplication.h"
 #include "Editor/EditorRenderPipeline.h"
@@ -118,32 +116,6 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	{
 		SCOPE_STARTUP_STAT("EditorRenderPipeline::Create");
 		SetRenderPipeline(std::make_unique<FEditorRenderPipeline>(this, Renderer));
-	}
-
-	// [DEBUG/TEST 임시 — ui-drop cycle 2] 에셋 참조 영속(R4) 검증용. 에디터 월드에 UI 액터를 스폰하고
-	// UIAssetPath 만 세팅한다(트리 빌드는 PIE BeginPlay 가 .uasset 으로 재구성 — R1/R4). 같은 월드에
-	// 이미 AUICanvasActor 가 있으면 중복 스폰하지 않는다(저장→재로드 시 파일의 액터와 겹치지 않도록).
-	// cycle 3(실제 드롭 배선)에서 제거.
-	if (UWorld* EditorWorld = GetWorld())
-	{
-		bool bAlreadyHasUICanvas = false;
-		for (AActor* Existing : EditorWorld->GetActors())
-		{
-			if (Cast<AUICanvasActor>(Existing)) { bAlreadyHasUICanvas = true; break; }
-		}
-		if (!bAlreadyHasUICanvas)
-		{
-			const FString DebugUIAssetPath =
-				FPaths::ToUtf8(FPaths::Combine(FPaths::RootDir(), L"Content", L"UI", L"NewUI.uasset"));
-			UObject* Created = FObjectFactory::Get().Create(AUICanvasActor::StaticClass()->GetName(), EditorWorld);
-			if (AUICanvasActor* UIActor = Cast<AUICanvasActor>(Created))
-			{
-				UIActor->SetUIAssetPath(DebugUIAssetPath);   // 빌드 X — 저장 시 경로만, 로드 후 PIE 에서 재구성.
-				EditorWorld->AddActor(UIActor);
-				UE_LOG("[ui-drop cycle2] editor debug spawn: UIAssetPath='%s' (저장=경로만, PIE BeginPlay 에서 빌드/렌더)",
-					DebugUIAssetPath.c_str());
-			}
-		}
 	}
 }
 
