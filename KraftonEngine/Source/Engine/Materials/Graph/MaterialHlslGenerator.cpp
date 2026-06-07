@@ -942,7 +942,9 @@ namespace
         SS << "#include \"Common/Functions.hlsli\"\n";
         SS << "#include \"Common/SystemSamplers.hlsli\"\n";
         // AlphaBlend 도메인에서는 per-pixel fog 적용
-        if (Domain == EMaterialGraphTarget::ParticleSprite || Domain == EMaterialGraphTarget::ParticleMesh)
+        if (Domain == EMaterialGraphTarget::ParticleSprite ||
+            Domain == EMaterialGraphTarget::ParticleMesh ||
+            Domain == EMaterialGraphTarget::ParticleBeamTrail)
         {
             SS << "#define USE_FOG 1\n";
             SS << "#include \"Common/Fog.hlsli\"\n";
@@ -1030,6 +1032,24 @@ float4 ApplyFogTransparent(float4 color, float3 worldPos, float3 cameraWorldPos)
     FString BuildParticleSpriteMain()
     {
         return R"(
+struct VS_Input_ParticleQuad
+{
+    float3 cornerSign : POSITION;
+    float2 baseUV     : TEXTCOORD;
+};
+
+struct VS_Input_ParticleInstance
+{
+    float3 position      : INSTANCE_CENTER;
+    float3 velocity      : INSTANCE_VELOCITY;
+    float2 size          : INSTANCE_SIZE;
+    float  rotation      : INSTANCE_ROTATION;
+    float4 color         : INSTANCE_COLOR;
+    int    subImageIndex : INSTANCE_SUBIMAGE;
+    int    alignment     : INSTANCE_ALIGNMENT;
+    float4 dynamicParam  : INSTANCE_DYNAMICPARAM;
+};
+
 struct PS_Input_MaterialParticle
 {
     float4 position       : SV_POSITION;
@@ -1045,18 +1065,21 @@ PS_Input_MaterialParticle VS(VS_Input_ParticleQuad quad, VS_Input_ParticleInstan
     float sinR = sin(inst.rotation);
     float cosR = cos(inst.rotation);
 
+    float2 corner = quad.cornerSign.xy;
     float2 rotUV = float2(
-        quad.cornerUV.x * cosR - quad.cornerUV.y * sinR,
-        quad.cornerUV.x * sinR + quad.cornerUV.y * cosR
+        corner.x * cosR - corner.y * sinR,
+        corner.x * sinR + corner.y * cosR
     );
 
+    float3 cameraRight = float3(View._m00, View._m10, View._m20);
+    float3 cameraUp    = float3(View._m01, View._m11, View._m21);
     float3 worldPos = inst.position
-                    + FrameCameraRight * rotUV.x * inst.size
-                    + FrameCameraUp * rotUV.y * inst.size;
+                    + cameraRight * (rotUV.x * inst.size.x)
+                    + cameraUp    * (rotUV.y * inst.size.y);
 
     PS_Input_MaterialParticle output;
     output.position       = mul(float4(worldPos, 1.0f), mul(View, Projection));
-    output.texcoord       = quad.cornerUV + 0.5f;
+    output.texcoord       = quad.baseUV;
     output.color          = inst.color;
     output.subImageIndex  = inst.subImageIndex;
     output.dynamicParam   = inst.dynamicParam;
@@ -1092,6 +1115,17 @@ float4 PS(PS_Input_MaterialParticle input) : SV_TARGET
     {
         std::stringstream SS;
         SS << R"(
+struct VS_Input_MeshParticleInstance
+{
+    float4 transform0    : INSTANCE_TRANSFORM0;
+    float4 transform1    : INSTANCE_TRANSFORM1;
+    float4 transform2    : INSTANCE_TRANSFORM2;
+    float4 transform3    : INSTANCE_TRANSFORM3;
+    float4 color         : INSTANCE_COLOR;
+    int    subImageIndex : INSTANCE_SUBIMAGE;
+    float4 dynamicParam  : INSTANCE_DYNAMICPARAM;
+};
+
 struct PS_Input_MaterialMeshParticle
 {
     float4 position       : SV_POSITION;
@@ -1105,9 +1139,15 @@ struct PS_Input_MaterialMeshParticle
 
 PS_Input_MaterialMeshParticle VS(VS_Input_PNCT vert, VS_Input_MeshParticleInstance inst)
 {
-    float4 worldPos = mul(float4(vert.position, 1.0f), inst.transform);
+    float4x4 worldMatrix = float4x4(
+        inst.transform0,
+        inst.transform1,
+        inst.transform2,
+        inst.transform3
+    );
+    float4 worldPos = mul(float4(vert.position, 1.0f), worldMatrix);
     // 비균일 스케일에서 노말 왜곡 방지: 역전치 행렬 사용
-    float3x3 M = (float3x3)inst.transform;
+    float3x3 M = (float3x3)worldMatrix;
     float3x3 invTransM = transpose(float3x3(
         cross(M[1], M[2]),
         cross(M[2], M[0]),
@@ -1166,6 +1206,58 @@ float4 PS(PS_Input_MaterialMeshParticle input) : SV_TARGET
 }
 )";
         return SS.str();
+    }
+
+    FString BuildParticleBeamTrailMain()
+    {
+        return R"(
+struct VS_Input_MaterialBeamTrail
+{
+    float3 position : POSITION;
+    float4 color    : COLOR;
+    float2 texcoord : TEXTCOORD;
+};
+
+struct PS_Input_MaterialBeamTrail
+{
+    float4 position : SV_POSITION;
+    float2 texcoord : TEXCOORD0;
+    float4 color    : COLOR;
+    float3 worldPos : TEXCOORD1;
+};
+
+PS_Input_MaterialBeamTrail VS(VS_Input_MaterialBeamTrail input)
+{
+    PS_Input_MaterialBeamTrail output;
+    output.position = ApplyVP(input.position);
+    output.texcoord = input.texcoord;
+    output.color    = input.color;
+    output.worldPos = input.position;
+    return output;
+}
+
+float4 PS(PS_Input_MaterialBeamTrail input) : SV_TARGET
+{
+    FMaterialPixelInput MaterialInput;
+    MaterialInput.UV0           = input.texcoord;
+    MaterialInput.UV1           = float2(0, 0);
+    MaterialInput.UV2           = float2(0, 0);
+    MaterialInput.ParticleColor = input.color;
+    MaterialInput.VertexColor   = input.color;
+    MaterialInput.Time          = Time;
+    MaterialInput.SubImageIndex = 0.0f;
+    MaterialInput.DynamicParam  = float4(0, 0, 0, 0);
+    MaterialInput.WorldPosition = input.worldPos;
+    MaterialInput.WorldNormal = SafeNormalize3(CameraWorldPos - input.worldPos, float3(0, 0, 1));
+    MaterialInput.CameraPosition = CameraWorldPos;
+    MaterialInput.ViewDirection = MaterialInput.WorldNormal;
+
+    FMaterialResult Result = EvaluateMaterial(MaterialInput);
+    float4 FinalColor = float4(Result.Color + Result.Emissive, Result.Opacity);
+    clip(FinalColor.a - 0.01f);
+    return ApplyFogTransparent(FinalColor, input.worldPos, CameraWorldPos);
+}
+)";
     }
 
     FString BuildSurfaceMain(ERenderPass RenderPass, EBlendMode BlendMode, EMaterialShadingModel ShadingModel, bool bReceiveLighting, float OpacityMaskClipValue)
@@ -1461,6 +1553,9 @@ bool FMaterialHlslGenerator::Generate(const FMaterialGraph& Graph, const FMateri
         break;
     case EMaterialGraphTarget::ParticleMesh:
         SS << BuildParticleMeshMain(Options.bReceiveLighting);
+        break;
+    case EMaterialGraphTarget::ParticleBeamTrail:
+        SS << BuildParticleBeamTrailMain();
         break;
     case EMaterialGraphTarget::PostProcess:
         SS << BuildPostProcessMain();

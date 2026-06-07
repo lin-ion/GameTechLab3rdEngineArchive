@@ -174,6 +174,30 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Primary Damage", Min=0.0f, Max=1000000.0f, Speed=1.0f)
 	float PrimaryDamage = 1.0f;
 
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Enabled")
+	bool bPrimaryTrailEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Material Path", AssetType="Material")
+	FString PrimaryTrailMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Color", Type=Color4)
+	FVector4 PrimaryTrailColor = FVector4(1.0f, 0.6f, 0.15f, 1.0f);
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Width", Min=0.001f, Max=100.0f, Speed=0.01f)
+	float PrimaryTrailWidth = 0.08f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Lifetime", Min=0.001f, Max=60.0f, Speed=0.01f)
+	float PrimaryTrailLifetime = 0.12f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Max Samples", Min=2, Max=1024, Speed=1)
+	int32 PrimaryTrailMaxSamples = 8;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Sample Interval", Min=0.0f, Max=1.0f, Speed=0.001f)
+	float PrimaryTrailSampleInterval = 0.02f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
+	float PrimaryTrailMinSampleDistance = 0.05f;
+
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Mesh Path", AssetType="StaticMesh")
 	FString SecondaryMeshPath = "Content/Data/BasicShape/Cube.OBJ";
 
@@ -197,6 +221,30 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Homing")
 	bool bSecondaryHoming = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Enabled")
+	bool bSecondaryTrailEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Material Path", AssetType="Material")
+	FString SecondaryTrailMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Color", Type=Color4)
+	FVector4 SecondaryTrailColor = FVector4(0.3f, 0.8f, 1.0f, 1.0f);
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Width", Min=0.001f, Max=100.0f, Speed=0.01f)
+	float SecondaryTrailWidth = 0.08f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Lifetime", Min=0.001f, Max=60.0f, Speed=0.01f)
+	float SecondaryTrailLifetime = 0.12f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Max Samples", Min=2, Max=1024, Speed=1)
+	int32 SecondaryTrailMaxSamples = 8;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Sample Interval", Min=0.0f, Max=1.0f, Speed=0.001f)
+	float SecondaryTrailSampleInterval = 0.02f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
+	float SecondaryTrailMinSampleDistance = 0.05f;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Commands", DisplayName="Debug Spawn Request", Min=0, Max=1000000, Speed=1)
 	int32 DebugSpawnRequest = 0;

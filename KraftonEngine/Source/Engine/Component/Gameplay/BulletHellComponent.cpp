@@ -1,5 +1,6 @@
 #include "BulletHellComponent.h"
 
+#include "Component/Gameplay/BulletTrailComponent.h"
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
@@ -7,12 +8,14 @@
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Math/Rotator.h"
+#include "Platform/Paths.h"
 #include "Profiling/Stats/BulletHellStats.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <random>
 
 namespace
@@ -20,6 +23,7 @@ namespace
 	constexpr float Pi = 3.1415926535f;
 	constexpr float TwoPi = 6.28318530718f;
 	constexpr float GoldenAngle = 2.39996322973f;
+	constexpr const char* BulletTrailFallbackMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
 
 	uint32 AdvanceNonZero(uint32 Value)
 	{
@@ -67,6 +71,40 @@ namespace
 		return PropertyName
 			&& (std::strcmp(PropertyName, MemberName) == 0 || std::strcmp(PropertyName, DisplayName) == 0);
 	}
+
+	FString NormalizeTrailMaterialPath(const FString& MaterialPath)
+	{
+		return (MaterialPath.empty() || MaterialPath == "None")
+			? FString(BulletTrailFallbackMaterialPath)
+			: MaterialPath;
+	}
+
+	bool DoesMaterialPathExist(const FString& MaterialPath)
+	{
+		std::filesystem::path Path(FPaths::ToWide(FPaths::MakeProjectRelative(MaterialPath)));
+		if (std::filesystem::exists(Path))
+		{
+			return true;
+		}
+
+		if (Path.extension() == L".mat")
+		{
+			Path.replace_extension(L".uasset");
+			return std::filesystem::exists(Path);
+		}
+
+		return false;
+	}
+
+	bool IsExplicitTrailMaterialMissing(const FString& MaterialPath)
+	{
+		if (MaterialPath.empty() || MaterialPath == "None")
+		{
+			return false;
+		}
+
+		return !DoesMaterialPathExist(MaterialPath);
+	}
 }
 
 UBulletHellComponent::UBulletHellComponent()
@@ -103,6 +141,7 @@ void UBulletHellComponent::PostEditProperty(const char* PropertyName)
 		else
 		{
 			ClearRenderer();
+			ClearTrailRenderer();
 		}
 	}
 }
@@ -119,6 +158,7 @@ void UBulletHellComponent::TickComponent(
 	ResetPerFrameDebugStats();
 	TickBullets(DeltaTime);
 	SyncRenderInstancesBulk();
+	SyncTrailSegments();
 	RecordOverlayStats();
 }
 
@@ -158,6 +198,8 @@ FBulletHandle UBulletHellComponent::SpawnBullet(const FBulletSpawnParams& Params
 	Bullet.GroupId = Params.GroupId;
 	Bullet.RenderSlotIndex = -1;
 	Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
+	Bullet.Trail = Archetype.Trail;
+	ResetTrailSamples(Bullet);
 	Bullet.HomingTargetPosition = Params.HomingTargetPosition;
 	Bullet.HomingTargetActor = Params.HomingTargetActor;
 	Bullet.bHoming = Params.bHoming;
@@ -645,6 +687,7 @@ bool UBulletHellComponent::LaunchBullet(const FBulletHandle& Handle, const FBull
 	if (Params.bResetAge)
 	{
 		Bullet.Age = 0.0f;
+		ResetTrailSamples(Bullet);
 	}
 
 	if (Params.bSetLifetime)
@@ -732,6 +775,7 @@ void UBulletHellComponent::ClearBullets()
 	Bullets.clear();
 	BulletIndexById.clear();
 	ClearRenderer();
+	ClearTrailRenderer();
 	DebugStats.ActiveBulletCount = 0;
 	DebugStats.DebugDrawSelectedCount = 0;
 	DebugStats.DebugDrawTruncatedCount = 0;
@@ -788,6 +832,7 @@ void UBulletHellComponent::TickBullets(float DeltaTime)
 			continue;
 		}
 
+		UpdateTrailSamples(Bullet, DeltaTime);
 		++Index;
 	}
 
@@ -845,6 +890,76 @@ void UBulletHellComponent::UpdateHomingBehavior(FBulletInstance& Bullet, float D
 		CurrentDirection * (1.0f - Alpha) + DesiredDirection * Alpha,
 		DesiredDirection);
 	Bullet.Velocity = NewDirection * CurrentSpeed;
+}
+
+void UBulletHellComponent::ResetTrailSamples(FBulletInstance& Bullet)
+{
+	Bullet.TrailSamples.clear();
+	Bullet.TrailSampleAccumulator = 0.0f;
+	if (!Bullet.Trail.bEnableTrail)
+	{
+		return;
+	}
+
+	FBulletTrailSample Sample;
+	Sample.Position = Bullet.Position;
+	Sample.Age = 0.0f;
+	Bullet.TrailSamples.push_back(Sample);
+}
+
+void UBulletHellComponent::UpdateTrailSamples(FBulletInstance& Bullet, float DeltaTime)
+{
+	if (!Bullet.Trail.bEnableTrail)
+	{
+		Bullet.TrailSamples.clear();
+		Bullet.TrailSampleAccumulator = 0.0f;
+		return;
+	}
+
+	const int32 MaxSamples = (std::max)(2, Bullet.Trail.MaxSamples);
+	const float TrailLifetime = (std::max)(0.001f, Bullet.Trail.Lifetime);
+	const float SampleInterval = (std::max)(0.0f, Bullet.Trail.SampleInterval);
+	const float MinSampleDistance = (std::max)(0.0f, Bullet.Trail.MinSampleDistance);
+
+	for (FBulletTrailSample& Sample : Bullet.TrailSamples)
+	{
+		Sample.Age += DeltaTime;
+	}
+
+	while (Bullet.TrailSamples.size() > 1 && Bullet.TrailSamples.front().Age > TrailLifetime)
+	{
+		Bullet.TrailSamples.erase(Bullet.TrailSamples.begin());
+	}
+
+	if (Bullet.TrailSamples.empty())
+	{
+		FBulletTrailSample Sample;
+		Sample.Position = Bullet.Position;
+		Sample.Age = 0.0f;
+		Bullet.TrailSamples.push_back(Sample);
+		Bullet.TrailSampleAccumulator = 0.0f;
+		return;
+	}
+
+	Bullet.TrailSampleAccumulator += DeltaTime;
+	const FVector LastStoredSamplePosition = Bullet.TrailSamples.back().Position;
+	const float DistanceSquared = FVector::DistSquared(Bullet.Position, LastStoredSamplePosition);
+	const bool bPassedDistance = DistanceSquared >= MinSampleDistance * MinSampleDistance;
+	const bool bPassedInterval = SampleInterval <= 0.0f || Bullet.TrailSampleAccumulator >= SampleInterval;
+	const bool bNeedSecondPoint = Bullet.TrailSamples.size() < 2 && bPassedDistance;
+	if ((bPassedDistance && bPassedInterval) || bNeedSecondPoint)
+	{
+		FBulletTrailSample Sample;
+		Sample.Position = Bullet.Position;
+		Sample.Age = 0.0f;
+		Bullet.TrailSamples.push_back(Sample);
+		Bullet.TrailSampleAccumulator = 0.0f;
+	}
+
+	while (Bullet.TrailSamples.size() > static_cast<size_t>(MaxSamples))
+	{
+		Bullet.TrailSamples.erase(Bullet.TrailSamples.begin());
+	}
 }
 
 void UBulletHellComponent::UpdateBehaviorDebugStats()
@@ -1105,6 +1220,68 @@ UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderComponent()
 UInstancedStaticMeshComponent* UBulletHellComponent::GetRenderComponent() const
 {
 	return GetRenderSlotComponent(0);
+}
+
+UBulletTrailComponent* UBulletHellComponent::EnsureTrailComponent()
+{
+	if (!bEnableRendering)
+	{
+		return nullptr;
+	}
+
+	UBulletTrailComponent* Renderer = TrailComponent.Get();
+	if (Renderer && Renderer->GetOwner() == GetOwner())
+	{
+		return Renderer;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return nullptr;
+	}
+
+	const FName ExpectedName("BulletHellTrailRenderer");
+	for (UActorComponent* Component : OwnerActor->GetComponents())
+	{
+		UBulletTrailComponent* ExistingRenderer = Cast<UBulletTrailComponent>(Component);
+		if (ExistingRenderer && ExistingRenderer->GetOwner() == OwnerActor && ExistingRenderer->GetFName() == ExpectedName)
+		{
+			TrailComponent = ExistingRenderer;
+			return ExistingRenderer;
+		}
+	}
+
+	if (!CanAutoCreateRenderComponent())
+	{
+		return nullptr;
+	}
+
+	Renderer = OwnerActor->AddComponent<UBulletTrailComponent>();
+	if (!Renderer)
+	{
+		return nullptr;
+	}
+
+	Renderer->SetFName(ExpectedName);
+	if (USceneComponent* RootComponent = OwnerActor->GetRootComponent())
+	{
+		Renderer->AttachToComponent(RootComponent);
+	}
+
+	TrailComponent = Renderer;
+	return Renderer;
+}
+
+UBulletTrailComponent* UBulletHellComponent::GetTrailComponent() const
+{
+	if (!bEnableRendering)
+	{
+		return nullptr;
+	}
+
+	UBulletTrailComponent* Renderer = TrailComponent.Get();
+	return Renderer && Renderer->GetOwner() == GetOwner() ? Renderer : nullptr;
 }
 
 int32 UBulletHellComponent::FindOrCreateRenderSlot(const FBulletArchetype& Archetype)
@@ -1368,6 +1545,152 @@ void UBulletHellComponent::SyncRenderInstancesBulk()
 	UpdateRenderDebugStats();
 }
 
+void UBulletHellComponent::SyncTrailSegments()
+{
+	DebugStats.TrailEnabledBulletCount = 0;
+	DebugStats.TrailSampleCount = 0;
+	DebugStats.TrailBatchCount = 0;
+	DebugStats.TrailVertexCount = 0;
+	DebugStats.TrailIndexCount = 0;
+	DebugStats.TrailTruncatedCount = 0;
+	DebugStats.TrailMaterialMissingCount = 0;
+
+	if (!bEnableRendering)
+	{
+		ClearTrailRenderer();
+		return;
+	}
+
+	TArray<FBulletTrailChain> Chains;
+	TArray<FString> MaterialPaths;
+	Chains.reserve(Bullets.size());
+
+	const int32 SampleBudget = (std::max)(0, MaxTrailSampleBudget);
+	const int32 VertexBudget = (std::max)(0, MaxTrailVertexBudget);
+	const int32 IndexBudget = (std::max)(0, MaxTrailIndexBudget);
+	int32 UsedTrailSamples = 0;
+	int32 UsedTrailVertices = 0;
+	int32 UsedTrailIndices = 0;
+
+	for (const FBulletInstance& Bullet : Bullets)
+	{
+		if (!Bullet.Trail.bEnableTrail)
+		{
+			continue;
+		}
+
+		++DebugStats.TrailEnabledBulletCount;
+		DebugStats.TrailSampleCount += static_cast<int32>(Bullet.TrailSamples.size());
+		if (Bullet.TrailSamples.empty())
+		{
+			continue;
+		}
+
+		FBulletTrailChain Chain;
+		Chain.MaterialPath = NormalizeTrailMaterialPath(Bullet.Trail.MaterialPath);
+		Chain.Points.reserve(Bullet.TrailSamples.size() + 1);
+		const float TrailLifetime = (std::max)(0.001f, Bullet.Trail.Lifetime);
+		auto AppendTrailPoint = [&](const FVector& Position, float Age)
+		{
+			const float AgeAlpha = ClampFloat(Age / TrailLifetime, 0.0f, 1.0f);
+			FBulletTrailPoint Point;
+			Point.Position = Position;
+			Point.Width = (std::max)(0.001f, Bullet.Trail.Width);
+			Point.Color = Bullet.Trail.Color;
+			Point.Color.W *= 1.0f - AgeAlpha;
+			Chain.Points.push_back(Point);
+		};
+
+		for (const FBulletTrailSample& Sample : Bullet.TrailSamples)
+		{
+			AppendTrailPoint(Sample.Position, Sample.Age);
+		}
+
+		if (Chain.Points.empty() || !(Bullet.Position - Chain.Points.back().Position).IsNearlyZero())
+		{
+			AppendTrailPoint(Bullet.Position, 0.0f);
+		}
+
+		if (Chain.Points.size() < 2)
+		{
+			continue;
+		}
+
+		const int32 RequestedPointCount = static_cast<int32>(Chain.Points.size());
+		int32 AllowedPointCount = RequestedPointCount;
+		if (SampleBudget > 0)
+		{
+			AllowedPointCount = (std::min)(AllowedPointCount, SampleBudget - UsedTrailSamples);
+		}
+		if (VertexBudget > 0)
+		{
+			AllowedPointCount = (std::min)(AllowedPointCount, (VertexBudget - UsedTrailVertices) / 2);
+		}
+		if (IndexBudget > 0)
+		{
+			AllowedPointCount = (std::min)(AllowedPointCount, ((IndexBudget - UsedTrailIndices) / 6) + 1);
+		}
+
+		if (AllowedPointCount < 2)
+		{
+			DebugStats.TrailTruncatedCount += RequestedPointCount;
+			continue;
+		}
+
+		if (AllowedPointCount < RequestedPointCount)
+		{
+			Chain.Points.erase(Chain.Points.begin(), Chain.Points.end() - AllowedPointCount);
+			DebugStats.TrailTruncatedCount += RequestedPointCount - AllowedPointCount;
+		}
+
+		const int32 ChainPointCount = static_cast<int32>(Chain.Points.size());
+		const int32 ChainVertexCount = ChainPointCount * 2;
+		const int32 ChainIndexCount = (ChainPointCount - 1) * 6;
+		UsedTrailSamples += ChainPointCount;
+		UsedTrailVertices += ChainVertexCount;
+		UsedTrailIndices += ChainIndexCount;
+
+		if (IsExplicitTrailMaterialMissing(Bullet.Trail.MaterialPath))
+		{
+			++DebugStats.TrailMaterialMissingCount;
+		}
+
+		Chains.push_back(Chain);
+
+		bool bKnownMaterial = false;
+		for (const FString& MaterialPath : MaterialPaths)
+		{
+			if (MaterialPath == Chain.MaterialPath)
+			{
+				bKnownMaterial = true;
+				break;
+			}
+		}
+		if (!bKnownMaterial)
+		{
+			MaterialPaths.push_back(Chain.MaterialPath);
+		}
+	}
+
+	DebugStats.TrailBatchCount = static_cast<int32>(MaterialPaths.size());
+	DebugStats.TrailVertexCount = UsedTrailVertices;
+	DebugStats.TrailIndexCount = UsedTrailIndices;
+
+	if (Chains.empty())
+	{
+		if (UBulletTrailComponent* Renderer = GetTrailComponent())
+		{
+			Renderer->ClearTrailChains();
+		}
+		return;
+	}
+
+	if (UBulletTrailComponent* Renderer = EnsureTrailComponent())
+	{
+		Renderer->SetTrailChains(std::move(Chains));
+	}
+}
+
 void UBulletHellComponent::ClearRenderer()
 {
 	for (FBulletRenderSlot& Slot : RenderSlots)
@@ -1385,6 +1708,23 @@ void UBulletHellComponent::ClearRenderer()
 		Bullet.RenderInstanceIndex = -1;
 	}
 	UpdateRenderDebugStats();
+}
+
+void UBulletHellComponent::ClearTrailRenderer()
+{
+	UBulletTrailComponent* Renderer = TrailComponent.Get();
+	if (Renderer && Renderer->GetOwner() == GetOwner())
+	{
+		Renderer->ClearTrailChains();
+	}
+
+	DebugStats.TrailEnabledBulletCount = 0;
+	DebugStats.TrailSampleCount = 0;
+	DebugStats.TrailBatchCount = 0;
+	DebugStats.TrailVertexCount = 0;
+	DebugStats.TrailIndexCount = 0;
+	DebugStats.TrailTruncatedCount = 0;
+	DebugStats.TrailMaterialMissingCount = 0;
 }
 
 FTransform UBulletHellComponent::MakeBulletRenderTransform(const FBulletInstance& Bullet) const
@@ -1511,5 +1851,12 @@ void UBulletHellComponent::RecordOverlayStats() const
 	Snapshot.RendererSlot0InstanceCount = static_cast<uint32>((std::max)(0, DebugStats.RendererSlot0InstanceCount));
 	Snapshot.RendererSlot1InstanceCount = static_cast<uint32>((std::max)(0, DebugStats.RendererSlot1InstanceCount));
 	Snapshot.RenderMismatchCount = static_cast<uint32>((std::max)(0, DebugStats.RenderMismatchCount));
+	Snapshot.TrailEnabledBulletCount = static_cast<uint32>((std::max)(0, DebugStats.TrailEnabledBulletCount));
+	Snapshot.TrailSampleCount = static_cast<uint32>((std::max)(0, DebugStats.TrailSampleCount));
+	Snapshot.TrailBatchCount = static_cast<uint32>((std::max)(0, DebugStats.TrailBatchCount));
+	Snapshot.TrailVertexCount = static_cast<uint32>((std::max)(0, DebugStats.TrailVertexCount));
+	Snapshot.TrailIndexCount = static_cast<uint32>((std::max)(0, DebugStats.TrailIndexCount));
+	Snapshot.TrailTruncatedCount = static_cast<uint32>((std::max)(0, DebugStats.TrailTruncatedCount));
+	Snapshot.TrailMaterialMissingCount = static_cast<uint32>((std::max)(0, DebugStats.TrailMaterialMissingCount));
 	BULLETHELL_STATS_ADD_COMPONENT(Snapshot);
 }
