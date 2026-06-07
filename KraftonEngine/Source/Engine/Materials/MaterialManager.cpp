@@ -1,6 +1,7 @@
 #include "MaterialManager.h"
 #include "Object/GarbageCollection.h"
 #include "Object/Object.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <cstdio>
@@ -67,6 +68,15 @@ void FMaterialManager::ScanMaterialAssets()
 		Item.DisplayName = FPaths::ToUtf8(Path.stem().wstring());
 		AvailableMaterialFiles.push_back(std::move(Item));
 	}
+
+	std::sort(
+		AvailableMaterialFiles.begin(),
+		AvailableMaterialFiles.end(),
+		[](const FMaterialAssetListItem& A, const FMaterialAssetListItem& B)
+		{
+			return A.DisplayName < B.DisplayName;
+		}
+	);
 }
 
 void FMaterialManager::ScanShaderPaths()
@@ -258,7 +268,7 @@ UMaterial* FMaterialManager::LoadMaterialBinary(const FString& UassetPath)
 // 임포터용 — JSON 없이 머티리얼을 직접 만들고 .uasset 으로 저장한다.
 UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPath, const FVector4& SectionColor,
 	const FString& DiffuseTexturePath, const FString& NormalTexturePath, const FString& EmissiveTexturePath, const FVector& EmissiveColor,
-	const FVector& SpecularColor, float SpecularExponent, float Opacity)
+	const FVector& SpecularColor, float SpecularExponent, float Opacity, bool bHasEmissiveColor)
 {
 	MaterialCache.erase(UassetPath);
 
@@ -299,7 +309,7 @@ UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPa
 		if (UTexture2D* Tex = UTexture2D::LoadFromFile(NormalTexturePath, Device, ETextureColorSpace::Linear))
 			Material->SetTextureParameter("NormalTexture", Tex);
 
-	const bool bHasEmissive = EmissiveColor.X != 0.0f || EmissiveColor.Y != 0.0f || EmissiveColor.Z != 0.0f || !EmissiveTexturePath.empty();
+	const bool bHasEmissive = bHasEmissiveColor || !EmissiveTexturePath.empty();
 	const bool bHasSpecular = SpecularColor.X != 1.0f || SpecularColor.Y != 1.0f || SpecularColor.Z != 1.0f;
 	const bool bHasCustomShininess = SpecularExponent != 32.0f;
 	const bool bNeedsGraphMaterial = bHasEmissive || bHasSpecular || bHasCustomShininess || bTransparent;
@@ -400,17 +410,16 @@ UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPa
 		}
 
 		uint32 EmissiveConstantOut = 0;
-		const bool bHasEmissiveConstant = EmissiveColor.X != 0.0f || EmissiveColor.Y != 0.0f || EmissiveColor.Z != 0.0f;
 		if (FMaterialGraphNode* Emissive = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat3, -480.0f, 120.0f, EMaterialGraphTarget::Surface))
 		{
-			Emissive->Value = bHasEmissiveConstant
+			Emissive->Value = bHasEmissiveColor
 				? FVector4(EmissiveColor.X, EmissiveColor.Y, EmissiveColor.Z, 1.0f)
 				: FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 			EmissiveConstantOut = Emissive->Pins.empty() ? 0 : Emissive->Pins[0].PinId;
 		}
 
 		uint32 EmissiveOut = EmissiveTextureOut ? EmissiveTextureOut : EmissiveConstantOut;
-		if (EmissiveTextureOut && bHasEmissiveConstant)
+		if (EmissiveTextureOut && bHasEmissiveColor)
 		{
 			uint32 MulA = 0;
 			uint32 MulB = 0;

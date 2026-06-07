@@ -2,6 +2,7 @@
 #include "GameFramework/ProjectilePoolSubSystem.h"   // FProjectilePoolSubsystem::Acquire<T>
 #include "GameFramework/Actor/ProjectileActor.h"     // AProjectileActor
 #include "GameFramework/Actor/ArrowProjectileActor.h"
+#include "Component/Gameplay/PlayerSprayProjectileComponent.h"
 
 using namespace LuaActorBindingsDetail;
 
@@ -226,6 +227,48 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
             FProjectilePoolSubsystem* Pool = W->GetProjectilePool();
             if (!Pool) return false;
             Pool->Release(Projectile);
+            return true;
+        }
+    );
+    World.set_function(
+        "StartPlayerSprayAttack",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return false;
+
+            UPlayerSprayProjectileComponent* Spray = Owner->GetComponentByClass<UPlayerSprayProjectileComponent>();
+            const bool bHadSprayComponent = Spray != nullptr;
+            if (!Spray)
+            {
+                Spray = Owner->AddComponent<UPlayerSprayProjectileComponent>();
+                if (Spray)
+                {
+                    Spray->SetFName(FName("PlayerSprayProjectileComponent"));
+                    if (Owner->HasActorBegunPlay())
+                    {
+                        Spray->BeginPlay();
+                    }
+                }
+            }
+
+            if (!Spray) return false;
+            UE_LOG("[PlayerSpray] Lua StartPlayerSprayAttack owner=%s component=%s source=%s",
+                Owner->GetName().c_str(),
+                Spray->GetName().c_str(),
+                bHadSprayComponent ? "existing" : "auto-created");
+            Spray->StartAttack();
+            return true;
+        }
+    );
+    World.set_function(
+        "StopPlayerSprayAttack",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return false;
+
+            UPlayerSprayProjectileComponent* Spray = Owner->GetComponentByClass<UPlayerSprayProjectileComponent>();
+            if (!Spray) return false;
+            Spray->StopAttack();
             return true;
         }
     );
