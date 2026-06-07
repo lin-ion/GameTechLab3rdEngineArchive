@@ -67,8 +67,8 @@ enum class ERenderPass : uint32
 	GizmoOuter,		// 기즈모 외곽 (깊이 테스트 O)
 	GizmoInner,		// 기즈모 내부 (깊이 무시)
 	OverlayFont,	// 스크린 공간 텍스트 (깊이 무시)
-	UI,				// RmlUi 기반 게임 UI
-	SimpleUI,		// 신규 계층형 UI (Canvas/Group/Element) — RmlUi 위에 합성
+	SimpleUI,		// 신규 계층형 UI 쿼드 (Canvas/Group/Element) — RmlUi 텍스트 아래에 먼저 그림
+	UI,				// RmlUi (게임 UI + SimpleUI 요소 텍스트) — SimpleUI 쿼드 위에 합성(텍스트가 위로)
 	GammaCorrection,// 최종 선형 SceneColor를 디스플레이용 감마 공간으로 변환
 	MAX
 };
@@ -102,8 +102,8 @@ inline const char* GetRenderPassName(ERenderPass Pass)
 		"RenderPass::GizmoOuter",
 		"RenderPass::GizmoInner",
 		"RenderPass::OverlayFont",
-		"RenderPass::UI",
 		"RenderPass::SimpleUI",
+		"RenderPass::UI",
 		"RenderPass::GammaCorrection",
 	};
     static_assert(std::size(Names) == static_cast<uint32>(ERenderPass::MAX), "Names must match ERenderPass entries");
@@ -140,8 +140,8 @@ namespace RenderStateStrings
 		{ "GizmoOuter",    (int)ERenderPass::GizmoOuter },
 		{ "GizmoInner",    (int)ERenderPass::GizmoInner },
 		{ "OverlayFont",   (int)ERenderPass::OverlayFont },
-		{ "UI",            (int)ERenderPass::UI },
 		{ "SimpleUI",      (int)ERenderPass::SimpleUI },
+		{ "UI",            (int)ERenderPass::UI },
 		{ "GammaCorrection",(int)ERenderPass::GammaCorrection },
 	};
 

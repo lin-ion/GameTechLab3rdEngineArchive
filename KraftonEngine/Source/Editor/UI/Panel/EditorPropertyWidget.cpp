@@ -18,6 +18,9 @@
 #include "Component/Primitive/SkinnedMeshComponent.h"
 #include "Component/Primitive/StaticMeshComponent.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
+#include "GameFramework/Pawn/Pawn.h"
+#include "UI/Canvas/UIElement.h"
 #include "Asset/AssetRegistry.h"
 #include "Animation/Skeleton/Skeleton.h"
 #include "Animation/AnimInstance.h"
@@ -376,6 +379,130 @@ namespace
 			return Component->GetOwner();
 		}
 		return nullptr;
+	}
+
+	// ── [HUD 데이터 바인딩] 자유 텍스트 이름 대신 월드/캔버스 후보에서 고르는 콤보 피커 ──
+	// 데이터는 FString 그대로 유지하고 Details 렌더만 콤보로 바꾼다(직렬화/바인딩 로직 무변경).
+
+	// 월드의 APawn 후보에서 체력 소스 액터 이름(GetFName().ToString())을 고르는 콤보.
+	// 빈 값 = 로컬 플레이어 기본(AUICanvasActor 바인딩 사이클 1).
+	bool RenderWorldActorNamePicker(FPropertyValue& Prop)
+	{
+		FString* Val = static_cast<FString*>(Prop.GetValuePtr());
+		if (!Val)
+		{
+			return false;
+		}
+
+		const FString Current = *Val;
+		const FString Preview = Current.empty() ? FString("(Local Player)") : Current;
+
+		bool bChanged = false;
+		if (ImGui::BeginCombo("##WorldActorPicker", Preview.c_str()))
+		{
+			if (ImGui::Selectable("(Local Player)", Current.empty()))
+			{
+				*Val = FString();
+				bChanged = true;
+			}
+			if (Current.empty())
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+
+			AActor* OwnerActor = GetPropertyOwnerActor(Prop);
+			UWorld* World = OwnerActor ? OwnerActor->GetWorld() : nullptr;
+			if (World)
+			{
+				int32 Index = 0;
+				for (AActor* A : World->GetActors())
+				{
+					if (!IsValid(A) || !Cast<APawn>(A))
+					{
+						continue;
+					}
+					const FString Name = A->GetFName().ToString();
+					if (Name.empty())
+					{
+						continue;
+					}
+					ImGui::PushID(Index++);
+					const bool bSelected = (Current == Name);
+					if (ImGui::Selectable(Name.c_str(), bSelected))
+					{
+						*Val = Name;
+						bChanged = true;
+					}
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::EndCombo();
+		}
+		return bChanged;
+	}
+
+	// 소유 액터의 UUIElement 후보에서 대상 요소 이름(ElementName)을 고르는 콤보.
+	// 빈 값 = 미지정. 명명된(ElementName 비어있지 않은) 요소만 후보로 노출한다.
+	bool RenderUIElementNamePicker(FPropertyValue& Prop)
+	{
+		FString* Val = static_cast<FString*>(Prop.GetValuePtr());
+		if (!Val)
+		{
+			return false;
+		}
+
+		const FString Current = *Val;
+		const FString Preview = Current.empty() ? FString("None") : Current;
+
+		bool bChanged = false;
+		if (ImGui::BeginCombo("##UIElementPicker", Preview.c_str()))
+		{
+			if (ImGui::Selectable("None", Current.empty()))
+			{
+				*Val = FString();
+				bChanged = true;
+			}
+			if (Current.empty())
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+
+			if (AActor* OwnerActor = GetPropertyOwnerActor(Prop))
+			{
+				int32 Index = 0;
+				for (UActorComponent* Component : OwnerActor->GetComponents())
+				{
+					UUIElement* Element = Cast<UUIElement>(Component);
+					if (!IsValid(Element))
+					{
+						continue;
+					}
+					const FString Name = Element->GetElementName();
+					if (Name.empty())
+					{
+						continue;
+					}
+					ImGui::PushID(Index++);
+					const bool bSelected = (Current == Name);
+					if (ImGui::Selectable(Name.c_str(), bSelected))
+					{
+						*Val = Name;
+						bChanged = true;
+					}
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::EndCombo();
+		}
+		return bChanged;
 	}
 
 	TArray<UObject*> GetOwnerObjectReferenceChoices(const FPropertyValue& Prop, UClass* AllowedClass)
@@ -3230,6 +3357,18 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyValue>& Props, 
 		FString* Val = static_cast<FString*>(Prop.GetValuePtr());
 		if (!Val)
 		{
+			break;
+		}
+
+		// [HUD 바인딩] 자유 텍스트 대신 월드/캔버스 후보 콤보로 렌더(데이터는 FString 유지).
+		if (FindPropertyMetadata(Prop, "worldactorpicker"))
+		{
+			bChanged = RenderWorldActorNamePicker(Prop);
+			break;
+		}
+		if (FindPropertyMetadata(Prop, "uielementpicker"))
+		{
+			bChanged = RenderUIElementNamePicker(Prop);
 			break;
 		}
 

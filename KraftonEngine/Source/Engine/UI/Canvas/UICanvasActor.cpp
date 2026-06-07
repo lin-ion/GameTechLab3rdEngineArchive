@@ -1,6 +1,7 @@
 #include "UI/Canvas/UICanvasActor.h"
 
 #include "UI/Canvas/UICanvas.h"
+#include "UI/Canvas/UITextElement.h"
 #include "UI/Canvas/UICanvasManager.h"
 #include "UI/UIAsset.h"
 #include "UI/UIAssetManager.h"
@@ -9,6 +10,50 @@
 #include "GameFramework/Pawn/Pawn.h"
 #include "GameFramework/GameMode/PlayerController.h"
 #include "Core/Logging/Log.h"
+
+#include <cstdio>
+
+namespace
+{
+	// [사이클 2] 체력 비율 → 색: 가득(1)=녹 · 절반(0.5)=노 · 고갈(0)=적. 2구간 lerp 로 중간 브라운 회피.
+	// FVector4 의 검증된 4-인자 생성자만 사용(성분 접근자 가정 없음).
+	FVector4 HealthRatioToColor(float Ratio)
+	{
+		if (Ratio >= 0.5f)
+		{
+			const float T = (Ratio - 0.5f) * 2.0f;   // 노(0.5) → 녹(1.0)
+			return FVector4(0.95f + (0.15f - 0.95f) * T,
+			                0.85f,
+			                0.15f + (0.20f - 0.15f) * T, 1.0f);
+		}
+		const float T = Ratio * 2.0f;                // 적(0.0) → 노(0.5)
+		return FVector4(0.90f + (0.95f - 0.90f) * T,
+		                0.15f + (0.85f - 0.15f) * T,
+		                0.15f, 1.0f);
+	}
+
+	// [사이클 3] 텍스트 소스 → 표시 문자열. 소스 무효 시 "--". snprintf 로 FString(const char*) 구성.
+	FString FormatHudText(EHudTextSource Source, APawn* Pawn, UWorld* World)
+	{
+		char Buf[64] = {};
+		switch (Source)
+		{
+		case EHudTextSource::Health:
+			if (Pawn) { snprintf(Buf, sizeof(Buf), "%d", (int)(Pawn->GetCurrentHealth() + 0.5f)); return FString(Buf); }
+			break;
+		case EHudTextSource::HealthOverMax:
+			if (Pawn) { snprintf(Buf, sizeof(Buf), "%d / %d", (int)(Pawn->GetCurrentHealth() + 0.5f), (int)(Pawn->GetMaxHealth() + 0.5f)); return FString(Buf); }
+			break;
+		case EHudTextSource::HealthPercent:
+			if (Pawn) { snprintf(Buf, sizeof(Buf), "%d%%", (int)(Pawn->GetHealthRatio() * 100.0f + 0.5f)); return FString(Buf); }
+			break;
+		case EHudTextSource::GameTime:
+			if (World) { snprintf(Buf, sizeof(Buf), "%ds", (int)World->GetGameTimeSeconds()); return FString(Buf); }
+			break;
+		}
+		return FString("--");
+	}
+}
 
 void AUICanvasActor::InitCanvas()
 {
@@ -114,14 +159,14 @@ void AUICanvasActor::EndPlay()
 void AUICanvasActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	UpdateHealthBarBinding();
+	UpdateDataBindings();
 }
 
-void AUICanvasActor::UpdateHealthBarBinding()
+void AUICanvasActor::UpdateDataBindings()
 {
-	// 캔버스 미구성(편집/미등록) 또는 대상 요소 미설정이면 비활성. 매 프레임 호출되므로 빠른 탈출 우선.
+	// 캔버스 미구성(편집/미등록)이면 비활성. 매 프레임 호출되므로 빠른 탈출 우선.
 	UUICanvas* C = Canvas.Get();
-	if (!C || HealthBarElementName.empty())
+	if (!C)
 	{
 		return;
 	}
@@ -132,17 +177,15 @@ void AUICanvasActor::UpdateHealthBarBinding()
 		return;
 	}
 
-	// 소스 액터 해석 — 캐시 우선, 무효일 때만 재해석(GameplayStatics 권고: 매 프레임 선형 스캔 회피).
-	//  - HealthSourceActorName 이 비어 있으면 로컬 플레이어(possessed pawn)를 기본 타깃으로 한다(권고 경로).
-	//  - 지정돼 있으면 그 이름(Outliner 표시명)의 액터를 타깃으로 한다(이름 = override, 특정 NPC 등).
+	// 소스 폰 해석(체력바·체력 텍스트가 공유) — 캐시 우선, 무효일 때만 재해석(매 프레임 선형 스캔 회피).
+	//  - HealthSourceActorName 이 비면 로컬 플레이어(possessed pawn) 기본 타깃, 지정 시 그 이름의 액터(override).
 	APawn* Source = HealthSource.Get();
 	if (!IsValid(Source))
 	{
 		Source = nullptr;
 		if (HealthSourceActorName.empty())
 		{
-			// 기본: 로컬 플레이어의 possessed pawn. 체인 전체가 null-safe
-			// (GameMode 없으면 PC=null, 미possess/사망이면 GetPossessedPawn=null).
+			// 기본: 로컬 플레이어의 possessed pawn. 체인 전체가 null-safe.
 			if (APlayerController* PC = W->GetFirstPlayerController())
 			{
 				Source = PC->GetPossessedPawn();
@@ -161,27 +204,35 @@ void AUICanvasActor::UpdateHealthBarBinding()
 			}
 		}
 		HealthSource = Source;
-		if (!Source)
+	}
+
+	// ── 체력바: 소스 체력 비율을 width 에 반영(+ 옵션 색 피드백, 사이클 1·2) ──
+	if (Source && !HealthBarElementName.empty())
+	{
+		if (UUIElement* Bar = C->FindByName(HealthBarElementName))
 		{
-			return;
+			// 최초 바인딩 시 저작 폭을 100% 기준으로 캡처(음수 sentinel 일 때만).
+			if (HealthBarFullWidth < 0.0f)
+			{
+				HealthBarFullWidth = Bar->GetSize().X;
+			}
+			const float    Ratio   = Source->GetHealthRatio();   // [0,1] (MaxHealth<=0 이면 1)
+			const FVector2 CurSize = Bar->GetSize();
+			Bar->SetSize(FVector2(HealthBarFullWidth * Ratio, CurSize.Y));
+			if (bHealthBarColorFeedback)
+			{
+				Bar->SetColor(HealthRatioToColor(Ratio));
+			}
 		}
 	}
 
-	// 대상 요소(체력바)를 식별자로 조회. 빈 이름은 FindByName 이 매칭하지 않는다.
-	UUIElement* Bar = C->FindByName(HealthBarElementName);
-	if (!Bar)
+	// ── [사이클 3] 숫자 텍스트 readout: 선택한 소스 값을 매 프레임 SetText
+	//    (UUITextElement::OnLayoutUpdated 가 RmlUi 위젯에 재푸시 — 재마운트 아님). ──
+	if (!TextElementName.empty())
 	{
-		return;
+		if (UUITextElement* TextEl = Cast<UUITextElement>(C->FindByName(TextElementName)))
+		{
+			TextEl->SetText(FormatHudText(TextSource, Source, W));
+		}
 	}
-
-	// 최초 바인딩 시 저작된 폭을 100% 기준으로 캡처(이후 비율로 스케일). BeginPlay 의 캔버스 재구성마다
-	// 저작 폭으로 리셋되도록, 캡처는 음수 sentinel 일 때만 수행.
-	if (HealthBarFullWidth < 0.0f)
-	{
-		HealthBarFullWidth = Bar->GetSize().X;
-	}
-
-	const float    Ratio   = Source->GetHealthRatio();   // [0,1] (MaxHealth<=0 이면 1)
-	const FVector2 CurSize  = Bar->GetSize();
-	Bar->SetSize(FVector2(HealthBarFullWidth * Ratio, CurSize.Y));
 }
