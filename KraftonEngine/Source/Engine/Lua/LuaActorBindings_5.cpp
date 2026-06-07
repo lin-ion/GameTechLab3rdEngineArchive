@@ -40,7 +40,19 @@ void FLuaScriptManager::RegisterActorBindings_5(sol::state& Lua)
         "GetAutoPossessPlayer",
         &APawn::GetAutoPossessPlayer,
         "GetInputComponent",
-        &APawn::GetInputComponent
+        &APawn::GetInputComponent,
+        "ResetHealth",
+        &APawn::ResetHealth,
+        "GetDamaged",
+        &APawn::GetDamaged,
+        "GetCurrentHealth",
+        &APawn::GetCurrentHealth,
+        "GetMaxHealth",
+        &APawn::GetMaxHealth,
+        "GetHealthRatio",
+        &APawn::GetHealthRatio,
+        "GetHealthHitCount",
+        &APawn::GetHealthHitCount
     );
 
     Lua.new_usertype<AWheeledVehiclePawn>(

@@ -1,16 +1,25 @@
 local SPEED_VAR = "Speed"
 local IS_GROUND_VAR = "IsGround"
 local IS_FALLING_VAR = "IsFalling"
+local IS_DEAD_VAR = "IsDead"
 
 local TRACE_DISTANCE = 2.0
 local GROUNDED_CENTER_DISTANCE = 1.15
 local VERTICAL_EPSILON = 0.05
+local DEBUG_DEATH_ANIM = true
 
 local movement = nil
 local anim_instance = nil
 local actor = nil
 local previous_location = nil
 local last_is_falling = false
+local last_is_dead = nil
+local missing_health_api_logged = false
+local missing_is_dead_var_logged = false
+
+local function log(message)
+    print("[Haru] " .. message)
+end
 
 local function resolve_actor()
     if actor ~= nil then
@@ -112,7 +121,41 @@ local function get_ground_state()
 end
 
 -- Animation
-local function update_anim_graph(speed, is_ground, is_falling)
+local function resolve_health_owner(owner)
+    if owner ~= nil and owner.GetCurrentHealth ~= nil then
+        return owner
+    end
+
+    if owner ~= nil and owner.AsPawn ~= nil then
+        local pawn = owner:AsPawn()
+        if pawn ~= nil and pawn.GetCurrentHealth ~= nil then
+            return pawn
+        end
+    end
+
+    return nil
+end
+
+local function is_owner_dead(owner)
+    local health_owner = resolve_health_owner(owner)
+    if health_owner == nil then
+        if DEBUG_DEATH_ANIM and not missing_health_api_logged then
+            missing_health_api_logged = true
+            if owner == nil then
+                log("death anim debug: owner unavailable")
+            else
+                local class_name = owner.GetClassName ~= nil and owner:GetClassName() or "unknown"
+                log("death anim debug: GetCurrentHealth unavailable ownerClass=" .. tostring(class_name))
+            end
+        end
+        return false
+    end
+
+    local health = health_owner:GetCurrentHealth()
+    return health ~= nil and health <= 0.0
+end
+
+local function update_anim_graph(speed, is_ground, is_falling, is_dead)
     if anim_instance == nil then
         return
     end
@@ -120,6 +163,27 @@ local function update_anim_graph(speed, is_ground, is_falling)
     anim_instance:SetGraphVariableFloat(SPEED_VAR, speed)
     anim_instance:SetGraphVariableBool(IS_GROUND_VAR, is_ground)
     anim_instance:SetGraphVariableBool(IS_FALLING_VAR, is_falling)
+    local is_dead_set = anim_instance:SetGraphVariableBool(IS_DEAD_VAR, is_dead)
+
+    if DEBUG_DEATH_ANIM then
+        if not is_dead_set and not missing_is_dead_var_logged then
+            missing_is_dead_var_logged = true
+            log("death anim debug: AnimGraph variable not found: " .. IS_DEAD_VAR)
+        end
+
+        if last_is_dead ~= is_dead then
+            local owner = resolve_actor()
+            local health = "nil"
+            local health_owner = resolve_health_owner(owner)
+            if health_owner ~= nil then
+                health = tostring(health_owner:GetCurrentHealth())
+            end
+            log("death anim debug: health=" .. health
+                .. " isDead=" .. tostring(is_dead)
+                .. " setResult=" .. tostring(is_dead_set))
+            last_is_dead = is_dead
+        end
+    end
 end
 
 function BeginPlay()
@@ -128,7 +192,7 @@ function BeginPlay()
     if owner ~= nil then
         previous_location = owner.Location
     end
-    update_anim_graph(0.0, false, false)
+    update_anim_graph(0.0, false, false, is_owner_dead(owner))
 end
 
 function EndPlay()
@@ -136,6 +200,9 @@ function EndPlay()
     anim_instance = nil
     actor = nil
     previous_location = nil
+    last_is_dead = nil
+    missing_health_api_logged = false
+    missing_is_dead_var_logged = false
 end
 
 function OnOverlap(OtherActor)
@@ -196,5 +263,5 @@ function Tick(dt)
 
     last_is_falling = is_falling
     previous_location = current_location
-    update_anim_graph(speed, is_ground, is_falling)
+    update_anim_graph(speed, is_ground, is_falling, is_owner_dead(owner))
 end

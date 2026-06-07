@@ -343,7 +343,19 @@ void FLuaScriptManager::RegisterActorBindings_2(sol::state& Lua)
         "GetMesh",
         &ACharacter::GetMesh,
         "GetCharacterMovement",
-        &ACharacter::GetCharacterMovement
+        &ACharacter::GetCharacterMovement,
+        "ResetHealth",
+        &ACharacter::ResetHealth,
+        "GetDamaged",
+        &ACharacter::GetDamaged,
+        "GetCurrentHealth",
+        &ACharacter::GetCurrentHealth,
+        "GetMaxHealth",
+        &ACharacter::GetMaxHealth,
+        "GetHealthRatio",
+        &ACharacter::GetHealthRatio,
+        "GetHealthHitCount",
+        &ACharacter::GetHealthHitCount
     );
 
     Lua.new_usertype<UActionComponent>(
