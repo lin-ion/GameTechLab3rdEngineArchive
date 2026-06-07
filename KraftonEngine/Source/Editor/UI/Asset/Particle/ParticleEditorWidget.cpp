@@ -357,6 +357,25 @@ namespace
 		return "Shaders/Particle/BeamTrail.hlsl";                        // Beam / Ribbon
 	}
 
+	EMaterialGraphTarget ParticleGraphTargetForShaderPath(const FString& RequiredShaderPath)
+	{
+		if (RequiredShaderPath == "Shaders/Particle/Sprite.hlsl")
+			return EMaterialGraphTarget::ParticleSprite;
+		if (RequiredShaderPath == "Shaders/Particle/Mesh.hlsl")
+			return EMaterialGraphTarget::ParticleMesh;
+		if (RequiredShaderPath == "Shaders/Particle/BeamTrail.hlsl")
+			return EMaterialGraphTarget::ParticleBeamTrail;
+		return EMaterialGraphTarget::Surface;
+	}
+
+	bool IsMaterialCompatibleWithParticleShader(const UMaterial* Mat, const FString& RequiredShaderPath)
+	{
+		if (!Mat) return false;
+		if (Mat->GetShaderPathForSerialize() == RequiredShaderPath) return true;
+		if (!Mat->IsGraphMaterial()) return false;
+		return Mat->GetGraphDocument().Target == ParticleGraphTargetForShaderPath(RequiredShaderPath);
+	}
+
 	// emitter 강제 셰이더와 레이아웃(ShaderPathForSerialize)이 일치하는 머티리얼만 노출하는 콤보.
 	// (콤보가 열렸을 때만 머티리얼을 load → 캐시됨. 불일치 머티리얼은 셰이더 레이아웃이 안 맞아 사용 불가.)
 	bool MaterialComboFieldFiltered(const char* Label, FSoftObjectPtr& Value, const FString& RequiredShaderPath)
@@ -367,6 +386,8 @@ namespace
 		bool bChanged = false;
 		if (ImGui::BeginCombo(Label, CurrentPath.c_str()))
 		{
+			FMaterialManager::Get().ScanMaterialAssets();
+
 			const bool bSelectedNone = (CurrentPath == "None");
 			if (ImGui::Selectable("None", bSelectedNone)) { Value.SetPath("None"); CurrentPath = "None"; bChanged = true; }
 			if (bSelectedNone) ImGui::SetItemDefaultFocus();
@@ -374,7 +395,7 @@ namespace
 			for (const FMaterialAssetListItem& Item : FMaterialManager::Get().GetAvailableMaterialFiles())
 			{
 				UMaterial* Mat = FMaterialManager::Get().GetOrCreateMaterial(Item.FullPath);
-				if (!Mat || Mat->GetShaderPathForSerialize() != RequiredShaderPath)
+				if (!IsMaterialCompatibleWithParticleShader(Mat, RequiredShaderPath))
 					continue; // emitter 강제 셰이더와 레이아웃 불일치 → 제외
 
 				const bool bSelected = (CurrentPath == Item.FullPath);

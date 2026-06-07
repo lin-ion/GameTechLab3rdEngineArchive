@@ -42,6 +42,7 @@ struct FObjMaterialInfo
 	int32 illum = 2; // illumination model
 	bool bHasNs = false;
 	bool bHasKs = false;
+	bool bHasKe = false;
 	bool bHasD = false;
 };
 

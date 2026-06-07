@@ -504,8 +504,8 @@ namespace
             }
             case EMaterialGraphNodeType::ParticleSubUV:
             {
-                // Cols × Rows 아틀라스에서 SubImageIndex(∈[0,1))를 정수 프레임으로 변환,
-                // row/col을 계산해서 셀 내 UV 좌표(Input.UV0)를 합성.
+                // Cols x Rows atlas. Particle modules pass an integer SubImageIndex
+                // through the instance stream, so use that frame index directly.
                 const int32 Cols  = std::max(1, static_cast<int32>(Node.Value.X));
                 const int32 Rows  = std::max(1, static_cast<int32>(Node.Value.Y));
                 const int32 Total = Cols * Rows;
@@ -513,12 +513,12 @@ namespace
                 std::snprintf(
                     Buf,
                     sizeof(Buf),
-                    "((float2(fmod(floor(Input.SubImageIndex * %d), %d), "
-                    "floor(Input.SubImageIndex * %d / %d)) + Input.UV0) "
+                    "((float2(fmod(clamp(floor(Input.SubImageIndex), 0.0f, %d.0f), %d), "
+                    "floor(clamp(floor(Input.SubImageIndex), 0.0f, %d.0f) / %d)) + Input.UV0) "
                     "* float2(1.0f/%d, 1.0f/%d))",
-                    Total,
+                    Total - 1,
                     Cols,
-                    Total,
+                    Total - 1,
                     Cols,
                     Cols,
                     Rows
