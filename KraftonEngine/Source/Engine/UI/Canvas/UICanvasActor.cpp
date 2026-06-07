@@ -32,6 +32,9 @@ void AUICanvasActor::LoadFromAsset(const FString& InAssetPath)
 		return;
 	}
 
+	// 이 액터의 UI .uasset 참조를 기록한다(직렬화/재구성의 기준 — R4). 직접 호출돼도 에셋 참조 모델 유지.
+	UIAssetPath = InAssetPath;
+
 	// 파일 단위 로드(헤더 검증 + 트리 JSON 페이로드). 경로는 매니저가 project-relative 로 정규화.
 	UUIAsset* Asset = FUIAssetManager::Get().Load(InAssetPath);
 	if (!Asset)
@@ -70,6 +73,15 @@ void AUICanvasActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// [R4] 에셋 참조 모델: UIAssetPath 가 있으면 .Scene 인라인 트리가 아니라 .uasset 에서 캔버스를
+	// 재구성한다(저장 시 캔버스 서브트리를 직렬화하지 않으므로 — ShouldSerializeRootComponentTree —
+	// 로드 후엔 트리가 없다). 단 이미 RootComponent 가 UUICanvas 면(편집 월드에서 빌드 후 PIE 복제로
+	// 트리가 넘어온 경우) 재빌드하지 않고 재사용한다(이중 트리 방지 — R2 의 연장).
+	if (!Cast<UUICanvas>(GetRootComponent()) && !UIAssetPath.IsNull())
+	{
+		LoadFromAsset(UIAssetPath.ToString());
+	}
+
 	InitCanvas();
 	// [R1] UI 의 화면 렌더 합류는 이 등록 한 줄에 달려 있고, BeginPlay 는 PIE/런타임에서만
 	// 돈다(에디터 월드는 BeginPlay 미진입). 즉 등록=PIE/런타임 한정 → 편집 모드에선 의도적으로
@@ -78,6 +90,13 @@ void AUICanvasActor::BeginPlay()
 	{
 		FUICanvasManager::Get().RegisterCanvas(C);
 	}
+}
+
+bool AUICanvasActor::ShouldSerializeRootComponentTree() const
+{
+	// [R4] UIAssetPath 가 있으면 캔버스 트리는 .uasset 에서 재구성되므로 .Scene 에 인라인으로
+	// 저장하지 않는다(인라인 트리 + 에셋 참조 동시 저장 → 중복/충돌 방지). 참조가 없으면 기존처럼 인라인.
+	return UIAssetPath.IsNull();
 }
 
 void AUICanvasActor::EndPlay()

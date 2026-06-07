@@ -68,6 +68,11 @@ public:
 	UFUNCTION(Pure, Category="Actor|Components")
 	USceneComponent* GetRootComponent() const { return RootComponent.GetValid(); }
 
+	// 직렬화 시 RootComponent 서브트리를 .Scene 에 인라인으로 기록할지(기본 true). 에셋 참조로
+	// 트리를 런타임 재구성하는 액터(예: AUICanvasActor 의 UIAssetPath)는 false 를 반환해 인라인
+	// 트리와 에셋 참조가 동시에 저장되어 충돌/중복되는 것을 막는다(진단 R4).
+	virtual bool ShouldSerializeRootComponentTree() const { return true; }
+
 	UFUNCTION(Pure, Category="Actor|Components")
 	TArray<UActorComponent*> GetComponents() const;
 

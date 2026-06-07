@@ -120,23 +120,29 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 		SetRenderPipeline(std::make_unique<FEditorRenderPipeline>(this, Renderer));
 	}
 
-	// [DEBUG/TEST 임시 — ui-drop cycle 1] AUICanvasActor::LoadFromAsset 독립 검증용.
-	// 에디터 월드에 UI .uasset 액터를 하나 스폰한다(메시 드롭과 동형: Factory→로드→AddActor).
-	// 화면 등록은 BeginPlay 게이트라(진단 R1) 편집 모드에선 보이지 않고, Play(PIE) 진입 시
-	// 월드 복제 → BeginPlay → RegisterCanvas 로 비로소 화면에 뜬다. cycle 3(실제 드롭 배선)에서 제거.
+	// [DEBUG/TEST 임시 — ui-drop cycle 2] 에셋 참조 영속(R4) 검증용. 에디터 월드에 UI 액터를 스폰하고
+	// UIAssetPath 만 세팅한다(트리 빌드는 PIE BeginPlay 가 .uasset 으로 재구성 — R1/R4). 같은 월드에
+	// 이미 AUICanvasActor 가 있으면 중복 스폰하지 않는다(저장→재로드 시 파일의 액터와 겹치지 않도록).
+	// cycle 3(실제 드롭 배선)에서 제거.
 	if (UWorld* EditorWorld = GetWorld())
 	{
-		const FString DebugUIAssetPath =
-			FPaths::ToUtf8(FPaths::Combine(FPaths::RootDir(), L"Content", L"UI", L"NewUI.uasset"));
-		UObject* Created = FObjectFactory::Get().Create(AUICanvasActor::StaticClass()->GetName(), EditorWorld);
-		if (AUICanvasActor* UIActor = Cast<AUICanvasActor>(Created))
+		bool bAlreadyHasUICanvas = false;
+		for (AActor* Existing : EditorWorld->GetActors())
 		{
-			UIActor->LoadFromAsset(DebugUIAssetPath);
-			EditorWorld->AddActor(UIActor);
-			// [DEBUG/TEST 임시 — cycle 1] 스폰 경로/캔버스 빌드 확인용. canvas!=null 이면 LoadFromAsset 성공.
-			// 화면 표시는 PIE 진입 후 BeginPlay 등록 + LayoutAll 이 돼야 한다(편집 모드 미렌더는 정상 — R1).
-			UE_LOG("[ui-drop cycle1] editor debug spawn: path='%s' canvas=%p",
-				DebugUIAssetPath.c_str(), (void*)UIActor->GetCanvas());
+			if (Cast<AUICanvasActor>(Existing)) { bAlreadyHasUICanvas = true; break; }
+		}
+		if (!bAlreadyHasUICanvas)
+		{
+			const FString DebugUIAssetPath =
+				FPaths::ToUtf8(FPaths::Combine(FPaths::RootDir(), L"Content", L"UI", L"NewUI.uasset"));
+			UObject* Created = FObjectFactory::Get().Create(AUICanvasActor::StaticClass()->GetName(), EditorWorld);
+			if (AUICanvasActor* UIActor = Cast<AUICanvasActor>(Created))
+			{
+				UIActor->SetUIAssetPath(DebugUIAssetPath);   // 빌드 X — 저장 시 경로만, 로드 후 PIE 에서 재구성.
+				EditorWorld->AddActor(UIActor);
+				UE_LOG("[ui-drop cycle2] editor debug spawn: UIAssetPath='%s' (저장=경로만, PIE BeginPlay 에서 빌드/렌더)",
+					DebugUIAssetPath.c_str());
+			}
 		}
 	}
 }

@@ -391,8 +391,9 @@ json::JSON FSceneSaveManager::SerializeActor(AActor* Actor, FSceneSaveContext& C
 	a[SceneKeys::Name] = Actor->GetFName().ToString();
 	a[SceneKeys::Properties] = SerializeProperties(Actor, Context);
 
-	// RootComponent 트리 직렬화
-	if (IsSceneSerializableObject(Actor->GetRootComponent())) {
+	// RootComponent 트리 직렬화 — 단, 에셋 참조로 트리를 재구성하는 액터(AUICanvasActor 의 UIAssetPath
+	// 등)는 인라인 트리를 기록하지 않는다(ShouldSerializeRootComponentTree=false, 진단 R4).
+	if (Actor->ShouldSerializeRootComponentTree() && IsSceneSerializableObject(Actor->GetRootComponent())) {
 		a[SceneKeys::RootComponent] = SerializeSceneComponentTree(Actor->GetRootComponent(), Context);
 	}
 
