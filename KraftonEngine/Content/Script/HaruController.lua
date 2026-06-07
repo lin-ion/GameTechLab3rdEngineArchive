@@ -31,9 +31,9 @@ local BOW_RELEASE_SLOMO_DILATION = 0.15
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
 local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
 -- Attack
+local ATTACK_SKILL_NAME = "SprayAttack"
 local FIRE_PROJECTILE_KEY = "LeftMouseButton"
-local PROJECTILE_SPEED = 3.0
-local PROJECTILE_MUZZLE_OFFSET = 2.0
+local ATTACK_MAX_DURATION = 60.0
 -- Weapon Setting
 local STAFF_WEAPON_TRANSFORM = {
     location = Vec3(0.0, 40.0, 0.0),
@@ -1117,6 +1117,43 @@ local function end_bow_aim(owner, ability)
     log("AirBowShot ended")
 end
 
+local function activate_spray_attack(owner, ability)
+    if owner == nil then
+        log("SprayAttack activate failed: owner is nil")
+        ability.active_remaining = 0.0
+        return
+    end
+
+    set_anim_bool(owner, ATTACK_ANIM_VAR, true)
+    if World ~= nil and World.StartPlayerSprayAttack ~= nil then
+        local started = World.StartPlayerSprayAttack(owner)
+        log("SprayAttack started: " .. tostring(started))
+        if not started then
+            ability.active_remaining = 0.0
+        end
+    else
+        log("SprayAttack failed: World.StartPlayerSprayAttack unavailable")
+        ability.active_remaining = 0.0
+    end
+end
+
+local function tick_spray_attack(owner, ability, dt)
+    if Input ~= nil and Input.GetKeyUp ~= nil and Input.GetKeyUp(FIRE_PROJECTILE_KEY) then
+        log("SprayAttack release: " .. FIRE_PROJECTILE_KEY)
+        ability_system:EndAbility(ability)
+    end
+end
+
+local function end_spray_attack(owner, ability)
+    if owner ~= nil then
+        if World ~= nil and World.StopPlayerSprayAttack ~= nil then
+            World.StopPlayerSprayAttack(owner)
+        end
+        set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+    end
+    log("SprayAttack ended")
+end
+
 local function setup_abilities()
     local owner = resolve_actor()
     if owner == nil then
@@ -1154,10 +1191,21 @@ local function setup_abilities()
         OnTick = tick_bow_aim,
         OnEnd = end_bow_aim
     })
+    ability_system:RegisterAbility({
+        Name = ATTACK_SKILL_NAME,
+        Key = FIRE_PROJECTILE_KEY,
+        Duration = ATTACK_MAX_DURATION,
+        Cooldown = 0.0,
+        BlockWhileAnyActive = true,
+        OnActivate = activate_spray_attack,
+        OnTick = tick_spray_attack,
+        OnEnd = end_spray_attack
+    })
 
     log("registered Dash on " .. join_keys(DASH_SKILL_KEYS))
     log("registered Roll on " .. ROLL_SKILL_KEY)
     log("registered AirBowShot on " .. BOW_SKILL_KEY)
+    log("registered SprayAttack on " .. FIRE_PROJECTILE_KEY)
 
     set_anim_bool(owner, DASH_ANIM_VAR, false)
     set_anim_bool(owner, ROLL_ANIM_VAR, false)
@@ -1174,6 +1222,10 @@ end
 function EndPlay()
     if ability_system ~= nil then
         local ability = ability_system:GetAbility(BOW_SKILL_NAME)
+        if ability ~= nil then
+            ability_system:EndAbility(ability)
+        end
+        ability = ability_system:GetAbility(ATTACK_SKILL_NAME)
         if ability ~= nil then
             ability_system:EndAbility(ability)
         end
@@ -1251,7 +1303,6 @@ function Tick(dt)
         end
     end
 
-    -- ProjectilePool 테스트: 좌클릭 → 카메라 시점으로 발사체 발사
     if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(BOW_SKILL_KEY) then
         log("input pressed: " .. BOW_SKILL_KEY)
         local activated, reason = ability_system:TryActivateByKey(BOW_SKILL_KEY)
@@ -1261,11 +1312,10 @@ function Tick(dt)
     end
 
     if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(FIRE_PROJECTILE_KEY) then
-        if World ~= nil and World.FireCameraProjectile ~= nil then
-            local proj = World.FireCameraProjectile(PROJECTILE_SPEED, PROJECTILE_MUZZLE_OFFSET)
-            log("FireCameraProjectile -> " .. tostring(proj ~= nil))
-        else
-            log("FireCameraProjectile unavailable (World 바인딩 미등록?)")
+        log("input pressed: " .. FIRE_PROJECTILE_KEY)
+        local activated, reason = ability_system:TryActivateByKey(FIRE_PROJECTILE_KEY)
+        if not activated then
+            log("SprayAttack blocked: " .. (reason or "unknown"))
         end
     end
 
