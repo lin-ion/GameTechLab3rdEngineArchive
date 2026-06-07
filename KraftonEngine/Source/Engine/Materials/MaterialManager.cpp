@@ -257,7 +257,7 @@ UMaterial* FMaterialManager::LoadMaterialBinary(const FString& UassetPath)
 
 // 임포터용 — JSON 없이 머티리얼을 직접 만들고 .uasset 으로 저장한다.
 UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPath, const FVector4& SectionColor,
-	const FString& DiffuseTexturePath, const FString& NormalTexturePath, const FVector& EmissiveColor,
+	const FString& DiffuseTexturePath, const FString& NormalTexturePath, const FString& EmissiveTexturePath, const FVector& EmissiveColor,
 	const FVector& SpecularColor, float SpecularExponent, float Opacity)
 {
 	MaterialCache.erase(UassetPath);
@@ -282,7 +282,7 @@ UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPa
 		if (UTexture2D* Tex = UTexture2D::LoadFromFile(NormalTexturePath, Device, ETextureColorSpace::Linear))
 			Material->SetTextureParameter("NormalTexture", Tex);
 
-	const bool bHasEmissive = EmissiveColor.X != 0.0f || EmissiveColor.Y != 0.0f || EmissiveColor.Z != 0.0f;
+	const bool bHasEmissive = EmissiveColor.X != 0.0f || EmissiveColor.Y != 0.0f || EmissiveColor.Z != 0.0f || !EmissiveTexturePath.empty();
 	const bool bHasSpecular = SpecularColor.X != 1.0f || SpecularColor.Y != 1.0f || SpecularColor.Z != 1.0f;
 	const bool bHasCustomShininess = SpecularExponent != 32.0f;
 	const bool bNeedsGraphMaterial = bHasEmissive || bHasSpecular || bHasCustomShininess || bTransparent;
@@ -354,31 +354,82 @@ UMaterial* FMaterialManager::CreateImportedMaterialAsset(const FString& UassetPa
 			NormalOut = SampleRgbOut;
 		}
 
-		uint32 EmissiveOut = 0;
+		uint32 EmissiveTextureOut = 0;
+		if (!EmissiveTexturePath.empty())
+		{
+			uint32 EmissiveTexOut = 0;
+			if (FMaterialGraphNode* TextureObject = Graph.AddNodeOfType(EMaterialGraphNodeType::TextureObject, -720.0f, 420.0f, EMaterialGraphTarget::Surface))
+			{
+				TextureObject->ParameterName = "EmissiveTexture";
+				TextureObject->TexturePath = EmissiveTexturePath;
+				TextureObject->TextureSlot = EMaterialTextureSlot::Emissive;
+				EmissiveTexOut = TextureObject->Pins.empty() ? 0 : TextureObject->Pins[0].PinId;
+			}
+
+			uint32 SampleTexIn = 0;
+			uint32 SampleRgbOut = 0;
+			if (FMaterialGraphNode* Sample = Graph.AddNodeOfType(EMaterialGraphNodeType::TextureSample, -480.0f, 460.0f, EMaterialGraphTarget::Surface))
+			{
+				for (const FMaterialGraphPin& Pin : Sample->Pins)
+				{
+					const FString PinName = Pin.DisplayName.ToString();
+					if (Pin.Kind == EMaterialGraphPinKind::Input && PinName == "Texture") SampleTexIn = Pin.PinId;
+					else if (Pin.Kind == EMaterialGraphPinKind::Output && PinName == "RGB") SampleRgbOut = Pin.PinId;
+				}
+			}
+
+			if (EmissiveTexOut && SampleTexIn) Graph.AddLink(EmissiveTexOut, SampleTexIn);
+			EmissiveTextureOut = SampleRgbOut;
+		}
+
+		uint32 EmissiveConstantOut = 0;
+		const bool bHasEmissiveConstant = EmissiveColor.X != 0.0f || EmissiveColor.Y != 0.0f || EmissiveColor.Z != 0.0f;
 		if (FMaterialGraphNode* Emissive = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat3, -480.0f, 120.0f, EMaterialGraphTarget::Surface))
 		{
-			Emissive->Value = FVector4(EmissiveColor.X, EmissiveColor.Y, EmissiveColor.Z, 1.0f);
-			EmissiveOut = Emissive->Pins.empty() ? 0 : Emissive->Pins[0].PinId;
+			Emissive->Value = bHasEmissiveConstant
+				? FVector4(EmissiveColor.X, EmissiveColor.Y, EmissiveColor.Z, 1.0f)
+				: FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+			EmissiveConstantOut = Emissive->Pins.empty() ? 0 : Emissive->Pins[0].PinId;
+		}
+
+		uint32 EmissiveOut = EmissiveTextureOut ? EmissiveTextureOut : EmissiveConstantOut;
+		if (EmissiveTextureOut && bHasEmissiveConstant)
+		{
+			uint32 MulA = 0;
+			uint32 MulB = 0;
+			uint32 MulOut = 0;
+			if (FMaterialGraphNode* Multiply = Graph.AddNodeOfType(EMaterialGraphNodeType::Multiply, -240.0f, 360.0f, EMaterialGraphTarget::Surface))
+			{
+				if (Multiply->Pins.size() >= 3)
+				{
+					MulA = Multiply->Pins[0].PinId;
+					MulB = Multiply->Pins[1].PinId;
+					MulOut = Multiply->Pins[2].PinId;
+				}
+			}
+			if (EmissiveTextureOut && MulA) Graph.AddLink(EmissiveTextureOut, MulA);
+			if (EmissiveConstantOut && MulB) Graph.AddLink(EmissiveConstantOut, MulB);
+			if (MulOut) EmissiveOut = MulOut;
 		}
 
 		uint32 RoughnessOut = 0;
 		const float SafeNs = std::max(0.0f, SpecularExponent);
 		const float Roughness = std::clamp(std::sqrt(2.0f / (SafeNs + 2.0f)), 0.02f, 1.0f);
-		if (FMaterialGraphNode* RoughnessNode = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat, -480.0f, 420.0f, EMaterialGraphTarget::Surface))
+		if (FMaterialGraphNode* RoughnessNode = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat, -480.0f, 640.0f, EMaterialGraphTarget::Surface))
 		{
 			RoughnessNode->Value = FVector4(Roughness, 0.0f, 0.0f, 0.0f);
 			RoughnessOut = RoughnessNode->Pins.empty() ? 0 : RoughnessNode->Pins[0].PinId;
 		}
 
 		uint32 SpecularOut = 0;
-		if (FMaterialGraphNode* Specular = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat3, -480.0f, 540.0f, EMaterialGraphTarget::Surface))
+		if (FMaterialGraphNode* Specular = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat3, -480.0f, 760.0f, EMaterialGraphTarget::Surface))
 		{
 			Specular->Value = FVector4(SpecularColor.X, SpecularColor.Y, SpecularColor.Z, 1.0f);
 			SpecularOut = Specular->Pins.empty() ? 0 : Specular->Pins[0].PinId;
 		}
 
 		uint32 OpacityOut = 0;
-		if (FMaterialGraphNode* OpacityNode = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat, -480.0f, 660.0f, EMaterialGraphTarget::Surface))
+		if (FMaterialGraphNode* OpacityNode = Graph.AddNodeOfType(EMaterialGraphNodeType::ConstantFloat, -480.0f, 880.0f, EMaterialGraphTarget::Surface))
 		{
 			OpacityNode->Value = FVector4(ClampedOpacity, 0.0f, 0.0f, 0.0f);
 			OpacityOut = OpacityNode->Pins.empty() ? 0 : OpacityNode->Pins[0].PinId;

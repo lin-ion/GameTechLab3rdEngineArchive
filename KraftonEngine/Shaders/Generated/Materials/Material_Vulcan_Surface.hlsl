@@ -1,10 +1,11 @@
-// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/BossBullet_Blue.uasset
+// Generated from C:/Github/Week14/Jungle_Week14_Team4/KraftonEngine/Content/Material/Auto/Material_Vulcan.uasset
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
 #include "Common/VertexLayouts.hlsli"
 #include "Common/Functions.hlsli"
 #include "Common/SystemSamplers.hlsli"
+#include "Common/ForwardLighting.hlsli"
 
 float3 SafeNormalize3(float3 V, float3 Fallback)
 {
@@ -39,23 +40,26 @@ struct FMaterialResult
     float Opacity;
 };
 
+Texture2D Tex_DiffuseTexture : register(t0);
+Texture2D Tex_EmissiveTexture : register(t4);
+
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-    float3 n_1 = float3(0.000000f, 0.427282f, 0.843882f);
-    float n_23 = 2.000000f;
-    float n_44 = 3.000000f;
-    float n_15 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_23) * n_44 + 0.000000f);
-    float3 n_31 = float3(1.000000f, 1.000000f, 1.000000f);
-    float3 n_26 = (float3(n_15, n_15, n_15) * n_31);
-    float n_49 = 1.000000f;
+    float4 n_3 = Tex_DiffuseTexture.Sample(LinearWrapSampler, Input.UV0);
+    float n_27 = 0.408248f;
+    float3 n_29 = float3(0.500000f, 0.500000f, 0.500000f);
+    float4 n_15 = Tex_EmissiveTexture.Sample(LinearWrapSampler, Input.UV0);
+    float3 n_57 = float3(30.000000f, 30.000000f, 30.000000f);
+    float3 n_59 = ((n_15).rgb * n_57);
+    float n_31 = 1.000000f;
     FMaterialResult Result;
-    Result.BaseColor = n_1;
+    Result.BaseColor = (n_3).rgb;
     Result.Normal = float3(0, 0, 1);
-    Result.Roughness = 0.5f;
+    Result.Roughness = n_27;
     Result.Metallic = 0.0f;
-    Result.Specular = float3(1, 1, 1);
-    Result.Emissive = n_26;
-    Result.Opacity = n_49;
+    Result.Specular = n_29;
+    Result.Emissive = n_59;
+    Result.Opacity = n_31;
     return Result;
 }
 
@@ -121,7 +125,13 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float3 N = normalize(input.normal);
 
-    float3 finalRgb = Result.BaseColor + Result.Emissive;
+    float3 V = normalize(CameraWorldPos - input.worldPos);
+    float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
+    float materialRoughness = clamp(Result.Roughness, 0.02f, 1.0f);
+    float materialShininess = max(1.0f, (2.0f / (materialRoughness * materialRoughness)) - 2.0f);
+    float3 specular = AccumulateSpecular(input.worldPos, N, V, materialShininess, input.position) * Result.Specular;
+
+    float3 finalRgb = Result.BaseColor * diffuse + specular + Result.Emissive;
     float OutOpacity = saturate(Result.Opacity);
 
     return float4(finalRgb, OutOpacity);

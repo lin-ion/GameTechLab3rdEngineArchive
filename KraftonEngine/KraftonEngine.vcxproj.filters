@@ -1061,6 +1061,9 @@
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.cpp">
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.cpp">
+      <Filter>Source\Engine\Animation\Notify</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.cpp">
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClCompile>
@@ -2173,6 +2176,7 @@
       <Filter>Intermediate\Generated</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\GameFramework\Actor\ProjectileActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -2471,6 +2475,9 @@
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.h">
+      <Filter>Source\Engine\Animation\Notify</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.h">
       <Filter>Source\Engine\Animation\Notify</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.h">
@@ -6209,6 +6216,7 @@
       <Filter>ThirdParty\sol2\include\sol\utility</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\Actor\ProjectileActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.h" />
     <ClInclude Include="Source\Engine\GameFramework\IPoolableProjectile.h" />
   </ItemGroup>

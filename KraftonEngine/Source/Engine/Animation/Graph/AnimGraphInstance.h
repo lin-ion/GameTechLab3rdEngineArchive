@@ -37,6 +37,7 @@ public:
 	void Serialize(FArchive& Ar)                    override;
 	void AddReferencedObjects(FReferenceCollector& Collector) override;
 	void BeginDestroy() override;
+	void HandleAnimNotify(const FAnimNotifyEvent& Notify) override;
 
 	UFUNCTION(Pure, Category="Animation|AnimGraph")
 	UAnimGraphAsset* GetGraphAsset() const;
