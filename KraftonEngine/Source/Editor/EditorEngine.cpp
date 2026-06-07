@@ -2,6 +2,7 @@
 
 #include "Profiling/StartupProfiler.h"
 #include "Core/Logging/Notification.h"
+#include "Core/Logging/Log.h"
 #include "Engine/Platform/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Engine/Platform/DirectoryWatcher.h"
@@ -15,6 +16,7 @@
 #include "Viewport/GameViewportClient.h"
 #include "UI/UIManager.h"
 #include "UI/Canvas/UICanvasActor.h"
+#include "UI/Canvas/UICanvasManager.h"
 #include "Editor/Slate/SlateApplication.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Editor/UI/Util/EditorFileUtils.h"
@@ -131,6 +133,10 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 		{
 			UIActor->LoadFromAsset(DebugUIAssetPath);
 			EditorWorld->AddActor(UIActor);
+			// [DEBUG/TEST 임시 — cycle 1] 스폰 경로/캔버스 빌드 확인용. canvas!=null 이면 LoadFromAsset 성공.
+			// 화면 표시는 PIE 진입 후 BeginPlay 등록 + LayoutAll 이 돼야 한다(편집 모드 미렌더는 정상 — R1).
+			UE_LOG("[ui-drop cycle1] editor debug spawn: path='%s' canvas=%p",
+				DebugUIAssetPath.c_str(), (void*)UIActor->GetCanvas());
 		}
 	}
 }
@@ -197,6 +203,14 @@ void UEditorEngine::Tick(float DeltaTime)
 	FAudioManager::Get().Tick();
 	WorldTick(DeltaTime);
 	FGarbageCollector::Get().TryCollectGarbage();
+
+	// 신규 계층형 UI 레이아웃 패스 — 게임 경로(UEngine::TickFrameBody)는 WorldTick 후 Render 전에
+	// FUICanvasManager::LayoutAll 을 1회 부른다. 에디터 Tick 은 멀티 뷰포트 구조라 TickFrameBody 를
+	// 거치지 않으므로 여기서 직접 호출해야 PIE 의 등록된 캔버스가 ScreenRect 를 갱신받아 SimpleUIPass
+	// 에 그려진다(미호출 시 ScreenRect 미계산 → 화면 무출력). 편집 모드에선 등록 캔버스가 없어 no-op
+	// 이므로 R1(편집 모드 미렌더)도 그대로 유지된다.
+	FUICanvasManager::Get().LayoutAll();
+
 	Render(DeltaTime);
 	SelectionManager.Tick();
 }
