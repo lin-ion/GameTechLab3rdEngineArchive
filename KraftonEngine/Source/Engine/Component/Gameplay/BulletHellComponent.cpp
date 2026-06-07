@@ -1129,9 +1129,52 @@ int32 UBulletHellComponent::FindOrCreateRenderSlot(const FBulletArchetype& Arche
 	NewSlot.MeshPath = Archetype.MeshPath;
 	NewSlot.MaterialPath = Archetype.MaterialPath;
 	RenderSlots.push_back(NewSlot);
-	const int32 NewSlotIndex = static_cast<int32>(RenderSlots.size()) - 1;
-	EnsureRenderSlotComponent(NewSlotIndex);
-	return NewSlotIndex;
+	return static_cast<int32>(RenderSlots.size()) - 1;
+}
+
+UInstancedStaticMeshComponent* UBulletHellComponent::FindExistingRenderSlotComponent(int32 SlotIndex) const
+{
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return nullptr;
+	}
+
+	char NameBuffer[64];
+	std::snprintf(NameBuffer, sizeof(NameBuffer), "BulletHellRenderer%d", SlotIndex);
+	const FName ExpectedName(NameBuffer);
+	for (UActorComponent* Component : OwnerActor->GetComponents())
+	{
+		UInstancedStaticMeshComponent* Renderer = Cast<UInstancedStaticMeshComponent>(Component);
+		if (Renderer && Renderer->GetOwner() == OwnerActor && Renderer->GetFName() == ExpectedName)
+		{
+			return Renderer;
+		}
+	}
+
+	return nullptr;
+}
+
+bool UBulletHellComponent::CanAutoCreateRenderComponent() const
+{
+	if (!bAutoCreateRenderer)
+	{
+		return false;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return false;
+	}
+
+	if (OwnerActor->HasActorBegunPlay())
+	{
+		return true;
+	}
+
+	UWorld* World = GetWorld();
+	return World && World->HasBegunPlay();
 }
 
 UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderSlotComponent(int32 SlotIndex)
@@ -1154,7 +1197,26 @@ UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderSlotComponent(i
 	}
 
 	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor || !bAutoCreateRenderer)
+	if (!OwnerActor)
+	{
+		UpdateRenderDebugStats();
+		return nullptr;
+	}
+
+	Renderer = FindExistingRenderSlotComponent(SlotIndex);
+	if (Renderer)
+	{
+		Slot.Renderer = Renderer;
+		if (SlotIndex == 0)
+		{
+			RenderComponent = Renderer;
+		}
+		ApplyRenderSlotAssets(SlotIndex);
+		UpdateRenderDebugStats();
+		return Renderer;
+	}
+
+	if (!CanAutoCreateRenderComponent())
 	{
 		UpdateRenderDebugStats();
 		return nullptr;

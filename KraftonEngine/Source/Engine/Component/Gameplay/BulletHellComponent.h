@@ -282,6 +282,8 @@ private:
 	UInstancedStaticMeshComponent* EnsureRenderComponent();
 	UInstancedStaticMeshComponent* GetRenderComponent() const;
 	int32 FindOrCreateRenderSlot(const FBulletArchetype& Archetype);
+	UInstancedStaticMeshComponent* FindExistingRenderSlotComponent(int32 SlotIndex) const;
+	bool CanAutoCreateRenderComponent() const;
 	UInstancedStaticMeshComponent* EnsureRenderSlotComponent(int32 SlotIndex);
 	UInstancedStaticMeshComponent* GetRenderSlotComponent(int32 SlotIndex) const;
 	void ApplyRenderAssets();
