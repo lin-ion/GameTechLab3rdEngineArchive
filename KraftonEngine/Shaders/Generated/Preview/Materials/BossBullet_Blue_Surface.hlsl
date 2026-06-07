@@ -34,6 +34,7 @@ struct FMaterialResult
     float3 Normal;
     float Roughness;
     float Metallic;
+    float3 Specular;
     float3 Emissive;
     float Opacity;
 };
@@ -46,14 +47,15 @@ FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
     float n_15 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_23) * n_44 + 0.000000f);
     float3 n_31 = float3(1.000000f, 1.000000f, 1.000000f);
     float3 n_26 = (float3(n_15, n_15, n_15) * n_31);
-    float n_3 = 1.000000f;
+    float n_49 = 1.000000f;
     FMaterialResult Result;
     Result.BaseColor = n_1;
     Result.Normal = float3(0, 0, 1);
     Result.Roughness = 0.5f;
     Result.Metallic = 0.0f;
+    Result.Specular = float3(1, 1, 1);
     Result.Emissive = n_26;
-    Result.Opacity = n_3;
+    Result.Opacity = n_49;
     return Result;
 }
 

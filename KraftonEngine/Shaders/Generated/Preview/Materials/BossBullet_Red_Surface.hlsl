@@ -34,25 +34,27 @@ struct FMaterialResult
     float3 Normal;
     float Roughness;
     float Metallic;
+    float3 Specular;
     float3 Emissive;
     float Opacity;
 };
 
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-    float3 n_36 = float3(0.835443f, 0.000000f, 0.000000f);
-    float n_52 = 2.000000f;
-    float n_55 = 2.000000f;
-    float n_29 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_52) * n_55 + 0.000000f);
-    float3 n_1 = float3(1.000000f, 1.000000f, 1.000000f);
-    float3 n_45 = (float3(n_29, n_29, n_29) * n_1);
+    float3 n_16 = float3(1.000000f, 0.033755f, 0.033755f);
+    float n_36 = 2.000000f;
+    float n_39 = 2.000000f;
+    float n_19 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_36) * n_39 + 0.000000f);
+    float3 n_32 = float3(1.000000f, 1.000000f, 1.000000f);
+    float3 n_27 = (float3(n_19, n_19, n_19) * n_32);
     float n_3 = 1.000000f;
     FMaterialResult Result;
-    Result.BaseColor = n_36;
+    Result.BaseColor = n_16;
     Result.Normal = float3(0, 0, 1);
     Result.Roughness = 0.5f;
     Result.Metallic = 0.0f;
-    Result.Emissive = n_45;
+    Result.Specular = float3(1, 1, 1);
+    Result.Emissive = n_27;
     Result.Opacity = n_3;
     return Result;
 }
