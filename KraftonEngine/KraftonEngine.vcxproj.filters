@@ -1205,6 +1205,9 @@
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_RendingClawArc.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_SphericalPulseBarrage.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
@@ -2676,6 +2679,9 @@
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_RendingClawArc.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_SphericalPulseBarrage.h">

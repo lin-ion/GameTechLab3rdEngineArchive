@@ -196,6 +196,40 @@
             "bUseRandomSpherePoints" : false
           }
         }, {
+          "ClassName" : "UBossPattern_RendingClawArc",
+          "ObjectId" : 19,
+          "Properties" : {
+            "AllowedPhaseMask" : 2147483647,
+            "ArcCenterAngleDegrees" : 110.000000,
+            "Cooldown" : 2.500000,
+            "InitialCooldown" : 0.000000,
+            "MaxTargetDistance" : 100000.000000,
+            "MinTargetDistance" : 0.000000,
+            "PatternName" : "RendingClawArc",
+            "PhaseWeight0" : 1.000000,
+            "PhaseWeight1" : 1.000000,
+            "PhaseWeight2" : 1.000000,
+            "PlaneCount" : 4,
+            "PlaneSpacing" : 0.800000,
+            "ProjectileLifetime" : 5.000000,
+            "ProjectileRadius" : 0.220000,
+            "ProjectileRenderScale" : 0.180000,
+            "ProjectileSpeed" : 13.000000,
+            "ProjectilesPerArc" : 10,
+            "RecoveryDuration" : 0.350000,
+            "SphereRadius" : 4.000000,
+            "Weight" : 1.000000,
+            "WindupDuration" : 0.300000,
+            "bAutoActivate" : true,
+            "bBlockImmediateRepeat" : true,
+            "bEditorOnly" : false,
+            "bEnabled" : true,
+            "bFaceTargetDuringPattern" : true,
+            "bHiddenInComponentTree" : false,
+            "bIsActive" : true,
+            "bTickEnable" : true
+          }
+        }, {
           "ClassName" : "UBossPattern_ThunderclapCascade",
           "ObjectId" : 12,
           "Properties" : {
