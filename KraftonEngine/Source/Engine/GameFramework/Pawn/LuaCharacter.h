@@ -43,7 +43,14 @@ public:
 	UCameraComponent* GetCamera()             const { return Camera; }
 
 protected:
+	void Tick(float DeltaTime) override;
+
 	TWeakObjectPtr<ULuaScriptComponent> LuaScriptComponent = nullptr;
 	TWeakObjectPtr<USpringArmComponent> SpringArm          = nullptr;
 	TWeakObjectPtr<UCameraComponent>    Camera             = nullptr;
+
+private:
+	// 빙의된 플레이어 사망(HP=0) 시 사망 UI 표시 + 마우스 해제를 1회만 수행 (보스 클리어와 대칭).
+	void OnPlayerDeath();
+	bool bDeathUIShown = false;
 };
