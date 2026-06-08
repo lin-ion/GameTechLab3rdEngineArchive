@@ -79,6 +79,7 @@ private:
 	void TickProjectiles(float DeltaTime);
 	void UpdateHoming(FPlayerSprayProjectile& Projectile, float DeltaTime);
 	bool CheckProjectileCollision(const FPlayerSprayProjectile& Projectile);
+	bool CheckBossPhysicsAssetHit(const FPlayerSprayProjectile& Projectile, AActor* BossActor, FHitResult& OutHit) const;
 	void ApplyDamageToHitTarget(const FPlayerSprayProjectile& Projectile, const FHitResult& Hit) const;
 	void RemoveProjectileAtIndex(int32 ProjectileIndex);
 	void SyncRender();

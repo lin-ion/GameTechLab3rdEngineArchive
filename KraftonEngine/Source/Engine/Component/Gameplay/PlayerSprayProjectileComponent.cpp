@@ -3,6 +3,7 @@
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Component/Gameplay/BulletTrailComponent.h"
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
+#include "Component/Primitive/SkeletalMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Core/Types/RayTypes.h"
 #include "Debug/DrawDebugHelpers.h"
@@ -11,6 +12,8 @@
 #include "GameFramework/Pawn/Pawn.h"
 #include "GameFramework/World.h"
 #include "Math/Rotator.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetPreviewUtils.h"
 #include "Render/Types/MinimalViewInfo.h"
 
 #include <algorithm>
@@ -45,6 +48,188 @@ namespace
 	bool HasActorTag(const AActor* Actor, const char* TagName)
 	{
 		return Actor && TagName && Actor->HasTag(FName(TagName));
+	}
+
+	FTransform ComposePhysicsAssetHitTransforms(const FTransform& ParentWorld, const FTransform& Local)
+	{
+		FTransform Result = Local;
+		Result.Location = ParentWorld.Location + ParentWorld.Rotation.RotateVector(Local.Location);
+		Result.Rotation = (ParentWorld.Rotation * Local.Rotation).GetNormalized();
+		Result.Scale = FVector::OneVector;
+		return Result;
+	}
+
+	FVector TransformPointToShapeLocal(const FVector& WorldPoint, const FTransform& ShapeWorld)
+	{
+		const FQuat InverseRotation = ShapeWorld.Rotation.GetNormalized().Inverse();
+		return InverseRotation.RotateVector(WorldPoint - ShapeWorld.Location);
+	}
+
+	float SegmentPointDistanceSquared(const FVector& A, const FVector& B, const FVector& Point, float& OutAlpha)
+	{
+		const FVector AB = B - A;
+		const float LenSq = AB.Dot(AB);
+		if (LenSq <= 1.0e-8f)
+		{
+			OutAlpha = 0.0f;
+			return FVector::DistSquared(A, Point);
+		}
+
+		OutAlpha = ClampFloat((Point - A).Dot(AB) / LenSq, 0.0f, 1.0f);
+		const FVector Closest = A + AB * OutAlpha;
+		return FVector::DistSquared(Closest, Point);
+	}
+
+	float SegmentSegmentDistanceSquared(
+		const FVector& P1,
+		const FVector& Q1,
+		const FVector& P2,
+		const FVector& Q2,
+		float& OutAlpha1)
+	{
+		const FVector D1 = Q1 - P1;
+		const FVector D2 = Q2 - P2;
+		const FVector R = P1 - P2;
+		const float A = D1.Dot(D1);
+		const float E = D2.Dot(D2);
+		const float F = D2.Dot(R);
+
+		float S = 0.0f;
+		float T = 0.0f;
+		if (A <= 1.0e-8f && E <= 1.0e-8f)
+		{
+			OutAlpha1 = 0.0f;
+			return FVector::DistSquared(P1, P2);
+		}
+		if (A <= 1.0e-8f)
+		{
+			T = ClampFloat(F / E, 0.0f, 1.0f);
+		}
+		else
+		{
+			const float C = D1.Dot(R);
+			if (E <= 1.0e-8f)
+			{
+				S = ClampFloat(-C / A, 0.0f, 1.0f);
+			}
+			else
+			{
+				const float B = D1.Dot(D2);
+				const float Denom = A * E - B * B;
+				S = Denom != 0.0f ? ClampFloat((B * F - C * E) / Denom, 0.0f, 1.0f) : 0.0f;
+				T = (B * S + F) / E;
+				if (T < 0.0f)
+				{
+					T = 0.0f;
+					S = ClampFloat(-C / A, 0.0f, 1.0f);
+				}
+				else if (T > 1.0f)
+				{
+					T = 1.0f;
+					S = ClampFloat((B - C) / A, 0.0f, 1.0f);
+				}
+			}
+		}
+
+		OutAlpha1 = S;
+		const FVector C1 = P1 + D1 * S;
+		const FVector C2 = P2 + D2 * T;
+		return FVector::DistSquared(C1, C2);
+	}
+
+	bool SegmentIntersectsExpandedLocalBox(
+		const FVector& Start,
+		const FVector& End,
+		const FVector& HalfExtent,
+		float Radius,
+		float& OutAlpha)
+	{
+		const FVector D = End - Start;
+		const FVector Expanded = HalfExtent + Radius;
+		float TMin = 0.0f;
+		float TMax = 1.0f;
+		const float* Origin = &Start.X;
+		const float* Direction = &D.X;
+		const float MinBounds[3] = { -Expanded.X, -Expanded.Y, -Expanded.Z };
+		const float MaxBounds[3] = {  Expanded.X,  Expanded.Y,  Expanded.Z };
+
+		for (int32 Axis = 0; Axis < 3; ++Axis)
+		{
+			if (std::fabs(Direction[Axis]) < 1.0e-6f)
+			{
+				if (Origin[Axis] < MinBounds[Axis] || Origin[Axis] > MaxBounds[Axis])
+				{
+					return false;
+				}
+				continue;
+			}
+
+			float T1 = (MinBounds[Axis] - Origin[Axis]) / Direction[Axis];
+			float T2 = (MaxBounds[Axis] - Origin[Axis]) / Direction[Axis];
+			if (T1 > T2)
+			{
+				std::swap(T1, T2);
+			}
+			TMin = (std::max)(TMin, T1);
+			TMax = (std::min)(TMax, T2);
+			if (TMin > TMax)
+			{
+				return false;
+			}
+		}
+
+		OutAlpha = TMin;
+		return true;
+	}
+
+	bool SegmentIntersectsPhysicsAssetShape(
+		const FVector& SegmentStartWorld,
+		const FVector& SegmentEndWorld,
+		float ProjectileRadius,
+		const FTransform& ShapeWorld,
+		const FPhysicsAssetShapeSetup& Shape,
+		float& OutAlpha)
+	{
+		const FVector LocalStart = TransformPointToShapeLocal(SegmentStartWorld, ShapeWorld);
+		const FVector LocalEnd = TransformPointToShapeLocal(SegmentEndWorld, ShapeWorld);
+		switch (Shape.Type)
+		{
+		case EPhysicsAssetShapeType::Box:
+			return SegmentIntersectsExpandedLocalBox(
+				LocalStart,
+				LocalEnd,
+				Shape.BoxHalfExtent,
+				ProjectileRadius,
+				OutAlpha);
+		case EPhysicsAssetShapeType::Sphere:
+		{
+			const float Radius = (std::max)(0.001f, Shape.SphereRadius + ProjectileRadius);
+			float Alpha = 0.0f;
+			if (SegmentPointDistanceSquared(LocalStart, LocalEnd, FVector::ZeroVector, Alpha) <= Radius * Radius)
+			{
+				OutAlpha = Alpha;
+				return true;
+			}
+			return false;
+		}
+		case EPhysicsAssetShapeType::Capsule:
+		{
+			const float CapsuleRadius = (std::max)(0.001f, Shape.CapsuleRadius + ProjectileRadius);
+			const float HalfHeight = (std::max)(Shape.CapsuleHalfHeight, Shape.CapsuleRadius);
+			const float CylinderHalf = (std::max)(0.0f, HalfHeight - Shape.CapsuleRadius);
+			const FVector CapsuleA(0.0f, 0.0f, -CylinderHalf);
+			const FVector CapsuleB(0.0f, 0.0f, CylinderHalf);
+			float Alpha = 0.0f;
+			if (SegmentSegmentDistanceSquared(LocalStart, LocalEnd, CapsuleA, CapsuleB, Alpha) <= CapsuleRadius * CapsuleRadius)
+			{
+				OutAlpha = Alpha;
+				return true;
+			}
+			return false;
+		}
+		default:
+			return false;
+		}
 	}
 
 	void MakeBasis(const FVector& Forward, FVector& OutRight, FVector& OutUp)
@@ -549,9 +734,99 @@ bool UPlayerSprayProjectileComponent::CheckProjectileCollision(const FPlayerSpra
 		{
 			return false;
 		}
+		if (IsBossActor(TargetActor))
+		{
+			FHitResult PhysicsAssetHit;
+			if (!CheckBossPhysicsAssetHit(Projectile, TargetActor, PhysicsAssetHit))
+			{
+				return false;
+			}
+			ApplyDamageToHitTarget(Projectile, PhysicsAssetHit);
+			return true;
+		}
 		ApplyDamageToHitTarget(Projectile, Hit);
+		return true;
 	}
-	return bHit;
+
+	AActor* HomingTarget = Projectile.HomingTarget.Get();
+	if (IsBossActor(HomingTarget))
+	{
+		FHitResult PhysicsAssetHit;
+		if (CheckBossPhysicsAssetHit(Projectile, HomingTarget, PhysicsAssetHit))
+		{
+			ApplyDamageToHitTarget(Projectile, PhysicsAssetHit);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UPlayerSprayProjectileComponent::CheckBossPhysicsAssetHit(
+	const FPlayerSprayProjectile& Projectile,
+	AActor* BossActor,
+	FHitResult& OutHit) const
+{
+	OutHit = FHitResult();
+	if (!BossActor || BossActor == GetOwner())
+	{
+		return false;
+	}
+
+	USkeletalMeshComponent* MeshComponent = BossActor->GetComponentByClass<USkeletalMeshComponent>();
+	UPhysicsAsset* PhysicsAsset = MeshComponent ? MeshComponent->GetEffectivePhysicsAsset() : nullptr;
+	if (!MeshComponent || !PhysicsAsset)
+	{
+		return false;
+	}
+
+	FPhysicsAssetPreviewPoseCache PoseCache;
+	if (!PoseCache.Initialize(MeshComponent, PhysicsAsset))
+	{
+		return false;
+	}
+
+	const TArray<FPhysicsAssetBodySetup>& Bodies = PhysicsAsset->GetBodySetups();
+	float BestAlpha = (std::numeric_limits<float>::max)();
+	for (int32 BodyIndex = 0; BodyIndex < static_cast<int32>(Bodies.size()); ++BodyIndex)
+	{
+		FTransform BodyWorld;
+		if (!PoseCache.ComputeBodyWorldTransform(BodyIndex, BodyWorld))
+		{
+			continue;
+		}
+
+		const FPhysicsAssetBodySetup& Body = Bodies[BodyIndex];
+		for (const FPhysicsAssetShapeSetup& Shape : Body.Shapes)
+		{
+			const FTransform ShapeWorld = ComposePhysicsAssetHitTransforms(BodyWorld, Shape.LocalTransform);
+			float Alpha = 0.0f;
+			if (SegmentIntersectsPhysicsAssetShape(
+				Projectile.PreviousPosition,
+				Projectile.Position,
+				Projectile.Radius,
+				ShapeWorld,
+				Shape,
+				Alpha))
+			{
+				BestAlpha = (std::min)(BestAlpha, Alpha);
+			}
+		}
+	}
+
+	if (BestAlpha == (std::numeric_limits<float>::max)())
+	{
+		return false;
+	}
+
+	OutHit.bHit = true;
+	OutHit.HitActor = BossActor;
+	OutHit.HitComponent = MeshComponent;
+	OutHit.Distance = (Projectile.Position - Projectile.PreviousPosition).Length() * BestAlpha;
+	OutHit.WorldHitLocation = Projectile.PreviousPosition + (Projectile.Position - Projectile.PreviousPosition) * BestAlpha;
+	OutHit.WorldNormal = SafeDirection(OutHit.WorldHitLocation - BossActor->GetActorLocation(), FVector::UpVector);
+	OutHit.ImpactNormal = OutHit.WorldNormal;
+	return true;
 }
 
 void UPlayerSprayProjectileComponent::ApplyDamageToHitTarget(
