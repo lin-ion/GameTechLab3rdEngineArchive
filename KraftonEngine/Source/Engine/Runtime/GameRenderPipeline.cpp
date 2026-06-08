@@ -11,6 +11,7 @@
 #include "Input/InputSystem.h"
 #include "Viewport/Viewport.h"
 #include "Math/MathUtils.h"
+#include "Core/Logging/Log.h"
 
 namespace
 {
@@ -119,6 +120,23 @@ void FGameRenderPipeline::BuildFrame(FViewport* VP, const FMinimalViewInfo& POV,
 		Frame.CameraVignette.Radius = CamManager->GetVignetteRadius();
 		Frame.CameraVignette.Softness = CamManager->GetVignetteSoftness();
 		Frame.CameraVignette.Color = CamManager->GetVignetteColor();
+	}
+
+	Frame.CameraRadialBlur.bEnabled = CamManager ? CamManager->IsRadialBlurEnabled() : false;
+	static bool bLastRadialBlurEnabled = false;
+	if (Frame.CameraRadialBlur.bEnabled != bLastRadialBlurEnabled)
+	{
+		bLastRadialBlurEnabled = Frame.CameraRadialBlur.bEnabled;
+		UE_LOG("[GameRenderPipeline] RadialBlur frame=%s manager=%p",
+			bLastRadialBlurEnabled ? "enabled" : "disabled",
+			CamManager);
+	}
+	if (Frame.CameraRadialBlur.bEnabled)
+	{
+		Frame.CameraRadialBlur.Intensity = CamManager->GetRadialBlurIntensity();
+		Frame.CameraRadialBlur.Radius = CamManager->GetRadialBlurRadius();
+		Frame.CameraRadialBlur.SampleCount = CamManager->GetRadialBlurSampleCount();
+		Frame.CameraRadialBlur.Center = CamManager->GetRadialBlurCenter();
 	}
 
 	if (CamManager && CamManager->IsDepthOfFieldEnabled())

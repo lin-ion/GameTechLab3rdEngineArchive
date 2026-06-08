@@ -1,5 +1,6 @@
 #include "Component/Gameplay/PlayerSprayProjectileComponent.h"
 
+#include "Audio/AudioManager.h"
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Component/Gameplay/BulletTrailComponent.h"
 #include "Component/Particle/ParticleSystemComponent.h"
@@ -988,6 +989,7 @@ void UPlayerSprayProjectileComponent::ApplyDamageToHitTarget(
 		const float AppliedDamage = DamageReceiver->ApplyDamage(Projectile.Damage);
 		if (AppliedDamage > 0.0f && IsBossActor(TargetActor))
 		{
+			FAudioManager::Get().PlayAudio("Hit", 1.0f);
 			AddUltimateGauge(UltimateGaugePerBossHit);
 		}
 	}

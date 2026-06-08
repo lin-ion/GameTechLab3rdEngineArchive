@@ -11,6 +11,7 @@
 #include "Object/Reflection/ObjectFactory.h"
 #include "Object/GarbageCollection.h"
 #include "Object/Reflection/UClass.h"
+#include "Core/Logging/Log.h"
 #include <algorithm>
 
 void APlayerCameraManager::RegisterCamera(UCameraComponent* Camera)
@@ -492,6 +493,31 @@ void APlayerCameraManager::ClearCameraVignette()
 {
 	bEnableVignette = false;
 	VignetteIntensity = 0.0f;
+}
+
+void APlayerCameraManager::SetRadialBlur(float Intensity, float Radius, int32 SampleCount, FVector2 Center)
+{
+	RadialBlur.bEnabled = true;
+	RadialBlur.Intensity = std::clamp(Intensity, 0.0f, 1.0f);
+	RadialBlur.Radius = std::clamp(Radius, 0.0f, 1.0f);
+	RadialBlur.SampleCount = std::clamp(SampleCount, 1, 24);
+	RadialBlur.Center = FVector2(
+		std::clamp(Center.X, 0.0f, 1.0f),
+		std::clamp(Center.Y, 0.0f, 1.0f));
+	UE_LOG("[CameraManager] RadialBlur enabled manager=%p intensity=%.3f radius=%.3f samples=%d center=(%.3f, %.3f)",
+		this,
+		RadialBlur.Intensity,
+		RadialBlur.Radius,
+		RadialBlur.SampleCount,
+		RadialBlur.Center.X,
+		RadialBlur.Center.Y);
+}
+
+void APlayerCameraManager::ClearRadialBlur()
+{
+	RadialBlur.bEnabled = false;
+	RadialBlur.Intensity = 0.0f;
+	UE_LOG("[CameraManager] RadialBlur disabled manager=%p", this);
 }
 
 // ─────────────────────────────────────────────────────────────────

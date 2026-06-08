@@ -20,17 +20,26 @@ local BOW_SKILL_NAME = "AirBowShot"
 local BOW_SKILL_KEY = "RightMouseButton"
 local BOW_AIM_GRAVITY = 0.1
 local BOW_AIM_MAX_DURATION = 60.0
+
 local BOW_CAMERA_ARM_LENGTH = 3.0
 local BOW_CAMERA_SOCKET_OFFSET = Vec3(0.0, 0.5, 1.0)
 local BOW_CAMERA_FOV = 0.55
 local BOW_CAMERA_BLEND_DURATION = 0.3
 local BOW_CAMERA_RESTORE_DURATION = 0.22
+
+local BOW_RADIAL_BLUR_INTENSITY = 1.0
+local BOW_RADIAL_BLUR_RADIUS = 0.06
+local BOW_RADIAL_BLUR_SAMPLE_COUNT = 22
+
 local BOW_PROJECTILE_SPEED = 15.0
 local BOW_PROJECTILE_OFFSET = Vec3(0.1, 0.15, 0.3)
+
 local BOW_AIM_PARTICLE_PATH = "Content/Particle System/Aim.uasset"
 local BOW_AIM_PARTICLE_OFFSET = Vec3(1.5, 0.15, 0.3)
+
 local BOW_RELEASE_SLOMO_DURATION = 0.3
 local BOW_RELEASE_SLOMO_DILATION = 0.15
+
 local BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST = false
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
 local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
@@ -57,6 +66,8 @@ local DASH_ANIM_VAR = "Dash"
 local ROLL_ANIM_VAR = "Roll"
 local ATTACK_ANIM_VAR = "Attack"
 local ARROW_ANIM_VAR = "Arrow"
+local WALKING_AUDIO_LOOP_NAME = "HaruWalking"
+local WALKING_AUDIO_MIN_SPEED = 0.05
 
 local actor = nil
 local ability_system = nil
@@ -68,6 +79,7 @@ local camera = nil
 local weapon_mesh = nil
 local camera_blend = nil
 local movement_locks = {}
+local walking_audio_playing = false
 
 local function log(message)
     print("[HaruController] " .. message)
@@ -137,6 +149,45 @@ local function is_ultimate_ready(owner)
         return World.IsPlayerUltimateReady(owner)
     end
     return get_ultimate_gauge(owner) >= get_ultimate_gauge_max(owner)
+end
+
+local function set_player_damage_enabled(owner, enabled, reason)
+    if World ~= nil and World.SetPlayerDamageEnabled ~= nil then
+        local ok = World.SetPlayerDamageEnabled(owner, enabled == true)
+        log("Player damage " .. (enabled and "enabled" or "disabled")
+            .. " reason=" .. tostring(reason)
+            .. " ok=" .. tostring(ok))
+        return ok
+    end
+
+    log("Player damage toggle unavailable reason=" .. tostring(reason))
+    return false
+end
+
+local function set_bow_radial_blur(enabled, reason)
+    if World == nil then
+        return false
+    end
+
+    if enabled then
+        if World.SetCameraRadialBlur ~= nil then
+            local ok = World.SetCameraRadialBlur(
+                BOW_RADIAL_BLUR_INTENSITY,
+                BOW_RADIAL_BLUR_RADIUS,
+                BOW_RADIAL_BLUR_SAMPLE_COUNT,
+                0.5,
+                0.5)
+            log("AirBowShot radial blur enabled reason=" .. tostring(reason) .. " ok=" .. tostring(ok))
+            return ok
+        end
+    elseif World.ClearCameraRadialBlur ~= nil then
+        local ok = World.ClearCameraRadialBlur()
+        log("AirBowShot radial blur cleared reason=" .. tostring(reason) .. " ok=" .. tostring(ok))
+        return ok
+    end
+
+    log("AirBowShot radial blur unavailable reason=" .. tostring(reason))
+    return false
 end
 
 local function lerp_number(a, b, alpha)
@@ -610,6 +661,62 @@ local function get_movement_debug_state(character_movement)
         .. " mode=" .. mode
         .. " isFalling=" .. is_falling
         .. " velocity=" .. format_vec3(velocity)
+end
+
+local function get_movement_velocity(character_movement)
+    if character_movement == nil then
+        return nil
+    end
+
+    if character_movement.GetVelocity ~= nil then
+        return character_movement:GetVelocity()
+    end
+
+    if character_movement.GetVelocityValue ~= nil then
+        return character_movement:GetVelocityValue()
+    end
+
+    return nil
+end
+
+local function is_character_walking(character_movement)
+    local velocity = get_movement_velocity(character_movement)
+    if velocity == nil then
+        return false
+    end
+
+    local horizontal_speed_sq = (velocity.X or 0.0) * (velocity.X or 0.0)
+        + (velocity.Y or 0.0) * (velocity.Y or 0.0)
+    if horizontal_speed_sq <= WALKING_AUDIO_MIN_SPEED * WALKING_AUDIO_MIN_SPEED then
+        return false
+    end
+
+    return character_movement.IsFalling == nil or not character_movement:IsFalling()
+end
+
+local function update_walking_audio(owner)
+    local character_movement = get_character_movement(owner)
+    local should_play = is_character_walking(character_movement)
+
+    if should_play then
+        if Audio ~= nil and Audio.PlayLoop ~= nil then
+            Audio.PlayLoop("Walking", WALKING_AUDIO_LOOP_NAME, 0.8, 1.0)
+            walking_audio_playing = true
+        end
+        return
+    end
+
+    if walking_audio_playing and Audio ~= nil and Audio.StopLoop ~= nil then
+        Audio.StopLoop(WALKING_AUDIO_LOOP_NAME)
+        walking_audio_playing = false
+    end
+end
+
+local function stop_walking_audio()
+    if Audio ~= nil and Audio.StopLoop ~= nil then
+        Audio.StopLoop(WALKING_AUDIO_LOOP_NAME)
+    end
+    walking_audio_playing = false
 end
 
 local function is_bow_airborne(character_movement)
@@ -1356,6 +1463,9 @@ local function launch_prepared_arrow(owner, ability, reason)
     if launched then
         ability.arrow_released = true
         ability.arrow_projectile = nil
+        if Audio ~= nil and Audio.Play ~= nil then
+            Audio.Play("Arrow", 10.0)
+        end
         play_arrow_release_slomo(owner)
         return true
     end
@@ -1404,6 +1514,9 @@ local function launch_prepared_arrow_from_stored_aim(owner, ability, reason)
     if launched then
         ability.arrow_released = true
         ability.arrow_projectile = nil
+        if Audio ~= nil and Audio.Play ~= nil then
+            Audio.Play("Arrow", 10.0)
+        end
         play_arrow_release_slomo(owner)
         return true
     end
@@ -1447,6 +1560,7 @@ local function start_bow_ultimate_cutscene(owner, ability)
     ability.cutscene_finished = false
     ability.cutscene_elapsed = 0.0
     ability.cutscene_eye_from = get_camera_state(owner)
+    ability.damage_disabled_for_cutscene = set_player_damage_enabled(owner, false, "Ultimate cutscene start")
     ability.cutscene_launch_location = World ~= nil and World.GetCameraProjectileLocation ~= nil
         and World.GetCameraProjectileLocation(BOW_PROJECTILE_OFFSET) or nil
     ability.cutscene_launch_forward = World ~= nil and World.GetCameraProjectileForward ~= nil
@@ -1459,7 +1573,7 @@ local function start_bow_ultimate_cutscene(owner, ability)
         World.UpdateCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_OFFSET)
     end
 
-    HaruUltimateCutscene.Start({
+    local cutscene_started = HaruUltimateCutscene.Start({
         owner = owner,
         spring_arm = get_spring_arm(owner),
         camera = get_camera(owner),
@@ -1481,12 +1595,25 @@ local function start_bow_ultimate_cutscene(owner, ability)
             if World ~= nil and World.ResetPlayerUltimateGauge ~= nil then
                 World.ResetPlayerUltimateGauge(owner)
             end
+            if ability.damage_disabled_for_cutscene then
+                set_player_damage_enabled(owner, true, "Ultimate cutscene finish")
+                ability.damage_disabled_for_cutscene = false
+            end
             log("AirBowShot ultimate cutscene finished; gauge reset requested")
             if ability_system ~= nil then
                 ability_system:EndAbility(ability)
             end
         end
     })
+
+    if not cutscene_started then
+        if ability.damage_disabled_for_cutscene then
+            set_player_damage_enabled(owner, true, "Ultimate cutscene start failed")
+            ability.damage_disabled_for_cutscene = false
+        end
+        ability.cutscene_active = false
+        return
+    end
 
     log("AirBowShot ultimate cutscene requested: gauge=" .. tostring(get_ultimate_gauge(owner))
         .. "/" .. tostring(get_ultimate_gauge_max(owner))
@@ -1588,6 +1715,7 @@ local function activate_bow_aim(owner, ability)
     ability.cutscene_elapsed = 0.0
     ability.cutscene_launch_location = nil
     ability.cutscene_launch_forward = nil
+    ability.damage_disabled_for_cutscene = false
 
     if ability.started_airborne and character_movement ~= nil and character_movement.SetGravity ~= nil then
         character_movement:SetGravity(BOW_AIM_GRAVITY)
@@ -1603,6 +1731,7 @@ local function activate_bow_aim(owner, ability)
         inherit_pitch = false,
         fov = BOW_CAMERA_FOV
     }, BOW_CAMERA_BLEND_DURATION, "AirBowShot aim")
+    set_bow_radial_blur(true, "RightMouseButton press")
 
     log("AirBowShot aim started: gravity=" .. tostring(BOW_AIM_GRAVITY)
         .. " armLength=" .. tostring(BOW_CAMERA_ARM_LENGTH)
@@ -1633,12 +1762,14 @@ local function tick_bow_aim(owner, ability, dt)
         end
 
         stop_bow_aim_particle(ability, "RightMouseButton release")
+        set_bow_radial_blur(false, "RightMouseButton release")
         start_bow_ultimate_cutscene(owner, ability)
     end
 end
 
 local function end_bow_aim(owner, ability)
     stop_bow_aim_particle(ability, "AirBowShot end")
+    set_bow_radial_blur(false, "AirBowShot end")
     HaruUltimateCutscene.Stop()
 
     if ability ~= nil and ability.arrow_projectile ~= nil and not ability.arrow_released then
@@ -1649,10 +1780,14 @@ local function end_bow_aim(owner, ability)
         ability.arrow_projectile = nil
     end
     if ability ~= nil then
+        if ability.damage_disabled_for_cutscene then
+            set_player_damage_enabled(owner, true, "AirBowShot end")
+        end
         ability.cutscene_active = false
         ability.cutscene_elapsed = 0.0
         ability.cutscene_launch_location = nil
         ability.cutscene_launch_forward = nil
+        ability.damage_disabled_for_cutscene = false
         ability.block_reason = nil
     end
 
@@ -1810,6 +1945,7 @@ function EndPlay()
     end
 
     if actor ~= nil then
+        stop_walking_audio()
         set_anim_bool(actor, DASH_ANIM_VAR, false)
         set_anim_bool(actor, ROLL_ANIM_VAR, false)
         set_anim_bool(actor, ATTACK_ANIM_VAR, false)
@@ -1829,6 +1965,7 @@ function EndPlay()
     camera = nil
     weapon_mesh = nil
     camera_blend = nil
+    walking_audio_playing = false
 end
 
 function OnOverlap(OtherActor)
@@ -1863,6 +2000,9 @@ function Tick(dt)
     if ability_system == nil then
         return
     end
+
+    local owner = resolve_actor()
+    update_walking_audio(owner)
 
     local dash_key = first_pressed_key(DASH_SKILL_KEYS)
     if dash_key ~= nil then

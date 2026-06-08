@@ -590,6 +590,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Render\RenderPass\PassRenderStateTable.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PostProcessPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PreDepthPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderPass\RadialBlurPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\RenderPassBase.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\RenderPassPipeline.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\RenderPassRegistry.cpp" />
@@ -1178,6 +1179,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Render\RenderPass\PassRenderStateTable.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PostProcessPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PreDepthPass.h" />
+    <ClInclude Include="Source\Engine\Render\RenderPass\RadialBlurPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\RenderPassBase.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\RenderPassPipeline.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\RenderPassRegistry.h" />

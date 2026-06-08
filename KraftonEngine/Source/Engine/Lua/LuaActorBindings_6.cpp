@@ -2,6 +2,7 @@
 #include "GameFramework/ProjectilePoolSubSystem.h"   // FProjectilePoolSubsystem::Acquire<T>
 #include "GameFramework/Actor/ProjectileActor.h"     // AProjectileActor
 #include "GameFramework/Actor/ArrowProjectileActor.h"
+#include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Component/Gameplay/PlayerSprayProjectileComponent.h"
 
 using namespace LuaActorBindingsDetail;
@@ -368,6 +369,33 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
         }
     );
     World.set_function(
+        "SetPlayerDamageEnabled",
+        [](AActor* Owner, bool bEnabled) -> bool
+        {
+            if (!Owner) return false;
+            UBulletHellDamageReceiverComponent* DamageReceiver = Owner->GetComponentByClass<UBulletHellDamageReceiverComponent>();
+            if (!DamageReceiver)
+            {
+                UE_LOG("[DamageReceiver] SetPlayerDamageEnabled failed owner=%s enabled=%d receiver=nil",
+                    Owner->GetName().c_str(), (int)bEnabled);
+                return false;
+            }
+            DamageReceiver->SetDamageEnabled(bEnabled);
+            UE_LOG("[DamageReceiver] SetPlayerDamageEnabled owner=%s enabled=%d",
+                Owner->GetName().c_str(), (int)bEnabled);
+            return true;
+        }
+    );
+    World.set_function(
+        "IsPlayerDamageEnabled",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return true;
+            UBulletHellDamageReceiverComponent* DamageReceiver = Owner->GetComponentByClass<UBulletHellDamageReceiverComponent>();
+            return DamageReceiver ? DamageReceiver->IsDamageEnabled() : true;
+        }
+    );
+    World.set_function(
         "SetCameraVignetteColor",
         [](float Intensity, float Radius, float Softness, sol::optional<sol::object> Color) -> bool
         {
@@ -390,6 +418,31 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
             APlayerCameraManager* Manager = GetFirstPlayerCameraManager();
             if (!Manager) return false;
             Manager->ClearCameraVignette();
+            return true;
+        }
+    );
+    World.set_function(
+        "SetCameraRadialBlur",
+        [](float Intensity, float Radius, sol::optional<int32> SampleCount,
+            sol::optional<float> CenterX, sol::optional<float> CenterY) -> bool
+        {
+            APlayerCameraManager* Manager = GetFirstPlayerCameraManager();
+            if (!Manager) return false;
+            Manager->SetRadialBlur(
+                Intensity,
+                Radius,
+                SampleCount.value_or(12),
+                FVector2(CenterX.value_or(0.5f), CenterY.value_or(0.5f)));
+            return true;
+        }
+    );
+    World.set_function(
+        "ClearCameraRadialBlur",
+        []() -> bool
+        {
+            APlayerCameraManager* Manager = GetFirstPlayerCameraManager();
+            if (!Manager) return false;
+            Manager->ClearRadialBlur();
             return true;
         }
     );

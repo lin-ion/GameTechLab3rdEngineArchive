@@ -17,6 +17,12 @@ public:
 	UFUNCTION(Callable, Category="Bullet Hell|Damage Receiver")
 	float ApplyDamage(float DamageAmount);
 
+	UFUNCTION(Callable, Category="Bullet Hell|Damage Receiver")
+	void SetDamageEnabled(bool bEnabled) { bDamageEnabled = bEnabled; }
+
+	UFUNCTION(Pure, Category="Bullet Hell|Damage Receiver")
+	bool IsDamageEnabled() const { return bDamageEnabled; }
+
 	UFUNCTION(Pure, Category="Bullet Hell|Damage Receiver")
 	int32 GetHitCount() const { return HitCount; }
 
@@ -31,4 +37,7 @@ private:
 
 	UPROPERTY(Save, Category="Bullet Hell|Damage Receiver", DisplayName="Hit Count")
 	int32 HitCount = 0;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Damage Receiver", DisplayName="Damage Enabled")
+	bool bDamageEnabled = true;
 };

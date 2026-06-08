@@ -153,6 +153,7 @@ namespace EShaderPath
 	inline constexpr const char* BloomBlur = "Shaders/PostProcess/BloomBlur.hlsl";
 	inline constexpr const char* BloomComposite = "Shaders/PostProcess/BloomComposite.hlsl";
 	inline constexpr const char* ActionAfterImage = "Shaders/PostProcess/ActionAfterImage.hlsl";
+	inline constexpr const char* RadialBlur = "Shaders/PostProcess/RadialBlur.hlsl";
 
 	inline constexpr const char* Font = "Shaders/UI/Font.hlsl";
 	inline constexpr const char* OverlayFont = "Shaders/UI/OverlayFont.hlsl";

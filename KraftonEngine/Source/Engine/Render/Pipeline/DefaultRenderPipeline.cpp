@@ -3,7 +3,10 @@
 #include "Renderer.h"
 #include "Engine/Runtime/Engine.h"
 #include "Render/Types/MinimalViewInfo.h"
+#include "GameFramework/GameMode/PlayerController.h"
+#include "GameFramework/Camera/PlayerCameraManager.h"
 #include "GameFramework/World.h"
+#include "Core/Logging/Log.h"
 
 FDefaultRenderPipeline::FDefaultRenderPipeline(UEngine* InEngine, FRenderer& InRenderer)
 	: Engine(InEngine)
@@ -29,6 +32,25 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 		Frame.SetCameraInfo(POV);
 
 		Frame.WorldType = World->GetWorldType();
+
+		APlayerController* PC = World->GetFirstPlayerController();
+		APlayerCameraManager* CamManager = PC ? PC->GetPlayerCameraManager() : nullptr;
+		Frame.CameraRadialBlur.bEnabled = CamManager ? CamManager->IsRadialBlurEnabled() : false;
+		static bool bLastRadialBlurEnabled = false;
+		if (Frame.CameraRadialBlur.bEnabled != bLastRadialBlurEnabled)
+		{
+			bLastRadialBlurEnabled = Frame.CameraRadialBlur.bEnabled;
+			UE_LOG("[DefaultRenderPipeline] RadialBlur frame=%s manager=%p",
+				bLastRadialBlurEnabled ? "enabled" : "disabled",
+				CamManager);
+		}
+		if (Frame.CameraRadialBlur.bEnabled)
+		{
+			Frame.CameraRadialBlur.Intensity = CamManager->GetRadialBlurIntensity();
+			Frame.CameraRadialBlur.Radius = CamManager->GetRadialBlurRadius();
+			Frame.CameraRadialBlur.SampleCount = CamManager->GetRadialBlurSampleCount();
+			Frame.CameraRadialBlur.Center = CamManager->GetRadialBlurCenter();
+		}
 
 		FViewportRenderOptions Opts;
 		Opts.ViewMode = EViewMode::Lit_Phong;
