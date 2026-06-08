@@ -1,4 +1,4 @@
-// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/Auto/MI_BossJiao_Body.uasset
+// Generated from C:/Github/Week14/Jungle_Week14_Team4/KraftonEngine/Content/Material/PlayerBullet.uasset
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
@@ -40,22 +40,23 @@ struct FMaterialResult
     float Opacity;
 };
 
-Texture2D Tex_DiffuseTexture : register(t0);
-
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-    float4 n_3 = Tex_DiffuseTexture.Sample(LinearWrapSampler, Input.UV0);
-    float3 n_13 = float3(1.000000f, 1.000000f, 1.000000f);
-    float3 n_15 = ((n_3).rgb * n_13);
-    float n_21 = 1.000000f;
+    float3 n_16 = float3(0.561000f, 0.000000f, 1.000000f);
+    float n_36 = 2.000000f;
+    float n_39 = 2.000000f;
+    float n_19 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_36) * n_39 + 0.000000f);
+    float3 n_32 = float3(3.000000f, 3.000000f, 3.000000f);
+    float3 n_27 = (float3(n_19, n_19, n_19) * n_32);
+    float n_3 = 1.000000f;
     FMaterialResult Result;
-    Result.BaseColor = n_15;
+    Result.BaseColor = n_16;
     Result.Normal = float3(0, 0, 1);
     Result.Roughness = 0.5f;
     Result.Metallic = 0.0f;
     Result.Specular = float3(1, 1, 1);
-    Result.Emissive = float3(0, 0, 0);
-    Result.Opacity = n_21;
+    Result.Emissive = n_27;
+    Result.Opacity = n_3;
     return Result;
 }
 
@@ -134,5 +135,5 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     float3 finalRgb = Result.BaseColor + Result.Emissive;
     float OutOpacity = saturate(Result.Opacity);
 
-    return float4(finalRgb, OutOpacity);
+    return float4(finalRgb, 1.0f);
 }

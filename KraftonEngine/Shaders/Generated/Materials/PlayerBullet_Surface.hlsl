@@ -46,7 +46,7 @@ FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
     float n_36 = 2.000000f;
     float n_39 = 2.000000f;
     float n_19 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_36) * n_39 + 0.000000f);
-    float3 n_32 = float3(1.000000f, 1.000000f, 1.000000f);
+    float3 n_32 = float3(3.000000f, 3.000000f, 3.000000f);
     float3 n_27 = (float3(n_19, n_19, n_19) * n_32);
     float n_3 = 1.000000f;
     FMaterialResult Result;
@@ -135,5 +135,5 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     float3 finalRgb = Result.BaseColor + Result.Emissive;
     float OutOpacity = saturate(Result.Opacity);
 
-    return float4(finalRgb, OutOpacity);
+    return float4(finalRgb, 1.0f);
 }
