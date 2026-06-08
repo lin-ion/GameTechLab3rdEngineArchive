@@ -32,6 +32,7 @@
 #include "FloatCurve/FloatCurveManager.h"
 #include "CameraShake/CameraShakeManager.h"
 #include "Particle/ParticleSystemManager.h"
+#include "UI/UIAssetManager.h"
 #include "Animation/Graph/AnimGraphManager.h"
 #include "Animation/Skeleton/SkeletonManager.h"
 #include "Animation/AnimationManager.h"
@@ -149,6 +150,7 @@ void UEngine::Shutdown()
 	FParticleSystemManager::Get().ClearCache();
 	FCameraShakeManager::Get().ClearCache();
 	FFloatCurveManager::Get().ClearCache();
+	FUIAssetManager::Get().ClearCache();
 
 	FMeshBufferManager::Get().Release();
 	Renderer.Release();

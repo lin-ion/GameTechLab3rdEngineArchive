@@ -115,6 +115,15 @@ void UGameViewportClient::ProcessInput(const FInputSystemSnapshot& Snapshot, flo
 		UIState.bWantsMouse = true;
 		UIState.bBlocksGameMouseLook = true;
 	}
+
+	// [버튼 액션] SimpleUI 런타임 클릭 디스패치 — 게임플레이가 클릭을 소비하기 전에 버튼 클릭을 처리.
+	// 커서가 버튼 위면 게임 마우스 입력을 억제(RmlUi 와 동일한 bWantsMouse 경로 재사용).
+	FUICanvasManager::Get().TickRuntimeInput();
+	if (FUICanvasManager::Get().ConsumedMouseThisFrame())
+	{
+		UIState.bWantsMouse = true;
+	}
+
 	ApplyGameCapturePolicy(UIState);
 
 	if (InputMode == EGameInputMode::UIOnly || UIState.bBlocksGameInput)

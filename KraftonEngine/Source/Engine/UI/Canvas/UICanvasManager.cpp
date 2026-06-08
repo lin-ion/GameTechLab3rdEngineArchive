@@ -3,8 +3,13 @@
 #include "UI/Canvas/UICanvas.h"
 #include "UI/Canvas/UIElement.h"
 #include "UI/Canvas/UILabel.h"
+#include "UI/Canvas/UIButton.h"
+#include "UI/Canvas/UIImage.h"
+#include "UI/Canvas/UICanvasActor.h"
 #include "Object/Object.h"
 #include "Input/InputSystem.h"
+#include "Runtime/Engine.h"          // GEngine, RequestTransitionToScene (ChangeScene 액션)
+#include "Lua/LuaScriptManager.h"    // CallLua 액션 / (b) 콜백 호출
 
 void FUICanvasManager::RegisterCanvas(UUICanvas* Canvas)
 {
@@ -188,5 +193,86 @@ void FUICanvasManager::TickEditor()
 	else
 	{
 		GrabbedElement = nullptr;
+	}
+}
+
+// [버튼 액션] 클릭된 버튼의 OnClickActions 를 순서대로 실행. 대상 요소는 버튼의 소유 액터
+// (AUICanvasActor)의 캔버스 루트에서 ElementName 으로 찾는다(FindByName).
+static void ExecuteButtonAction(UUIButton* Btn)
+{
+	if (!Btn)
+	{
+		return;
+	}
+	UUICanvas* Root = nullptr;
+	if (AUICanvasActor* Owner = Cast<AUICanvasActor>(Btn->GetOwner()))
+	{
+		Root = Owner->GetCanvas();
+	}
+	for (const FUIButtonAction& A : Btn->GetOnClickActions())
+	{
+		switch (A.Action)
+		{
+		case EUIButtonAction::ChangeScene:
+			if (GEngine) { GEngine->RequestTransitionToScene(A.Target); }
+			break;
+		case EUIButtonAction::ShowElement:
+			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisibleRect(true); }
+			break;
+		case EUIButtonAction::HideElement:
+			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisibleRect(false); }
+			break;
+		case EUIButtonAction::ToggleElement:
+			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisibleRect(!E->IsVisibleRect()); }
+			break;
+		case EUIButtonAction::SetImage:
+			if (UUIImage* Img = Cast<UUIImage>(Root ? Root->FindByName(A.Target) : nullptr)) { Img->SetTexturePath(A.Param); }
+			break;
+		case EUIButtonAction::CallLua:
+			FLuaScriptManager::RunScriptFile(A.Target);
+			break;
+		case EUIButtonAction::None:
+		default:
+			break;
+		}
+	}
+}
+
+void FUICanvasManager::TickRuntimeInput()
+{
+	bConsumedMouseThisFrame = false;
+	// 에디터 드래그 모드(F9) 중이거나 등록 캔버스가 없으면(편집 월드) 디스패치하지 않는다.
+	if (bEditorMode || Canvases.empty())
+	{
+		PressedElement = nullptr;
+		return;
+	}
+
+	InputSystem& Input = InputSystem::Get();
+	const POINT MP = Input.GetMouseClientPos();
+	const FVector2 MousePos(static_cast<float>(MP.x), static_cast<float>(MP.y));
+
+	UUIElement* Hovered = HitTest(MousePos);
+	if (Cast<UUIButton>(Hovered))
+	{
+		bConsumedMouseThisFrame = true;   // 버튼 위 → 게임 마우스 입력 억제(ProcessInput 가 참조)
+	}
+
+	if (Input.GetKeyDown(VK_LBUTTON))
+	{
+		PressedElement = Hovered;         // 누른 순간의 요소 기록
+	}
+	else if (Input.GetKeyUp(VK_LBUTTON))
+	{
+		// down 한 버튼과 같은 버튼 위에서 up 해야 클릭 성립(드래그/오발 방지).
+		if (UUIButton* Btn = Cast<UUIButton>(Hovered))
+		{
+			if (Btn == PressedElement.Get())
+			{
+				ExecuteButtonAction(Btn);                                        // (a) 직렬화 액션
+				FLuaScriptManager::InvokeUIButtonCallback(Btn->GetElementName());  // (b) Lua 콜백
+			}
+		}
+		PressedElement = nullptr;
 	}
 }

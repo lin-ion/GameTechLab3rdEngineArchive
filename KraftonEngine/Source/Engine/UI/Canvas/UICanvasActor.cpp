@@ -14,6 +14,7 @@
 #include "Render/Types/MinimalViewInfo.h"
 #include "Runtime/Engine.h"
 #include "Platform/WindowsWindow.h"
+#include "Platform/Paths.h"
 #include "Core/Logging/Log.h"
 
 #include <cstdio>
@@ -244,6 +245,48 @@ void AUICanvasActor::EnsureCanvasForEditor()
 	if (!Cast<UUICanvas>(GetRootComponent()))
 	{
 		InitCanvas();
+	}
+}
+
+void AUICanvasActor::RebuildCanvasFromAsset()
+{
+	// 기존 루트 캔버스를 정리(이중 캔버스 방지 — R2)한 뒤 에셋에서 다시 빌드한다. 편집 월드 전용이라
+	// 캔버스가 매니저에 등록돼 있지 않으므로(Tier2 미러는 LayoutCanvas 직접 호출) 등록 처리는 불필요.
+	if (UUICanvas* Old = Canvas.Get())
+	{
+		RemoveComponent(Old);
+		Canvas = nullptr;
+	}
+	EnsureCanvasForEditor();
+}
+
+void AUICanvasActor::RefreshActorsReferencingAsset(const FString& AssetPath)
+{
+	if (AssetPath.empty() || !GEngine)
+	{
+		return;
+	}
+	UWorld* World = GEngine->GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	// 편집 월드에서만 라이브 갱신. PIE/Game 의 등록된 캔버스를 여기서 재빌드하면 매니저 등록이 어긋나
+	// (옛 캔버스가 GC-루팅된 채 남고 새 캔버스는 미등록) 이중/유령 렌더가 될 수 있다 → 월드 타입 게이트.
+	if (World->GetWorldType() != EWorldType::Editor)
+	{
+		return;
+	}
+	const FString Target = FPaths::MakeProjectRelative(AssetPath);
+	for (AActor* A : World->GetActors())
+	{
+		if (AUICanvasActor* UICanvasActor = Cast<AUICanvasActor>(A))
+		{
+			if (FPaths::MakeProjectRelative(UICanvasActor->GetUIAssetPath()) == Target)
+			{
+				UICanvasActor->RebuildCanvasFromAsset();
+			}
+		}
 	}
 }
 

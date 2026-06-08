@@ -67,6 +67,9 @@ bool FUIAssetManager::Save(UUIAsset* Asset)
 		return false;
 	}
 
+	// 캐시 일관성 — 저장된 인스턴스를 정규화 경로로 (재)등록한다. 이후 Load 가 디스크와 동일한 최신
+	// CanvasData 를 반환하도록 보장(다른 인스턴스가 캐시돼 있었거나 미등록이었어도 이 인스턴스로 교체).
+	LoadedAssets[NormalizedPath] = Asset;
 	return true;
 }
 
