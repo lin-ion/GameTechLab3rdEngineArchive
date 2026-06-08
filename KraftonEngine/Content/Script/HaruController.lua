@@ -38,7 +38,7 @@ local BOW_AIM_PARTICLE_PATH = "Content/Particle System/Aim.uasset"
 local BOW_AIM_PARTICLE_OFFSET = Vec3(1.5, 0.15, 0.3)
 
 local BOW_RELEASE_SLOMO_DURATION = 0.3
-local BOW_RELEASE_SLOMO_DILATION = 0.15
+local BOW_RELEASE_SLOMO_DILATION = 0.1
 
 local BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST = false
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
@@ -1199,6 +1199,7 @@ end
 
 local function activate_dash(owner, ability)
     activate_movement_ability(owner, ability, "Dash", DASH_ANIM_VAR, DASH_DISTANCE, DASH_DURATION)
+    Audio.Play("Dash", 0.6)
 end
 
 local function end_dash(owner, ability)

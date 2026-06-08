@@ -185,6 +185,7 @@ function HaruUltimateCutscene.Start(config)
 
     set_postprocess(state.camera, true)
     apply_camera_state(state.spring_arm, state.camera, EYE_CAMERA_START)
+    Audio.Play("CutScene", 1.0)
     log("started")
     return true
 end

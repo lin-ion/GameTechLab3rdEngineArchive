@@ -14,11 +14,14 @@ local function load_audio()
     Audio.Load("Jump", "Jump.wav", false)
     Audio.Load("Land", "Land.wav", false)
     Audio.Load("Walking", "Walking.wav", true)
+    Audio.Load("CutScene", "CutScene.wav", false)
+    Audio.Load("Dash", "Dash.wav", false)
+    Audio.Load("Bowcharging", "Bowcharging.mp3", false)
 
-    Audio.Load("DragonGrowl", "DragonGrowl.mp3", true)
-    Audio.Load("DragonGrowl2", "DragonGrowl2.mp3", true)
-    Audio.Load("DragonGrowl3", "DragonGrowl3.mp3", true)
-    Audio.Load("DragonDeath", "DragonDeath.mp3", true)
+    Audio.Load("DragonGrowl", "DragonGrowl.mp3", false)
+    Audio.Load("DragonGrowl2", "DragonGrowl2.mp3", false)
+    Audio.Load("DragonGrowl3", "DragonGrowl3.mp3", false)
+    Audio.Load("DragonDeath", "DragonDeath.mp3", false)
 end
 
 function BeginPlay()
