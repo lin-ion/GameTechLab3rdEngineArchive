@@ -67,11 +67,26 @@ class FProjectSettings : public TSingleton<FProjectSettings>
 		float RefResY = 1080.0f;
 	};
 
+	// --- Post Process ---
+	struct FPostProcessOption
+	{
+		bool bBloom = false;
+		float BloomThreshold = 1.0f;
+		float BloomSoftKnee = 0.5f;
+		float BloomIntensity = 0.6f;
+		float BloomBlurRadius = 1.0f;
+
+		bool bGammaCorrection = true;
+		float Exposure = 1.0f;
+		float Gamma = 2.4f;
+	};
+
 public:
 	FShadowOption Shadow;
 	FPhysicsOption Physics;
 	FGameOption Game;
 	FUIOption UI;
+	FPostProcessOption PostProcess;
 
 	// --- 직렬화 ---
 	void SaveToFile(const FString& Path) const;

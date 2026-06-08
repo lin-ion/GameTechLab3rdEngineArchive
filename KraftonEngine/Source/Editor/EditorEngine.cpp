@@ -56,6 +56,22 @@ std::wstring GetSceneDialogDirectory()
 	std::filesystem::create_directories(SceneDir);
 	return SceneDir.lexically_normal().wstring();
 }
+
+void SyncLevelViewportPostProcessToProjectSettings()
+{
+	const FViewportRenderOptions& Opts = FEditorSettings::Get().LevelViewportSettings[0].RenderOptions;
+	FProjectSettings& PS = FProjectSettings::Get();
+
+	PS.PostProcess.bBloom = Opts.ShowFlags.bBloom;
+	PS.PostProcess.BloomThreshold = Opts.BloomThreshold;
+	PS.PostProcess.BloomSoftKnee = Opts.BloomSoftKnee;
+	PS.PostProcess.BloomIntensity = Opts.BloomIntensity;
+	PS.PostProcess.BloomBlurRadius = Opts.BloomBlurRadius;
+
+	PS.PostProcess.bGammaCorrection = Opts.ShowFlags.bGammaCorrection;
+	PS.PostProcess.Exposure = Opts.Exposure;
+	PS.PostProcess.Gamma = Opts.Gamma;
+}
 }
 
 void UEditorEngine::Init(FWindowsWindow* InWindow)
@@ -124,6 +140,7 @@ void UEditorEngine::Shutdown()
 	// 에디터 해제 (엔진보다 먼저)
 	ViewportLayout.SaveToSettings();
 	MainPanel.SaveToSettings();
+	SyncLevelViewportPostProcessToProjectSettings();
 	FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
 	FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
 	CloseScene();

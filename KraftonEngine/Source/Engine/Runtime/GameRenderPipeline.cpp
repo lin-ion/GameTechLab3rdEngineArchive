@@ -12,6 +12,7 @@
 #include "Viewport/Viewport.h"
 #include "Math/MathUtils.h"
 #include "Core/Logging/Log.h"
+#include "Core/ProjectSettings.h"
 
 namespace
 {
@@ -65,6 +66,14 @@ void FGameRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 
 	FViewportRenderOptions Opts;
 	Opts.ViewMode = EViewMode::Lit_Phong;
+	Opts.ShowFlags.bBloom = FProjectSettings::Get().PostProcess.bBloom;
+	Opts.BloomThreshold = FProjectSettings::Get().PostProcess.BloomThreshold;
+	Opts.BloomSoftKnee = FProjectSettings::Get().PostProcess.BloomSoftKnee;
+	Opts.BloomIntensity = FProjectSettings::Get().PostProcess.BloomIntensity;
+	Opts.BloomBlurRadius = FProjectSettings::Get().PostProcess.BloomBlurRadius;
+	Opts.ShowFlags.bGammaCorrection = FProjectSettings::Get().PostProcess.bGammaCorrection;
+	Opts.Exposure = FProjectSettings::Get().PostProcess.Exposure;
+	Opts.Gamma = FProjectSettings::Get().PostProcess.Gamma;
 	Frame.SetRenderOptions(Opts);
 
 	FScene* Scene = &World->GetScene();

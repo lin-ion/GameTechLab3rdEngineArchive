@@ -38,6 +38,16 @@ namespace PSKey
 	constexpr const char* UISection = "UI";
 	constexpr const char* RefResX = "RefResX";
 	constexpr const char* RefResY = "RefResY";
+
+	constexpr const char* PostProcessSection = "PostProcess";
+	constexpr const char* bBloom = "bBloom";
+	constexpr const char* BloomThreshold = "BloomThreshold";
+	constexpr const char* BloomSoftKnee = "BloomSoftKnee";
+	constexpr const char* BloomIntensity = "BloomIntensity";
+	constexpr const char* BloomBlurRadius = "BloomBlurRadius";
+	constexpr const char* bGammaCorrection = "bGammaCorrection";
+	constexpr const char* Exposure = "Exposure";
+	constexpr const char* Gamma = "Gamma";
 }
 
 void FProjectSettings::SaveToFile(const FString& Path) const
@@ -80,6 +90,17 @@ void FProjectSettings::SaveToFile(const FString& Path) const
 	UIObj[PSKey::RefResX] = UI.RefResX;
 	UIObj[PSKey::RefResY] = UI.RefResY;
 	Root[PSKey::UISection] = UIObj;
+
+	JSON PostProcessObj = Object();
+	PostProcessObj[PSKey::bBloom] = PostProcess.bBloom;
+	PostProcessObj[PSKey::BloomThreshold] = PostProcess.BloomThreshold;
+	PostProcessObj[PSKey::BloomSoftKnee] = PostProcess.BloomSoftKnee;
+	PostProcessObj[PSKey::BloomIntensity] = PostProcess.BloomIntensity;
+	PostProcessObj[PSKey::BloomBlurRadius] = PostProcess.BloomBlurRadius;
+	PostProcessObj[PSKey::bGammaCorrection] = PostProcess.bGammaCorrection;
+	PostProcessObj[PSKey::Exposure] = PostProcess.Exposure;
+	PostProcessObj[PSKey::Gamma] = PostProcess.Gamma;
+	Root[PSKey::PostProcessSection] = PostProcessObj;
 
 	std::filesystem::path FilePath(FPaths::ToWide(Path));
 	if (FilePath.has_parent_path())
@@ -172,6 +193,27 @@ void FProjectSettings::LoadFromFile(const FString& Path)
 			float v = static_cast<float>(U[PSKey::RefResY].ToFloat());
 			UI.RefResY = (v > 1.0f) ? v : 1080.0f;   // 0 분모 방지
 		}
+	}
+
+	if (Root.hasKey(PSKey::PostProcessSection))
+	{
+		JSON P = Root[PSKey::PostProcessSection];
+		if (P.hasKey(PSKey::bBloom))
+			PostProcess.bBloom = P[PSKey::bBloom].ToBool();
+		if (P.hasKey(PSKey::BloomThreshold))
+			PostProcess.BloomThreshold = static_cast<float>(P[PSKey::BloomThreshold].ToFloat());
+		if (P.hasKey(PSKey::BloomSoftKnee))
+			PostProcess.BloomSoftKnee = static_cast<float>(P[PSKey::BloomSoftKnee].ToFloat());
+		if (P.hasKey(PSKey::BloomIntensity))
+			PostProcess.BloomIntensity = static_cast<float>(P[PSKey::BloomIntensity].ToFloat());
+		if (P.hasKey(PSKey::BloomBlurRadius))
+			PostProcess.BloomBlurRadius = static_cast<float>(P[PSKey::BloomBlurRadius].ToFloat());
+		if (P.hasKey(PSKey::bGammaCorrection))
+			PostProcess.bGammaCorrection = P[PSKey::bGammaCorrection].ToBool();
+		if (P.hasKey(PSKey::Exposure))
+			PostProcess.Exposure = static_cast<float>(P[PSKey::Exposure].ToFloat());
+		if (P.hasKey(PSKey::Gamma))
+			PostProcess.Gamma = static_cast<float>(P[PSKey::Gamma].ToFloat());
 	}
 
 	if (Root.hasKey(PSKey::Shadow))
