@@ -31,7 +31,7 @@ local BOW_RADIAL_BLUR_INTENSITY = 1.0
 local BOW_RADIAL_BLUR_RADIUS = 0.06
 local BOW_RADIAL_BLUR_SAMPLE_COUNT = 22
 
-local BOW_PROJECTILE_SPEED = 15.0
+local BOW_PROJECTILE_SPEED = 45.0
 local BOW_PROJECTILE_OFFSET = Vec3(0.1, 0.15, 0.3)
 
 local BOW_AIM_PARTICLE_PATH = "Content/Particle System/Aim.uasset"
@@ -40,7 +40,7 @@ local BOW_AIM_PARTICLE_OFFSET = Vec3(1.5, 0.15, 0.3)
 local BOW_RELEASE_SLOMO_DURATION = 0.3
 local BOW_RELEASE_SLOMO_DILATION = 0.1
 
-local BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST = false
+local BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST = true
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
 local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
 -- Attack

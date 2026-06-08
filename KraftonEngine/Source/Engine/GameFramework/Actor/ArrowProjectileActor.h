@@ -40,6 +40,7 @@ private:
 	bool CheckBossPhysicsAssetHit(AActor* BossActor, const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
 	bool FindBossPhysicsAssetHit(const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
 	void ApplyDamageToHitTarget(const FHitResult& Hit) const;
+	void PlayBossHitStop(AActor* TargetActor) const;
 	void EmitDeathEffect(const FVector& Location, const FVector& Velocity) const;
 	void ReleaseToPoolOrDeactivate();
 
@@ -67,6 +68,18 @@ private:
 
 	UPROPERTY(Edit, Save, Category = "Arrow Projectile", DisplayName = "Gravity Acceleration", Min = 0.0f, Max = 1000.0f, Speed = 0.1f)
 	float GravityAcceleration = 9.8f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Hit Stop", DisplayName = "Boss Hit Stop Duration", Min = 0.0f, Max = 1.0f, Speed = 0.01f)
+	float BossHitStopDuration = 0.1f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Hit Stop", DisplayName = "Boss Hit Stop Time Dilation", Min = 0.0f, Max = 1.0f, Speed = 0.01f)
+	float BossHitStopTimeDilation = 0.02f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Hit Stop", DisplayName = "Boss Slomo Duration", Min = 0.0f, Max = 2.0f, Speed = 0.01f)
+	float BossSlomoDuration = 0.6f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Hit Stop", DisplayName = "Boss Slomo Time Dilation", Min = 0.0f, Max = 1.0f, Speed = 0.01f)
+	float BossSlomoTimeDilation = 0.1f;
 
 	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Death Effect", DisplayName = "Death Effect Path", AssetType = "UParticleSystem")
 	FString DeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";

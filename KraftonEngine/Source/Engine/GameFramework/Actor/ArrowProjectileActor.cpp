@@ -3,6 +3,7 @@
 #include "Audio/AudioManager.h"
 
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
+#include "Component/Input/ActionComponent.h"
 #include "Component/Primitive/SkeletalMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Core/Types/CollisionTypes.h"
@@ -753,7 +754,8 @@ void AArrowProjectileActor::ApplyDamageToHitTarget(const FHitResult& Hit) const
 		const float AppliedDamage = DamageReceiver->ApplyDamage(ProjectileDamage);
 		if (AppliedDamage > 0.0f && IsBossActor(TargetActor))
 		{
-			FAudioManager::Get().PlayAudio("Hit", 1.0f);
+			FAudioManager::Get().PlayAudio("Explosion", 1.0f);
+			PlayBossHitStop(TargetActor);
 		}
 		UE_LOG("[ArrowProjectileDamage] target=%s boss=%d damage=%.3f applied=%.3f",
 			TargetActor->GetName().c_str(),
@@ -761,6 +763,40 @@ void AArrowProjectileActor::ApplyDamageToHitTarget(const FHitResult& Hit) const
 			ProjectileDamage,
 			AppliedDamage);
 	}
+}
+
+void AArrowProjectileActor::PlayBossHitStop(AActor* TargetActor) const
+{
+	if (!IsBossActor(TargetActor) || BossHitStopDuration <= 0.0f)
+	{
+		return;
+	}
+
+	// Keep HitStop on a live actor; pooled projectiles stop ticking immediately after hit.
+	AActor* ActionOwner = TargetActor;
+	UActionComponent* Action = ActionOwner->GetComponentByClass<UActionComponent>();
+	if (!Action)
+	{
+		Action = ActionOwner->AddComponent<UActionComponent>();
+	}
+	if (!Action)
+	{
+		return;
+	}
+
+	Action->HitStop(BossHitStopDuration, BossHitStopTimeDilation);
+	if (BossSlomoDuration > 0.0f)
+	{
+		Action->Slomo(BossSlomoDuration, BossSlomoTimeDilation);
+	}
+	UE_LOG("[ArrowProjectileHitStop] actor=%s actionOwner=%s target=%s hitStopDuration=%.3f hitStopDilation=%.3f slomoDuration=%.3f slomoDilation=%.3f",
+		GetName().c_str(),
+		ActionOwner ? ActionOwner->GetName().c_str() : "nil",
+		TargetActor ? TargetActor->GetName().c_str() : "nil",
+		BossHitStopDuration,
+		BossHitStopTimeDilation,
+		BossSlomoDuration,
+		BossSlomoTimeDilation);
 }
 
 void AArrowProjectileActor::EmitDeathEffect(const FVector& Location, const FVector& Velocity) const
