@@ -134,6 +134,21 @@ namespace
 		}
 		return nullptr;
 	}
+
+	// 에셋 경로 비교용 정규화 키 — project-relative + 구분자(슬래시) 통일 + 소문자.
+	// GetSourcePath()(매니저가 MakeProjectRelative 로 설정)와 액터 UIAssetPath(드롭/디테일에서 설정한
+	// 경로)가 대소문자·구분자 표기에서 달라도 같은 .uasset 이면 매칭되도록 한다.
+	FString NormalizeAssetKey(const FString& Path)
+	{
+		FString Key = FPaths::MakeProjectRelative(Path);
+		for (size_t i = 0; i < Key.size(); ++i)
+		{
+			char& c = Key[i];
+			if (c == '\\') { c = '/'; }
+			else if (c >= 'A' && c <= 'Z') { c = static_cast<char>(c - 'A' + 'a'); }
+		}
+		return Key;
+	}
 }
 
 void AUICanvasActor::InitCanvas()
@@ -266,25 +281,28 @@ void AUICanvasActor::RefreshActorsReferencingAsset(const FString& AssetPath)
 	{
 		return;
 	}
-	UWorld* World = GEngine->GetWorld();
-	if (!World)
+
+	const FString Target = NormalizeAssetKey(AssetPath);
+
+	// 활성 월드(GEngine->GetWorld()) 한 곳만 보지 않고 모든 "편집 월드" 컨텍스트를 순회한다. UI 에셋을
+	// 저장하는 시점에 다른 에셋 에디터(머티리얼/메시 등 EditorPreview)가 열려 활성 월드가 레벨 월드가
+	// 아니면, 활성 월드만 봤을 때 레벨의 AUICanvasActor 를 놓쳐 디테일 패널/뷰포트 미러가 갱신되지 않는다.
+	// PIE/Game/EditorPreview 는 제외 — 등록 캔버스(BeginPlay 관리)·프리뷰를 건드리지 않도록 타입 게이트.
+	for (const FWorldContext& Ctx : GEngine->GetWorldList())
 	{
-		return;
-	}
-	// 편집 월드에서만 라이브 갱신. PIE/Game 의 등록된 캔버스를 여기서 재빌드하면 매니저 등록이 어긋나
-	// (옛 캔버스가 GC-루팅된 채 남고 새 캔버스는 미등록) 이중/유령 렌더가 될 수 있다 → 월드 타입 게이트.
-	if (World->GetWorldType() != EWorldType::Editor)
-	{
-		return;
-	}
-	const FString Target = FPaths::MakeProjectRelative(AssetPath);
-	for (AActor* A : World->GetActors())
-	{
-		if (AUICanvasActor* UICanvasActor = Cast<AUICanvasActor>(A))
+		UWorld* World = Ctx.World;
+		if (!World || World->GetWorldType() != EWorldType::Editor)
 		{
-			if (FPaths::MakeProjectRelative(UICanvasActor->GetUIAssetPath()) == Target)
+			continue;
+		}
+		for (AActor* A : World->GetActors())
+		{
+			if (AUICanvasActor* UICanvasActor = Cast<AUICanvasActor>(A))
 			{
-				UICanvasActor->RebuildCanvasFromAsset();
+				if (NormalizeAssetKey(UICanvasActor->GetUIAssetPath()) == Target)
+				{
+					UICanvasActor->RebuildCanvasFromAsset();
+				}
 			}
 		}
 	}

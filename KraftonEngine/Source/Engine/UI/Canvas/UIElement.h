@@ -91,7 +91,9 @@ protected:
 	FUIRect ScreenRect;               // 레이아웃 결과 캐시(직렬화 안 함)
 
 	// 사용자 식별자(데이터 바인딩 대상 조회용). 기본 빈 문자열 — 명명된 요소만 바인딩 대상이 된다.
-	UPROPERTY(Save, Category="UI", DisplayName="Element Name")
+	// Edit: 레벨 아웃라이너 Details(FEditorPropertyWidget, 반사 기반)에서 요소 선택 시 텍스트로 편집.
+	// UI 에디터(FUIEditorWidget::RenderDetailsPanel)는 별도 커스텀 컨트롤로 동일 필드를 편집한다.
+	UPROPERTY(Edit, Save, Category="UI", DisplayName="Element Name")
 	FString ElementName;
 
 	UPROPERTY(Save, Category="UI", DisplayName="Visible Rect")
