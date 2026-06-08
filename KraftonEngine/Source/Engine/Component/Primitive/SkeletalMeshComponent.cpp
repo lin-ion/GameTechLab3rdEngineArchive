@@ -47,6 +47,19 @@ namespace
     constexpr float PhysicsAssetDebugMinShapeSize = 0.001f;
     constexpr int32 PhysicsAssetDebugCircleSegments = 24;
 
+    bool ShouldDeferAnimationPropertyChangeDuringLoad(const FPropertyChangedEvent& Event)
+    {
+        if (Event.ChangeType != EPropertyChangeType::Load || !Event.PropertyName)
+        {
+            return false;
+        }
+
+        return std::strcmp(Event.PropertyName, "AnimationMode") == 0
+            || std::strcmp(Event.PropertyName, "AnimInstanceClass") == 0
+            || std::strcmp(Event.PropertyName, "AnimationData") == 0
+            || std::strcmp(Event.PropertyName, "AnimInstance") == 0;
+    }
+
     float Clamp01(float Value)
     {
         return std::clamp(Value, 0.0f, 1.0f);
@@ -3311,6 +3324,16 @@ void USkeletalMeshComponent::PostEditProperty(const char* PropertyName)
     // AnimInstance 자체 properties 는 자식이 자체 PostEdit 처리. 컴포넌트는 dispatch 만.
     // 컴포넌트가 인식한 이름과 겹치지 않는 한 무해 (자식이 모르는 이름은 no-op).
     if (IsValid(AnimInstance)) AnimInstance->PostEditProperty(PropertyName);
+}
+
+void USkeletalMeshComponent::PostEditChangeProperty(const FPropertyChangedEvent& Event)
+{
+    if (ShouldDeferAnimationPropertyChangeDuringLoad(Event))
+    {
+        return;
+    }
+
+    Super::PostEditChangeProperty(Event);
 }
 
 void USkeletalMeshComponent::Serialize(FArchive& Ar)
