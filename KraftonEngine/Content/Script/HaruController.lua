@@ -13,11 +13,13 @@ local DASH_AFTERIMAGE_SAMPLES = 64
 -- Roll
 local ROLL_SKILL_NAME = "Roll"
 local ROLL_SKILL_KEY = "LeftControl"
+local ROLL_SKILL_KEYS = { ROLL_SKILL_KEY, "GamepadFaceButtonRight" }
 local ROLL_DISTANCE = 12.0
 local ROLL_DURATION = 1.2
 -- Arrow
 local BOW_SKILL_NAME = "AirBowShot"
 local BOW_SKILL_KEY = "RightMouseButton"
+local BOW_SKILL_KEYS = { BOW_SKILL_KEY, "GamepadRightShoulder" }
 local BOW_AIM_GRAVITY = 0.1
 local BOW_AIM_MAX_DURATION = 60.0
 
@@ -46,6 +48,7 @@ local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
 -- Attack
 local ATTACK_SKILL_NAME = "SprayAttack"
 local FIRE_PROJECTILE_KEY = "LeftMouseButton"
+local FIRE_PROJECTILE_KEYS = { FIRE_PROJECTILE_KEY, "GamepadRightTrigger" }
 local ATTACK_MAX_DURATION = 60.0
 local SPRAY_TARGET_ACTOR_NAME = "Boss"
 local SPRAY_FACE_BLEND_DURATION = 0.25
@@ -100,6 +103,21 @@ local function first_pressed_key(keys)
     for index = 1, #keys do
         local key = keys[index]
         if key ~= nil and Input.GetKeyDown(key) then
+            return key
+        end
+    end
+
+    return nil
+end
+
+local function first_released_key(keys)
+    if Input == nil or Input.GetKeyUp == nil or keys == nil then
+        return nil
+    end
+
+    for index = 1, #keys do
+        local key = keys[index]
+        if key ~= nil and Input.GetKeyUp(key) then
             return key
         end
     end
@@ -1794,14 +1812,15 @@ local function tick_bow_aim(owner, ability, dt)
     end
     update_bow_aim_particle(owner, ability)
 
-    if Input ~= nil and Input.GetKeyUp ~= nil and Input.GetKeyUp(BOW_SKILL_KEY) then
+    local released_key = first_released_key(BOW_SKILL_KEYS)
+    if released_key ~= nil then
         if ability.arrow_projectile == nil then
             log("AirBowShot release requested before FireArrow AnimNotify: preparing arrow immediately")
             prepare_held_arrow(owner, ability, "early release fallback")
         end
 
-        stop_bow_aim_particle(ability, "RightMouseButton release")
-        set_bow_radial_blur(false, "RightMouseButton release")
+        stop_bow_aim_particle(ability, released_key .. " release")
+        set_bow_radial_blur(false, released_key .. " release")
         start_bow_ultimate_cutscene(owner, ability)
     end
 end
@@ -1883,8 +1902,9 @@ local function tick_spray_attack(owner, ability, dt)
         face_owner_to_camera_yaw(owner, ability)
     end
 
-    if Input ~= nil and Input.GetKeyUp ~= nil and Input.GetKeyUp(FIRE_PROJECTILE_KEY) then
-        log("SprayAttack release: " .. FIRE_PROJECTILE_KEY)
+    local released_key = first_released_key(FIRE_PROJECTILE_KEYS)
+    if released_key ~= nil then
+        log("SprayAttack release: " .. released_key)
         ability_system:EndAbility(ability)
     end
 end
@@ -1926,6 +1946,7 @@ local function setup_abilities()
     ability_system:RegisterAbility({
         Name = ROLL_SKILL_NAME,
         Key = ROLL_SKILL_KEY,
+        Keys = ROLL_SKILL_KEYS,
         Duration = ROLL_DURATION,
         Cooldown = 0.0,
         BlockWhileAnyActive = true,
@@ -1935,6 +1956,7 @@ local function setup_abilities()
     ability_system:RegisterAbility({
         Name = BOW_SKILL_NAME,
         Key = BOW_SKILL_KEY,
+        Keys = BOW_SKILL_KEYS,
         Duration = BOW_AIM_MAX_DURATION,
         Cooldown = 0.0,
         BlockWhileAnyActive = true,
@@ -1946,6 +1968,7 @@ local function setup_abilities()
     ability_system:RegisterAbility({
         Name = ATTACK_SKILL_NAME,
         Key = FIRE_PROJECTILE_KEY,
+        Keys = FIRE_PROJECTILE_KEYS,
         Duration = ATTACK_MAX_DURATION,
         Cooldown = 0.0,
         BlockWhileAnyActive = true,
@@ -1955,9 +1978,9 @@ local function setup_abilities()
     })
 
     log("registered Dash on " .. join_keys(DASH_SKILL_KEYS))
-    log("registered Roll on " .. ROLL_SKILL_KEY)
-    log("registered AirBowShot on " .. BOW_SKILL_KEY)
-    log("registered SprayAttack on " .. FIRE_PROJECTILE_KEY)
+    log("registered Roll on " .. join_keys(ROLL_SKILL_KEYS))
+    log("registered AirBowShot on " .. join_keys(BOW_SKILL_KEYS))
+    log("registered SprayAttack on " .. join_keys(FIRE_PROJECTILE_KEYS))
 
     set_anim_bool(owner, DASH_ANIM_VAR, false)
     set_anim_bool(owner, ROLL_ANIM_VAR, false)
@@ -2055,25 +2078,28 @@ function Tick(dt)
         end
     end
 
-    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(ROLL_SKILL_KEY) then
-        log("input pressed: " .. ROLL_SKILL_KEY)
-        local activated, reason = ability_system:TryActivateByKey(ROLL_SKILL_KEY)
+    local roll_key = first_pressed_key(ROLL_SKILL_KEYS)
+    if roll_key ~= nil then
+        log("input pressed: " .. roll_key)
+        local activated, reason = ability_system:TryActivateByKey(roll_key)
         if not activated then
             log("Roll blocked: " .. (reason or "unknown"))
         end
     end
 
-    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(BOW_SKILL_KEY) then
-        log("input pressed: " .. BOW_SKILL_KEY)
-        local activated, reason = ability_system:TryActivateByKey(BOW_SKILL_KEY)
+    local bow_key = first_pressed_key(BOW_SKILL_KEYS)
+    if bow_key ~= nil then
+        log("input pressed: " .. bow_key)
+        local activated, reason = ability_system:TryActivateByKey(bow_key)
         if not activated then
             log("AirBowShot blocked: " .. (reason or "unknown"))
         end
     end
 
-    if Input ~= nil and Input.GetKeyDown ~= nil and Input.GetKeyDown(FIRE_PROJECTILE_KEY) then
-        log("input pressed: " .. FIRE_PROJECTILE_KEY)
-        local activated, reason = ability_system:TryActivateByKey(FIRE_PROJECTILE_KEY)
+    local fire_key = first_pressed_key(FIRE_PROJECTILE_KEYS)
+    if fire_key ~= nil then
+        log("input pressed: " .. fire_key)
+        local activated, reason = ability_system:TryActivateByKey(fire_key)
         if not activated then
             log("SprayAttack blocked: " .. (reason or "unknown"))
         end
