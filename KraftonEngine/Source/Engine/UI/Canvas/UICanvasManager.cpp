@@ -223,14 +223,17 @@ static void ExecuteButtonAction(UUIButton* Btn)
 		case EUIButtonAction::ChangeScene:
 			if (GEngine) { GEngine->RequestTransitionToScene(A.Target); }
 			break;
+		// 요소 전체 표시 토글은 bVisible(IsVisible/SetVisible) 기준 — 렌더 게이트(SimpleUIPass/미러)·
+		// 히트테스트·UI 에디터 show/off 토글과 동일 플래그. bVisibleRect(배경 쿼드만)와 구분(예전엔 이 쪽을
+		// 토글했으나, bVisible 로 숨긴 요소를 못 켜는 불일치가 있어 통일).
 		case EUIButtonAction::ShowElement:
-			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisibleRect(true); }
+			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisible(true); }
 			break;
 		case EUIButtonAction::HideElement:
-			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisibleRect(false); }
+			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisible(false); }
 			break;
 		case EUIButtonAction::ToggleElement:
-			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisibleRect(!E->IsVisibleRect()); }
+			if (UUIElement* E = Root ? Root->FindByName(A.Target) : nullptr) { E->SetVisible(!E->IsVisible()); }
 			break;
 		case EUIButtonAction::SetImage:
 			if (UUIImage* Img = Cast<UUIImage>(Root ? Root->FindByName(A.Target) : nullptr)) { Img->SetTexturePath(A.Param); }
