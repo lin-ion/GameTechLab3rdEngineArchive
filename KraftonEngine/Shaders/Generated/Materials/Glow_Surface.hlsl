@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Materials/Glow_Surface.hlsl
 // Generated from C:/Github/Week14/Jungle_Week14_Team4/KraftonEngine/Content/Material/Auto/Glow.uasset
-========
-// Generated from C:/Projects/Jungle_Week14_Team4/KraftonEngine/Content/Material/BossBullet_Red.uasset
->>>>>>>> feature/boss-bullet-visual:KraftonEngine/Shaders/Generated/Materials/BossBullet_Red_Surface.hlsl
 // Domain: Surface
 
 #include "Common/ConstantBuffers.hlsli"
@@ -10,12 +6,6 @@
 #include "Common/Functions.hlsli"
 #include "Common/SystemSamplers.hlsli"
 #include "Common/ForwardLighting.hlsli"
-
-float3 SafeNormalize3(float3 V, float3 Fallback)
-{
-    float LenSq = dot(V, V);
-    return LenSq > 1e-8f ? V * rsqrt(LenSq) : Fallback;
-}
 
 struct FMaterialPixelInput
 {
@@ -27,10 +17,6 @@ struct FMaterialPixelInput
     float  Time;
     float  SubImageIndex;
     float4 DynamicParam;
-    float3 WorldPosition;
-    float3 WorldNormal;
-    float3 CameraPosition;
-    float3 ViewDirection;
 };
 
 struct FMaterialResult
@@ -46,7 +32,6 @@ struct FMaterialResult
 
 FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
 {
-<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Materials/Glow_Surface.hlsl
     float3 n_1 = float3(0.800000f, 0.800000f, 0.800000f);
     float n_5 = 0.089087f;
     float3 n_7 = float3(0.500000f, 0.500000f, 0.500000f);
@@ -54,27 +39,12 @@ FMaterialResult EvaluateMaterial(FMaterialPixelInput Input)
     float n_9 = 1.000000f;
     FMaterialResult Result;
     Result.BaseColor = n_1;
-========
-    float3 n_36 = float3(0.835443f, 0.000000f, 0.000000f);
-    float n_52 = 1.000000f;
-    float n_29 = saturate(pow(1.0f - clamp(dot(SafeNormalize3((Input.WorldNormal), float3(0, 0, 1)), SafeNormalize3((Input.ViewDirection), float3(0, 0, 1))), 0.0f, 1.0f), n_52) * 1.000000f + 0.000000f);
-    float3 n_1 = float3(1.000000f, 1.000000f, 1.000000f);
-    float3 n_45 = (float3(n_29, n_29, n_29) * n_1);
-    float n_3 = 1.000000f;
-    FMaterialResult Result;
-    Result.BaseColor = n_36;
->>>>>>>> feature/boss-bullet-visual:KraftonEngine/Shaders/Generated/Materials/BossBullet_Red_Surface.hlsl
     Result.Normal = float3(0, 0, 1);
     Result.Roughness = n_5;
     Result.Metallic = 0.0f;
-<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Materials/Glow_Surface.hlsl
     Result.Specular = n_7;
     Result.Emissive = n_3;
     Result.Opacity = n_9;
-========
-    Result.Emissive = n_45;
-    Result.Opacity = n_3;
->>>>>>>> feature/boss-bullet-visual:KraftonEngine/Shaders/Generated/Materials/BossBullet_Red_Surface.hlsl
     return Result;
 }
 
@@ -132,15 +102,10 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     MaterialInput.Time          = Time;
     MaterialInput.SubImageIndex = 0.0f;
     MaterialInput.DynamicParam  = float4(0, 0, 0, 0);
-    MaterialInput.WorldPosition = input.worldPos;
-    MaterialInput.WorldNormal = SafeNormalize3(input.normal, float3(0, 0, 1));
-    MaterialInput.CameraPosition = CameraWorldPos;
-    MaterialInput.ViewDirection = SafeNormalize3(CameraWorldPos - input.worldPos, MaterialInput.WorldNormal);
 
     FMaterialResult Result = EvaluateMaterial(MaterialInput);
     float3 N = normalize(input.normal);
 
-<<<<<<<< HEAD:KraftonEngine/Shaders/Generated/Materials/Glow_Surface.hlsl
     float3 V = normalize(CameraWorldPos - input.worldPos);
     float3 diffuse = AccumulateDiffuse(input.worldPos, N, input.position);
     float materialRoughness = clamp(Result.Roughness, 0.02f, 1.0f);
@@ -150,10 +115,5 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
     float3 finalRgb = Result.BaseColor * diffuse + specular + Result.Emissive;
     float OutOpacity = saturate(Result.Opacity);
 
-========
-    float3 finalRgb = Result.BaseColor + Result.Emissive;
-    float OutOpacity = saturate(Result.Opacity);
-
->>>>>>>> feature/boss-bullet-visual:KraftonEngine/Shaders/Generated/Materials/BossBullet_Red_Surface.hlsl
     return float4(finalRgb, OutOpacity);
 }
