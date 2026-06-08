@@ -6,7 +6,7 @@
       "ObjectId" : 2,
       "Properties" : {
         "PendingActorLocation" : [307.842957, 0.000026, 153.921478],
-        "PendingActorRotation" : [-0.000000, 26.565048, -179.999985],
+        "PendingActorRotation" : [-0.000000, 26.565044, -179.999969],
         "PendingActorScale" : [1.000000, 1.000000, 1.000000],
         "PendingActorVisible" : true,
         "PendingTagsString" : "",
@@ -18,7 +18,7 @@
         "ObjectId" : 3,
         "Properties" : {
           "AttachSocketName" : "Name_None",
-          "CachedEditRotator" : [-0.000000, 26.565048, -179.999985],
+          "CachedEditRotator" : [-0.000000, 26.565044, -179.999969],
           "CameraState.FOV" : 1.047198,
           "CameraState.FarZ" : 1000.000000,
           "CameraState.NearZ" : 0.100000,
@@ -52,6 +52,68 @@
         "UIAssetPath" : "Content/UI/MainImageUI.uasset",
         "bNeedsTick" : true
       }
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "Name" : "AStaticMeshActor_6",
+      "NonSceneComponents" : [{
+          "ClassName" : "ULuaScriptComponent",
+          "ObjectId" : 17,
+          "Properties" : {
+            "ScriptFile" : "MainScene.lua",
+            "bAutoActivate" : true,
+            "bEditorOnly" : false,
+            "bHiddenInComponentTree" : false,
+            "bIsActive" : true,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectId" : 15,
+      "Properties" : {
+        "PendingActorLocation" : [434.729126, 0.096800, 220.646530],
+        "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
+        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
+        "PendingActorVisible" : true,
+        "PendingTagsString" : "",
+        "bNeedsTick" : true
+      },
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectId" : 16,
+        "Properties" : {
+          "AttachSocketName" : "Name_None",
+          "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+          "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+          "CollisionEnabled" : 0,
+          "Mass" : 1.000000,
+          "MaterialSlots" : ["None"],
+          "ObjectType" : 0,
+          "RelativeTransform.Location" : [434.729126, 0.096800, 220.646530],
+          "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+          "ResponseContainer" : {
+            "Responses[0]" : 2,
+            "Responses[1]" : 2,
+            "Responses[2]" : 2,
+            "Responses[3]" : 2,
+            "Responses[4]" : 2
+          },
+          "StaticMeshPath" : "None",
+          "bAutoActivate" : true,
+          "bCastShadow" : true,
+          "bCastShadowAsTwoSided" : false,
+          "bEditorOnly" : false,
+          "bEnableCCD" : false,
+          "bEnableGravity" : true,
+          "bGenerateOverlapEvents" : false,
+          "bHiddenInComponentTree" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bKinematic" : false,
+          "bSimulatePhysics" : false,
+          "bTickEnable" : true,
+          "bUseMeshTriangleCollision" : false
+        }
+      }
     }],
   "ClassName" : "UWorld",
   "ContextHandle" : "NewScene",
@@ -61,9 +123,9 @@
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [416.515167, 0.000036, 208.257584],
+    "Location" : [444.689606, 0.000038, 222.344803],
     "NearClip" : 0.100000,
-    "Rotation" : [0.000000, 26.565050, 180.000000]
+    "Rotation" : [0.000000, 26.265051, 179.550003]
   },
   "Version" : 2,
   "WorldSettings" : {
