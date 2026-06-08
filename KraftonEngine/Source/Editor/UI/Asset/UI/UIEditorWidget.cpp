@@ -15,11 +15,15 @@
 #include "UI/Canvas/UITextElement.h"
 #include "UI/Canvas/UILabel.h"
 #include "UI/Canvas/UIRect.h"
+#include "Editor/UI/Util/EditorTextureManager.h"
+#include "Platform/Paths.h"
 
 #include <imgui.h>
 
 #include <cstdio>
 #include <cstring>
+#include <cwctype>
+#include <filesystem>
 
 namespace
 {
@@ -47,6 +51,34 @@ namespace
 		return false;
 	}
 
+	// 이미지 요소의 텍스처 선택지 — Content/UI/Images/ 안의 png/jpg/jpeg 파일명만 수집(확장자 대소문자
+	// 무시). 저장 경로는 호출부에서 "Content/UI/Images/" + 파일명(forward slash)으로 만든다. 드롭다운이
+	// 열려 있을 때만 호출되므로 매 프레임 디스크 스캔은 아니다(BeginCombo 가 열렸을 때만 true).
+	TArray<FString> CollectUIImageFiles()
+	{
+		TArray<FString> Files;
+		const std::wstring Dir = FPaths::Combine(FPaths::AssetDir(), L"UI/Images");
+		std::error_code Ec;
+		if (!std::filesystem::exists(Dir, Ec))
+		{
+			return Files;
+		}
+		for (const auto& Entry : std::filesystem::directory_iterator(Dir, Ec))
+		{
+			if (Ec || !Entry.is_regular_file())
+			{
+				continue;
+			}
+			std::wstring Ext = Entry.path().extension().wstring();
+			for (wchar_t& Ch : Ext) { Ch = static_cast<wchar_t>(towlower(Ch)); }
+			if (Ext == L".png" || Ext == L".jpg" || Ext == L".jpeg")
+			{
+				Files.push_back(FPaths::ToUtf8(Entry.path().filename().wstring()));
+			}
+		}
+		return Files;
+	}
+
 	// 뷰포트 드로우 — FSimpleUIPass::CollectVisible 로직을 ImGui DrawList 로 미러(진단 §C, Option B).
 	// 가시 요소의 ScreenRect(=레퍼런스*Scale, 캔버스 원점 기준)를 Origin 더해 사각형으로 그린다.
 	void DrawUIElementRect(UUIElement* Element, ImDrawList* DL, const ImVec2& Origin, float Scale)
@@ -64,7 +96,35 @@ namespace
 			// 모서리 둥글기 — 런타임 SimpleUIPass 와 동일하게 레퍼런스 px*Scale 로 환산(ImGui 가 변의
 			// 절반까지 내부 클램프하므로 런타임 클램프와 결과 일치). 0 이면 직각(기존 동작).
 			const float Rounding = Element->GetCornerRadius() * Scale;
-			DL->AddRectFilled(Min, Max, ImGui::GetColorU32(ImVec4(C.R, C.G, C.B, C.A)), Rounding);
+			const ImU32 Col = ImGui::GetColorU32(ImVec4(C.R, C.G, C.B, C.A));
+
+			// [G4] 이미지 요소면 단색 대신 실제 텍스처를 미러(런타임 SimpleUIPass 의 텍스처×Color 변조와
+			// 동일). SRV 는 에디터 썸네일 매니저가 경로별 로드/캐시. 경로가 없거나 로드 실패면 단색 fallback.
+			ID3D11ShaderResourceView* TexSRV = nullptr;
+			if (UUIImage* ImgElem = Cast<UUIImage>(Element))
+			{
+				if (!ImgElem->GetTexturePath().empty())
+				{
+					TexSRV = FEditorTextureManager::Get().GetOrLoadThumbnail(ImgElem->GetTexturePath());
+				}
+			}
+
+			if (TexSRV)
+			{
+				// 텍스처 × BackgroundColor(틴트). 둥근 모서리는 AddImageRounded 로 유지.
+				if (Rounding > 0.0f)
+				{
+					DL->AddImageRounded((ImTextureID)TexSRV, Min, Max, ImVec2(0, 0), ImVec2(1, 1), Col, Rounding);
+				}
+				else
+				{
+					DL->AddImage((ImTextureID)TexSRV, Min, Max, ImVec2(0, 0), ImVec2(1, 1), Col);
+				}
+			}
+			else
+			{
+				DL->AddRectFilled(Min, Max, Col, Rounding);
+			}
 			DL->AddRect(Min, Max, IM_COL32(0, 0, 0, 60), Rounding);
 		}
 		// [R5] 텍스트 미러 — bVisibleRect 무관하게 Text 가 있으면 글자를 그린다(배경 없는 Text 프리셋도
@@ -567,6 +627,51 @@ void FUIEditorWidget::RenderDetailsPanel()
 	{
 		Selected->SetCornerRadius(Radius);
 		MarkDirty();
+	}
+
+	// 이미지 요소 전용 — Content/UI/Images/ 안의 png/jpg/jpeg 파일을 확장자로 인식해 드롭다운으로 띄운다.
+	// 선택 시 "Content/UI/Images/<파일명>"(프로젝트 상대) 저장 → 스탠드얼론 빌드에서 그대로 해석.
+	// 런타임/PIE 는 ResolveTextureSRV → SimpleUIPass 가 텍스처×Color 로 렌더, 에디터는 뷰포트 미러로 표시.
+	// UUIImage 는 UUITextElement 의 하위라 아래 텍스트 5필드(오버레이 텍스트)도 함께 노출된다.
+	if (UUIImage* ImgElem = Cast<UUIImage>(Selected))
+	{
+		ImGui::Spacing();
+		ImGui::TextDisabled("Image");
+		ImGui::Separator();
+
+		// 콤보 프리뷰 = 현재 경로의 파일명만(없으면 "(None)"). 목록 항목과 표기 일치.
+		const FString CurPath = ImgElem->GetTexturePath();
+		FString Preview = "(None)";
+		if (!CurPath.empty())
+		{
+			Preview = FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(CurPath)).filename().wstring());
+		}
+
+		if (ImGui::BeginCombo("Texture", Preview.c_str()))
+		{
+			// 선택 해제(단색 쿼드로 복귀).
+			if (ImGui::Selectable("(None)", CurPath.empty()))
+			{
+				ImgElem->SetTexturePath(FString());
+				MarkDirty();
+			}
+			// 디렉터리에 실제로 존재하는 png/jpg/jpeg 만 나열(드롭다운 열릴 때만 스캔).
+			for (const FString& File : CollectUIImageFiles())
+			{
+				const FString Rel  = FString("Content/UI/Images/") + File;
+				const bool    bSel = (Rel == CurPath);
+				if (ImGui::Selectable(File.c_str(), bSel))
+				{
+					ImgElem->SetTexturePath(Rel);
+					MarkDirty();
+				}
+				if (bSel)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
 	}
 
 	// 텍스트 5필드 — 중간 클래스 UUITextElement(Button/Image/Label)에만 노출. Canvas/Group(순수

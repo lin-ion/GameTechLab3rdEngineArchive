@@ -141,6 +141,19 @@ namespace
 	}
 }
 
+// 상대 경로면 프로젝트 루트(FPaths::RootDir())를 붙여 절대 경로로 만든다. 절대 경로는 그대로 둔다.
+// 메시 로더(FMeshManager::ResolveProjectPath)와 동일 규약 — CWD 에 의존하지 않으므로 스탠드얼론 빌드
+// (Play.bat 이 어디서 실행되든)에서 "Content/..." 같은 프로젝트 상대 경로가 안정적으로 해석된다.
+static std::wstring ResolveTextureFilePath(const FString& FilePath)
+{
+	std::filesystem::path P(FPaths::ToWide(FilePath));
+	if (!P.is_absolute())
+	{
+		P = std::filesystem::path(FPaths::RootDir()) / P;
+	}
+	return P.lexically_normal().wstring();
+}
+
 bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device, ETextureColorSpace InColorSpace)
 {
 	if (IsStbHandledExtension(FilePath))
@@ -148,7 +161,7 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device, ETe
 		return LoadInternal_STB(FilePath, Device, InColorSpace);
 	}
 
-	std::wstring WidePath = FPaths::ToWide(FilePath);
+	std::wstring WidePath = ResolveTextureFilePath(FilePath);
 
 	const auto LoadFlags = (InColorSpace == ETextureColorSpace::SRGB)
 		? DirectX::WIC_LOADER_FORCE_SRGB
@@ -202,7 +215,8 @@ bool UTexture2D::LoadInternal_STB(const FString& FilePath, ID3D11Device* Device,
 {
 	// stbi_load 는 fopen(UTF-8) 기반이라 한글/공백 경로에서 깨질 수 있어
 	// wide ifstream 으로 직접 읽고 stbi_load_from_memory 로 우회.
-	const std::wstring WidePath = FPaths::ToWide(FilePath);
+	// 상대 경로는 WIC 경로와 동일하게 RootDir 기준으로 해석(스탠드얼론 안정성).
+	const std::wstring WidePath = ResolveTextureFilePath(FilePath);
 	std::ifstream File(WidePath, std::ios::binary | std::ios::ate);
 	if (!File.is_open())
 	{
