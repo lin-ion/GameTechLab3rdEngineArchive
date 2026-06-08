@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "GameFramework/Actor/ProjectileActor.h"
+#include "Math/Rotator.h"
 #include "Object/Ptr/WeakObjectPtr.h"
 
 class UStaticMeshComponent;
@@ -41,6 +42,7 @@ private:
 	bool FindBossPhysicsAssetHit(const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
 	void ApplyDamageToHitTarget(const FHitResult& Hit) const;
 	void PlayBossHitStop(AActor* TargetActor) const;
+	void PlayBossHitCameraShake() const;
 	void EmitDeathEffect(const FVector& Location, const FVector& Velocity) const;
 	void ReleaseToPoolOrDeactivate();
 
@@ -80,6 +82,24 @@ private:
 
 	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Hit Stop", DisplayName = "Boss Slomo Time Dilation", Min = 0.0f, Max = 1.0f, Speed = 0.01f)
 	float BossSlomoTimeDilation = 0.1f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Camera Shake", DisplayName = "Boss Camera Shake Scale", Min = 0.0f, Max = 10.0f, Speed = 0.01f)
+	float BossCameraShakeScale = 1.0f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Camera Shake", DisplayName = "Boss Camera Shake Duration", Min = 0.0f, Max = 2.0f, Speed = 0.01f)
+	float BossCameraShakeDuration = 0.18f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Camera Shake", DisplayName = "Boss Camera Shake Blend Out", Min = 0.0f, Max = 1.0f, Speed = 0.01f)
+	float BossCameraShakeBlendOut = 0.08f;
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Camera Shake", DisplayName = "Boss Camera Shake Location Amplitude")
+	FVector BossCameraShakeLocationAmplitude = FVector(0.04f, 0.04f, 0.025f);
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Camera Shake", DisplayName = "Boss Camera Shake Rotation Amplitude")
+	FRotator BossCameraShakeRotationAmplitude = FRotator(0.8f, 1.0f, 1.2f);
+
+	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Camera Shake", DisplayName = "Boss Camera Shake FOV Amplitude", Min = 0.0f, Max = 1.0f, Speed = 0.001f)
+	float BossCameraShakeFOVAmplitude = 0.01f;
 
 	UPROPERTY(Edit, Save, Category = "Arrow Projectile|Death Effect", DisplayName = "Death Effect Path", AssetType = "UParticleSystem")
 	FString DeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";

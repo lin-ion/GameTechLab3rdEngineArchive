@@ -11,7 +11,10 @@
 #include "Engine/Component/Particle/ParticleSystemComponent.h"
 #include "Engine/Component/Primitive/StaticMeshComponent.h"
 #include "Engine/Runtime/Engine.h"
+#include "GameFramework/Camera/PlayerCameraManager.h"
+#include "GameFramework/Camera/WaveOscillatorCameraShake.h"
 #include "GameFramework/GameMode/GameplayStatics.h"
+#include "GameFramework/GameMode/PlayerController.h"
 #include "GameFramework/Pawn/BossCharacter.h"
 #include "GameFramework/ProjectilePoolSubSystem.h"
 #include "GameFramework/World.h"
@@ -762,6 +765,7 @@ void AArrowProjectileActor::ApplyDamageToHitTarget(const FHitResult& Hit) const
 			FScoreManager::Get().AddBossHit();  // 보스 유효타격 = 명중률 분자 1 증가
 			FAudioManager::Get().PlayAudio("Explosion", 1.0f);
 			PlayBossHitStop(TargetActor);
+			PlayBossHitCameraShake();
 		}
 		UE_LOG("[ArrowProjectileDamage] target=%s boss=%d damage=%.3f applied=%.3f",
 			TargetActor->GetName().c_str(),
@@ -803,6 +807,47 @@ void AArrowProjectileActor::PlayBossHitStop(AActor* TargetActor) const
 		BossHitStopTimeDilation,
 		BossSlomoDuration,
 		BossSlomoTimeDilation);
+}
+
+void AArrowProjectileActor::PlayBossHitCameraShake() const
+{
+	if (BossCameraShakeScale <= 0.0f || BossCameraShakeDuration <= 0.0f)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	APlayerController* PlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	APlayerCameraManager* CameraManager = PlayerController ? PlayerController->GetPlayerCameraManager() : nullptr;
+	if (!CameraManager)
+	{
+		return;
+	}
+
+	UWaveOscillatorCameraShake* Shake = CameraManager->StartCameraShake<UWaveOscillatorCameraShake>(BossCameraShakeScale);
+	if (!Shake)
+	{
+		return;
+	}
+
+	Shake->Duration = BossCameraShakeDuration;
+	Shake->BlendInTime = 0.0f;
+	Shake->BlendOutTime = BossCameraShakeBlendOut;
+	Shake->LocAmplitude = BossCameraShakeLocationAmplitude;
+	Shake->RotAmplitude = BossCameraShakeRotationAmplitude;
+	Shake->FOVAmplitude = BossCameraShakeFOVAmplitude;
+	UE_LOG("[ArrowProjectileCameraShake] actor=%s manager=%p scale=%.3f duration=%.3f locAmp=(%.3f,%.3f,%.3f) rotAmp=(%.3f,%.3f,%.3f) fovAmp=%.3f",
+		GetName().c_str(),
+		CameraManager,
+		BossCameraShakeScale,
+		BossCameraShakeDuration,
+		BossCameraShakeLocationAmplitude.X,
+		BossCameraShakeLocationAmplitude.Y,
+		BossCameraShakeLocationAmplitude.Z,
+		BossCameraShakeRotationAmplitude.Pitch,
+		BossCameraShakeRotationAmplitude.Yaw,
+		BossCameraShakeRotationAmplitude.Roll,
+		BossCameraShakeFOVAmplitude);
 }
 
 void AArrowProjectileActor::EmitDeathEffect(const FVector& Location, const FVector& Velocity) const
