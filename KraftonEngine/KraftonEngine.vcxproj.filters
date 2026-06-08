@@ -82,6 +82,9 @@
     <Filter Include="Source\Editor\UI\Asset\Physics">
       <UniqueIdentifier>{a9510143-b9c8-a4a8-aa42-31438e50f6bb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\UI\Asset\UI">
+      <UniqueIdentifier>{e89c6925-b13b-4e0a-437c-d620cfa23724}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\UI\ContentBrowser">
       <UniqueIdentifier>{09a2ea7f-e891-b580-bef0-471bcd9b5d4b}</UniqueIdentifier>
     </Filter>
@@ -905,6 +908,9 @@
     <ClCompile Include="Source\Editor\UI\Asset\Physics\PhysicsAssetEditorWidget.cpp">
       <Filter>Source\Editor\UI\Asset\Physics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\UI\Asset\UI\UIEditorWidget.cpp">
+      <Filter>Source\Editor\UI\Asset\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\UI\ContentBrowser\ContentBrowser.cpp">
       <Filter>Source\Editor\UI\ContentBrowser</Filter>
     </ClCompile>
@@ -1184,31 +1190,19 @@
     <ClCompile Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.cpp">
       <Filter>Source\Engine\Component\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BulletTrailComponent.cpp">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.cpp">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_SphericalPulseBarrage.cpp">
@@ -1217,7 +1211,19 @@
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_ThunderclapCascade.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.cpp">
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\BulletTrailComponent.cpp">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.cpp">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp">
@@ -1399,6 +1405,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\GameFramework\World.cpp">
       <Filter>Source\Engine\GameFramework</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.cpp">
+      <Filter>Source\Engine\GameFramework\Actor</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\GameFramework\Actor\BoxActor.cpp">
       <Filter>Source\Engine\GameFramework\Actor</Filter>
@@ -1838,10 +1847,10 @@
     <ClCompile Include="Source\Engine\Profiling\StartupProfiler.cpp">
       <Filter>Source\Engine\Profiling</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Profiling\Stats\BulletHellStats.cpp">
+    <ClCompile Include="Source\Engine\Profiling\Stats\BossPatternStats.cpp">
       <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Profiling\Stats\BossPatternStats.cpp">
+    <ClCompile Include="Source\Engine\Profiling\Stats\BulletHellStats.cpp">
       <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Profiling\Stats\ClothCollisionStats.cpp">
@@ -1901,10 +1910,10 @@
     <ClCompile Include="Source\Engine\Render\Proxy\BillboardSceneProxy.cpp">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.cpp">
+    <ClCompile Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.cpp">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.cpp">
+    <ClCompile Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.cpp">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Proxy\CylindricalBillboardSceneProxy.cpp">
@@ -2126,6 +2135,9 @@
     <ClCompile Include="Source\Engine\Texture\stb_image_impl.cpp">
       <Filter>Source\Engine\Texture</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\UI\UIAssetManager.cpp">
+      <Filter>Source\Engine\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\UI\UIManager.cpp">
       <Filter>Source\Engine\UI</Filter>
     </ClCompile>
@@ -2138,7 +2150,13 @@
     <ClCompile Include="Source\Engine\UI\Canvas\UICanvasManager.cpp">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\UI\Canvas\UIImage.cpp">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\UI\Canvas\UILabel.cpp">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\UI\Canvas\UITextElement.cpp">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Viewport\GameViewportClient.cpp">
@@ -2208,9 +2226,6 @@
     <ClCompile Include="Intermediate\Generated\Reflection.generated.cpp">
       <Filter>Intermediate\Generated</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\GameFramework\Actor\ProjectileActor.cpp" />
-    <ClCompile Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.cpp" />
-    <ClCompile Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -2311,6 +2326,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\UI\Asset\Physics\PhysicsAssetEditorWidget.h">
       <Filter>Source\Editor\UI\Asset\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\UI\Asset\UI\UIEditorWidget.h">
+      <Filter>Source\Editor\UI\Asset\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\UI\ContentBrowser\ContentBrowser.h">
       <Filter>Source\Editor\UI\ContentBrowser</Filter>
@@ -2645,31 +2663,19 @@
     <ClInclude Include="Source\Engine\Component\Debug\TemporaryBoneAnimatorComponent.h">
       <Filter>Source\Engine\Component\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h">
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BulletTrailComponent.h">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.h">
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.h">
-      <Filter>Source\Engine\Component\Gameplay</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternSelectorComponent.h">
+    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_SphericalPulseBarrage.h">
@@ -2678,7 +2684,19 @@
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_ThunderclapCascade.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_IdleTrackTarget.h">
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\BulletTrailComponent.h">
+      <Filter>Source\Engine\Component\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.h">
       <Filter>Source\Engine\Component\Gameplay</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h">
@@ -2896,6 +2914,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\WorldSettings.h">
       <Filter>Source\Engine\GameFramework</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.h">
+      <Filter>Source\Engine\GameFramework\Actor</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\Actor\BoxActor.h">
       <Filter>Source\Engine\GameFramework\Actor</Filter>
@@ -3452,10 +3473,10 @@
     <ClInclude Include="Source\Engine\Profiling\StartupProfiler.h">
       <Filter>Source\Engine\Profiling</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Profiling\Stats\BulletHellStats.h">
+    <ClInclude Include="Source\Engine\Profiling\Stats\BossPatternStats.h">
       <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Profiling\Stats\BossPatternStats.h">
+    <ClInclude Include="Source\Engine\Profiling\Stats\BulletHellStats.h">
       <Filter>Source\Engine\Profiling\Stats</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Profiling\Stats\ClothCollisionStats.h">
@@ -3524,10 +3545,10 @@
     <ClInclude Include="Source\Engine\Render\Proxy\BillboardSceneProxy.h">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.h">
+    <ClInclude Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.h">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Proxy\BoneDebugSceneProxy.h">
+    <ClInclude Include="Source\Engine\Render\Proxy\BulletTrailSceneProxy.h">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Proxy\CylindricalBillboardSceneProxy.h">
@@ -3815,11 +3836,20 @@
     <ClInclude Include="Source\Engine\Texture\Texture2D.h">
       <Filter>Source\Engine\Texture</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\UI\UIAsset.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\UIAssetManager.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\UI\UIManager.h">
       <Filter>Source\Engine\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\UI\UserWidget.h">
       <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UIButton.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\UI\Canvas\UICanvas.h">
       <Filter>Source\Engine\UI\Canvas</Filter>
@@ -3836,6 +3866,9 @@
     <ClInclude Include="Source\Engine\UI\Canvas\UIGroup.h">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UIImage.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\UI\Canvas\UILabel.h">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
@@ -3843,6 +3876,9 @@
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\UI\Canvas\UIRectTransform.h">
+      <Filter>Source\Engine\UI\Canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\Canvas\UITextElement.h">
       <Filter>Source\Engine\UI\Canvas</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Viewport\GameViewportClient.h">
@@ -6293,10 +6329,6 @@
     <ClInclude Include="ThirdParty\sol2\include\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\include\sol\utility</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\GameFramework\Actor\ProjectileActor.h" />
-    <ClInclude Include="Source\Engine\GameFramework\Actor\ArrowProjectileActor.h" />
-    <ClInclude Include="Source\Engine\GameFramework\ProjectilePoolSubSystem.h" />
-    <ClInclude Include="Source\Engine\GameFramework\IPoolableProjectile.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />
