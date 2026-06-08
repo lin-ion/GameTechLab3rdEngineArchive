@@ -1,9 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include "GameFramework/Actor/ProjectileActor.h"
 #include "Object/Ptr/WeakObjectPtr.h"
 
 class UStaticMeshComponent;
+class UParticleSystemComponent;
 
 #include "Source/Engine/GameFramework/Actor/ArrowProjectileActor.generated.h"
 
@@ -28,12 +29,23 @@ public:
 
 private:
 	void InitArrowComponents();
+	UParticleSystemComponent* EnsureArrowParticleComponent(
+		TWeakObjectPtr<UParticleSystemComponent>& Component,
+		const char* ComponentName,
+		const char* TemplatePath);
+	void SetAimParticleActive(bool bActive);
+	void SetFireArrowParticleActive(bool bActive);
 
 private:
 	TWeakObjectPtr<UStaticMeshComponent> StaticMeshComponent = nullptr;
+	TWeakObjectPtr<UParticleSystemComponent> AimParticleComponent = nullptr;
+	TWeakObjectPtr<UParticleSystemComponent> FireArrowParticleComponent = nullptr;
 
 	bool    bPoolConstructed = false;
 	bool    bHeld = false;
+	bool    bAimParticleRequested = false;
+	bool    bFireArrowParticleRequested = false;
+	int32   AimParticleRefreshCounter = 0;
 	FVector CachedVelocity = FVector::ZeroVector;
 	float   LifeTimeRemaining = 0.0f;
 	float   VelocityWarmupRemaining = 0.0f;

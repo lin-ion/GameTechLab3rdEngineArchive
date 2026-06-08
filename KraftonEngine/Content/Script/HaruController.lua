@@ -26,6 +26,8 @@ local BOW_CAMERA_BLEND_DURATION = 0.3
 local BOW_CAMERA_RESTORE_DURATION = 0.22
 local BOW_PROJECTILE_SPEED = 15.0
 local BOW_PROJECTILE_OFFSET = Vec3(0.1, 0.15, 0.3)
+local BOW_AIM_PARTICLE_PATH = "Content/Particle System/Aim.uasset"
+local BOW_AIM_PARTICLE_OFFSET = Vec3(1.5, 0.15, 0.3)
 local BOW_RELEASE_SLOMO_DURATION = 0.3
 local BOW_RELEASE_SLOMO_DILATION = 0.15
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
@@ -47,6 +49,8 @@ local BOW_WEAPON_TRANSFORM = {
     rotation = Vec3(-90.0, 0.0, 170.0),
     scale = Vec3(25.0, 25.0, 25.0)
 }
+
+local bow_aim_particle_component = nil
 local DASH_ANIM_VAR = "Dash"
 local ROLL_ANIM_VAR = "Roll"
 local ATTACK_ANIM_VAR = "Attack"
@@ -1203,6 +1207,75 @@ local function play_arrow_release_slomo(owner)
     return false
 end
 
+local function get_bow_aim_particle_location(owner)
+    if World ~= nil and World.GetCameraProjectileLocation ~= nil then
+        local ok, loc = pcall(function()
+            return World.GetCameraProjectileLocation(BOW_AIM_PARTICLE_OFFSET)
+        end)
+        if ok and loc ~= nil then
+            return loc
+        end
+    end
+
+    if owner ~= nil and owner.GetActorLocation ~= nil then
+        return owner:GetActorLocation()
+    end
+    return Vec3(0.0, 0.0, 0.0)
+end
+
+local function update_bow_aim_particle(owner, ability)
+    if ability == nil then
+        return
+    end
+
+    local loc = get_bow_aim_particle_location(owner)
+    if bow_aim_particle_component == nil then
+        if World == nil or World.SpawnEmitterAtLocation == nil then
+            log("AirBowShot Aim particle skipped: World.SpawnEmitterAtLocation unavailable")
+            return
+        end
+
+        bow_aim_particle_component = World.SpawnEmitterAtLocation(
+            BOW_AIM_PARTICLE_PATH,
+            loc,
+            Vec3(0.0, 0.0, 0.0),
+            true)
+        ability.aim_particle_active = bow_aim_particle_component ~= nil
+        log("AirBowShot Aim particle spawned: component=" .. tostring(bow_aim_particle_component ~= nil)
+            .. " path=" .. tostring(BOW_AIM_PARTICLE_PATH)
+            .. " offset=" .. format_vec3(BOW_AIM_PARTICLE_OFFSET)
+            .. " loc=" .. format_vec3(loc))
+        return
+    end
+
+    if bow_aim_particle_component.SetLocation ~= nil then
+        bow_aim_particle_component:SetLocation(loc)
+    end
+
+    if not ability.aim_particle_active then
+        if bow_aim_particle_component.ResetParticles ~= nil then
+            bow_aim_particle_component:ResetParticles()
+        end
+        if bow_aim_particle_component.Activate ~= nil then
+            bow_aim_particle_component:Activate(true)
+        end
+        ability.aim_particle_active = true
+        log("AirBowShot Aim particle activated: offset=" .. format_vec3(BOW_AIM_PARTICLE_OFFSET)
+            .. " loc=" .. format_vec3(loc))
+    end
+end
+
+local function stop_bow_aim_particle(ability, reason)
+    if ability ~= nil then
+        ability.aim_particle_active = false
+    end
+
+    if bow_aim_particle_component ~= nil and bow_aim_particle_component.Deactivate ~= nil then
+        bow_aim_particle_component:Deactivate()
+        log("AirBowShot Aim particle deactivated: reason=" .. tostring(reason))
+    end
+end
+
 local function prepare_held_arrow(owner, ability, reason)
     if ability == nil then
         log("AirBowShot arrow prepare skipped: ability is nil reason=" .. tostring(reason))
@@ -1363,7 +1436,9 @@ local function activate_bow_aim(owner, ability)
         .. " socketOffset=" .. format_vec3(BOW_CAMERA_SOCKET_OFFSET)
         .. " fov=" .. tostring(BOW_CAMERA_FOV))
 
-    log("AirBowShot waiting for FireArrow AnimNotify to prepare held arrow")
+    prepare_held_arrow(owner, ability, "RightMouseButton press Aim")
+    update_bow_aim_particle(owner, ability)
+    log("AirBowShot prepared aim arrow; FireArrow AnimNotify will reuse it if it fires")
 end
 
 local function tick_bow_aim(owner, ability, dt)
@@ -1373,6 +1448,7 @@ local function tick_bow_aim(owner, ability, dt)
     if ability.arrow_projectile ~= nil and World ~= nil and World.UpdateCameraArrowProjectile ~= nil then
         World.UpdateCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_OFFSET)
     end
+    update_bow_aim_particle(owner, ability)
 
     if Input ~= nil and Input.GetKeyUp ~= nil and Input.GetKeyUp(BOW_SKILL_KEY) then
         if ability.arrow_projectile == nil then
@@ -1380,12 +1456,15 @@ local function tick_bow_aim(owner, ability, dt)
             prepare_held_arrow(owner, ability, "early release fallback")
         end
 
+        stop_bow_aim_particle(ability, "RightMouseButton release")
         launch_prepared_arrow(owner, ability, "RightMouseButton release")
         ability_system:EndAbility(ability)
     end
 end
 
 local function end_bow_aim(owner, ability)
+    stop_bow_aim_particle(ability, "AirBowShot end")
+
     if ability ~= nil and ability.arrow_projectile ~= nil and not ability.arrow_released then
         if World ~= nil and World.ReleaseProjectile ~= nil then
             World.ReleaseProjectile(ability.arrow_projectile)

@@ -82,6 +82,24 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
         }
     );
     World.set_function(
+        "GetCameraProjectileLocation",
+        [](sol::optional<FVector> SpawnOffset) -> FVector
+        {
+            if (!GEngine) return FVector::ZeroVector;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return FVector::ZeroVector;
+
+            FVector Origin;
+            FRotator Rotation;
+            if (!GetCameraProjectileFrame(W, Origin, Rotation)) return FVector::ZeroVector;
+
+            return ComputeCameraProjectileLocation(
+                Origin,
+                Rotation,
+                SpawnOffset.value_or(FVector(1.0f, 0.0f, 1.0f)));
+        }
+    );
+    World.set_function(
         "FireCameraProjectile",
         [](sol::optional<float> Speed, sol::optional<float> MuzzleOffset, sol::optional<float> SpawnHeight) -> AActor*
         {
