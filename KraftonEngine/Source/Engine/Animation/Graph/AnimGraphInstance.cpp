@@ -53,9 +53,17 @@ void UAnimGraphInstance::NativeInitializeAnimation()
 		GraphAsset = nullptr;
 		CompiledAssetVersion = 0;
 	}
+	const FString GraphPathStr = GraphAssetPath.ToString();
+	if (GraphAsset
+		&& !GraphPathStr.empty()
+		&& GraphPathStr != "None"
+		&& GraphAsset->GetSourcePath().empty())
+	{
+		GraphAsset = nullptr;
+		CompiledAssetVersion = 0;
+	}
 	if (!GraphAsset)
 	{
-		const FString GraphPathStr = GraphAssetPath.ToString();
 		if (!GraphPathStr.empty() && GraphPathStr != "None")
 		{
 			GraphAsset = FAnimGraphManager::Get().Load(GraphPathStr);
