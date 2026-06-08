@@ -61,8 +61,11 @@ namespace
 			const FVector4 C = Element->GetColor();
 			const ImVec2   Min(Origin.x + R.Pos.X, Origin.y + R.Pos.Y);
 			const ImVec2   Max(Min.x + R.Size.X, Min.y + R.Size.Y);
-			DL->AddRectFilled(Min, Max, ImGui::GetColorU32(ImVec4(C.R, C.G, C.B, C.A)));
-			DL->AddRect(Min, Max, IM_COL32(0, 0, 0, 60));
+			// 모서리 둥글기 — 런타임 SimpleUIPass 와 동일하게 레퍼런스 px*Scale 로 환산(ImGui 가 변의
+			// 절반까지 내부 클램프하므로 런타임 클램프와 결과 일치). 0 이면 직각(기존 동작).
+			const float Rounding = Element->GetCornerRadius() * Scale;
+			DL->AddRectFilled(Min, Max, ImGui::GetColorU32(ImVec4(C.R, C.G, C.B, C.A)), Rounding);
+			DL->AddRect(Min, Max, IM_COL32(0, 0, 0, 60), Rounding);
 		}
 		// [R5] 텍스트 미러 — bVisibleRect 무관하게 Text 가 있으면 글자를 그린다(배경 없는 Text 프리셋도
 		// 에디터에 보이도록). 런타임 텍스트는 RmlUi(에디터에선 R1 게이트로 비활성), 에디터는 이 ImGui 미러.
@@ -460,7 +463,9 @@ void FUIEditorWidget::RenderViewportPanel()
 		const FUIRect& SR = Selected->GetScreenRect();
 		const ImVec2   SMin(Origin.x + SR.Pos.X, Origin.y + SR.Pos.Y);
 		const ImVec2   SMax(SMin.x + SR.Size.X, SMin.y + SR.Size.Y);
-		DL->AddRect(SMin, SMax, IM_COL32(255, 180, 40, 255), 0.0f, 0, 2.0f);
+		// 선택 강조 테두리도 요소의 둥글기를 따라가게 한다(요소와 동일한 레퍼런스 px*Scale 환산).
+		const float SRounding = Selected->GetCornerRadius() * Scale;
+		DL->AddRect(SMin, SMax, IM_COL32(255, 180, 40, 255), SRounding, 0, 2.0f);
 	}
 	DL->PopClipRect();
 
@@ -497,7 +502,9 @@ void FUIEditorWidget::RenderDetailsPanel()
 	}
 
 	// Delete/Backspace 단축키 — 디테일 패널 포커스 시(루트 제외). 버튼과 동일 경로.
-	const bool bDeleteKey = !bIsRoot && ImGui::IsWindowFocused()
+	// 단, 텍스트 입력 필드(ElementName/Text 등) 편집 중에는 발동 금지 — WantTextInput 이 참이면
+	// Backspace/Delete 는 글자 수정용이므로, 요소 삭제로 가로채면 안 된다. 삭제는 Delete 버튼으로.
+	const bool bDeleteKey = !bIsRoot && ImGui::IsWindowFocused() && !ImGui::GetIO().WantTextInput
 		&& (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace));
 	if (bDeleteClicked || bDeleteKey)
 	{
@@ -551,6 +558,14 @@ void FUIEditorWidget::RenderDetailsPanel()
 	if (ImGui::ColorEdit4("Color", Col))
 	{
 		Selected->SetColor(FVector4(Col[0], Col[1], Col[2], Col[3]));
+		MarkDirty();
+	}
+
+	// 모서리 둥글기(레퍼런스 px). 0=직각. 드로우 패스가 변의 절반까지 클램프하므로 상한은 넉넉히 둔다.
+	float Radius = Selected->GetCornerRadius();
+	if (ImGui::DragFloat("Corner Radius", &Radius, 0.5f, 0.0f, 512.0f, "%.1f"))
+	{
+		Selected->SetCornerRadius(Radius);
 		MarkDirty();
 	}
 

@@ -7,14 +7,20 @@ struct VSInput
 {
 	float2 Position : POSITION;
 	float4 Color    : COLOR;
-	float2 TexCoord : TEXCOORD;
+	float2 TexCoord : TEXCOORD0;
+	// 둥근 모서리용(화면 px). RoundRect=(중심기준 로컬좌표 xy, 반쪽크기 zw), Radius=모서리 반지름.
+	// Radius<=0 이면 PS 가 SDF 분기를 건너뛰어 기존 직각 쿼드와 완전히 동일하게 동작한다.
+	float4 RoundRect : TEXCOORD1;
+	float  Radius    : TEXCOORD2;
 };
 
 struct VSOutput
 {
 	float4 Position : SV_POSITION;
 	float4 Color    : COLOR;
-	float2 TexCoord : TEXCOORD;
+	float2 TexCoord : TEXCOORD0;
+	float4 RoundRect : TEXCOORD1;
+	float  Radius    : TEXCOORD2;
 };
 
 cbuffer SimpleUICB : register(b0)
@@ -42,10 +48,28 @@ VSOutput VS(VSInput Input)
 	Output.Position = float4(NdcPosition, 0.0f, 1.0f);
 	Output.Color = Input.Color;
 	Output.TexCoord = Input.TexCoord;
+	Output.RoundRect = Input.RoundRect;
+	Output.Radius = Input.Radius;
 	return Output;
+}
+
+// 둥근 사각형 SDF. p=중심기준 좌표, b=반쪽크기, r=모서리 반지름(화면 px). 내부<0, 외부>0.
+float SdRoundedBox(float2 p, float2 b, float r)
+{
+	float2 q = abs(p) - b + r;
+	return min(max(q.x, q.y), 0.0f) + length(max(q, 0.0f)) - r;
 }
 
 float4 PS(VSOutput Input) : SV_Target
 {
-	return tex.Sample(samp, Input.TexCoord) * Input.Color;
+	float4 OutColor = tex.Sample(samp, Input.TexCoord) * Input.Color;
+
+	// 모서리 둥글기가 지정된 쿼드만 SDF 로 외곽을 깎고 1px 안티에일리어싱. Radius<=0 면 기존 직각 유지.
+	if (Input.Radius > 0.0f)
+	{
+		float Dist = SdRoundedBox(Input.RoundRect.xy, Input.RoundRect.zw, Input.Radius);
+		float Aa = max(fwidth(Dist), 1e-4f);
+		OutColor.a *= 1.0f - smoothstep(-Aa, Aa, Dist);
+	}
+	return OutColor;
 }

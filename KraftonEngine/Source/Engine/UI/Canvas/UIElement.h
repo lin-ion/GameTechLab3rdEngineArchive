@@ -73,6 +73,11 @@ public:
 	void SetColor(const FVector4& InColor) { BackgroundColor = InColor; }
 	FVector4 GetColor() const { return BackgroundColor; }
 
+	// 모서리 둥글기(레퍼런스 px, 0=직각). 드로우 패스가 ScreenRect 의 쿼드를 둥근 사각형 SDF 로
+	// 그릴 때 사용. 화면 px 로는 GlobalScale 을 곱하고, 변의 절반을 넘지 않도록 클램프한다.
+	void SetCornerRadius(float InRadius) { CornerRadius = InRadius < 0.0f ? 0.0f : InRadius; }
+	float GetCornerRadius() const { return CornerRadius; }
+
 protected:
 	// FUIRectTransform 은 USTRUCT 가 아니므로, USceneComponent 가 FTransform 의 하위 필드를
 	// Member= 로 반사하는 방식(진단 C5 선례)을 그대로 차용해 4개의 Vec2 를 PF_Save 로 노출한다.
@@ -93,4 +98,8 @@ protected:
 	bool bVisibleRect = true;
 	UPROPERTY(Save, Category="UI", DisplayName="Background Color", Type=Color4)
 	FVector4 BackgroundColor = { 0.2f, 0.4f, 0.8f, 0.7f };
+
+	// 모서리 둥글기(레퍼런스 px). 0 이면 기존과 동일한 직각 쿼드(드로우 패스가 SDF 분기 스킵).
+	UPROPERTY(Save, Category="UI", DisplayName="Corner Radius")
+	float CornerRadius = 0.0f;
 };

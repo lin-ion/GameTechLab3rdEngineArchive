@@ -20,12 +20,16 @@ REGISTER_RENDER_PASS(FSimpleUIPass)
 
 namespace
 {
-	// RmlUi.hlsl 과 동일한 정점/상수버퍼 레이아웃(입력 레이아웃 재사용).
+	// 정점 레이아웃은 SimpleUI.hlsl 의 VSInput 선언 순서와 정확히 일치해야 한다(입력 레이아웃이
+	// APPEND_ALIGNED 리플렉션으로 생성되므로 순서=오프셋). 둥근 모서리용 RoundRect/Radius 는 끝에 추가.
 	struct FSimpleUIVertex
 	{
-		float X, Y;
-		float R, G, B, A;
-		float U, V;
+		float X, Y;             // POSITION
+		float R, G, B, A;       // COLOR
+		float U, V;             // TEXCOORD0
+		float LocalX, LocalY;   // TEXCOORD1.xy — 중심기준 로컬좌표(화면 px)
+		float HalfW, HalfH;     // TEXCOORD1.zw — 반쪽크기(화면 px)
+		float Radius;           // TEXCOORD2    — 모서리 반지름(화면 px, 0=직각)
 	};
 
 	struct FSimpleUICB
@@ -48,8 +52,10 @@ namespace
 	struct FUIBatch { ID3D11ShaderResourceView* SRV; UINT IndexCount; };
 
 	// 가시 노드의 ScreenRect 를 쿼드(4정점 / 6인덱스)로 누적 + 요소별 SRV 로 배칭. top-down 트리 순회.
+	// GlobalScale: 레퍼런스 px 인 CornerRadius 를 화면 px 로 환산하는 배율.
 	void CollectVisible(UUIElement* Element, ID3D11Device* Device, ID3D11ShaderResourceView* WhiteSRV,
-	                    TArray<FSimpleUIVertex>& Verts, TArray<uint32>& Indices, TArray<FUIBatch>& Batches)
+	                    float GlobalScale, TArray<FSimpleUIVertex>& Verts, TArray<uint32>& Indices,
+	                    TArray<FUIBatch>& Batches)
 	{
 		if (!Element)
 		{
@@ -77,10 +83,20 @@ namespace
 			const float X1 = R.Pos.X + R.Size.X;
 			const float Y1 = R.Pos.Y + R.Size.Y;
 
-			Verts.push_back({ X0, Y0, C.R, C.G, C.B, C.A, 0.0f, 0.0f });
-			Verts.push_back({ X1, Y0, C.R, C.G, C.B, C.A, 1.0f, 0.0f });
-			Verts.push_back({ X1, Y1, C.R, C.G, C.B, C.A, 1.0f, 1.0f });
-			Verts.push_back({ X0, Y1, C.R, C.G, C.B, C.A, 0.0f, 1.0f });
+			// 둥근 모서리 SDF 파라미터(화면 px). 반지름은 레퍼런스 px → 화면 px 환산 후, 변의 절반을
+			// 넘지 않게 클램프(초과 시 SDF 가 음수 r 로 깨짐). 0 이면 PS 가 SDF 를 건너뜀.
+			const float HalfW = (X1 - X0) * 0.5f;
+			const float HalfH = (Y1 - Y0) * 0.5f;
+			float Radius = Element->GetCornerRadius() * GlobalScale;
+			const float MaxRadius = HalfW < HalfH ? HalfW : HalfH;
+			if (Radius > MaxRadius) Radius = MaxRadius;
+			if (Radius < 0.0f) Radius = 0.0f;
+
+			// 각 꼭짓점의 중심기준 로컬좌표 = (±HalfW, ±HalfH). PS 가 보간해 프래그먼트 오프셋을 얻는다.
+			Verts.push_back({ X0, Y0, C.R, C.G, C.B, C.A, 0.0f, 0.0f, -HalfW, -HalfH, HalfW, HalfH, Radius });
+			Verts.push_back({ X1, Y0, C.R, C.G, C.B, C.A, 1.0f, 0.0f,  HalfW, -HalfH, HalfW, HalfH, Radius });
+			Verts.push_back({ X1, Y1, C.R, C.G, C.B, C.A, 1.0f, 1.0f,  HalfW,  HalfH, HalfW, HalfH, Radius });
+			Verts.push_back({ X0, Y1, C.R, C.G, C.B, C.A, 0.0f, 1.0f, -HalfW,  HalfH, HalfW, HalfH, Radius });
 
 			Indices.push_back(Base + 0);
 			Indices.push_back(Base + 1);
@@ -104,7 +120,7 @@ namespace
 		{
 			if (UUIElement* ChildElement = Cast<UUIElement>(Child))
 			{
-				CollectVisible(ChildElement, Device, WhiteSRV, Verts, Indices, Batches);
+				CollectVisible(ChildElement, Device, WhiteSRV, GlobalScale, Verts, Indices, Batches);
 			}
 		}
 	}
@@ -199,9 +215,10 @@ void FSimpleUIPass::Execute(const FPassContext& Ctx)
 	TArray<uint32> Indices;
 	TArray<FUIBatch> Batches;
 	ID3D11ShaderResourceView* White = GetWhiteSRV(Device);
+	const float GlobalScale = FUICanvasManager::Get().GetGlobalScale();
 	for (UUICanvas* Canvas : FUICanvasManager::Get().GetCanvases())
 	{
-		CollectVisible(Canvas, Device, White, Verts, Indices, Batches);
+		CollectVisible(Canvas, Device, White, GlobalScale, Verts, Indices, Batches);
 	}
 	if (Indices.empty())
 	{
