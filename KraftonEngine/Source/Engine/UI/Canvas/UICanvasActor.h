@@ -32,6 +32,11 @@ enum class EHudBindingValue : uint8
 	BossHealthRatio, // 바: 보스 HP 비율 / 텍스트: "NN%"  (컴포넌트, 없으면 폰 체력 폴백)
 	BossPhase,       // 바색: 페이즈→녹/노/적 / 텍스트: "Phase N"
 	BossPatternName, // 텍스트: 현재 공격 패턴 이름
+	// [사이클 7] 플레이어 스프레이(UPlayerSprayProjectileComponent) 값 — 소스 액터가 플레이어일 때.
+	// 기존 바인딩의 직렬화 인덱스 보존을 위해 반드시 맨 끝에 추가한다(중간 삽입 금지).
+	PlayerUltimateRatio,   // 바: 궁극기 게이지 비율(현재/최대) / 텍스트: "NN%"
+	PlayerUltimateGauge,   // 바: 게이지 비율 / 텍스트: "현재 / 최대"(정수)
+	PlayerProjectileCount, // 바: 의미 없음(full) / 텍스트: 활성 발사체 수
 };
 
 // [사이클 4] HUD 데이터 바인딩 1건. 에디터 Details 의 Bindings 배열에서 행 단위로 +/- 편집한다.

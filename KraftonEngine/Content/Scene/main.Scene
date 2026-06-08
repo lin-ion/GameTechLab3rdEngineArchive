@@ -1,0 +1,36 @@
+{
+  "Actors" : [{
+      "ClassName" : "AUICanvasActor",
+      "Name" : "AUICanvasActor_3",
+      "NonSceneComponents" : [],
+      "ObjectId" : 2,
+      "Properties" : {
+        "Bindings" : [],
+        "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
+        "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
+        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
+        "PendingActorVisible" : true,
+        "PendingTagsString" : "",
+        "UIAssetPath" : "Content/UI/MainUI.uasset",
+        "bNeedsTick" : true
+      }
+    }],
+  "ClassName" : "UWorld",
+  "ContextHandle" : "NewScene",
+  "ContextName" : "New Scene",
+  "Name" : "main",
+  "ObjectId" : 1,
+  "PerspectiveCamera" : {
+    "FOV" : 1.047198,
+    "FarClip" : 1000.000000,
+    "Location" : [307.842957, 0.000026, 153.921478],
+    "NearClip" : 0.100000,
+    "Rotation" : [0.000000, 26.565050, 180.000000]
+  },
+  "Version" : 2,
+  "WorldSettings" : {
+    "GameMode" : "",
+    "Gravity" : [0.000000, 0.000000, -9.810000]
+  },
+  "WorldType" : "Editor"
+}

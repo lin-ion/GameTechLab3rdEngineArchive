@@ -153,7 +153,18 @@ namespace
 			Flags |= ImGuiTreeNodeFlags_Selected;
 		}
 
-		const bool bOpen = ImGui::TreeNodeEx((void*)Element, Flags, "%s", Element->GetClass()->GetName());
+		// [show/off] 숨긴 요소는 계층에서 흐리게 + "(hidden)" 표기(토글은 Details 의 Visible 체크박스).
+		const bool bElementVisible = Element->IsVisible();
+		if (!bElementVisible)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+		}
+		const bool bOpen = ImGui::TreeNodeEx((void*)Element, Flags, "%s%s",
+			Element->GetClass()->GetName(), bElementVisible ? "" : "  (hidden)");
+		if (!bElementVisible)
+		{
+			ImGui::PopStyleColor();
+		}
 		if (ImGui::IsItemClicked())
 		{
 			Selected = Element;   // 트리 클릭 → 선택(뷰포트/디테일과 공유).
@@ -565,6 +576,16 @@ void FUIEditorWidget::RenderDetailsPanel()
 	}
 
 	ImGui::Spacing();
+
+	// [show/off] 요소 표시 토글 — 끄면 이 요소와 하위 트리가 뷰포트/런타임에서 숨겨진다(.uasset Save).
+	{
+		bool bElemVisible = Selected->IsVisible();
+		if (ImGui::Checkbox("Visible", &bElemVisible))
+		{
+			Selected->SetVisible(bElemVisible);
+			MarkDirty();
+		}
+	}
 
 	// 공통 RectTransform/Color 직접 바인딩 + (텍스트 요소면) 텍스트 5필드. 편집 즉시 멤버 반영 →
 	// 다음 프레임 LayoutCanvas 가 ScreenRect 갱신 → 뷰포트 실시간 반영(텍스트는 아래 ImGui 미러).

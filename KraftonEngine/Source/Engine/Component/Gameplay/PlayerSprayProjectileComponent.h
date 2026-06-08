@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Component/ActorComponent.h"
 #include "Core/Types/CollisionTypes.h"

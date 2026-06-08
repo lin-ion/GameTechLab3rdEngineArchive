@@ -122,6 +122,13 @@ void FUICanvasManager::HitTestRecursive(UUIElement* Element, const FVector2& Mou
 	{
 		return;
 	}
+	// [show/off] 숨긴 요소는 자신과 하위 트리 전체를 히트테스트에서 제외 — visible 일 때만 클릭 가능.
+	// 렌더 게이트(SimpleUIPass::CollectVisible / 미러 DrawElement)와 동일 규칙: 안 보이는 요소는 클릭·
+	// 마우스 소비 대상이 아니다. 조기 반환으로 자식 재귀도 중단 → 숨긴 부모의 자식도 비클릭이 된다.
+	if (!Element->IsVisible())
+	{
+		return;
+	}
 	// 가시 사각형이고 마우스를 포함하면 후보. pre-order 라 나중에 그린(=위에 있는) 것이 덮어쓴다.
 	if (Element->IsVisibleRect() && Element->GetScreenRect().Contains(MousePos))
 	{

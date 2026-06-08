@@ -78,6 +78,27 @@ public:
 	bool IsVisibleRect() const { return bVisibleRect; }
 	void SetVisibleRect(bool bVisible) { bVisibleRect = bVisible; }
 
+	// 요소 전체 표시 여부(배경·텍스트·자식 서브트리 모두 포함) — UI 에디터의 show/off 토글이 제어한다.
+	// bVisibleRect(배경 쿼드만 끔)와 구분: bVisible=false 면 이 요소와 그 아래가 통째로 렌더에서 빠진다.
+	bool IsVisible() const { return bVisible; }
+	void SetVisible(bool bInVisible) { bVisible = bInVisible; }
+
+	// 자신과 모든 조상이 Visible 일 때만 true. 렌더/미러 패스는 숨김 시 조기 반환으로 서브트리를 끊으므로
+	// 자기 플래그만으로 충분하지만, 항상 트리를 도는 텍스트(RmlUi) 동기화 경로는 실효 가시성이 필요하다.
+	bool IsEffectivelyVisible() const
+	{
+		const UUIElement* Node = this;
+		while (Node != nullptr)
+		{
+			if (!Node->bVisible)
+			{
+				return false;
+			}
+			Node = Cast<UUIElement>(Node->GetParent());
+		}
+		return true;
+	}
+
 	// 단색 배경색(RGBA). 드로우 패스가 ScreenRect 를 이 색의 쿼드로 그린다(사이클 5).
 	void SetColor(const FVector4& InColor) { BackgroundColor = InColor; }
 	FVector4 GetColor() const { return BackgroundColor; }
@@ -124,6 +145,10 @@ protected:
 
 	UPROPERTY(Save, Category="UI", DisplayName="Visible Rect")
 	bool bVisibleRect = true;
+
+	// 요소 전체 표시 여부(기본 true). false 면 배경·텍스트·자식까지 렌더에서 제외(IsVisible/IsEffectivelyVisible).
+	UPROPERTY(Edit, Save, Category="UI", DisplayName="Visible")
+	bool bVisible = true;
 	UPROPERTY(Save, Category="UI", DisplayName="Background Color", Type=Color4)
 	FVector4 BackgroundColor = { 0.2f, 0.4f, 0.8f, 0.7f };
 

@@ -42,6 +42,17 @@ void UUITextElement::OnLayoutUpdated(float GlobalScale, bool bSyncExternal)
 		return;
 	}
 
+	// [show/off] 자신 또는 조상이 숨김이면 텍스트도 숨긴다. 렌더/미러는 서브트리를 끊지만 레이아웃 경로는
+	// 항상 트리를 돌므로(여기서 OnLayoutUpdated 가 불림) 실효 가시성으로 판정해 위젯을 빈 라벨로 비운다.
+	if (!IsEffectivelyVisible())
+	{
+		if (UUserWidget* Existing = Widget.Get())
+		{
+			Existing->SetText("label", FString());
+		}
+		return;
+	}
+
 	// [R2] 비빈-텍스트 가드: Text 가 비어있으면 마운트하지 않는다. 빈 동안 bMountAttempted 를 latch 하지
 	// 않으므로 나중에 텍스트가 채워지면 그때 마운트된다. 이미 위젯이 있으면 빈 텍스트로 비워 숨긴다.
 	if (Text.empty())

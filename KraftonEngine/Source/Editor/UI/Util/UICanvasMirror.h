@@ -27,6 +27,11 @@ namespace FUICanvasMirror
 		{
 			return;
 		}
+		// [show/off] 숨긴 요소는 자신과 하위 트리 전체를 미러에서 제외(조기 반환으로 자식 재귀도 중단).
+		if (!Element->IsVisible())
+		{
+			return;
+		}
 		if (Element->IsVisibleRect())
 		{
 			const FUIRect& R = Element->GetScreenRect();

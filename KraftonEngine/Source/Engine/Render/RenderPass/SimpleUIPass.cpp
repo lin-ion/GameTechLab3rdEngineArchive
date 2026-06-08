@@ -62,6 +62,12 @@ namespace
 			return;
 		}
 
+		// [show/off] 숨긴 요소는 자신과 하위 트리 전체를 렌더에서 제외(조기 반환으로 자식 재귀도 중단).
+		if (!Element->IsVisible())
+		{
+			return;
+		}
+
 		if (Element->IsVisibleRect())
 		{
 			// [사이클 8] UUIImage 의 텍스처 SRV, 없으면(또는 비-이미지면) 1×1 흰색 fallback.
