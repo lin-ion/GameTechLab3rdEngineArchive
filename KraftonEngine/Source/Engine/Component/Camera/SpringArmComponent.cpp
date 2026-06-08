@@ -62,6 +62,17 @@ void USpringArmComponent::ResetLagState()
 void USpringArmComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	UpdateSpringArm(DeltaTime);
+}
+
+void USpringArmComponent::RefreshSpringArm(float DeltaTime)
+{
+	ResetLagState();
+	UpdateSpringArm(DeltaTime);
+}
+
+void USpringArmComponent::UpdateSpringArm(float DeltaTime)
+{
 
 	// SpringArm 은 부모가 있어야 의미가 있음. 부모 없으면 spring 동작은 skip 하고
 	// SceneComponent 기본 transform 합성에 맡긴다.

@@ -109,6 +109,7 @@
 
 std::unique_ptr<sol::state>                 FLuaScriptManager::Lua;
 sol::protected_function                     FLuaScriptManager::OnEscapePressedCallback;
+sol::protected_function                     FLuaScriptManager::OnUnpausedTickCallback;
 TMap<FString, sol::protected_function>      FLuaScriptManager::UIButtonCallbacks;
 std::mutex                                  FLuaScriptManager::ComponentMutex;
 TArray<TWeakObjectPtr<ULuaScriptComponent>> FLuaScriptManager::RegisteredComponents;
@@ -280,6 +281,7 @@ void FLuaScriptManager::Shutdown()
     // 호출하면서 이미 reset 된 lua_State 를 만지면 크래시. 빈 함수로 덮어써 deref 를 지금
     // (Lua 가 valid 한 동안) 일으킨다.
     OnEscapePressedCallback = sol::protected_function();
+    OnUnpausedTickCallback = sol::protected_function();
     GLuaReflectedEventOverrides.clear();
 
     FLuaDebugManager::Shutdown();
@@ -366,6 +368,27 @@ void FLuaScriptManager::FireOnEscapePressed()
     {
         sol::error Err = Result;
         UE_LOG("[Lua] OnEscapePressed callback error: %s", Err.what());
+	}
+}
+
+void FLuaScriptManager::SetOnUnpausedTick(sol::protected_function Callback)
+{
+    OnUnpausedTickCallback = std::move(Callback);
+    UE_LOG("[Lua] OnUnpausedTick registered valid=%d", OnUnpausedTickCallback.valid() ? 1 : 0);
+}
+
+void FLuaScriptManager::FireUnpausedTick(float DeltaTime)
+{
+    if (!OnUnpausedTickCallback.valid())
+    {
+        return;
+    }
+    FScopedGarbageCollectionBlocker GCBlocker;
+    sol::protected_function_result  Result = OnUnpausedTickCallback(DeltaTime);
+    if (!Result.valid())
+    {
+        sol::error Err = Result;
+        UE_LOG("[Lua] OnUnpausedTick callback error: %s", Err.what());
     }
 }
 
@@ -428,6 +451,7 @@ void FLuaScriptManager::FireWorldReset()
 
     // [UI 버튼 액션] (b) 콜백은 옛 월드의 위젯/클로저를 캡처할 수 있으므로 씬 전환 시 모두 비운다.
     UIButtonCallbacks.clear();
+    OnUnpausedTickCallback = sol::protected_function();
 
     // require 로 한 번 로드된 모듈 테이블은 package.loaded 에 캐시된다. 씬 전환 시에도
     // 살아남기 때문에, 이 두 모듈이 보유한 죽은-월드 참조를 비워준다.
@@ -2034,6 +2058,13 @@ void FLuaScriptManager::RegisterCoreBindings(sol::state& Lua)
         [](sol::protected_function Callback)
         {
             FLuaScriptManager::SetOnEscapePressed(std::move(Callback));
+        }
+    );
+    Engine.set_function(
+        "SetOnUnpausedTick",
+        [](sol::protected_function Callback)
+        {
+            FLuaScriptManager::SetOnUnpausedTick(std::move(Callback));
         }
     );
 

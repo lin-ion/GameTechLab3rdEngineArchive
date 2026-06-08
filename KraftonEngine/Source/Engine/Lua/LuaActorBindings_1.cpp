@@ -580,6 +580,11 @@ void FLuaScriptManager::RegisterActorBindings_1(sol::state& Lua)
         [](USpringArmComponent& C)
         {
             C.ResetLagState();
+        },
+        "RefreshSpringArm",
+        [](USpringArmComponent& C, sol::optional<float> DeltaTime)
+        {
+            C.RefreshSpringArm(DeltaTime.value_or(0.0f));
         }
     );
     Lua.new_usertype<UCineCameraComponent>(

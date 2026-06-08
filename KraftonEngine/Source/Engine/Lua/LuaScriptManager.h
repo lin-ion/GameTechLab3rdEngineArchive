@@ -33,6 +33,8 @@ public:
 	// pause 도중에도 동작한다 (component-tick 은 World pause 시 멈추므로 거기엔 못 둠).
 	static void SetOnEscapePressed(sol::protected_function Callback);
 	static void FireOnEscapePressed();
+	static void SetOnUnpausedTick(sol::protected_function Callback);
+	static void FireUnpausedTick(float DeltaTime);
 
 	// [UI 버튼 액션] (b) Lua 콜백 — ElementName 키로 SimpleUI 버튼 클릭 콜백을 등록/호출한다
 	// (UI.BindButton 로 바인딩, FUICanvasManager 의 클릭 디스패처가 InvokeUIButtonCallback 호출).
@@ -77,6 +79,7 @@ private:
 private:
 	static std::unique_ptr<sol::state> Lua;
 	static sol::protected_function OnEscapePressedCallback;
+	static sol::protected_function OnUnpausedTickCallback;
 	// [UI 버튼 액션] ElementName → 클릭 콜백(b). 씬 전환/캔버스 해제 시 정리는 FireWorldReset 에서.
 	static TMap<FString, sol::protected_function> UIButtonCallbacks;
 	static std::mutex ComponentMutex;

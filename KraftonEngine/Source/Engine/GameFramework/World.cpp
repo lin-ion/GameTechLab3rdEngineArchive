@@ -20,6 +20,7 @@
 #include "Object/Reflection/UClass.h"
 #include "Profiling/Stats/Stats.h"
 #include "Profiling/Time/Timer.h"
+#include "Lua/LuaScriptManager.h"
 #include "Runtime/Engine.h"
 #include "Object/GarbageCollection.h"
 #include <algorithm>
@@ -625,6 +626,10 @@ void UWorld::Tick(float DeltaTime, ELevelTick TickType)
 	// 가 따로 돌리므로 영향 없음 → 메뉴/인트로 위에서 화면 보이고 클릭 가능.
 	if (bPaused)
 	{
+		if (WorldType == EWorldType::Game || WorldType == EWorldType::PIE)
+		{
+			FLuaScriptManager::FireUnpausedTick(DeltaTime);
+		}
 		TickPlayerCamera();
 		return;
 	}

@@ -8,7 +8,7 @@ local BLACK = { X = 0.0, Y = 0.0, Z = 0.0, W = 1.0 }
 
 local EYE_CAMERA_START = {
     arm_length = 0.55,
-    socket_offset = Vec3(1.0, 0.1, 0.51),
+    socket_offset = Vec3(4.0, -0.45, -0.49),
     inherit_pitch = false,
     inherit_yaw = false,
     inherit_roll = false,
@@ -18,7 +18,7 @@ local EYE_CAMERA_START = {
 
 local EYE_CAMERA_END = {
     arm_length = 0.55,
-    socket_offset = Vec3(1.0, -0.0, 0.51),
+    socket_offset = Vec3(4.0, -0.48, -0.49),
     inherit_pitch = false,
     inherit_yaw = false,
     inherit_roll = false,
@@ -28,7 +28,7 @@ local EYE_CAMERA_END = {
 
 local DRAW_CAMERA = {
     arm_length = 3.25,
-    socket_offset = Vec3(4.0, 1.82, 0.7),
+    socket_offset = Vec3(8.0, 1.82, -0.3),
     inherit_pitch = false,
     inherit_yaw = false,
     inherit_roll = false,
@@ -39,6 +39,24 @@ local DRAW_CAMERA = {
 local state = {
     active = false
 }
+local unpaused_tick_registered = false
+
+local function ensure_unpaused_tick()
+    if unpaused_tick_registered then
+        return true
+    end
+    if Engine == nil or Engine.SetOnUnpausedTick == nil then
+        return false
+    end
+
+    Engine.SetOnUnpausedTick(function(dt)
+        if state.active == true then
+            HaruUltimateCutscene.Tick(dt)
+        end
+    end)
+    unpaused_tick_registered = true
+    return true
+end
 
 local function clamp01(value)
     if value == nil or value < 0.0 then
@@ -91,12 +109,27 @@ local function get_camera_state(spring_arm, camera)
         inherit_pitch = spring_arm ~= nil and spring_arm.GetInheritPitch ~= nil and spring_arm:GetInheritPitch() or nil,
         inherit_yaw = spring_arm ~= nil and spring_arm.GetInheritYaw ~= nil and spring_arm:GetInheritYaw() or nil,
         inherit_roll = spring_arm ~= nil and spring_arm.GetInheritRoll ~= nil and spring_arm:GetInheritRoll() or nil,
+        camera_relative_location = camera ~= nil and camera.RelativeLocation or nil,
         camera_rotation = camera ~= nil and camera.GetRotation ~= nil and camera:GetRotation() or nil,
         fov = camera ~= nil and camera.GetFOV ~= nil and camera:GetFOV() or nil
     }
 end
 
-local function apply_camera_state(spring_arm, camera, camera_state)
+local function get_direct_camera_relative_location(camera_state)
+    if camera_state == nil then
+        return nil
+    end
+
+    local arm_length = camera_state.arm_length or 0.0
+    local socket_offset = camera_state.socket_offset or Vec3(0.0, 0.0, 0.0)
+    return Vec3(
+        (socket_offset.X or 0.0) - arm_length,
+        socket_offset.Y or 0.0,
+        socket_offset.Z or 0.0
+    )
+end
+
+local function apply_saved_camera_state(spring_arm, camera, camera_state)
     if camera_state == nil then
         return
     end
@@ -122,10 +155,30 @@ local function apply_camera_state(spring_arm, camera, camera_state)
         end
     end
 
+    if camera ~= nil and camera_state.camera_relative_location ~= nil then
+        camera.RelativeLocation = camera_state.camera_relative_location
+    end
     if camera ~= nil and camera_state.camera_rotation ~= nil and camera.SetRotation ~= nil then
         camera:SetRotation(camera_state.camera_rotation)
     end
     if camera ~= nil and camera_state.fov ~= nil and camera.SetFOV ~= nil then
+        camera:SetFOV(camera_state.fov)
+    end
+end
+
+local function apply_cutscene_camera_state(camera, camera_state)
+    if camera == nil or camera_state == nil then
+        return
+    end
+
+    local relative_location = get_direct_camera_relative_location(camera_state)
+    if relative_location ~= nil then
+        camera.RelativeLocation = relative_location
+    end
+    if camera_state.camera_rotation ~= nil and camera.SetRotation ~= nil then
+        camera:SetRotation(camera_state.camera_rotation)
+    end
+    if camera_state.fov ~= nil and camera.SetFOV ~= nil then
         camera:SetFOV(camera_state.fov)
     end
 end
@@ -166,8 +219,16 @@ function HaruUltimateCutscene.IsActive()
     return state.active == true
 end
 
+function HaruUltimateCutscene.ResetUnpausedTickRegistration()
+    unpaused_tick_registered = false
+end
+
 function HaruUltimateCutscene.Start(config)
     if config == nil or state.active then
+        return false
+    end
+    if not ensure_unpaused_tick() then
+        log("start failed: Engine.SetOnUnpausedTick unavailable")
         return false
     end
 
@@ -180,11 +241,12 @@ function HaruUltimateCutscene.Start(config)
         on_tick_lock = config.on_tick_lock,
         on_tick_projectile = config.on_tick_projectile,
         log = config.log,
+        next_tick_log_time = 1.0,
         start_camera_state = get_camera_state(config.spring_arm, config.camera)
     }
 
     set_postprocess(state.camera, true)
-    apply_camera_state(state.spring_arm, state.camera, EYE_CAMERA_START)
+    apply_cutscene_camera_state(state.camera, EYE_CAMERA_START)
     Audio.Play("CutScene", 1.0)
     log("started")
     return true
@@ -193,11 +255,18 @@ end
 function HaruUltimateCutscene.Stop()
     if not state.active then
         set_postprocess(state.camera, false)
+        if Engine ~= nil and Engine.ResumeGame ~= nil then
+            Engine.ResumeGame()
+        end
         return
     end
 
     set_postprocess(state.camera, false)
+    apply_saved_camera_state(state.spring_arm, state.camera, state.start_camera_state)
     state.active = false
+    if Engine ~= nil and Engine.ResumeGame ~= nil then
+        Engine.ResumeGame()
+    end
     log("stopped")
 end
 
@@ -208,13 +277,17 @@ function HaruUltimateCutscene.Tick(dt)
 
     state.elapsed = (state.elapsed or 0.0) + (dt or 0.0)
     local elapsed = state.elapsed
+    if state.next_tick_log_time ~= nil and elapsed >= state.next_tick_log_time then
+        log("tick elapsed=" .. tostring(elapsed))
+        state.next_tick_log_time = state.next_tick_log_time + 1.0
+    end
 
     if elapsed <= EYE_DURATION then
         local alpha = smoothstep(elapsed / EYE_DURATION)
-        apply_camera_state(state.spring_arm, state.camera, lerp_camera_state(EYE_CAMERA_START, EYE_CAMERA_END, alpha))
+        apply_cutscene_camera_state(state.camera, lerp_camera_state(EYE_CAMERA_START, EYE_CAMERA_END, alpha))
     elseif elapsed <= EYE_DURATION + DRAW_DURATION then
         local alpha = ease_in_cubic((elapsed - EYE_DURATION) / DRAW_DURATION)
-        apply_camera_state(state.spring_arm, state.camera, lerp_camera_state(EYE_CAMERA_END, DRAW_CAMERA, alpha))
+        apply_cutscene_camera_state(state.camera, lerp_camera_state(EYE_CAMERA_END, DRAW_CAMERA, alpha))
     else
         local on_finish = state.on_finish
         HaruUltimateCutscene.Stop()

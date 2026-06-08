@@ -1554,8 +1554,31 @@ local function start_bow_ultimate_cutscene(owner, ability)
         return
     end
 
+    if camera_blend ~= nil and camera_blend.target ~= nil then
+        apply_camera_state(owner, camera_blend.target)
+        log("AirBowShot ultimate cutscene forced pending camera blend: " .. tostring(camera_blend.reason))
+    end
     camera_blend = nil
     stop_bow_aim_particle(ability, "Ultimate cutscene start")
+
+    local cutscene_target_actor = find_spray_target_actor()
+    if cutscene_target_actor ~= nil then
+        face_owner_to_actor_yaw(owner, cutscene_target_actor, "AirBowShot ultimate cutscene")
+    else
+        face_owner_to_camera_yaw(owner, ability)
+    end
+    set_bow_first_person_camera(owner, ability, true)
+    apply_camera_state(owner, {
+        arm_length = BOW_CAMERA_ARM_LENGTH,
+        socket_offset = BOW_CAMERA_SOCKET_OFFSET,
+        inherit_pitch = false,
+        fov = BOW_CAMERA_FOV
+    })
+    update_bow_first_person_camera(owner, ability)
+    local cutscene_spring_arm = get_spring_arm(owner)
+    if cutscene_spring_arm ~= nil and cutscene_spring_arm.RefreshSpringArm ~= nil then
+        cutscene_spring_arm:RefreshSpringArm(0.0)
+    end
 
     ability.cutscene_active = true
     ability.cutscene_finished = false
@@ -1590,6 +1613,9 @@ local function start_bow_ultimate_cutscene(owner, ability)
             end
         end,
         on_finish = function()
+            if Engine ~= nil and Engine.ResumeGame ~= nil then
+                Engine.ResumeGame()
+            end
             ability.cutscene_finished = true
             ability.cutscene_active = false
             launch_prepared_arrow_from_stored_aim(owner, ability, "Ultimate cutscene end")
@@ -1608,12 +1634,20 @@ local function start_bow_ultimate_cutscene(owner, ability)
     })
 
     if not cutscene_started then
+        if Engine ~= nil and Engine.ResumeGame ~= nil then
+            Engine.ResumeGame()
+        end
         if ability.damage_disabled_for_cutscene then
             set_player_damage_enabled(owner, true, "Ultimate cutscene start failed")
             ability.damage_disabled_for_cutscene = false
         end
         ability.cutscene_active = false
         return
+    end
+
+    if Engine ~= nil and Engine.PauseGame ~= nil then
+        Engine.PauseGame()
+        log("AirBowShot ultimate cutscene world paused")
     end
 
     log("AirBowShot ultimate cutscene requested: gauge=" .. tostring(get_ultimate_gauge(owner))
@@ -1625,6 +1659,10 @@ end
 local function tick_bow_ultimate_cutscene(owner, ability, dt)
     if ability == nil or not ability.cutscene_active then
         return false
+    end
+
+    if Engine ~= nil and Engine.IsPaused ~= nil and Engine.IsPaused() then
+        return true
     end
 
     if HaruUltimateCutscene.IsActive() then
@@ -1930,6 +1968,9 @@ local function setup_abilities()
 end
 
 function BeginPlay()
+    if HaruUltimateCutscene.ResetUnpausedTickRegistration ~= nil then
+        HaruUltimateCutscene.ResetUnpausedTickRegistration()
+    end
     setup_abilities()
 end
 

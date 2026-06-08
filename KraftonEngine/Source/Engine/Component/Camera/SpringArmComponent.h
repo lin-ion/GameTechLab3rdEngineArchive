@@ -28,6 +28,8 @@ public:
 
 	void BeginPlay() override;
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
+	UFUNCTION(Callable, Category="SpringArm")
+	void RefreshSpringArm(float DeltaTime = 0.0f);
 	// ─── 튜닝 파라미터 ─────────────────────────────────────────────
 	// arm 길이 — 부착점에서 카메라까지의 거리 (Local -X 방향).
 	UPROPERTY(Edit, Save, Category="SpringArm", DisplayName="Target Arm Length", Min=0.0f, Max=100000.0f, Speed=1.0f)
@@ -80,6 +82,8 @@ public:
 	void ResetLagState();
 
 private:
+	void UpdateSpringArm(float DeltaTime);
+
 	// 매 Tick 에 갱신되는 보간 상태 — 부착점 (parent + TargetOffset) 위치/회전.
 	FVector LaggedAttachLoc = FVector(0.0f, 0.0f, 0.0f);
 	FQuat LaggedAttachRot;
