@@ -52,10 +52,6 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 	LoadStartLevel();
 
 	SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, Renderer));
-
-	// [DEBUG/TEST 스캐폴딩] 신규 계층형 UI 드로우/레이아웃/스케일 검증용 임시 Canvas.
-	// 사이클 5/7 의 런타임 수동 점검을 위해 시작 시 자동 생성한다. 추후 제거 예정.
-	FUICanvasManager::Get().CreateDebugTestCanvas();
 }
 
 void UGameEngine::Shutdown()

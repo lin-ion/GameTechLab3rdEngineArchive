@@ -41,45 +41,6 @@ UUICanvas* FUICanvasManager::CreateCanvas()
 	return Canvas;
 }
 
-UUICanvas* FUICanvasManager::CreateDebugTestCanvas()
-{
-	UUICanvas* Canvas = CreateCanvas();
-
-	auto MakeRect = [Canvas](const FVector2& Anchor, const FVector2& Pivot,
-	                         const FVector2& Position, const FVector2& Size, const FVector4& Color)
-	{
-		UUIElement* Element = UObjectManager::Get().CreateObject<UUIElement>();
-		Element->SetAnchor(Anchor);
-		Element->SetPivot(Pivot);
-		Element->SetPosition(Position);
-		Element->SetSize(Size);
-		Element->SetColor(Color);
-		Canvas->AddChild(Element);
-	};
-
-	// 좌상단 앵커/피벗 — 화면 좌상단에서 (50,50) 떨어진 곳.
-	MakeRect({ 0.0f, 0.0f }, { 0.0f, 0.0f }, { 50.0f, 50.0f }, { 300.0f, 120.0f },
-	         { 0.85f, 0.2f, 0.2f, 0.85f });
-	// 중앙 앵커 + 중앙 피벗 — 화면 정중앙에 정렬.
-	MakeRect({ 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.0f, 0.0f }, { 400.0f, 200.0f },
-	         { 0.2f, 0.7f, 0.3f, 0.85f });
-	// 우하단 앵커 + 우하단 피벗 — 화면 우하단에서 (-40,-40) 안쪽.
-	MakeRect({ 1.0f, 1.0f }, { 1.0f, 1.0f }, { -40.0f, -40.0f }, { 250.0f, 150.0f },
-	         { 0.2f, 0.4f, 0.9f, 0.85f });
-
-	// 텍스트 라벨(RmlUi 마운트) — 상단 중앙 빈 영역. 사이클 6 검증용.
-	{
-		UUILabel* Label = UObjectManager::Get().CreateObject<UUILabel>();
-		Label->SetAnchor({ 0.5f, 0.0f });
-		Label->SetPivot({ 0.5f, 0.0f });
-		Label->SetPosition({ 0.0f, 40.0f });
-		Label->SetText("SimpleUI Label");
-		Canvas->AddChild(Label);
-	}
-
-	return Canvas;
-}
-
 void FUICanvasManager::AddReferencedObjects(FReferenceCollector& Collector)
 {
 	// UUICanvas* → UObject* 암시적 업캐스트. 각 Canvas 의 자식 트리는

@@ -169,8 +169,9 @@ void AArrowProjectileActor::Tick(float DeltaTime)
 		const FVector L = GetActorLocation();
 		const FVector V = Mesh->GetLinearVelocity();
 		SetActorRotation(MakeArrowRotationFromVelocity(V));
-		UE_LOG("[ArrowProjectileTick] life=%.2f loc=(%.3f,%.3f,%.3f) vel=(%.3f,%.3f,%.3f)",
-			LifeTimeRemaining, L.X, L.Y, L.Z, V.X, V.Y, V.Z);
+	//	UE_LOG("[ArrowProjectileTick] life=%.2f loc=(%.3f,%.3f,%.3f) vel=(%.3f,%.3f,%.3f)",
+	//		LifeTimeRemaining, L.X, L.Y, L.Z, V.X, V.Y, V.Z);
+	//
 	}
 
 	LifeTimeRemaining -= DeltaTime;
