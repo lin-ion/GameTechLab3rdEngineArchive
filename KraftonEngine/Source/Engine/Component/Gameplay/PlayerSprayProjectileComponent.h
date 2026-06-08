@@ -120,7 +120,7 @@ private:
 	bool CheckBossPhysicsAssetHit(const FPlayerSprayProjectile& Projectile, AActor* BossActor, FHitResult& OutHit) const;
 	bool CheckBossPhysicsAssetHit(AActor* BossActor, const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
 	bool FindBossPhysicsAssetHit(const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
-	void ApplyDamageToHitTarget(const FPlayerSprayProjectile& Projectile, const FHitResult& Hit) const;
+	void ApplyDamageToHitTarget(const FPlayerSprayProjectile& Projectile, const FHitResult& Hit);
 	void RemoveProjectileAtIndex(int32 ProjectileIndex, bool bEmitDeathEffect);
 	UParticleSystemComponent* FindOrCreateDeathEffectComponent(const FString& ParticleSystemPath);
 	UParticleSystemComponent* GetDeathEffectComponent(const FPlayerSprayDeathEffectRuntimeSlot& Slot) const;
@@ -187,6 +187,15 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Player Spray|Projectile", DisplayName="Projectile Damage", Min=0.0f, Max=1000000.0f, Speed=1.0f)
 	float ProjectileDamage = 1.0f;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Ultimate", DisplayName="Ultimate Gauge Max", Min=1.0f, Max=1000000.0f, Speed=1.0f)
+	float UltimateGaugeMax = 100.0f;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Ultimate", DisplayName="Ultimate Gauge Per Boss Hit", Min=0.0f, Max=1000000.0f, Speed=1.0f)
+	float UltimateGaugePerBossHit = 10.0f;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Ultimate", DisplayName="Ultimate Gauge", Min=0.0f, Max=1000000.0f, Speed=1.0f)
+	float UltimateGauge = 0.0f;
 
 	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Death Effect Enabled")
 	bool bDeathEffectEnabled = false;

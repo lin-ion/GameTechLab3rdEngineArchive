@@ -31,7 +31,7 @@ local BOW_AIM_PARTICLE_PATH = "Content/Particle System/Aim.uasset"
 local BOW_AIM_PARTICLE_OFFSET = Vec3(1.5, 0.15, 0.3)
 local BOW_RELEASE_SLOMO_DURATION = 0.3
 local BOW_RELEASE_SLOMO_DILATION = 0.15
-local BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST = true
+local BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST = false
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
 local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
 -- Attack
