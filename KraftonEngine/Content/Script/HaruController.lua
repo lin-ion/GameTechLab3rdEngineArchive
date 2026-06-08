@@ -4,15 +4,15 @@ local AbilitySystem = require("AbilitySystem")
 local DASH_SKILL_NAME = "Dash"
 local DASH_SKILL_KEY = "LeftShift"
 local DASH_SKILL_KEYS = { DASH_SKILL_KEY, "GamepadLeftTrigger" }
-local DASH_DISTANCE = 3.0
-local DASH_DURATION = 0.3
+local DASH_DISTANCE = 5.0
+local DASH_DURATION = 0.5
 local DASH_AFTERIMAGE_INTENSITY = 1.0
-local DASH_AFTERIMAGE_RADIUS = 32.0
-local DASH_AFTERIMAGE_SAMPLES = 16
+local DASH_AFTERIMAGE_RADIUS = 128.0
+local DASH_AFTERIMAGE_SAMPLES = 64
 -- Roll
 local ROLL_SKILL_NAME = "Roll"
 local ROLL_SKILL_KEY = "LeftControl"
-local ROLL_DISTANCE = 6.0
+local ROLL_DISTANCE = 12.0
 local ROLL_DURATION = 1.2
 -- Arrow
 local BOW_SKILL_NAME = "AirBowShot"
