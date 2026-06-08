@@ -3579,7 +3579,7 @@
           "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
           "CollisionEnabled" : 0,
           "Mass" : 1.000000,
-          "MaterialSlots" : ["Content/Material/Auto/Материал.uasset"],
+          "MaterialSlots" : ["Content/Material/Auto/Material.uasset"],
           "ObjectType" : 0,
           "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
           "RelativeTransform.Scale" : [500.000000, 500.000000, 500.000000],
@@ -3668,6 +3668,21 @@
           "bTickEnable" : true,
           "bUseMeshTriangleCollision" : false
         }
+      }
+    }, {
+      "ClassName" : "AUICanvasActor",
+      "Name" : "AUICanvasActor_4",
+      "NonSceneComponents" : [],
+      "ObjectId" : 108,
+      "Properties" : {
+        "Bindings" : [],
+        "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
+        "PendingActorRotation" : [0.000000, 0.000000, 0.000000],
+        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
+        "PendingActorVisible" : true,
+        "PendingTagsString" : "",
+        "UIAssetPath" : "Content/UI/NewUI.uasset",
+        "bNeedsTick" : true
       }
     }],
   "ClassName" : "UWorld",

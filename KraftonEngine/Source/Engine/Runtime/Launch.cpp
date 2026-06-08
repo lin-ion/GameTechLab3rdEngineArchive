@@ -59,12 +59,15 @@ namespace
 
 int Launch(HINSTANCE hInstance, int nShowCmd)
 {
-	__try
-	{
-		return GuardedMain(hInstance, nShowCmd);
-	}
-	__except (WriteCrashDump(GetExceptionInformation()))
-	{
-		return static_cast<int>(GetExceptionCode());
-	}
+	//__try
+	//{
+	//	return GuardedMain(hInstance, nShowCmd);
+	//}
+	//__except (WriteCrashDump(GetExceptionInformation()))
+	//{
+	//	return static_cast<int>(GetExceptionCode());
+	//}
+
+	return GuardedMain(hInstance, nShowCmd);
+
 }

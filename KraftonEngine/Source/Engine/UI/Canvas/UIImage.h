@@ -26,6 +26,11 @@ public:
 	// 텍스처 없으면 nullptr → SimpleUIPass 가 흰색 fallback 으로 단색 처리. Device 는 패스가 전달.
 	ID3D11ShaderResourceView* ResolveTextureSRV(ID3D11Device* Device);
 
+	// 텍스처 파일 경로(프로젝트 상대, 예: "Content/UI/Images/foo.png"). UI 에디터 Details 에서 설정.
+	// 절대경로를 넘기면 SetTexturePath 가 프로젝트 상대로 정규화해 스탠드얼론 빌드 이식성을 보장한다.
+	void    SetTexturePath(const FString& InPath);
+	FString GetTexturePath() const { return TexturePath.ToString(); }
+
 private:
 	UPROPERTY(Edit, Save, Category="Image", DisplayName="Texture", AssetType="Texture")
 	FSoftObjectPtr TexturePath;
