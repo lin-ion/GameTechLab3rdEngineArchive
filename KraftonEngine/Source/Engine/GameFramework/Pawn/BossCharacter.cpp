@@ -9,6 +9,8 @@
 #include "UI/Canvas/UICanvasActor.h"
 #include "UI/Canvas/UICanvas.h"
 #include "UI/Canvas/UIElement.h"
+#include "Runtime/Engine.h"
+#include "Viewport/GameViewportClient.h"
 
 ABossCharacter::ABossCharacter()
 {
@@ -38,6 +40,17 @@ void ABossCharacter::Tick(float DeltaTime)
 		bScoreRecorded = true;
 		FScoreManager::Get().OnBossDefeated();
 		SetScoreUIVisible(true);
+
+		// 결과화면 입력 모드 — 마우스를 카메라(마우스룩)에서 분리하고 커서를 풀어 UI 클릭 가능하게.
+		// UIOnly: 게임 입력 스냅샷을 만들지 않아 마우스룩/이동이 멈추고 커서 캡처도 풀리며,
+		// UI 런타임 클릭(TickRuntimeInput)은 계속 처리된다(PIE/standalone 동일).
+		if (GEngine)
+		{
+			if (UGameViewportClient* Viewport = GEngine->GetGameViewportClient())
+			{
+				Viewport->SetInputMode(EGameInputMode::UIOnly);
+			}
+		}
 	}
 }
 
