@@ -329,6 +329,7 @@ public:
 
     // Editor / 직렬화 통합.
     void GetEditableProperties(TArray<FPropertyValue>& OutProps) override;
+    void PostEditChangeProperty(const FPropertyChangedEvent& Event) override;
     void PostEditProperty(const char* PropertyName) override;
     void Serialize(FArchive& Ar) override;
     void OnPostLoad(FArchive& Ar) override;
