@@ -35,6 +35,10 @@ public:
 	// 점수 공식 — 발사체 0이면 0(0 나누기 방지), 상한 10000 보장.
 	static int32 ComputeScore(int32 BossHits, int32 ShotsFired);
 
+	// Saves/Scores.json 을 읽어 점수 내림차순 상위 MaxEntries 개를 멀티라인 문자열로 만든다(점수판 UI용).
+	// 파일이 없거나 비면 "No scores yet". (한 줄당 "순위.  점수")
+	FString BuildScoreboardText(int32 MaxEntries = 10) const;
+
 private:
 	FScoreManager() = default;
 	~FScoreManager() = default;

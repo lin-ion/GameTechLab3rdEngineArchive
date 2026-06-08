@@ -9,7 +9,9 @@
 #include <ctime>
 #include <fstream>
 #include <filesystem>
+#include <functional>
 #include <string>
+#include <vector>
 
 void FScoreManager::BeginRun()
 {
@@ -101,4 +103,59 @@ void FScoreManager::WriteRecord(int32 Score) const
 	{
 		UE_LOG("[Score] FAILED to open Scores.json for write");
 	}
+}
+
+FString FScoreManager::BuildScoreboardText(int32 MaxEntries) const
+{
+	using namespace json;
+
+	const std::wstring Dir = FPaths::SaveDir();
+	const std::filesystem::path FilePath = std::filesystem::path(Dir) / L"Scores.json";
+
+	std::ifstream In(FilePath);
+	if (!In.is_open())
+	{
+		return FString("No scores yet");
+	}
+	const std::string Content((std::istreambuf_iterator<char>(In)),
+		std::istreambuf_iterator<char>());
+	if (Content.empty())
+	{
+		return FString("No scores yet");
+	}
+
+	JSON Root = JSON::Load(Content);
+	if (Root.JSONType() != JSON::Class::Array)
+	{
+		return FString("No scores yet");
+	}
+
+	std::vector<long> Scores;
+	for (auto& Rec : Root.ArrayRange())
+	{
+		if (Rec.hasKey("score"))
+		{
+			Scores.push_back(Rec["score"].ToInt());
+		}
+	}
+	if (Scores.empty())
+	{
+		return FString("No scores yet");
+	}
+
+	std::sort(Scores.begin(), Scores.end(), std::greater<long>());
+
+	const int32 Count = (std::min)(MaxEntries, static_cast<int32>(Scores.size()));
+	std::string Out;
+	char Buf[64] = {};
+	for (int32 i = 0; i < Count; ++i)
+	{
+		snprintf(Buf, sizeof(Buf), "%d.  %ld", i + 1, Scores[static_cast<size_t>(i)]);
+		Out += Buf;
+		if (i < Count - 1)
+		{
+			Out += "\n";
+		}
+	}
+	return FString(Out);
 }
