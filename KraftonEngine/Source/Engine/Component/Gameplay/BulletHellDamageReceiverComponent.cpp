@@ -13,6 +13,11 @@ UBulletHellDamageReceiverComponent::UBulletHellDamageReceiverComponent()
 
 float UBulletHellDamageReceiverComponent::ApplyDamage(float DamageAmount)
 {
+	if (!bDamageEnabled)
+	{
+		return 0.0f;
+	}
+
 	const float ClampedDamage = (std::max)(0.0f, DamageAmount);
 	if (ClampedDamage <= 0.0f)
 	{

@@ -111,6 +111,7 @@ struct FFrameContext
 	FCameraFadeState CameraFade;
 	FCameraVignetteState CameraVignette;
 	FCameraLetterboxState CameraLetterbox;
+	FCameraRadialBlurState CameraRadialBlur;
 
 	// Actor-local action VFX
 	TArray<FActionAfterImageRenderState> ActionAfterImages;

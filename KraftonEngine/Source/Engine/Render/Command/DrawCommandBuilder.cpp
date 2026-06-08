@@ -71,6 +71,7 @@ void FDrawCommandBuilder::Create(ID3D11Device* InDevice, ID3D11DeviceContext* In
 	SceneDepthCB.Create(InDevice, sizeof(FSceneDepthPConstants), "SceneDepthCB");
 	DoFCB.Create(InDevice, sizeof(FDoFConstants), "DoFCB");
 	ActionAfterImageCB.Create(InDevice, sizeof(FActionAfterImageConstants), "ActionAfterImageCB");
+	CameraRadialBlurCB.Create(InDevice, sizeof(FCameraRadialBlurConstants), "CameraRadialBlurCB");
 	FXAACB.Create(InDevice, sizeof(FFXAAConstants), "FXAACB");
 	GammaCorrectionCB.Create(InDevice, sizeof(FGammaCorrectionConstants), "GammaCorrectionCB");
 
@@ -103,6 +104,7 @@ void FDrawCommandBuilder::Release()
 	SceneDepthCB.Release();
 	DoFCB.Release();
 	ActionAfterImageCB.Release();
+	CameraRadialBlurCB.Release();
 	FXAACB.Release();
 	GammaCorrectionCB.Release();
 	
@@ -1186,6 +1188,33 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			Cmd.InitFullscreenTriangle(AfterImageShader, ERenderPass::ActionAfterImage,
 				PassRenderStateTable->ToDrawCommandState(ERenderPass::ActionAfterImage, ViewMode));
 			Cmd.Bindings.PerShaderCB[0] = &ActionAfterImageCB;
+			Cmd.BuildSortKey(0);
+		}
+	}
+
+	// Camera radial blur, used by focus/aim states.
+	if (!bPureDebugView && Frame.CameraRadialBlur.bEnabled && Frame.CameraRadialBlur.Intensity > 0.0f)
+	{
+		FShader* RadialBlurShader = FShaderManager::Get().GetOrCreate(EShaderPath::RadialBlur);
+		if (RadialBlurShader)
+		{
+			FCameraRadialBlurConstants RadialBlurData = {};
+			RadialBlurData.Params0 = FVector4(
+				Frame.CameraRadialBlur.Center.X,
+				Frame.CameraRadialBlur.Center.Y,
+				Frame.CameraRadialBlur.Intensity,
+				Frame.CameraRadialBlur.Radius);
+			RadialBlurData.Params1 = FVector4(
+				static_cast<float>(Frame.CameraRadialBlur.SampleCount),
+				0.0f,
+				0.0f,
+				0.0f);
+			CameraRadialBlurCB.Update(Ctx, &RadialBlurData, sizeof(FCameraRadialBlurConstants));
+
+			FDrawCommand& Cmd = DrawCommandList.AddCommand();
+			Cmd.InitFullscreenTriangle(RadialBlurShader, ERenderPass::RadialBlur,
+				PassRenderStateTable->ToDrawCommandState(ERenderPass::RadialBlur, ViewMode));
+			Cmd.Bindings.PerShaderCB[0] = &CameraRadialBlurCB;
 			Cmd.BuildSortKey(0);
 		}
 	}

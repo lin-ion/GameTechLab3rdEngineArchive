@@ -1,5 +1,6 @@
 #include "Component/Gameplay/PlayerSprayProjectileComponent.h"
 
+#include "Audio/AudioManager.h"
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Component/Gameplay/BulletTrailComponent.h"
 #include "Component/Particle/ParticleSystemComponent.h"
@@ -291,6 +292,32 @@ void UPlayerSprayProjectileComponent::ClearProjectiles()
 	Projectiles.clear();
 	ClearRender();
 	SyncTrail();
+}
+
+void UPlayerSprayProjectileComponent::AddUltimateGauge(float Amount)
+{
+	if (Amount <= 0.0f || UltimateGaugeMax <= 0.0f)
+	{
+		return;
+	}
+
+	const float PreviousGauge = UltimateGauge;
+	UltimateGauge = ClampFloat(UltimateGauge + Amount, 0.0f, UltimateGaugeMax);
+	UE_LOG("[PlayerSprayUltimate] gauge increased owner=%s amount=%.3f gauge=%.3f/%.3f ready=%d",
+		GetOwner() ? GetOwner()->GetName().c_str() : "nil",
+		UltimateGauge - PreviousGauge,
+		UltimateGauge,
+		UltimateGaugeMax,
+		IsUltimateReady() ? 1 : 0);
+}
+
+void UPlayerSprayProjectileComponent::ResetUltimateGauge()
+{
+	UltimateGauge = 0.0f;
+	UE_LOG("[PlayerSprayUltimate] gauge reset owner=%s gauge=%.3f/%.3f",
+		GetOwner() ? GetOwner()->GetName().c_str() : "nil",
+		UltimateGauge,
+		UltimateGaugeMax);
 }
 
 void UPlayerSprayProjectileComponent::TickComponent(
@@ -944,7 +971,7 @@ bool UPlayerSprayProjectileComponent::FindBossPhysicsAssetHit(
 
 void UPlayerSprayProjectileComponent::ApplyDamageToHitTarget(
 	const FPlayerSprayProjectile& Projectile,
-	const FHitResult& Hit) const
+	const FHitResult& Hit)
 {
 	if (Projectile.Damage <= 0.0f)
 	{
@@ -959,7 +986,12 @@ void UPlayerSprayProjectileComponent::ApplyDamageToHitTarget(
 
 	if (UBulletHellDamageReceiverComponent* DamageReceiver = TargetActor->GetComponentByClass<UBulletHellDamageReceiverComponent>())
 	{
-		DamageReceiver->ApplyDamage(Projectile.Damage);
+		const float AppliedDamage = DamageReceiver->ApplyDamage(Projectile.Damage);
+		if (AppliedDamage > 0.0f && IsBossActor(TargetActor))
+		{
+			FAudioManager::Get().PlayAudio("Hit", 1.0f);
+			AddUltimateGauge(UltimateGaugePerBossHit);
+		}
 	}
 }
 

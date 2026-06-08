@@ -133,3 +133,24 @@ struct FCameraLetterboxState
 	UPROPERTY(Save)
 	FLinearColor Color = FLinearColor::Black();
 };
+
+USTRUCT()
+struct FCameraRadialBlurState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Save)
+	bool bEnabled = false;
+
+	UPROPERTY(Save)
+	float Intensity = 0.0f;
+
+	UPROPERTY(Save)
+	float Radius = 0.65f;
+
+	UPROPERTY(Save)
+	int32 SampleCount = 12;
+
+	UPROPERTY(Save)
+	FVector2 Center = FVector2(0.5f, 0.5f);
+};

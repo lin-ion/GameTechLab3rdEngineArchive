@@ -278,6 +278,12 @@ struct FActionAfterImageConstants
 	FVector4 Params1; // xy: inverse viewport size, z: sample count, w: stencil value
 };
 
+struct FCameraRadialBlurConstants
+{
+	FVector4 Params0; // xy: center, z: intensity, w: protected center radius
+	FVector4 Params1; // x: sample count, yzw: unused
+};
+
 struct FGammaCorrectionConstants
 {
 	float Gamma;

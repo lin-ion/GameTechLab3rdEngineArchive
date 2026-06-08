@@ -102,6 +102,7 @@ private:
 	FConstantBuffer SceneDepthCB;
 	FConstantBuffer DoFCB;
 	FConstantBuffer ActionAfterImageCB;
+	FConstantBuffer CameraRadialBlurCB;
 	FConstantBuffer FXAACB;
 	FConstantBuffer GammaCorrectionCB;
 	FConstantBuffer CameraFadeCB;

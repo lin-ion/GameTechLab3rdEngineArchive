@@ -1,5 +1,6 @@
 #include "BulletHellComponent.h"
 
+#include "Audio/AudioManager.h"
 #include "Component/Gameplay/BulletTrailComponent.h"
 #include "Component/Particle/ParticleSystemComponent.h"
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
@@ -80,6 +81,23 @@ namespace
 			return true;
 		}
 		return false;
+	}
+
+	bool IsPlayerActor(const AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return false;
+		}
+		if (HasActorTag(Actor, PlayerTagName))
+		{
+			return true;
+		}
+		const std::string Name = Actor->GetName();
+		return Name.find("Player") != std::string::npos
+			|| Name.find("player") != std::string::npos
+			|| Name.find("Haru") != std::string::npos
+			|| Name.find("haru") != std::string::npos;
 	}
 
 	FVector VelocityToTarget(const FVector& Position, const FVector& Target, float Speed)
@@ -1187,7 +1205,11 @@ void UBulletHellComponent::ApplyDamageToHitTarget(const FBulletInstance& Bullet,
 
 	if (UBulletHellDamageReceiverComponent* DamageReceiver = TargetActor->GetComponentByClass<UBulletHellDamageReceiverComponent>())
 	{
-		DamageReceiver->ApplyDamage(Bullet.Damage);
+		const float AppliedDamage = DamageReceiver->ApplyDamage(Bullet.Damage);
+		if (AppliedDamage > 0.0f && IsPlayerActor(TargetActor))
+		{
+			FAudioManager::Get().PlayAudio("Hit", 1.0f);
+		}
 	}
 }
 

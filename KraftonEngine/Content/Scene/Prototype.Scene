@@ -3680,7 +3680,7 @@
       }
     }, {
       "ClassName" : "ALuaCharacter",
-      "Name" : "ALuaCharacter_1",
+      "Name" : "Haru",
       "NonSceneComponents" : [{
           "ClassName" : "UCharacterMovementComponent",
           "ObjectId" : 110,
@@ -3768,7 +3768,7 @@
             "ScatterDuration" : 0.600000,
             "SpawnForwardOffset" : 0.300000,
             "SpawnUpOffset" : 0.200000,
-            "TrailColor" : [0.000000, 1.000000, 1.000000, 1.000000],
+            "TrailColor" : [0.749020, 0.000000, 0.905882, 1.000000],
             "TrailLifetime" : 0.180000,
             "TrailMaterialPath" : "Content/Material/Particle/ParticleBeamTrail.uasset",
             "TrailMaxSamples" : 8,

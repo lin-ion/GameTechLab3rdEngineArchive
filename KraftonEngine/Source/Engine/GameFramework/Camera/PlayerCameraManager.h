@@ -173,6 +173,22 @@ public:
 	UFUNCTION(Pure, Category="Camera|Vignette")
 	FLinearColor GetVignetteColor() const { return VignetteColor; }
 
+	UFUNCTION(Callable, Category="Camera|PostProcess")
+	virtual void SetRadialBlur(float Intensity, float Radius, int32 SampleCount, FVector2 Center = FVector2(0.5f, 0.5f));
+	UFUNCTION(Callable, Category="Camera|PostProcess")
+	virtual void ClearRadialBlur();
+
+	UFUNCTION(Pure, Category="Camera|PostProcess")
+	bool IsRadialBlurEnabled() const { return RadialBlur.bEnabled; }
+	UFUNCTION(Pure, Category="Camera|PostProcess")
+	float GetRadialBlurIntensity() const { return RadialBlur.Intensity; }
+	UFUNCTION(Pure, Category="Camera|PostProcess")
+	float GetRadialBlurRadius() const { return RadialBlur.Radius; }
+	UFUNCTION(Pure, Category="Camera|PostProcess")
+	int32 GetRadialBlurSampleCount() const { return RadialBlur.SampleCount; }
+	UFUNCTION(Pure, Category="Camera|PostProcess")
+	FVector2 GetRadialBlurCenter() const { return RadialBlur.Center; }
+
 	// ─── Camera Depth of Field / Bokeh ──────────────────────────────
 	UFUNCTION(Callable, Category="Camera|PostProcess")
 	virtual void SetDepthOfField(float FocusDistance, float FocusRange, float MaxBlurRadius);
@@ -263,6 +279,8 @@ private:
 	float VignetteRadius = 0.75f;
 	float VignetteSoftness = 0.35f;
 	FLinearColor VignetteColor = FLinearColor::Black();
+
+	FCameraRadialBlurState RadialBlur;
 
 	// Depth of Field / Bokeh state. Render pipelines copy this into FViewportRenderOptions.
 	bool bEnableDepthOfField = false;
