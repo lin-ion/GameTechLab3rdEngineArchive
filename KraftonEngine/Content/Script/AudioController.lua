@@ -16,6 +16,7 @@ local function load_audio()
     Audio.Load("Walking", "Walking.wav", true)
     Audio.Load("CutScene", "CutScene.wav", false)
     Audio.Load("Dash", "Dash.wav", false)
+    Audio.Load("Bowcharging", "Bowcharging.mp3", false)
 
     Audio.Load("DragonGrowl", "DragonGrowl.mp3", false)
     Audio.Load("DragonGrowl2", "DragonGrowl2.mp3", false)
