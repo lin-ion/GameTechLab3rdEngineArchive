@@ -19,14 +19,17 @@ struct FPlayerSprayProjectile
 	FVector PreviousPosition = FVector::ZeroVector;
 	FVector Velocity = FVector::ZeroVector;
 	TWeakObjectPtr<AActor> HomingTarget;
+	FVector HomingTargetPoint = FVector::ZeroVector;
 	float Age = 0.0f;
 	float Lifetime = 2.0f;
 	float ScatterAge = 0.0f;
 	float Radius = 0.08f;
 	float Damage = 1.0f;
+	float HomingTargetMemoryTime = 0.0f;
 	TArray<FVector> TrailSamples;
 	float TrailSampleAccumulator = 0.0f;
 	bool bHoming = false;
+	bool bHasHomingTargetPoint = false;
 };
 
 UCLASS()
@@ -78,8 +81,11 @@ private:
 	void SpawnProjectile(const FVector& Origin, const FVector& CameraForward, AActor* TargetActor, int32 BurstIndex, int32 BurstCount);
 	void TickProjectiles(float DeltaTime);
 	void UpdateHoming(FPlayerSprayProjectile& Projectile, float DeltaTime);
+	bool UpdateHomingTargetPoint(FPlayerSprayProjectile& Projectile, float DeltaTime);
 	bool CheckProjectileCollision(const FPlayerSprayProjectile& Projectile);
 	bool CheckBossPhysicsAssetHit(const FPlayerSprayProjectile& Projectile, AActor* BossActor, FHitResult& OutHit) const;
+	bool CheckBossPhysicsAssetHit(AActor* BossActor, const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
+	bool FindBossPhysicsAssetHit(const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
 	void ApplyDamageToHitTarget(const FPlayerSprayProjectile& Projectile, const FHitResult& Hit) const;
 	void RemoveProjectileAtIndex(int32 ProjectileIndex);
 	void SyncRender();
@@ -120,6 +126,15 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Player Spray|Projectile", DisplayName="Homing Max Turn Rate", Min=0.0f, Max=3600.0f, Speed=1.0f)
 	float HomingMaxTurnRateDegrees = 720.0f;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Projectile", DisplayName="Homing Sensor Radius", Min=0.0f, Max=100.0f, Speed=0.01f)
+	float HomingSensorRadius = 0.35f;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Projectile", DisplayName="Homing Look Ahead Time", Min=0.0f, Max=10.0f, Speed=0.01f)
+	float HomingLookAheadTime = 0.45f;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Projectile", DisplayName="Homing Target Memory Time", Min=0.0f, Max=10.0f, Speed=0.01f)
+	float HomingTargetMemoryDuration = 0.12f;
 
 	UPROPERTY(Edit, Save, Category="Player Spray|Projectile", DisplayName="Cone Half Angle", Min=0.0f, Max=89.0f, Speed=0.1f)
 	float ConeHalfAngleDegrees = 22.0f;

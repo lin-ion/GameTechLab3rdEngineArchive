@@ -347,7 +347,7 @@ void UPlayerSprayProjectileComponent::TryFireBurst()
 		SpawnProjectile(SpawnOrigin, CameraForward, BossActor, Index, Count);
 	}
 
-	UE_LOG("[PlayerSpray] Burst target=%s count=%d active=%d",
+	UE_LOG("[PlayerSpray] Burst aimTarget=%s count=%d active=%d",
 		BossActor ? BossActor->GetName().c_str() : "nil",
 		Count,
 		static_cast<int32>(Projectiles.size()));
@@ -433,7 +433,7 @@ bool UPlayerSprayProjectileComponent::FindCameraBossTarget(
 			OutCameraForward.X,
 			OutCameraForward.Y,
 			OutCameraForward.Z);
-		return false;
+		return true;
 	}
 
 	OutBossActor = Hit.HitActor;
@@ -675,13 +675,13 @@ void UPlayerSprayProjectileComponent::UpdateHoming(FPlayerSprayProjectile& Proje
 		return;
 	}
 
-	const AActor* TargetActor = Projectile.HomingTarget.Get();
-	if (!TargetActor)
+	UpdateHomingTargetPoint(Projectile, DeltaTime);
+	if (!Projectile.bHasHomingTargetPoint)
 	{
 		return;
 	}
 
-	const FVector DesiredDirection = SafeDirection(TargetActor->GetActorLocation() - Projectile.Position, Projectile.Velocity);
+	const FVector DesiredDirection = SafeDirection(Projectile.HomingTargetPoint - Projectile.Position, Projectile.Velocity);
 	const float CurrentSpeed = Projectile.Velocity.Length();
 	if (CurrentSpeed <= 0.0f)
 	{
@@ -703,6 +703,45 @@ void UPlayerSprayProjectileComponent::UpdateHoming(FPlayerSprayProjectile& Proje
 	const float Alpha = (std::min)(TurnAlpha, StrengthAlpha);
 	const FVector NewDirection = SafeDirection(CurrentDirection * (1.0f - Alpha) + DesiredDirection * Alpha, DesiredDirection);
 	Projectile.Velocity = NewDirection * (HomingSpeed > 0.0f ? HomingSpeed : CurrentSpeed);
+}
+
+bool UPlayerSprayProjectileComponent::UpdateHomingTargetPoint(FPlayerSprayProjectile& Projectile, float DeltaTime)
+{
+	const float CurrentSpeed = Projectile.Velocity.Length();
+	if (CurrentSpeed <= 0.0f)
+	{
+		Projectile.bHasHomingTargetPoint = false;
+		Projectile.HomingTargetMemoryTime = 0.0f;
+		return false;
+	}
+
+	const FVector SensorDirection = SafeDirection(Projectile.Velocity, FVector::ForwardVector);
+	const float LookAheadDistance = (std::max)(Projectile.Radius * 2.0f, CurrentSpeed * (std::max)(0.0f, HomingLookAheadTime));
+	const FVector SensorEnd = Projectile.Position + SensorDirection * LookAheadDistance;
+	const float SensorRadius = Projectile.Radius + (std::max)(0.0f, HomingSensorRadius);
+
+	FHitResult SensorHit;
+	if (FindBossPhysicsAssetHit(Projectile.Position, SensorEnd, SensorRadius, SensorHit))
+	{
+		Projectile.HomingTarget = ResolveHitActor(SensorHit);
+		Projectile.HomingTargetPoint = SensorHit.WorldHitLocation;
+		Projectile.HomingTargetMemoryTime = (std::max)(0.0f, HomingTargetMemoryDuration);
+		Projectile.bHasHomingTargetPoint = true;
+		return true;
+	}
+
+	if (Projectile.HomingTargetMemoryTime > 0.0f)
+	{
+		Projectile.HomingTargetMemoryTime = (std::max)(0.0f, Projectile.HomingTargetMemoryTime - DeltaTime);
+		if (Projectile.HomingTargetMemoryTime > 0.0f)
+		{
+			return Projectile.bHasHomingTargetPoint;
+		}
+	}
+
+	Projectile.HomingTarget.Reset();
+	Projectile.bHasHomingTargetPoint = false;
+	return false;
 }
 
 bool UPlayerSprayProjectileComponent::CheckProjectileCollision(const FPlayerSprayProjectile& Projectile)
@@ -759,12 +798,34 @@ bool UPlayerSprayProjectileComponent::CheckProjectileCollision(const FPlayerSpra
 		}
 	}
 
+	FHitResult PhysicsAssetHit;
+	if (FindBossPhysicsAssetHit(Projectile.PreviousPosition, Projectile.Position, Projectile.Radius, PhysicsAssetHit))
+	{
+		ApplyDamageToHitTarget(Projectile, PhysicsAssetHit);
+		return true;
+	}
+
 	return false;
 }
 
 bool UPlayerSprayProjectileComponent::CheckBossPhysicsAssetHit(
 	const FPlayerSprayProjectile& Projectile,
 	AActor* BossActor,
+	FHitResult& OutHit) const
+{
+	return CheckBossPhysicsAssetHit(
+		BossActor,
+		Projectile.PreviousPosition,
+		Projectile.Position,
+		Projectile.Radius,
+		OutHit);
+}
+
+bool UPlayerSprayProjectileComponent::CheckBossPhysicsAssetHit(
+	AActor* BossActor,
+	const FVector& SegmentStart,
+	const FVector& SegmentEnd,
+	float SweepRadius,
 	FHitResult& OutHit) const
 {
 	OutHit = FHitResult();
@@ -802,9 +863,9 @@ bool UPlayerSprayProjectileComponent::CheckBossPhysicsAssetHit(
 			const FTransform ShapeWorld = ComposePhysicsAssetHitTransforms(BodyWorld, Shape.LocalTransform);
 			float Alpha = 0.0f;
 			if (SegmentIntersectsPhysicsAssetShape(
-				Projectile.PreviousPosition,
-				Projectile.Position,
-				Projectile.Radius,
+				SegmentStart,
+				SegmentEnd,
+				SweepRadius,
 				ShapeWorld,
 				Shape,
 				Alpha))
@@ -822,10 +883,50 @@ bool UPlayerSprayProjectileComponent::CheckBossPhysicsAssetHit(
 	OutHit.bHit = true;
 	OutHit.HitActor = BossActor;
 	OutHit.HitComponent = MeshComponent;
-	OutHit.Distance = (Projectile.Position - Projectile.PreviousPosition).Length() * BestAlpha;
-	OutHit.WorldHitLocation = Projectile.PreviousPosition + (Projectile.Position - Projectile.PreviousPosition) * BestAlpha;
+	OutHit.Distance = (SegmentEnd - SegmentStart).Length() * BestAlpha;
+	OutHit.WorldHitLocation = SegmentStart + (SegmentEnd - SegmentStart) * BestAlpha;
 	OutHit.WorldNormal = SafeDirection(OutHit.WorldHitLocation - BossActor->GetActorLocation(), FVector::UpVector);
 	OutHit.ImpactNormal = OutHit.WorldNormal;
+	return true;
+}
+
+bool UPlayerSprayProjectileComponent::FindBossPhysicsAssetHit(
+	const FVector& SegmentStart,
+	const FVector& SegmentEnd,
+	float SweepRadius,
+	FHitResult& OutHit) const
+{
+	OutHit = FHitResult();
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	float BestDistance = (std::numeric_limits<float>::max)();
+	FHitResult BestHit;
+	for (AActor* Candidate : World->GetActors())
+	{
+		if (!IsValid(Candidate) || Candidate == GetOwner() || HasActorTag(Candidate, PlayerTagName) || !IsBossActor(Candidate))
+		{
+			continue;
+		}
+
+		FHitResult CandidateHit;
+		if (CheckBossPhysicsAssetHit(Candidate, SegmentStart, SegmentEnd, SweepRadius, CandidateHit)
+			&& CandidateHit.Distance < BestDistance)
+		{
+			BestDistance = CandidateHit.Distance;
+			BestHit = CandidateHit;
+		}
+	}
+
+	if (!BestHit.bHit)
+	{
+		return false;
+	}
+
+	OutHit = BestHit;
 	return true;
 }
 
