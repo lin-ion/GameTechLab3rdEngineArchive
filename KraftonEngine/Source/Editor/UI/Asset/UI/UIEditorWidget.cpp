@@ -24,6 +24,7 @@
 #include <cstring>
 #include <cwctype>
 #include <filesystem>
+#include <initializer_list>
 
 namespace
 {
@@ -51,13 +52,11 @@ namespace
 		return false;
 	}
 
-	// 이미지 요소의 텍스처 선택지 — Content/UI/Images/ 안의 png/jpg/jpeg 파일명만 수집(확장자 대소문자
-	// 무시). 저장 경로는 호출부에서 "Content/UI/Images/" + 파일명(forward slash)으로 만든다. 드롭다운이
-	// 열려 있을 때만 호출되므로 매 프레임 디스크 스캔은 아니다(BeginCombo 가 열렸을 때만 true).
-	TArray<FString> CollectUIImageFiles()
+	// 디렉터리에서 주어진 확장자(소문자, 점 포함)에 해당하는 파일명만 수집(대소문자 무시). 드롭다운이
+	// 열려 있을 때만 호출되므로(BeginCombo 가 열렸을 때만 true) 매 프레임 디스크 스캔은 아니다.
+	TArray<FString> CollectFilesWithExt(const std::wstring& Dir, std::initializer_list<const wchar_t*> Exts)
 	{
 		TArray<FString> Files;
-		const std::wstring Dir = FPaths::Combine(FPaths::AssetDir(), L"UI/Images");
 		std::error_code Ec;
 		if (!std::filesystem::exists(Dir, Ec))
 		{
@@ -71,12 +70,60 @@ namespace
 			}
 			std::wstring Ext = Entry.path().extension().wstring();
 			for (wchar_t& Ch : Ext) { Ch = static_cast<wchar_t>(towlower(Ch)); }
-			if (Ext == L".png" || Ext == L".jpg" || Ext == L".jpeg")
+			for (const wchar_t* Want : Exts)
 			{
-				Files.push_back(FPaths::ToUtf8(Entry.path().filename().wstring()));
+				if (Ext == Want)
+				{
+					Files.push_back(FPaths::ToUtf8(Entry.path().filename().wstring()));
+					break;
+				}
 			}
 		}
 		return Files;
+	}
+
+	// Content/UI/Images 의 png/jpg/jpeg 파일명. 저장값은 호출부가 "Content/UI/Images/"+파일명으로 만든다.
+	TArray<FString> CollectUIImageFiles()
+	{
+		return CollectFilesWithExt(FPaths::Combine(FPaths::AssetDir(), L"UI/Images"), { L".png", L".jpg", L".jpeg" });
+	}
+
+	// 캔버스 트리의 비어있지 않은 ElementName 들(액션 대상 후보 — Show/Hide/Toggle/SetImage Target).
+	void CollectElementNames(UUIElement* Element, TArray<FString>& Out)
+	{
+		if (!Element)
+		{
+			return;
+		}
+		if (!Element->GetElementName().empty())
+		{
+			Out.push_back(Element->GetElementName());
+		}
+		for (USceneComponent* Child : Element->GetChildren())
+		{
+			if (UUIElement* ChildElement = Cast<UUIElement>(Child))
+			{
+				CollectElementNames(ChildElement, Out);
+			}
+		}
+	}
+
+	// 문자열 값을 옵션 목록에서 고르는 콤보(토글). 선택 시 Value 갱신 + true 반환. "(None)" 으로 비울 수 있음.
+	// 저장값 == 표시 옵션일 때만 사용(이미지처럼 저장값≠표시값인 경우는 호출부에서 별도 처리).
+	bool StringCombo(const char* Label, const TArray<FString>& Options, FString& Value)
+	{
+		bool bChanged = false;
+		const FString Preview = Value.empty() ? FString("(None)") : Value;
+		if (ImGui::BeginCombo(Label, Preview.c_str()))
+		{
+			if (ImGui::Selectable("(None)", Value.empty())) { Value.clear(); bChanged = true; }
+			for (const FString& Opt : Options)
+			{
+				if (ImGui::Selectable(Opt.c_str(), Opt == Value)) { Value = Opt; bChanged = true; }
+			}
+			ImGui::EndCombo();
+		}
+		return bChanged;
 	}
 
 	// 뷰포트 드로우는 FUICanvasMirror::DrawElement(공유 헤더) 로 이관 — 레벨 뷰포트와 동일 미러 사용.
@@ -198,6 +245,9 @@ void FUIEditorWidget::SaveToAsset()
 	if (FUIAssetManager::Get().Save(Asset))
 	{
 		ClearDirty();
+		// [에셋 변경 라이브 갱신] 이 .uasset 을 참조하는 편집 월드의 AUICanvasActor 들을 재빌드 →
+		// 에디터 씬(뷰포트 미러)에 즉시 반영. 캐시는 방금 Save 가 최신 CanvasData 로 갱신해 둠.
+		AUICanvasActor::RefreshActorsReferencingAsset(Asset->GetSourcePath());
 	}
 }
 
@@ -647,5 +697,86 @@ void FUIEditorWidget::RenderDetailsPanel()
 			TextElem->SetTextColor(FVector4(TCol[0], TCol[1], TCol[2], TCol[3]));
 			MarkDirty();
 		}
+	}
+
+	// [버튼 액션] UUIButton 전용 — 클릭 시 실행할 액션 배열(다중). 각 행 = 액션 종류 + 대상/파라미터.
+	// 런타임(PIE/게임)에서 FUICanvasManager 의 클릭 디스패처가 순서대로 실행한다(.uasset 에 영속).
+	if (UUIButton* BtnElem = Cast<UUIButton>(Selected))
+	{
+		ImGui::Spacing();
+		ImGui::TextDisabled("On Click Actions");
+		ImGui::Separator();
+
+		static const char* const kActionNames[] = {
+			"None", "ChangeScene", "ShowElement", "HideElement", "ToggleElement", "SetImage", "CallLua"
+		};
+		TArray<FUIButtonAction>& Actions = BtnElem->GetOnClickActionsMutable();
+		int RemoveIdx = -1;
+		for (int i = 0; i < static_cast<int>(Actions.size()); ++i)
+		{
+			ImGui::PushID(i);
+			FUIButtonAction& A = Actions[i];
+
+			int Cur = static_cast<int>(A.Action);
+			ImGui::SetNextItemWidth(150.0f);
+			if (ImGui::Combo("##Action", &Cur, kActionNames, IM_ARRAYSIZE(kActionNames)))
+			{
+				A.Action = static_cast<EUIButtonAction>(Cur);
+				MarkDirty();
+			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Remove")) { RemoveIdx = i; }
+
+			// 액션별 파라미터 — 모두 토글(콤보)로 선택. 파일 기반 액션은 관련 확장자만 노출.
+			switch (A.Action)
+			{
+			case EUIButtonAction::ChangeScene:
+				// Content/Scene 의 .Scene 파일만.
+				if (StringCombo("Scene", CollectFilesWithExt(FPaths::SceneDir(), { L".scene" }), A.Target)) { MarkDirty(); }
+				break;
+			case EUIButtonAction::ShowElement:
+			case EUIButtonAction::HideElement:
+			case EUIButtonAction::ToggleElement:
+			{
+				// 캔버스의 명명된 요소 후보.
+				TArray<FString> Names;
+				CollectElementNames(Canvas, Names);
+				if (StringCombo("Target Element", Names, A.Target)) { MarkDirty(); }
+				break;
+			}
+			case EUIButtonAction::SetImage:
+			{
+				TArray<FString> Names;
+				CollectElementNames(Canvas, Names);
+				if (StringCombo("Target Element", Names, A.Target)) { MarkDirty(); }
+				// 이미지 — Content/UI/Images 의 png/jpg/jpeg. 저장값은 프로젝트 상대 경로(표시값=파일명).
+				const FString ImgPreview = A.Param.empty()
+					? FString("(None)")
+					: FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(A.Param)).filename().wstring());
+				if (ImGui::BeginCombo("Image", ImgPreview.c_str()))
+				{
+					if (ImGui::Selectable("(None)", A.Param.empty())) { A.Param.clear(); MarkDirty(); }
+					for (const FString& File : CollectUIImageFiles())
+					{
+						const FString Rel = FString("Content/UI/Images/") + File;
+						if (ImGui::Selectable(File.c_str(), Rel == A.Param)) { A.Param = Rel; MarkDirty(); }
+					}
+					ImGui::EndCombo();
+				}
+				break;
+			}
+			case EUIButtonAction::CallLua:
+				// Content/Script 의 .lua 파일만.
+				if (StringCombo("Lua Script", CollectFilesWithExt(FPaths::ScriptDir(), { L".lua" }), A.Target)) { MarkDirty(); }
+				break;
+			case EUIButtonAction::None:
+			default:
+				break;
+			}
+			ImGui::Separator();
+			ImGui::PopID();
+		}
+		if (RemoveIdx >= 0) { Actions.erase(Actions.begin() + RemoveIdx); MarkDirty(); }
+		if (ImGui::Button("+ Add Action")) { Actions.emplace_back(); MarkDirty(); }
 	}
 }

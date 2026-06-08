@@ -45,6 +45,12 @@ public:
 	bool IsEditorMode() const { return bEditorMode; }
 	void SetEditorMode(bool bOn) { bEditorMode = bOn; if (!bOn) { GrabbedElement = nullptr; } }
 
+	// [버튼 액션] 런타임 클릭 디스패치 — 마우스 down/up 으로 버튼 클릭을 판정해 액션을 실행한다.
+	// GameViewportClient::ProcessInput 가 매 프레임 호출(게임/PIE). 에디터 드래그 모드/편집 월드(등록
+	// 캔버스 없음)에선 no-op. 커서가 버튼 위면 ConsumedMouseThisFrame()=true → 게임 마우스 입력 억제.
+	void TickRuntimeInput();
+	bool ConsumedMouseThisFrame() const { return bConsumedMouseThisFrame; }
+
 	// 마우스(클라이언트 px, 좌상단 원점) 아래의 최상위 가시 Element 를 반환(진단 E1).
 	UUIElement* HitTest(const FVector2& MousePos) const;
 
@@ -76,4 +82,9 @@ private:
 	// 드래그 에디터 상태.
 	bool bEditorMode = false;
 	TWeakObjectPtr<UUIElement> GrabbedElement;
+
+	// [버튼 액션] 런타임 클릭 판정 상태. PressedElement = LBUTTON down 시 잡은 요소(같은 요소에서 up
+	// 해야 클릭 성립). bConsumedMouseThisFrame = 이번 프레임 커서가 버튼 위였는지(게임 입력 억제 신호).
+	TWeakObjectPtr<UUIElement> PressedElement;
+	bool bConsumedMouseThisFrame = false;
 };

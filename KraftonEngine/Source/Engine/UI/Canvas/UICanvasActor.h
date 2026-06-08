@@ -104,6 +104,14 @@ public:
 	// (RegisterCanvas)은 하지 않는다(런타임 BeginPlay 소관 — R1). 에디터 스폰 site / PostDuplicate 호출.
 	void EnsureCanvasForEditor();
 
+	// [에디터] 참조 중인 UI .uasset 의 내용이 바뀌었을 때 캔버스를 다시 빌드한다(기존 루트 제거 후 재로드).
+	// 에셋 매니저 캐시가 최신 CanvasData 를 들고 있으므로 재빌드만으로 최신 트리가 된다.
+	void RebuildCanvasFromAsset();
+
+	// [에디터] 주어진 .uasset 경로를 참조하는 "편집 월드"의 모든 AUICanvasActor 를 재빌드(라이브 갱신).
+	// PIE/Game 월드(등록된 캔버스는 BeginPlay 가 관리)에선 건드리지 않는다 — 월드 타입으로 게이트.
+	static void RefreshActorsReferencingAsset(const FString& AssetPath);
+
 	// [에디터] 씬 로드·복제 직후(컴포넌트/속성 복원 완료) — 루트 캔버스를 보장해 에디터에서 표시·편집 가능.
 	void PostDuplicate() override;
 	// [에디터] 디테일에서 UI Asset 경로를 바꾸면 캔버스를 재구성(기존 루트 정리 — 이중 캔버스 방지 R2).

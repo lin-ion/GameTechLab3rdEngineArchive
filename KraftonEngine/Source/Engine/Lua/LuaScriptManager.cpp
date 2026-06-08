@@ -109,6 +109,7 @@
 
 std::unique_ptr<sol::state>                 FLuaScriptManager::Lua;
 sol::protected_function                     FLuaScriptManager::OnEscapePressedCallback;
+TMap<FString, sol::protected_function>      FLuaScriptManager::UIButtonCallbacks;
 std::mutex                                  FLuaScriptManager::ComponentMutex;
 TArray<TWeakObjectPtr<ULuaScriptComponent>> FLuaScriptManager::RegisteredComponents;
 TArray<TWeakObjectPtr<ULuaAnimInstance>>    FLuaScriptManager::RegisteredAnimInstances;
@@ -368,9 +369,65 @@ void FLuaScriptManager::FireOnEscapePressed()
     }
 }
 
+void FLuaScriptManager::BindUIButton(const FString& ElementName, sol::protected_function Callback)
+{
+    // (b) UI.BindButton("name", fn) — ElementName 키로 클릭 콜백 등록. 빈 이름은 무시(바인딩 대상 아님).
+    if (ElementName.empty())
+    {
+        return;
+    }
+    UIButtonCallbacks[ElementName] = std::move(Callback);
+}
+
+void FLuaScriptManager::InvokeUIButtonCallback(const FString& ElementName)
+{
+    if (ElementName.empty())
+    {
+        return;
+    }
+    auto It = UIButtonCallbacks.find(ElementName);
+    if (It == UIButtonCallbacks.end() || !It->second.valid())
+    {
+        return;
+    }
+    FScopedGarbageCollectionBlocker GCBlocker;
+    sol::protected_function_result Result = It->second();
+    if (!Result.valid())
+    {
+        sol::error Err = Result;
+        UE_LOG("[Lua] UI button callback error: %s", Err.what());
+    }
+}
+
+void FLuaScriptManager::RunScriptFile(const FString& ScriptFile)
+{
+    // CallLua 액션 — 선택한 .lua 파일을 읽어 실행. 클릭 시 1회. (전역 함수명은 에디터에서 열거 불가하므로
+    // 파일 단위로 다룬다 — 핸들러 스크립트는 최상위에서 Engine.LoadScene 등 원하는 동작을 수행하면 된다.)
+    if (ScriptFile.empty() || !Lua)
+    {
+        return;
+    }
+    FString Content;
+    if (!ReadScriptFileContent(ScriptFile, Content))
+    {
+        UE_LOG("[Lua] UI button CallLua: 스크립트 읽기 실패 — %s", ScriptFile.c_str());
+        return;
+    }
+    FScopedGarbageCollectionBlocker GCBlocker;
+    sol::protected_function_result Result = Lua->safe_script(Content, sol::script_pass_on_error);
+    if (!Result.valid())
+    {
+        sol::error Err = Result;
+        UE_LOG("[Lua] UI button CallLua '%s' error: %s", ScriptFile.c_str(), Err.what());
+    }
+}
+
 void FLuaScriptManager::FireWorldReset()
 {
     if (!Lua) return;
+
+    // [UI 버튼 액션] (b) 콜백은 옛 월드의 위젯/클로저를 캡처할 수 있으므로 씬 전환 시 모두 비운다.
+    UIButtonCallbacks.clear();
 
     // require 로 한 번 로드된 모듈 테이블은 package.loaded 에 캐시된다. 씬 전환 시에도
     // 살아남기 때문에, 이 두 모듈이 보유한 죽은-월드 참조를 비워준다.
@@ -3321,4 +3378,31 @@ void FLuaScriptManager::RegisterUIBindings(sol::state& Lua)
             return UUIManager::Get().CreateWidget(nullptr, DocumentPath);
         }
     );
+
+    // [버튼 액션] (b) SimpleUI 버튼 클릭 콜백 바인딩 — UI.BindButton("ElementName", function() ... end).
+    // 클릭 디스패처(FUICanvasManager::TickRuntimeInput)가 InvokeUIButtonCallback 으로 호출한다.
+    UI.set_function(
+        "BindButton",
+        [](const FString& ElementName, sol::protected_function Callback)
+        {
+            FLuaScriptManager::BindUIButton(ElementName, std::move(Callback));
+        }
+    );
+
+    // 씬 전환을 Lua 에 노출(기존 미노출) — (b) 콜백/스크립트에서 Engine.LoadScene("Map") 형태로 호출.
+    // (a) ChangeScene 액션은 C++(ExecuteButtonAction)가 직접 RequestTransitionToScene 한다.
+    sol::optional<sol::table> EngineTable = Lua["Engine"];
+    if (EngineTable)
+    {
+        EngineTable->set_function(
+            "LoadScene",
+            [](const FString& ScenePath)
+            {
+                if (GEngine)
+                {
+                    GEngine->RequestTransitionToScene(ScenePath);
+                }
+            }
+        );
+    }
 }
