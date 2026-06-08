@@ -249,6 +249,11 @@ FBulletSpawnParams UBossPattern_HomingOrbTrail::MakeStationaryBulletParams(const
 	Params.Archetype.Trail.MaxSamples = (std::max)(2, ProjectileTrailMaxSamples);
 	Params.Archetype.Trail.SampleInterval = (std::max)(0.0f, ProjectileTrailSampleInterval);
 	Params.Archetype.Trail.MinSampleDistance = (std::max)(0.0f, ProjectileTrailMinSampleDistance);
+	Params.Archetype.DeathEffect.bEnableDeathEffect = bProjectileDeathEffectEnabled;
+	Params.Archetype.DeathEffect.ParticleSystemPath = ProjectileDeathEffectPath;
+	Params.Archetype.DeathEffect.EventName = ProjectileDeathEffectEventName;
+	Params.Archetype.DeathEffect.bInheritBulletVelocity = bProjectileDeathEffectInheritVelocity;
+	Params.Archetype.DeathEffect.VelocityScale = ProjectileDeathEffectVelocityScale;
 	Params.bHoming = false;
 	Params.HomingStrength = 0.0f;
 	Params.HomingMaxTurnRateDegrees = 0.0f;

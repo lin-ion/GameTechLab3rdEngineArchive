@@ -758,6 +758,17 @@ void FOverlayStatSystem::BuildBulletHellLines(TArray<FString>& OutLines) const
 		FBulletHellStats::TrailMaterialMissingCount);
 	OutLines.push_back(FString(Buffer));
 
+	snprintf(Buffer, sizeof(Buffer), "Death FX : Components %u   Events %u   Dropped %u",
+		FBulletHellStats::DeathEffectComponentCount,
+		FBulletHellStats::DeathEffectEventCount,
+		FBulletHellStats::DeathEffectDroppedCount);
+	OutLines.push_back(FString(Buffer));
+
+	snprintf(Buffer, sizeof(Buffer), "Death FX Budget : Missing %u   BudgetExceeded %u",
+		FBulletHellStats::DeathEffectMissingAssetCount,
+		FBulletHellStats::DeathEffectBudgetExceededCount);
+	OutLines.push_back(FString(Buffer));
+
 	snprintf(Buffer, sizeof(Buffer), "DebugDraw : Selected %u   Truncated %u",
 		FBulletHellStats::DebugDrawSelectedCount,
 		FBulletHellStats::DebugDrawTruncatedCount);

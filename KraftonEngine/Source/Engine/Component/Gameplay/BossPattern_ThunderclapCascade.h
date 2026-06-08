@@ -104,6 +104,21 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Trail", DisplayName="Strike Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
 	float StrikeTrailMinSampleDistance = 0.05f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Death Effect", DisplayName="Strike Death Effect Enabled")
+	bool bStrikeDeathEffectEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Death Effect", DisplayName="Strike Death Effect Path", AssetType="UParticleSystem")
+	FString StrikeDeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Death Effect", DisplayName="Strike Death Effect Event Name")
+	FName StrikeDeathEffectEventName = FName("BulletDeath");
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Death Effect", DisplayName="Strike Death Effect Inherit Velocity")
+	bool bStrikeDeathEffectInheritVelocity = true;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Strike Death Effect", DisplayName="Strike Death Effect Velocity Scale", Min=-1000.0f, Max=1000.0f, Speed=0.01f)
+	float StrikeDeathEffectVelocityScale = 1.0f;
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Ground Height Offset", Min=-1000.0f, Max=1000.0f, Speed=0.1f)
 	float GroundHeightOffset = 0.0f;
 
@@ -163,6 +178,21 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Trail", DisplayName="Shockwave Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
 	float ShockwaveTrailMinSampleDistance = 0.05f;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Death Effect", DisplayName="Shockwave Death Effect Enabled")
+	bool bShockwaveDeathEffectEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Death Effect", DisplayName="Shockwave Death Effect Path", AssetType="UParticleSystem")
+	FString ShockwaveDeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Death Effect", DisplayName="Shockwave Death Effect Event Name")
+	FName ShockwaveDeathEffectEventName = FName("BulletDeath");
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Death Effect", DisplayName="Shockwave Death Effect Inherit Velocity")
+	bool bShockwaveDeathEffectInheritVelocity = true;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade|Shockwave Death Effect", DisplayName="Shockwave Death Effect Velocity Scale", Min=-1000.0f, Max=1000.0f, Speed=0.01f)
+	float ShockwaveDeathEffectVelocityScale = 1.0f;
 
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Thunderclap Cascade", DisplayName="Max Pattern Duration", Min=0.1f, Max=300.0f, Speed=0.1f)
 	float MaxPatternDuration = 8.0f;

@@ -74,6 +74,10 @@ public:
 	void SetEventManager(AParticleEventManager* InMgr);
 	AParticleEventManager* GetEventManager() const;
 
+	void EmitExternalEvent(const FParticleEventDataBase& Event);
+	UFUNCTION(Callable, Category="Particle|Event")
+	void EmitExternalDeathEvent(FName EventName, const FVector& Location, const FVector& Velocity);
+
 	// --- Emitter Instance 접근 ---
 	UFUNCTION(Pure, Category="Particle|Emitter")
 	int32 GetEmitterInstanceCount() const { return static_cast<int32>(EmitterInstances.size()); }

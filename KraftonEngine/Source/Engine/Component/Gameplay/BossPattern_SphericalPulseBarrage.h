@@ -87,6 +87,21 @@ private:
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage|Trail", DisplayName="Projectile Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
 	float ProjectileTrailMinSampleDistance = 0.05f;
 
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage|Death Effect", DisplayName="Projectile Death Effect Enabled")
+	bool bProjectileDeathEffectEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage|Death Effect", DisplayName="Projectile Death Effect Path", AssetType="UParticleSystem")
+	FString ProjectileDeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage|Death Effect", DisplayName="Projectile Death Effect Event Name")
+	FName ProjectileDeathEffectEventName = FName("BulletDeath");
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage|Death Effect", DisplayName="Projectile Death Effect Inherit Velocity")
+	bool bProjectileDeathEffectInheritVelocity = true;
+
+	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage|Death Effect", DisplayName="Projectile Death Effect Velocity Scale", Min=-1000.0f, Max=1000.0f, Speed=0.01f)
+	float ProjectileDeathEffectVelocityScale = 1.0f;
+
 	UPROPERTY(Edit, Save, Category="Boss Pattern|Spherical Pulse Barrage", DisplayName="Use Random Sphere Points")
 	bool bUseRandomSpherePoints = false;
 
