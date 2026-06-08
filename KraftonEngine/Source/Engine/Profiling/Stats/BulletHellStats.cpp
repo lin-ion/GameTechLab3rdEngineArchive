@@ -29,6 +29,11 @@ uint32 FBulletHellStats::TrailVertexCount = 0;
 uint32 FBulletHellStats::TrailIndexCount = 0;
 uint32 FBulletHellStats::TrailTruncatedCount = 0;
 uint32 FBulletHellStats::TrailMaterialMissingCount = 0;
+uint32 FBulletHellStats::DeathEffectComponentCount = 0;
+uint32 FBulletHellStats::DeathEffectEventCount = 0;
+uint32 FBulletHellStats::DeathEffectDroppedCount = 0;
+uint32 FBulletHellStats::DeathEffectMissingAssetCount = 0;
+uint32 FBulletHellStats::DeathEffectBudgetExceededCount = 0;
 
 void FBulletHellStats::Reset()
 {
@@ -60,6 +65,11 @@ void FBulletHellStats::Reset()
 	TrailIndexCount = 0;
 	TrailTruncatedCount = 0;
 	TrailMaterialMissingCount = 0;
+	DeathEffectComponentCount = 0;
+	DeathEffectEventCount = 0;
+	DeathEffectDroppedCount = 0;
+	DeathEffectMissingAssetCount = 0;
+	DeathEffectBudgetExceededCount = 0;
 }
 
 void FBulletHellStats::AddComponent(const FBulletHellStatsSnapshot& Snapshot)
@@ -92,5 +102,10 @@ void FBulletHellStats::AddComponent(const FBulletHellStatsSnapshot& Snapshot)
 	TrailIndexCount += Snapshot.TrailIndexCount;
 	TrailTruncatedCount += Snapshot.TrailTruncatedCount;
 	TrailMaterialMissingCount += Snapshot.TrailMaterialMissingCount;
+	DeathEffectComponentCount += Snapshot.DeathEffectComponentCount;
+	DeathEffectEventCount += Snapshot.DeathEffectEventCount;
+	DeathEffectDroppedCount += Snapshot.DeathEffectDroppedCount;
+	DeathEffectMissingAssetCount += Snapshot.DeathEffectMissingAssetCount;
+	DeathEffectBudgetExceededCount += Snapshot.DeathEffectBudgetExceededCount;
 }
 #endif

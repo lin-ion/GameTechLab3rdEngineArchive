@@ -65,6 +65,53 @@ AParticleEventManager* UParticleSystemComponent::GetEventManager() const
 	return EventManager.Get();
 }
 
+void UParticleSystemComponent::EmitExternalEvent(const FParticleEventDataBase& Event)
+{
+	switch (Event.Type)
+	{
+	case EParticleEventType::Spawn:
+		{
+			FParticleEventSpawnData SpawnEvent;
+			static_cast<FParticleEventDataBase&>(SpawnEvent) = Event;
+			PendingEvents.Spawn.push_back(SpawnEvent);
+		}
+		break;
+	case EParticleEventType::Death:
+		{
+			FParticleEventDeathData DeathEvent;
+			static_cast<FParticleEventDataBase&>(DeathEvent) = Event;
+			PendingEvents.Death.push_back(DeathEvent);
+		}
+		break;
+	case EParticleEventType::Collision:
+		{
+			FParticleEventCollideData CollisionEvent;
+			static_cast<FParticleEventDataBase&>(CollisionEvent) = Event;
+			PendingEvents.Collision.push_back(CollisionEvent);
+		}
+		break;
+	case EParticleEventType::Burst:
+		{
+			FParticleEventBurstData BurstEvent;
+			static_cast<FParticleEventDataBase&>(BurstEvent) = Event;
+			PendingEvents.Burst.push_back(BurstEvent);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+void UParticleSystemComponent::EmitExternalDeathEvent(FName EventName, const FVector& Location, const FVector& Velocity)
+{
+	FParticleEventDeathData Event;
+	Event.Type = EParticleEventType::Death;
+	Event.EventName = EventName;
+	Event.Location = Location;
+	Event.Velocity = Velocity;
+	PendingEvents.Death.push_back(Event);
+}
+
 void UParticleSystemComponent::LoadTemplateFromPath()
 {
 	const FString& Path = TemplatePath.ToString();

@@ -32,6 +32,11 @@ struct FBulletHellStatsSnapshot
 	uint32 TrailIndexCount = 0;
 	uint32 TrailTruncatedCount = 0;
 	uint32 TrailMaterialMissingCount = 0;
+	uint32 DeathEffectComponentCount = 0;
+	uint32 DeathEffectEventCount = 0;
+	uint32 DeathEffectDroppedCount = 0;
+	uint32 DeathEffectMissingAssetCount = 0;
+	uint32 DeathEffectBudgetExceededCount = 0;
 };
 
 #if STATS
@@ -65,6 +70,11 @@ struct FBulletHellStats
 	static uint32 TrailIndexCount;
 	static uint32 TrailTruncatedCount;
 	static uint32 TrailMaterialMissingCount;
+	static uint32 DeathEffectComponentCount;
+	static uint32 DeathEffectEventCount;
+	static uint32 DeathEffectDroppedCount;
+	static uint32 DeathEffectMissingAssetCount;
+	static uint32 DeathEffectBudgetExceededCount;
 
 	static void Reset();
 	static void AddComponent(const FBulletHellStatsSnapshot& Snapshot);

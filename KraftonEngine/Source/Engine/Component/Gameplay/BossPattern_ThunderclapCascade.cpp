@@ -346,6 +346,11 @@ FBulletSpawnParams UBossPattern_ThunderclapCascade::MakeStrikeParams(const FVect
 	Params.Archetype.Trail.MaxSamples = (std::max)(2, StrikeTrailMaxSamples);
 	Params.Archetype.Trail.SampleInterval = (std::max)(0.0f, StrikeTrailSampleInterval);
 	Params.Archetype.Trail.MinSampleDistance = (std::max)(0.0f, StrikeTrailMinSampleDistance);
+	Params.Archetype.DeathEffect.bEnableDeathEffect = bStrikeDeathEffectEnabled;
+	Params.Archetype.DeathEffect.ParticleSystemPath = StrikeDeathEffectPath;
+	Params.Archetype.DeathEffect.EventName = StrikeDeathEffectEventName;
+	Params.Archetype.DeathEffect.bInheritBulletVelocity = bStrikeDeathEffectInheritVelocity;
+	Params.Archetype.DeathEffect.VelocityScale = StrikeDeathEffectVelocityScale;
 	Params.bHoming = false;
 	return Params;
 }
@@ -369,6 +374,11 @@ FBulletSpawnParams UBossPattern_ThunderclapCascade::MakeShockwaveParams(const FV
 	Params.Archetype.Trail.MaxSamples = (std::max)(2, ShockwaveTrailMaxSamples);
 	Params.Archetype.Trail.SampleInterval = (std::max)(0.0f, ShockwaveTrailSampleInterval);
 	Params.Archetype.Trail.MinSampleDistance = (std::max)(0.0f, ShockwaveTrailMinSampleDistance);
+	Params.Archetype.DeathEffect.bEnableDeathEffect = bShockwaveDeathEffectEnabled;
+	Params.Archetype.DeathEffect.ParticleSystemPath = ShockwaveDeathEffectPath;
+	Params.Archetype.DeathEffect.EventName = ShockwaveDeathEffectEventName;
+	Params.Archetype.DeathEffect.bInheritBulletVelocity = bShockwaveDeathEffectInheritVelocity;
+	Params.Archetype.DeathEffect.VelocityScale = ShockwaveDeathEffectVelocityScale;
 	Params.bHoming = false;
 	return Params;
 }

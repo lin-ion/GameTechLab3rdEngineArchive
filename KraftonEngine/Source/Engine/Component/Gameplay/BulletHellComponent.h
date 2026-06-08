@@ -7,6 +7,7 @@
 #include "Math/Transform.h"
 #include "Math/Vector.h"
 #include "Object/Ptr/WeakObjectPtr.h"
+#include "Particle/ParticleEvents.h"
 
 #include "Source/Engine/Component/Gameplay/BulletHellComponent.generated.h"
 
@@ -19,6 +20,7 @@ enum class EBulletHellRenderOrientationMode : int32
 
 class AActor;
 class UInstancedStaticMeshComponent;
+class UParticleSystemComponent;
 class UBulletTrailComponent;
 
 struct FBulletTrailSettings
@@ -39,6 +41,16 @@ struct FBulletTrailSample
 	float Age = 0.0f;
 };
 
+struct FBulletDeathEffectSettings
+{
+	bool bEnableDeathEffect = false;
+	FString ParticleSystemPath = "None";
+	FName EventName = FName("BulletDeath");
+	EParticleEventType EventType = EParticleEventType::Death;
+	bool bInheritBulletVelocity = true;
+	float VelocityScale = 1.0f;
+};
+
 struct FBulletArchetype
 {
 	FString MeshPath = "Content/Data/BasicShape/Sphere.OBJ";
@@ -49,6 +61,7 @@ struct FBulletArchetype
 	float RenderScale = 1.0f;
 	float Damage = 1.0f;
 	FBulletTrailSettings Trail;
+	FBulletDeathEffectSettings DeathEffect;
 };
 
 struct FBulletRenderSlot
@@ -57,6 +70,14 @@ struct FBulletRenderSlot
 	FString MaterialPath;
 	TWeakObjectPtr<UInstancedStaticMeshComponent> Renderer;
 	TArray<int32> BulletIndices;
+};
+
+struct FBulletDeathEffectRuntimeSlot
+{
+	FString ParticleSystemPath;
+	TWeakObjectPtr<UParticleSystemComponent> Component;
+	uint32 EventsSubmittedThisFrame = 0;
+	uint32 EventsDroppedThisFrame = 0;
 };
 
 struct FBulletHandle
@@ -85,6 +106,7 @@ struct FBulletInstance
 	int32 RenderSlotIndex = -1;
 	float RenderScale = 1.0f;
 	FBulletTrailSettings Trail;
+	FBulletDeathEffectSettings DeathEffect;
 	TArray<FBulletTrailSample> TrailSamples;
 	float TrailSampleAccumulator = 0.0f;
 	FVector HomingTargetPosition = FVector::ZeroVector;
@@ -169,6 +191,11 @@ struct FBulletDebugStats
 	int32 TrailIndexCount = 0;
 	int32 TrailTruncatedCount = 0;
 	int32 TrailMaterialMissingCount = 0;
+	int32 DeathEffectComponentCount = 0;
+	int32 DeathEffectEventCount = 0;
+	int32 DeathEffectDroppedCount = 0;
+	int32 DeathEffectMissingAssetCount = 0;
+	int32 DeathEffectBudgetExceededCount = 0;
 };
 
 UCLASS()
@@ -311,6 +338,11 @@ private:
 	uint32 BuildEraseObjectTypeMask() const;
 	void ApplyDamageToHitTarget(const FBulletInstance& Bullet, const FHitResult& Hit) const;
 	bool RemoveBulletAtIndex(int32 BulletIndex, bool bExpired);
+	UParticleSystemComponent* FindOrCreateDeathEffectComponent(const FString& ParticleSystemPath);
+	UParticleSystemComponent* GetDeathEffectComponent(const FBulletDeathEffectRuntimeSlot& Slot) const;
+	void EmitBulletDeathEffect(const FBulletInstance& Bullet, bool bExpired);
+	bool CanAutoCreateRuntimeHelperComponent() const;
+	int32 CountValidDeathEffectComponents() const;
 	UInstancedStaticMeshComponent* EnsureRenderComponent();
 	UInstancedStaticMeshComponent* GetRenderComponent() const;
 	UBulletTrailComponent* EnsureTrailComponent();
@@ -354,6 +386,12 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Trail Budget", DisplayName="Max Trail Indices", Min=0, Max=10000000, Speed=1)
 	int32 MaxTrailIndexBudget = 0;
 
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Death Effect", DisplayName="Max Death Effect Events Per Frame", Min=0, Max=10000000, Speed=1)
+	int32 MaxDeathEffectEventsPerFrame = 256;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Death Effect", DisplayName="Max Death Effect Components", Min=0, Max=1024, Speed=1)
+	int32 MaxDeathEffectComponents = 16;
+
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Collision", DisplayName="Enable Collision")
 	bool bEnableCollision = true;
 
@@ -383,6 +421,7 @@ private:
 
 	TArray<FBulletInstance> Bullets;
 	TArray<FBulletRenderSlot> RenderSlots;
+	TArray<FBulletDeathEffectRuntimeSlot> DeathEffectSlots;
 	TMap<uint32, int32> BulletIndexById;
 	TWeakObjectPtr<UInstancedStaticMeshComponent> RenderComponent;
 	TWeakObjectPtr<UBulletTrailComponent> TrailComponent;

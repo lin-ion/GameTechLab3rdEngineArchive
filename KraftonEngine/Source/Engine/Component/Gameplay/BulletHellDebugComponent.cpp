@@ -167,6 +167,11 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 		Archetype.Trail.MaxSamples = (std::max)(2, SecondaryTrailMaxSamples);
 		Archetype.Trail.SampleInterval = (std::max)(0.0f, SecondaryTrailSampleInterval);
 		Archetype.Trail.MinSampleDistance = (std::max)(0.0f, SecondaryTrailMinSampleDistance);
+		Archetype.DeathEffect.bEnableDeathEffect = bSecondaryDeathEffectEnabled;
+		Archetype.DeathEffect.ParticleSystemPath = SecondaryDeathEffectPath;
+		Archetype.DeathEffect.EventName = SecondaryDeathEffectEventName;
+		Archetype.DeathEffect.bInheritBulletVelocity = bSecondaryDeathEffectInheritVelocity;
+		Archetype.DeathEffect.VelocityScale = SecondaryDeathEffectVelocityScale;
 		return Archetype;
 	}
 
@@ -185,6 +190,11 @@ FBulletArchetype UBulletHellDebugComponent::BuildDebugArchetype(int32 ArchetypeI
 	Archetype.Trail.MaxSamples = (std::max)(2, PrimaryTrailMaxSamples);
 	Archetype.Trail.SampleInterval = (std::max)(0.0f, PrimaryTrailSampleInterval);
 	Archetype.Trail.MinSampleDistance = (std::max)(0.0f, PrimaryTrailMinSampleDistance);
+	Archetype.DeathEffect.bEnableDeathEffect = bPrimaryDeathEffectEnabled;
+	Archetype.DeathEffect.ParticleSystemPath = PrimaryDeathEffectPath;
+	Archetype.DeathEffect.EventName = PrimaryDeathEffectEventName;
+	Archetype.DeathEffect.bInheritBulletVelocity = bPrimaryDeathEffectInheritVelocity;
+	Archetype.DeathEffect.VelocityScale = PrimaryDeathEffectVelocityScale;
 	return Archetype;
 }
 

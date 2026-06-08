@@ -12,6 +12,24 @@
 class AActor;
 class UBulletTrailComponent;
 class UInstancedStaticMeshComponent;
+class UParticleSystemComponent;
+
+struct FPlayerSprayDeathEffectSettings
+{
+	bool bEnableDeathEffect = false;
+	FString ParticleSystemPath = "None";
+	FName EventName = FName("BulletDeath");
+	bool bInheritProjectileVelocity = true;
+	float VelocityScale = 1.0f;
+};
+
+struct FPlayerSprayDeathEffectRuntimeSlot
+{
+	FString ParticleSystemPath;
+	TWeakObjectPtr<UParticleSystemComponent> Component;
+	uint32 EventsSubmittedThisFrame = 0;
+	uint32 EventsDroppedThisFrame = 0;
+};
 
 struct FPlayerSprayProjectile
 {
@@ -26,6 +44,7 @@ struct FPlayerSprayProjectile
 	float Radius = 0.08f;
 	float Damage = 1.0f;
 	float HomingTargetMemoryTime = 0.0f;
+	FPlayerSprayDeathEffectSettings DeathEffect;
 	TArray<FVector> TrailSamples;
 	float TrailSampleAccumulator = 0.0f;
 	bool bHoming = false;
@@ -87,7 +106,13 @@ private:
 	bool CheckBossPhysicsAssetHit(AActor* BossActor, const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
 	bool FindBossPhysicsAssetHit(const FVector& SegmentStart, const FVector& SegmentEnd, float SweepRadius, FHitResult& OutHit) const;
 	void ApplyDamageToHitTarget(const FPlayerSprayProjectile& Projectile, const FHitResult& Hit) const;
-	void RemoveProjectileAtIndex(int32 ProjectileIndex);
+	void RemoveProjectileAtIndex(int32 ProjectileIndex, bool bEmitDeathEffect);
+	UParticleSystemComponent* FindOrCreateDeathEffectComponent(const FString& ParticleSystemPath);
+	UParticleSystemComponent* GetDeathEffectComponent(const FPlayerSprayDeathEffectRuntimeSlot& Slot) const;
+	void EmitProjectileDeathEffect(const FPlayerSprayProjectile& Projectile);
+	bool CanAutoCreateRuntimeHelperComponent() const;
+	int32 CountValidDeathEffectComponents() const;
+	void ResetDeathEffectFrameCounters();
 	void SyncRender();
 	void SyncTrail();
 	void ClearRender();
@@ -148,6 +173,27 @@ private:
 	UPROPERTY(Edit, Save, Category="Player Spray|Projectile", DisplayName="Projectile Damage", Min=0.0f, Max=1000000.0f, Speed=1.0f)
 	float ProjectileDamage = 1.0f;
 
+	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Death Effect Enabled")
+	bool bDeathEffectEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Death Effect Path", AssetType="UParticleSystem")
+	FString DeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Death Effect Event Name")
+	FName DeathEffectEventName = FName("BulletDeath");
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Death Effect Inherit Velocity")
+	bool bDeathEffectInheritVelocity = true;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Death Effect Velocity Scale", Min=-1000.0f, Max=1000.0f, Speed=0.01f)
+	float DeathEffectVelocityScale = 1.0f;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Max Death Effect Events Per Frame", Min=0, Max=4096, Speed=1)
+	int32 MaxDeathEffectEventsPerFrame = 128;
+
+	UPROPERTY(Edit, Save, Category="Player Spray|Death Effect", DisplayName="Max Death Effect Components", Min=0, Max=64, Speed=1)
+	int32 MaxDeathEffectComponents = 4;
+
 	UPROPERTY(Edit, Save, Category="Player Spray|Render", DisplayName="Mesh Path", AssetType="StaticMesh")
 	FString MeshPath = "Content/Data/BasicShape/Sphere.OBJ";
 
@@ -179,8 +225,11 @@ private:
 	float AimRayDebugDuration = 0.05f;
 
 	TArray<FPlayerSprayProjectile> Projectiles;
+	TArray<FPlayerSprayDeathEffectRuntimeSlot> DeathEffectSlots;
 	TWeakObjectPtr<UInstancedStaticMeshComponent> RenderComponent;
 	TWeakObjectPtr<UBulletTrailComponent> TrailComponent;
 	float FireAccumulator = 0.0f;
+	int32 DeathEffectEventsThisFrame = 0;
+	int32 DeathEffectDroppedThisFrame = 0;
 	bool bAttackHeld = false;
 };

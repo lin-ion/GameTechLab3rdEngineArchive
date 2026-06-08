@@ -1,6 +1,7 @@
 #include "BulletHellComponent.h"
 
 #include "Component/Gameplay/BulletTrailComponent.h"
+#include "Component/Particle/ParticleSystemComponent.h"
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
@@ -9,6 +10,7 @@
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Math/Rotator.h"
+#include "Particle/ParticleSystemManager.h"
 #include "Platform/Paths.h"
 #include "Profiling/Stats/BulletHellStats.h"
 
@@ -27,6 +29,7 @@ namespace
 	constexpr const char* BulletTrailFallbackMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
 	constexpr const char* PlayerTagName = "Player";
 	constexpr const char* BossTagName = "Boss";
+	constexpr const char* BulletDeathEffectComponentPrefix = "BulletHellDeathEffect";
 
 	uint32 AdvanceNonZero(uint32 Value)
 	{
@@ -239,6 +242,7 @@ FBulletHandle UBulletHellComponent::SpawnBullet(const FBulletSpawnParams& Params
 	Bullet.RenderSlotIndex = -1;
 	Bullet.RenderScale = (std::max)(0.01f, Archetype.RenderScale);
 	Bullet.Trail = Archetype.Trail;
+	Bullet.DeathEffect = Archetype.DeathEffect;
 	ResetTrailSamples(Bullet);
 	Bullet.HomingTargetPosition = Params.HomingTargetPosition;
 	Bullet.HomingTargetActor = Params.HomingTargetActor;
@@ -1199,6 +1203,8 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 	const int32 RemovedRenderSlotIndex = Bullets[BulletIndex].RenderSlotIndex;
 	const int32 RemovedRenderIndex = Bullets[BulletIndex].RenderInstanceIndex;
 
+	EmitBulletDeathEffect(Bullets[BulletIndex], bExpired);
+
 	if (RemovedRenderSlotIndex >= 0 && RemovedRenderSlotIndex < static_cast<int32>(RenderSlots.size()))
 	{
 		FBulletRenderSlot& Slot = RenderSlots[RemovedRenderSlotIndex];
@@ -1251,6 +1257,183 @@ bool UBulletHellComponent::RemoveBulletAtIndex(int32 BulletIndex, bool bExpired)
 	UpdateBehaviorDebugStats();
 	UpdateRenderDebugStats();
 	return true;
+}
+
+UParticleSystemComponent* UBulletHellComponent::FindOrCreateDeathEffectComponent(const FString& ParticleSystemPath)
+{
+	if (ParticleSystemPath.empty() || ParticleSystemPath == "None")
+	{
+		++DebugStats.DeathEffectMissingAssetCount;
+		return nullptr;
+	}
+
+	for (FBulletDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		if (Slot.ParticleSystemPath != ParticleSystemPath)
+		{
+			continue;
+		}
+
+		if (UParticleSystemComponent* ExistingComponent = GetDeathEffectComponent(Slot))
+		{
+			return ExistingComponent;
+		}
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor || !CanAutoCreateRuntimeHelperComponent())
+	{
+		return nullptr;
+	}
+
+	if (MaxDeathEffectComponents <= 0 ||
+		CountValidDeathEffectComponents() >= MaxDeathEffectComponents)
+	{
+		return nullptr;
+	}
+
+	UParticleSystem* Template = FParticleSystemManager::Get().Load(ParticleSystemPath);
+	if (!Template)
+	{
+		++DebugStats.DeathEffectMissingAssetCount;
+		return nullptr;
+	}
+
+	const int32 SlotIndex = static_cast<int32>(DeathEffectSlots.size());
+	char NameBuffer[96];
+	std::snprintf(NameBuffer, sizeof(NameBuffer), "%s%d", BulletDeathEffectComponentPrefix, SlotIndex);
+	const FName ExpectedName(NameBuffer);
+
+	for (UActorComponent* Component : OwnerActor->GetComponents())
+	{
+		UParticleSystemComponent* ExistingComponent = Cast<UParticleSystemComponent>(Component);
+		if (ExistingComponent && ExistingComponent->GetOwner() == OwnerActor && ExistingComponent->GetFName() == ExpectedName)
+		{
+			ExistingComponent->SetAutoActivate(false);
+			ExistingComponent->SetTemplate(Template);
+			ExistingComponent->Activate(false);
+
+			FBulletDeathEffectRuntimeSlot NewSlot;
+			NewSlot.ParticleSystemPath = ParticleSystemPath;
+			NewSlot.Component = ExistingComponent;
+			DeathEffectSlots.push_back(NewSlot);
+			DebugStats.DeathEffectComponentCount = CountValidDeathEffectComponents();
+			return ExistingComponent;
+		}
+	}
+
+	UParticleSystemComponent* Component = OwnerActor->AddComponent<UParticleSystemComponent>();
+	if (!Component)
+	{
+		return nullptr;
+	}
+
+	Component->SetFName(ExpectedName);
+	if (USceneComponent* RootComponent = OwnerActor->GetRootComponent())
+	{
+		Component->AttachToComponent(RootComponent);
+	}
+	Component->SetAutoActivate(false);
+	Component->SetTemplate(Template);
+	Component->Activate(false);
+
+	FBulletDeathEffectRuntimeSlot NewSlot;
+	NewSlot.ParticleSystemPath = ParticleSystemPath;
+	NewSlot.Component = Component;
+	DeathEffectSlots.push_back(NewSlot);
+	DebugStats.DeathEffectComponentCount = CountValidDeathEffectComponents();
+	return Component;
+}
+
+UParticleSystemComponent* UBulletHellComponent::GetDeathEffectComponent(const FBulletDeathEffectRuntimeSlot& Slot) const
+{
+	UParticleSystemComponent* Component = Slot.Component.Get();
+	return Component && Component->GetOwner() == GetOwner() ? Component : nullptr;
+}
+
+void UBulletHellComponent::EmitBulletDeathEffect(const FBulletInstance& Bullet, bool bExpired)
+{
+	(void)bExpired;
+
+	const FBulletDeathEffectSettings& DeathEffect = Bullet.DeathEffect;
+	if (!DeathEffect.bEnableDeathEffect)
+	{
+		return;
+	}
+
+	if (DeathEffect.EventType != EParticleEventType::Death)
+	{
+		++DebugStats.DeathEffectDroppedCount;
+		return;
+	}
+
+	if (DeathEffect.ParticleSystemPath.empty() ||
+		DeathEffect.ParticleSystemPath == "None")
+	{
+		++DebugStats.DeathEffectDroppedCount;
+		++DebugStats.DeathEffectMissingAssetCount;
+		return;
+	}
+
+	if (MaxDeathEffectEventsPerFrame <= 0 ||
+		DebugStats.DeathEffectEventCount >= MaxDeathEffectEventsPerFrame)
+	{
+		++DebugStats.DeathEffectDroppedCount;
+		++DebugStats.DeathEffectBudgetExceededCount;
+		return;
+	}
+
+	UParticleSystemComponent* Component = FindOrCreateDeathEffectComponent(DeathEffect.ParticleSystemPath);
+	if (!Component)
+	{
+		++DebugStats.DeathEffectDroppedCount;
+		return;
+	}
+
+	const FVector EventVelocity = DeathEffect.bInheritBulletVelocity
+		? Bullet.Velocity * DeathEffect.VelocityScale
+		: FVector::ZeroVector;
+	Component->EmitExternalDeathEvent(DeathEffect.EventName, Bullet.Position, EventVelocity);
+	++DebugStats.DeathEffectEventCount;
+
+	for (FBulletDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		if (Slot.ParticleSystemPath == DeathEffect.ParticleSystemPath)
+		{
+			++Slot.EventsSubmittedThisFrame;
+			break;
+		}
+	}
+}
+
+bool UBulletHellComponent::CanAutoCreateRuntimeHelperComponent() const
+{
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return false;
+	}
+
+	if (OwnerActor->HasActorBegunPlay())
+	{
+		return true;
+	}
+
+	UWorld* World = GetWorld();
+	return World && World->HasBegunPlay();
+}
+
+int32 UBulletHellComponent::CountValidDeathEffectComponents() const
+{
+	int32 Count = 0;
+	for (const FBulletDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		if (GetDeathEffectComponent(Slot))
+		{
+			++Count;
+		}
+	}
+	return Count;
 }
 
 UInstancedStaticMeshComponent* UBulletHellComponent::EnsureRenderComponent()
@@ -1870,6 +2053,16 @@ void UBulletHellComponent::UpdateRenderDebugStats()
 void UBulletHellComponent::ResetPerFrameDebugStats()
 {
 	DebugStats.ActiveBulletCount = static_cast<int32>(Bullets.size());
+	DebugStats.DeathEffectComponentCount = CountValidDeathEffectComponents();
+	DebugStats.DeathEffectEventCount = 0;
+	DebugStats.DeathEffectDroppedCount = 0;
+	DebugStats.DeathEffectMissingAssetCount = 0;
+	DebugStats.DeathEffectBudgetExceededCount = 0;
+	for (FBulletDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		Slot.EventsSubmittedThisFrame = 0;
+		Slot.EventsDroppedThisFrame = 0;
+	}
 }
 
 void UBulletHellComponent::RecordOverlayStats() const
@@ -1902,5 +2095,10 @@ void UBulletHellComponent::RecordOverlayStats() const
 	Snapshot.TrailIndexCount = static_cast<uint32>((std::max)(0, DebugStats.TrailIndexCount));
 	Snapshot.TrailTruncatedCount = static_cast<uint32>((std::max)(0, DebugStats.TrailTruncatedCount));
 	Snapshot.TrailMaterialMissingCount = static_cast<uint32>((std::max)(0, DebugStats.TrailMaterialMissingCount));
+	Snapshot.DeathEffectComponentCount = static_cast<uint32>((std::max)(0, DebugStats.DeathEffectComponentCount));
+	Snapshot.DeathEffectEventCount = static_cast<uint32>((std::max)(0, DebugStats.DeathEffectEventCount));
+	Snapshot.DeathEffectDroppedCount = static_cast<uint32>((std::max)(0, DebugStats.DeathEffectDroppedCount));
+	Snapshot.DeathEffectMissingAssetCount = static_cast<uint32>((std::max)(0, DebugStats.DeathEffectMissingAssetCount));
+	Snapshot.DeathEffectBudgetExceededCount = static_cast<uint32>((std::max)(0, DebugStats.DeathEffectBudgetExceededCount));
 	BULLETHELL_STATS_ADD_COMPONENT(Snapshot);
 }

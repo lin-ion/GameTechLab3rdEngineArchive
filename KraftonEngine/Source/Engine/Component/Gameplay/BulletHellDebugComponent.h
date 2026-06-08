@@ -198,6 +198,21 @@ private:
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Trail", DisplayName="Primary Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
 	float PrimaryTrailMinSampleDistance = 0.05f;
 
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Death Effect", DisplayName="Primary Death Effect Enabled")
+	bool bPrimaryDeathEffectEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Death Effect", DisplayName="Primary Death Effect Path", AssetType="UParticleSystem")
+	FString PrimaryDeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Death Effect", DisplayName="Primary Death Effect Event Name")
+	FName PrimaryDeathEffectEventName = FName("BulletDeath");
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Death Effect", DisplayName="Primary Death Effect Inherit Velocity")
+	bool bPrimaryDeathEffectInheritVelocity = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Primary Death Effect", DisplayName="Primary Death Effect Velocity Scale", Min=-1000.0f, Max=1000.0f, Speed=0.01f)
+	float PrimaryDeathEffectVelocityScale = 1.0f;
+
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype", DisplayName="Secondary Mesh Path", AssetType="StaticMesh")
 	FString SecondaryMeshPath = "Content/Data/BasicShape/Cube.OBJ";
 
@@ -245,6 +260,21 @@ private:
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Trail", DisplayName="Secondary Trail Min Sample Distance", Min=0.0f, Max=100.0f, Speed=0.01f)
 	float SecondaryTrailMinSampleDistance = 0.05f;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Death Effect", DisplayName="Secondary Death Effect Enabled")
+	bool bSecondaryDeathEffectEnabled = false;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Death Effect", DisplayName="Secondary Death Effect Path", AssetType="UParticleSystem")
+	FString SecondaryDeathEffectPath = "Content/Particle System/BossBulletDestroyVfx.uasset";
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Death Effect", DisplayName="Secondary Death Effect Event Name")
+	FName SecondaryDeathEffectEventName = FName("BulletDeath");
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Death Effect", DisplayName="Secondary Death Effect Inherit Velocity")
+	bool bSecondaryDeathEffectInheritVelocity = true;
+
+	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Archetype|Secondary Death Effect", DisplayName="Secondary Death Effect Velocity Scale", Min=-1000.0f, Max=1000.0f, Speed=0.01f)
+	float SecondaryDeathEffectVelocityScale = 1.0f;
 
 	UPROPERTY(Edit, Save, Category="Bullet Hell|Debug Commands", DisplayName="Debug Spawn Request", Min=0, Max=1000000, Speed=1)
 	int32 DebugSpawnRequest = 0;
