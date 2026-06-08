@@ -41,8 +41,30 @@ void ABossCharacter::Tick(float DeltaTime)
 	}
 }
 
-// Score.uasset 캔버스 식별: "ScoreBoard" 요소를 가진 AUICanvasActor. 찾으면 캔버스 전체 가시성을
-// 토글(UUIElement::SetVisible — 숨김 시 서브트리 통째로 렌더 제외)하고 true 반환.
+namespace
+{
+	// 요소와 모든 하위 요소의 bVisible 를 일괄 설정. IsEffectivelyVisible 는 "자신 + 모든 조상"의
+	// bVisible 를 보므로, 결과화면을 켜려면 루트뿐 아니라 하위 요소(ScoreBoard/ReturnTitle 등 —
+	// 저작상 bVisible=false)의 bVisible 까지 직접 켜야 한다. (루트만 토글해 자식이 계속 숨겨지던 버그 수정.)
+	void SetUISubtreeVisible(UUIElement* Element, bool bVisible)
+	{
+		if (!Element)
+		{
+			return;
+		}
+		Element->SetVisible(bVisible);
+		for (USceneComponent* Child : Element->GetChildren())
+		{
+			if (UUIElement* UIChild = Cast<UUIElement>(Child))
+			{
+				SetUISubtreeVisible(UIChild, bVisible);
+			}
+		}
+	}
+}
+
+// Score.uasset 캔버스 식별: "ScoreBoard" 요소를 가진 AUICanvasActor. 찾으면 캔버스 + 하위 요소
+// 전체의 bVisible 를 토글하고 true 반환.
 bool ABossCharacter::SetScoreUIVisible(bool bVisible)
 {
 	UWorld* World = GetWorld();
@@ -65,7 +87,7 @@ bool ABossCharacter::SetScoreUIVisible(bool bVisible)
 		}
 		if (Canvas->FindByName(FString("ScoreBoard")))
 		{
-			Canvas->SetVisible(bVisible);
+			SetUISubtreeVisible(Canvas, bVisible);
 			return true;
 		}
 	}
