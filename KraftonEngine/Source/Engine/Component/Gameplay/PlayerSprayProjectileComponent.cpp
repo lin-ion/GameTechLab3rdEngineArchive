@@ -7,6 +7,7 @@
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
 #include "Component/Primitive/SkeletalMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
+#include "Core/ScoreManager.h"
 #include "Core/Types/RayTypes.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "GameFramework/AActor.h"
@@ -655,6 +656,9 @@ void UPlayerSprayProjectileComponent::SpawnProjectile(
 	Projectile.DeathEffect.VelocityScale = DeathEffectVelocityScale;
 	Projectile.TrailSamples.push_back(Origin);
 	Projectiles.push_back(Projectile);
+
+	// 발사체 1발 = 명중률 분모 1 증가.
+	FScoreManager::Get().AddShotFired();
 }
 
 void UPlayerSprayProjectileComponent::TickProjectiles(float DeltaTime)
@@ -991,6 +995,7 @@ void UPlayerSprayProjectileComponent::ApplyDamageToHitTarget(
 		{
 			FAudioManager::Get().PlayAudio("Hit", 1.0f);
 			AddUltimateGauge(UltimateGaugePerBossHit);
+			FScoreManager::Get().AddBossHit();  // 보스 유효타격 = 명중률 분자 1 증가
 		}
 	}
 }
