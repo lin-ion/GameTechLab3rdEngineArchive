@@ -20,6 +20,8 @@
 namespace
 {
 	constexpr float Pi = 3.1415926535f;
+	constexpr const char* PlayerTagName = "Player";
+	constexpr const char* BossTagName = "Boss";
 
 	float ClampFloat(float Value, float MinValue, float MaxValue)
 	{
@@ -29,6 +31,20 @@ namespace
 	FVector SafeDirection(const FVector& Direction, const FVector& Fallback)
 	{
 		return Direction.IsNearlyZero() ? Fallback : Direction.Normalized();
+	}
+
+	AActor* ResolveHitActor(const FHitResult& Hit)
+	{
+		if (Hit.HitActor)
+		{
+			return Hit.HitActor;
+		}
+		return Hit.HitComponent ? Hit.HitComponent->GetOwner() : nullptr;
+	}
+
+	bool HasActorTag(const AActor* Actor, const char* TagName)
+	{
+		return Actor && TagName && Actor->HasTag(FName(TagName));
 	}
 
 	void MakeBasis(const FVector& Forward, FVector& OutRight, FVector& OutUp)
@@ -260,6 +276,11 @@ bool UPlayerSprayProjectileComponent::IsBossActor(const AActor* Candidate) const
 	if (!Candidate)
 	{
 		return false;
+	}
+
+	if (HasActorTag(Candidate, BossTagName))
+	{
+		return true;
 	}
 
 	if (Cast<ABossCharacter>(Candidate))
@@ -523,6 +544,11 @@ bool UPlayerSprayProjectileComponent::CheckProjectileCollision(const FPlayerSpra
 		GetOwner());
 	if (bHit)
 	{
+		AActor* TargetActor = ResolveHitActor(Hit);
+		if (TargetActor == GetOwner() || HasActorTag(TargetActor, PlayerTagName))
+		{
+			return false;
+		}
 		ApplyDamageToHitTarget(Projectile, Hit);
 	}
 	return bHit;
@@ -537,12 +563,8 @@ void UPlayerSprayProjectileComponent::ApplyDamageToHitTarget(
 		return;
 	}
 
-	AActor* TargetActor = Hit.HitActor;
-	if (!TargetActor && Hit.HitComponent)
-	{
-		TargetActor = Hit.HitComponent->GetOwner();
-	}
-	if (!TargetActor || TargetActor == GetOwner())
+	AActor* TargetActor = ResolveHitActor(Hit);
+	if (!TargetActor || TargetActor == GetOwner() || HasActorTag(TargetActor, PlayerTagName))
 	{
 		return;
 	}
