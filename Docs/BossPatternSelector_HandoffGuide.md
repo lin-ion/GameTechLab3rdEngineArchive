@@ -16,6 +16,7 @@
    - `UBossPattern_SphericalPulseBarrage`
    - `UBossPattern_ThunderclapCascade`
    - 필요하면 `UBossPattern_IdleTrackTarget`
+     - 아무것도 안하는 패턴
 5. 체력 비율로 phase를 바꾸고 싶으면 보스 actor가 `APawn` 계통인지 확인한다. selector는 owner pawn의 `Pawn|Health` 값에서 `HealthRatio`를 읽는다.
 6. 탄막 피격을 pawn 체력으로 전달해야 하는 actor에만 `UBulletHellDamageReceiverComponent`를 붙인다. 이 component는 체력을 소유하지 않고, owner가 `APawn`이면 `GetDamaged(damage)`만 호출한다.
 
@@ -182,6 +183,20 @@
 6. `phase weight zero`이면 현재 phase의 `Phase Weight N`을 확인한다.
 7. `repeat blocked`가 많으면 selector의 `Repeat Block Count`를 낮춘다.
 8. pattern component가 아예 없으면 selector는 fallback idle만 돈다.
+
+### 보스 공격을 멈추게 하고 싶을 때
+
+1. 보스가 가진 `UBossPatternSelectorComponent`를 선택한다.
+2. `Boss Pattern|Selector` 카테고리의 `Enable Pattern Selection` 옵션을 찾아 체크 해제한다.
+3. 혹은, 코드 상으로 `bEnablePatternSelection`에 접근해 값을 false로 만든다.
+   * 참고: private field라서 public getter 추가 필요합니다.
+
+### 보스 공격 빈도를 높이거나 낮추고 싶을 때
+
+보스는 이전 패턴이 끝나면 바로 다음 패턴을 시작합니다. 그래서 공격 빈도를 조절하려면 이전 패턴의 선딜레이/후딜레이를 조절하는 방식을 사용해야 합니다.
+
+1. 보스가 가진 `UBossPattern_`로 시작하는 컴포넌트들을 선택한다.
+2. `Boss Pattern|Condition` 카테고리의 `Windup Duration` 또는 `Recovery Duration`을 설정하여 선딜레이 / 후딜레이를 조절한다.
 
 ## System Notes For AI Agents
 
