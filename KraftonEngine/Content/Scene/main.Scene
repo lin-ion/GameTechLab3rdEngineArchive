@@ -6,7 +6,7 @@
       "ObjectId" : 2,
       "Properties" : {
         "PendingActorLocation" : [307.842957, 0.000026, 153.921478],
-        "PendingActorRotation" : [-0.000000, 26.565044, -179.999969],
+        "PendingActorRotation" : [-0.000000, 26.565042, -179.999954],
         "PendingActorScale" : [1.000000, 1.000000, 1.000000],
         "PendingActorVisible" : true,
         "PendingTagsString" : "",
@@ -18,7 +18,7 @@
         "ObjectId" : 3,
         "Properties" : {
           "AttachSocketName" : "Name_None",
-          "CachedEditRotator" : [-0.000000, 26.565044, -179.999969],
+          "CachedEditRotator" : [-0.000000, 26.565042, -179.999954],
           "CameraState.FOV" : 1.047198,
           "CameraState.FarZ" : 1000.000000,
           "CameraState.NearZ" : 0.100000,
@@ -57,7 +57,7 @@
       "Name" : "AStaticMeshActor_6",
       "NonSceneComponents" : [{
           "ClassName" : "ULuaScriptComponent",
-          "ObjectId" : 17,
+          "ObjectId" : 18,
           "Properties" : {
             "ScriptFile" : "MainScene.lua",
             "bAutoActivate" : true,
@@ -67,7 +67,7 @@
             "bTickEnable" : true
           }
         }],
-      "ObjectId" : 15,
+      "ObjectId" : 16,
       "Properties" : {
         "PendingActorLocation" : [434.729126, 0.096800, 220.646530],
         "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
@@ -79,7 +79,7 @@
       "RootComponent" : {
         "Children" : [],
         "ClassName" : "UStaticMeshComponent",
-        "ObjectId" : 16,
+        "ObjectId" : 17,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -123,7 +123,7 @@
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [444.689606, 0.000038, 222.344803],
+    "Location" : [1001.556885, -4.373630, 497.152344],
     "NearClip" : 0.100000,
     "Rotation" : [0.000000, 26.265051, 179.550003]
   },
