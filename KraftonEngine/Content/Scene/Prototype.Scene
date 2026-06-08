@@ -3827,6 +3827,55 @@
             "bIsActive" : true,
             "bTickEnable" : true
           }
+        }, {
+          "ClassName" : "UBossPattern_RendingClawArc",
+          "ObjectId" : 113,
+          "Properties" : {
+            "AllowedPhaseMask" : 2147483647,
+            "ArcCenterAngleDegrees" : 90.000000,
+            "Cooldown" : 2.500000,
+            "InitialCooldown" : 0.000000,
+            "MaxTargetDistance" : 100000.000000,
+            "MinTargetDistance" : 0.000000,
+            "PatternName" : "RendingClawArc",
+            "PhaseWeight0" : 1.000000,
+            "PhaseWeight1" : 1.000000,
+            "PhaseWeight2" : 1.000000,
+            "PlaneCount" : 3,
+            "PlaneSpacing" : 1.400000,
+            "ProjectileDeathEffectEventName" : "BulletDeath",
+            "ProjectileDeathEffectPath" : "Content/Particle System/BossBulletDestroyVfx_Blue.uasset",
+            "ProjectileDeathEffectVelocityScale" : 1.000000,
+            "ProjectileLifetime" : 9.000000,
+            "ProjectileMaterialPath" : "Content/Material/BossBullet_Blue.uasset",
+            "ProjectileMeshPath" : "Content/Data/BasicShape/Sphere.OBJ",
+            "ProjectileRadius" : 0.220000,
+            "ProjectileRenderScale" : 0.180000,
+            "ProjectileSpeed" : 9.000000,
+            "ProjectileTrailColor" : [0.573840, 0.994606, 1.000000, 1.000000],
+            "ProjectileTrailLifetime" : 0.120000,
+            "ProjectileTrailMaterialPath" : "Content/Material/BossBulletTrail.uasset",
+            "ProjectileTrailMaxSamples" : 8,
+            "ProjectileTrailMinSampleDistance" : 0.050000,
+            "ProjectileTrailSampleInterval" : 0.020000,
+            "ProjectileTrailWidth" : 0.080000,
+            "ProjectilesPerArc" : 50,
+            "RecoveryDuration" : 1.200000,
+            "SphereRadius" : 5.000000,
+            "Weight" : 1.000000,
+            "WindupDuration" : 0.300000,
+            "bAutoActivate" : true,
+            "bBlockImmediateRepeat" : true,
+            "bEditorOnly" : false,
+            "bEnabled" : true,
+            "bFaceTargetDuringPattern" : true,
+            "bHiddenInComponentTree" : false,
+            "bIsActive" : true,
+            "bProjectileDeathEffectEnabled" : true,
+            "bProjectileDeathEffectInheritVelocity" : true,
+            "bProjectileTrailEnabled" : true,
+            "bTickEnable" : true
+          }
         }],
       "ObjectId" : 101,
       "Properties" : {
@@ -3964,7 +4013,7 @@
       "ClassName" : "AStaticMeshActor",
       "Name" : "Sky",
       "NonSceneComponents" : [],
-      "ObjectId" : 113,
+      "ObjectId" : 114,
       "Properties" : {
         "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
         "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
@@ -3976,7 +4025,7 @@
       "RootComponent" : {
         "Children" : [],
         "ClassName" : "UStaticMeshComponent",
-        "ObjectId" : 114,
+        "ObjectId" : 115,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -4016,7 +4065,7 @@
       "Name" : "Lua",
       "NonSceneComponents" : [{
           "ClassName" : "ULuaScriptComponent",
-          "ObjectId" : 117,
+          "ObjectId" : 118,
           "Properties" : {
             "ScriptFile" : "AudioController.lua",
             "bAutoActivate" : true,
@@ -4026,7 +4075,7 @@
             "bTickEnable" : true
           }
         }],
-      "ObjectId" : 115,
+      "ObjectId" : 116,
       "Properties" : {
         "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
         "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
@@ -4038,7 +4087,7 @@
       "RootComponent" : {
         "Children" : [],
         "ClassName" : "UStaticMeshComponent",
-        "ObjectId" : 116,
+        "ObjectId" : 117,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -4077,7 +4126,7 @@
       "ClassName" : "AUICanvasActor",
       "Name" : "AUICanvasActor_4",
       "NonSceneComponents" : [],
-      "ObjectId" : 118,
+      "ObjectId" : 119,
       "Properties" : {
         "Bindings" : [],
         "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
@@ -4097,7 +4146,7 @@
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [-26.830887, 15.643475, 13.273924],
+    "Location" : [-22.097794, 1.907907, 10.879756],
     "NearClip" : 0.100000,
     "Rotation" : [0.000000, 12.314747, -30.001614]
   },

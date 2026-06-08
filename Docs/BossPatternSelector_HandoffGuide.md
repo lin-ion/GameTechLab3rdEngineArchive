@@ -12,6 +12,7 @@
 4. 같은 보스 actor에 사용할 pattern component들이 붙어 있는지 확인한다.
    - `UBossPattern_AimedRingVolley`
    - `UBossPattern_HomingOrbTrail`
+   - `UBossPattern_RendingClawArc`
    - `UBossPattern_SphericalPulseBarrage`
    - `UBossPattern_ThunderclapCascade`
    - 필요하면 `UBossPattern_IdleTrackTarget`
@@ -102,7 +103,7 @@
 
 1. 보스 actor의 selector component를 선택한다.
 2. `Boss Pattern|Debug` 카테고리의 `Forced Pattern Name`에 pattern 이름을 입력한다.
-   - 예: `AimedRingVolley`, `HomingOrbTrail`, `SphericalPulseBarrage`, `ThunderclapCascade`
+   - 예: `AimedRingVolley`, `HomingOrbTrail`, `RendingClawArc`, `SphericalPulseBarrage`, `ThunderclapCascade`
 3. 조건을 존중하고 강제 실행하려면 `Force Pattern Ignore Conditions`를 false로 둔다.
 4. cooldown, distance, phase를 무시하고 테스트하려면 `Force Pattern Ignore Conditions`를 true로 둔다.
    - 단, disabled pattern은 여전히 실행하지 않는다.
@@ -145,6 +146,16 @@
 7. 구면 생성 반경은 `Sphere Radius`로 조정한다.
 8. 즉시 퍼지는 속도는 `Projectile Speed`로 조정한다.
 9. 분포를 랜덤화하려면 `Use Random Sphere Points`를 켜고 `Random Seed Offset`으로 변형한다.
+
+### Rending Claw Arc 조정
+
+1. 보스 actor에서 `UBossPattern_RendingClawArc` component를 선택한다.
+2. `Boss Pattern|Rending Claw Arc` 카테고리를 연다.
+3. 보스 중심 구체 반경은 `Sphere Radius`로 조정한다.
+4. 할퀴는 줄 수는 `Plane Count`, 줄 사이 간격은 `Plane Spacing`으로 조정한다.
+5. 각 줄의 호 길이는 `Arc Center Angle Degrees`로 조정한다. 호의 중앙은 항상 target 방향을 향한다.
+6. 줄마다 탄 수는 `Projectiles Per Arc`로 조정한다.
+7. 모든 탄은 보스에서 target으로 향하는 같은 방향에 `Projectile Speed`를 곱한 속도로 발사된다.
 
 ### Thunderclap Cascade 조정
 
@@ -237,6 +248,7 @@ Selector-level selection then applies:
 - Existing useful details:
   - `AimedRingVolley`: pending launch count
   - `HomingOrbTrail`: spawned count and pending launch count
+  - `RendingClawArc`: used plane count and spawned projectile count
   - `SphericalPulseBarrage`: spawned pulse count
   - `ThunderclapCascade`: started cycle count and active cycle count
 
@@ -268,6 +280,7 @@ Selector-level selection then applies:
 - `KraftonEngine/Source/Engine/Component/Gameplay/BossPatternSelectorComponent.cpp`
 - `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_AimedRingVolley.*`
 - `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_HomingOrbTrail.*`
+- `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_RendingClawArc.*`
 - `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_SphericalPulseBarrage.*`
 - `KraftonEngine/Source/Engine/Component/Gameplay/BossPattern_ThunderclapCascade.*`
 - `KraftonEngine/Source/Engine/Profiling/Stats/BossPatternStats.*`
