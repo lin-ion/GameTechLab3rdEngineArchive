@@ -11,9 +11,9 @@ enum class EUIButtonAction : uint8
 {
 	None,           // 동작 없음(기본)
 	ChangeScene,    // Target = .Scene 경로/이름           → GEngine->RequestTransitionToScene
-	ShowElement,    // Target = 대상 ElementName           → SetVisibleRect(true)
-	HideElement,    // Target = 대상 ElementName           → SetVisibleRect(false)
-	ToggleElement,  // Target = 대상 ElementName           → 가시성 토글
+	ShowElement,    // Target = 대상 ElementName           → SetVisible(true)  (요소 전체 표시 = bVisible)
+	HideElement,    // Target = 대상 ElementName           → SetVisible(false) (요소 전체 숨김 = bVisible)
+	ToggleElement,  // Target = 대상 ElementName           → bVisible 가시성 토글
 	SetImage,       // Target = 대상 ElementName(UUIImage), Param = 이미지 경로 → SetTexturePath
 	CallLua,        // Target = Lua 전역 함수명            → 함수 호출
 };

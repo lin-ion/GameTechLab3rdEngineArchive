@@ -1,9 +1,47 @@
 {
   "Actors" : [{
-      "ClassName" : "AUICanvasActor",
-      "Name" : "AUICanvasActor_3",
+      "ClassName" : "AActor",
+      "Name" : "MenuCamera",
       "NonSceneComponents" : [],
       "ObjectId" : 2,
+      "Properties" : {
+        "PendingActorLocation" : [307.842957, 0.000026, 153.921478],
+        "PendingActorRotation" : [-0.000000, 26.565048, -179.999985],
+        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
+        "PendingActorVisible" : true,
+        "PendingTagsString" : "",
+        "bNeedsTick" : false
+      },
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UCameraComponent",
+        "ObjectId" : 3,
+        "Properties" : {
+          "AttachSocketName" : "Name_None",
+          "CachedEditRotator" : [-0.000000, 26.565048, -179.999985],
+          "CameraState.FOV" : 1.047198,
+          "CameraState.FarZ" : 1000.000000,
+          "CameraState.NearZ" : 0.100000,
+          "CameraState.OrthoWidth" : 10.000000,
+          "CameraState.bIsOrthogonal" : false,
+          "Letterbox.Amount" : 1.000000,
+          "Letterbox.Color" : [0.000000, 0.000000, 0.000000, 1.000000],
+          "Letterbox.Thickness" : 0.120000,
+          "Letterbox.bEnabled" : false,
+          "RelativeTransform.Location" : [307.842957, 0.000026, 153.921478],
+          "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+          "bAutoActivate" : true,
+          "bEditorOnly" : false,
+          "bHiddenInComponentTree" : false,
+          "bIsActive" : true,
+          "bTickEnable" : true
+        }
+      }
+    }, {
+      "ClassName" : "AUICanvasActor",
+      "Name" : "AUICanvasActor_6",
+      "NonSceneComponents" : [],
+      "ObjectId" : 4,
       "Properties" : {
         "Bindings" : [],
         "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
@@ -11,7 +49,7 @@
         "PendingActorScale" : [1.000000, 1.000000, 1.000000],
         "PendingActorVisible" : true,
         "PendingTagsString" : "",
-        "UIAssetPath" : "Content/UI/MainUI.uasset",
+        "UIAssetPath" : "Content/UI/MainImageUI.uasset",
         "bNeedsTick" : true
       }
     }],
@@ -23,7 +61,7 @@
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [307.842957, 0.000026, 153.921478],
+    "Location" : [416.515167, 0.000036, 208.257584],
     "NearClip" : 0.100000,
     "Rotation" : [0.000000, 26.565050, 180.000000]
   },

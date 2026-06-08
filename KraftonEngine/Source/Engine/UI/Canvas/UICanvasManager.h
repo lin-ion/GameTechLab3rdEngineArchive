@@ -22,6 +22,11 @@ public:
 	void UnregisterCanvas(UUICanvas* Canvas);
 	const TArray<UUICanvas*>& GetCanvases() const { return Canvases; }
 
+	// [씬 전환 정리] 등록된 모든 Canvas 를 비운다. 전역 싱글톤이라 월드 경계를 넘어 잔여 캔버스가
+	// 남으면 다음 씬에 누수되므로, 스탠드얼론 씬 전환에서 호출해 방어적으로 정리한다(정상 경로인
+	// 액터 EndPlay→UnregisterCanvas 의 보강). 캔버스 UObject 는 GC 소유 — 여기선 등록 목록만 비운다.
+	void ClearCanvases() { Canvases.clear(); }
+
 	// 액터 없이 런타임에서 직접 Canvas 를 만들 때(테스트 / HUD 부트스트랩). 매니저가 keepalive 한다.
 	UUICanvas* CreateCanvas();
 

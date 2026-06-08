@@ -15,6 +15,7 @@
 #include "Core/ProjectSettings.h"
 #include "Core/Logging/Log.h"
 #include "UI/Canvas/UICanvasManager.h"
+#include "UI/UIManager.h"
 
 void UGameEngine::Init(FWindowsWindow* InWindow)
 {
@@ -173,6 +174,13 @@ void UGameEngine::ProcessPendingTransition()
 	// 기존 active world 파괴 — EndPlay → 액터/컴포넌트 destruct → PhysicsScene unique_ptr 해제.
 	const FName OldHandle = GetActiveWorldHandle();
 	DestroyWorldContext(OldHandle);
+
+	// [UI 누수 방지] 씬 전환 경계에서 전역 UI 상태를 비운다(PIE 종료 EndPlayMap 의 정리와 동형).
+	// DestroyWorldContext 가 EndPlay→UnregisterCanvas 로 캔버스 등록을 해제하지만, RmlUi 텍스트 위젯은
+	// 컴포넌트 파괴(GC 지연)에 의존해 잔류·누수될 수 있으므로 ClearViewport 로 즉시 비우고, 등록 캔버스
+	// 목록도 방어적으로 정리한다. 새 씬은 다음 BeginPlay/LayoutAll 에서 자기 캔버스·위젯을 재등록한다.
+	UUIManager::Get().ClearViewport();
+	FUICanvasManager::Get().ClearCanvases();
 
 	// require 캐시된 lua 모듈 (CoroutineManager / ObjRegistry) 이 보유한 죽은-월드 참조 정리.
 	// 안 하면 옛 actor 의 Wait(N) 코루틴이 새 월드 Tick 에서 만료되며 freed actor 를 deref → 크래시.
