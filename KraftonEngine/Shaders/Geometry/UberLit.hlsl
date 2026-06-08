@@ -235,5 +235,5 @@ float4 PS(UberVS_Output input) : SV_TARGET
     finalColor = ApplyWireframe(finalColor);
 #endif
 
-    return float4(finalColor, baseColor.a * Opacity); // Opacity는 alpha에만 (Transparent 블렌드에서 효과)
+    return float4(finalColor, 1.0f);
 }
