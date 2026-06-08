@@ -318,6 +318,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletTrailComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.cpp" />
@@ -852,6 +853,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletTrailComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_AimedRingVolley.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPatternComponentBase.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BossPattern_HomingOrbTrail.h" />

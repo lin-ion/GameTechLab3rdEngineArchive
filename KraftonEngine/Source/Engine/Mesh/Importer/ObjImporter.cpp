@@ -411,6 +411,7 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ke.X);
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ke.Y);
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ke.Z);
+			CurrentMaterial.bHasKe = true;
 		}
 		else if (Prefix == "map_Kd" || Prefix == "map_Ke" || Prefix == "map_Bump" || Prefix == "bump" || Prefix == "norm")
 		{
@@ -509,7 +510,7 @@ FString FObjImporter::ConvertMtlInfoToJson(const FObjMaterialInfo* MtlInfo)
 FString FObjImporter::ConvertMtlInfoToMat(const FObjMaterialInfo* MtlInfo)
 {
 	const FString UassetPath = "Content/Material/Auto/" + MtlInfo->MaterialSlotName + ".uasset";
-	const bool bHasEmissive = MtlInfo->Ke.X != 0.0f || MtlInfo->Ke.Y != 0.0f || MtlInfo->Ke.Z != 0.0f || !MtlInfo->map_Ke.empty();
+	const bool bHasEmissive = MtlInfo->bHasKe || !MtlInfo->map_Ke.empty();
 	const bool bHasAdvancedMaterial =
 		bHasEmissive ||
 		MtlInfo->bHasNs ||
@@ -527,7 +528,7 @@ FString FObjImporter::ConvertMtlInfoToMat(const FObjMaterialInfo* MtlInfo)
 		: FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// JSON 없이 머티리얼을 직접 빌드해 .uasset(바이너리)으로 저장.
-	FMaterialManager::Get().CreateImportedMaterialAsset(UassetPath, SectionColor, MtlInfo->map_Kd, MtlInfo->map_Bump, MtlInfo->map_Ke, MtlInfo->Ke, MtlInfo->Ks, MtlInfo->Ns, MtlInfo->d);
+	FMaterialManager::Get().CreateImportedMaterialAsset(UassetPath, SectionColor, MtlInfo->map_Kd, MtlInfo->map_Bump, MtlInfo->map_Ke, MtlInfo->Ke, MtlInfo->Ks, MtlInfo->Ns, MtlInfo->d, MtlInfo->bHasKe);
 	return UassetPath;
 }
 

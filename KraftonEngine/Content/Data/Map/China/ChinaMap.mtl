@@ -1,0 +1,238 @@
+# Blender 5.1.0 MTL File: 'None'
+# www.blender.org
+
+newmtl Front_Uncomb.002
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/red_plaster.001_baseColor.jpeg
+
+newmtl Front_Uncomb.003
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/Front_Uncomb.003_baseColor.jpeg
+
+newmtl Grass_C.001
+Ns 92.747650
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/Grass_C.001_baseColor.png
+map_Bump -bm 1.000000 textures/Grass_C.001_normal.png
+
+newmtl Grey_plaster.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/red_plaster.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/red_plaster.001_normal.jpeg
+
+newmtl Material.002
+Ns 1.788865
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/Material.002_baseColor.png
+
+newmtl Material.007
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.024340 0.002338
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl Material.008
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.138288 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl glass.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+
+newmtl lambert_DS.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/lambert_DS.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/lambert_DS.001_normal.jpeg
+
+newmtl lambert_DS_00.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd textures/lambert_DS_00.001_baseColor.png
+map_d textures/lambert_DS_00.001_baseColor.png
+map_Bump -bm 1.000000 textures/lambert_DS_00.001_normal.jpeg
+
+newmtl lambert_MZ.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/lambert_MZ.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/lambert_MZ.001_normal.jpeg
+
+newmtl lambert_W.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Bump -bm 1.000000 textures/lambert_W_02.001_normal.jpeg
+
+newmtl lambert_WD.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/lambert_WD.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/lambert_WD.001_normal.jpeg
+
+newmtl lambert_WD_00.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/lambert_WD_00.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/lambert_WD_00.001_normal.jpeg
+
+newmtl lambert_W_01.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Bump -bm 1.000000 textures/lambert_W_02.001_normal.jpeg
+
+newmtl lambert_W_02.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/lambert_W_02.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/lambert_W_02.001_normal.jpeg
+
+newmtl lambert_W_03.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/lambert_W_03.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/lambert_W_02.001_normal.jpeg
+
+newmtl lambert_qi_ta_wa_pian.003
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.085800 0.085800 0.085800
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Bump -bm 1.000000 textures/lambert_qi_ta_wa_pian.003_normal.jpeg
+
+newmtl red_plaster.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/red_plaster.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/red_plaster.001_normal.jpeg
+
+newmtl stone_brick.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/stone_brick_2.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/stone_brick_2.001_normal.jpeg
+
+newmtl stone_brick_2.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/stone_brick_2.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/stone_brick_2.001_normal.jpeg
+
+newmtl stone_brick_large_2.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/stone_brick_large_2.001_baseColor.jpeg
+map_Bump -bm 1.000000 textures/stone_brick_large_2.001_normal.jpeg

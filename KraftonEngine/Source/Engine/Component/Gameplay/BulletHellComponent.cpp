@@ -24,6 +24,8 @@ namespace
 	constexpr float TwoPi = 6.28318530718f;
 	constexpr float GoldenAngle = 2.39996322973f;
 	constexpr const char* BulletTrailFallbackMaterialPath = "Content/Material/Particle/ParticleBeamTrail.uasset";
+	constexpr const char* PlayerTagName = "Player";
+	constexpr const char* BossTagName = "Boss";
 
 	uint32 AdvanceNonZero(uint32 Value)
 	{
@@ -39,6 +41,41 @@ namespace
 	float ClampFloat(float Value, float MinValue, float MaxValue)
 	{
 		return (std::max)(MinValue, (std::min)(MaxValue, Value));
+	}
+
+	AActor* ResolveHitActor(const FHitResult& Hit)
+	{
+		if (Hit.HitActor)
+		{
+			return Hit.HitActor;
+		}
+		return Hit.HitComponent ? Hit.HitComponent->GetOwner() : nullptr;
+	}
+
+	bool HasActorTag(const AActor* Actor, const char* TagName)
+	{
+		return Actor && TagName && Actor->HasTag(FName(TagName));
+	}
+
+	bool IsSelfOrFriendlyHit(const AActor* OwnerActor, const AActor* TargetActor)
+	{
+		if (!OwnerActor || !TargetActor)
+		{
+			return false;
+		}
+		if (TargetActor == OwnerActor)
+		{
+			return true;
+		}
+		if (HasActorTag(OwnerActor, BossTagName) && HasActorTag(TargetActor, BossTagName))
+		{
+			return true;
+		}
+		if (HasActorTag(OwnerActor, PlayerTagName) && HasActorTag(TargetActor, PlayerTagName))
+		{
+			return true;
+		}
+		return false;
 	}
 
 	FVector VelocityToTarget(const FVector& Position, const FVector& Target, float Speed)
@@ -1009,12 +1046,20 @@ UBulletHellComponent::EBulletCollisionKillReason UBulletHellComponent::CheckBull
 	const uint32 CollisionObjectTypeMask = BuildCollisionObjectTypeMask();
 	if (CollisionObjectTypeMask != 0 && SweepBulletByObjectTypes(Bullet, CollisionObjectTypeMask, Hit))
 	{
+		if (IsSelfOrFriendlyHit(GetOwner(), ResolveHitActor(Hit)))
+		{
+			return EBulletCollisionKillReason::None;
+		}
 		ApplyDamageToHitTarget(Bullet, Hit);
 		return EBulletCollisionKillReason::Collision;
 	}
 
 	if (bKillOnBlockingCollision && SweepBulletByChannel(Bullet, CollisionTraceChannel, Hit))
 	{
+		if (IsSelfOrFriendlyHit(GetOwner(), ResolveHitActor(Hit)))
+		{
+			return EBulletCollisionKillReason::None;
+		}
 		ApplyDamageToHitTarget(Bullet, Hit);
 		return EBulletCollisionKillReason::Collision;
 	}
@@ -1126,13 +1171,9 @@ void UBulletHellComponent::ApplyDamageToHitTarget(const FBulletInstance& Bullet,
 		return;
 	}
 
-	AActor* TargetActor = Hit.HitActor;
-	if (!TargetActor && Hit.HitComponent)
-	{
-		TargetActor = Hit.HitComponent->GetOwner();
-	}
+	AActor* TargetActor = ResolveHitActor(Hit);
 
-	if (!TargetActor)
+	if (!TargetActor || IsSelfOrFriendlyHit(GetOwner(), TargetActor))
 	{
 		return;
 	}

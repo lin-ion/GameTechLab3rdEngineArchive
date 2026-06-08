@@ -1,4 +1,4 @@
-#include "BossPattern_AimedRingVolley.h"
+﻿#include "BossPattern_AimedRingVolley.h"
 
 #include "GameFramework/AActor.h"
 
