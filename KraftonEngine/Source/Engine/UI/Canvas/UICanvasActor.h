@@ -99,6 +99,16 @@ public:
 	// (트리는 로드 후 BeginPlay 가 .uasset 으로 재구성). AActor 훅 오버라이드.
 	bool ShouldSerializeRootComponentTree() const override;
 
+	// [에디터] 루트 캔버스(UUICanvas)를 보장한다 — 에디터에서 선택/디테일/뷰포트 미러용. 이미 있으면
+	// 재사용, UIAssetPath 있으면 .uasset 로드, 둘 다 없거나 로드 실패면 빈 캔버스. 화면 렌더 등록
+	// (RegisterCanvas)은 하지 않는다(런타임 BeginPlay 소관 — R1). 에디터 스폰 site / PostDuplicate 호출.
+	void EnsureCanvasForEditor();
+
+	// [에디터] 씬 로드·복제 직후(컴포넌트/속성 복원 완료) — 루트 캔버스를 보장해 에디터에서 표시·편집 가능.
+	void PostDuplicate() override;
+	// [에디터] 디테일에서 UI Asset 경로를 바꾸면 캔버스를 재구성(기존 루트 정리 — 이중 캔버스 방지 R2).
+	void PostEditProperty(const char* PropertyName) override;
+
 private:
 	// [데이터 바인딩] 매 프레임 Tick 에서 소스 폰을 해석하고, 체력바(width+옵션 색, 사이클 1·2)와
 	// 숫자 텍스트 readout(사이클 3)을 갱신한다. 좌측 피벗 바는 폭 감소가 좌→우.

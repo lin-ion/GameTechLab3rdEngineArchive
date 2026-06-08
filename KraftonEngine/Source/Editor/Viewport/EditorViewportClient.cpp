@@ -28,6 +28,12 @@ UWorld* FEditorViewportClient::GetWorld() const
 #include "GameFramework/AActor.h"
 #include "Viewport/GameViewportClient.h"
 #include "ImGui/imgui.h"
+
+// [Tier2 R-A] 편집 모드 뷰포트에 게임 UI 캔버스를 ImGui 미러로 오버레이.
+#include "UI/Canvas/UICanvasActor.h"
+#include "UI/Canvas/UICanvas.h"
+#include "UI/Canvas/UICanvasManager.h"
+#include "Editor/UI/Util/UICanvasMirror.h"
 #include "Component/Light/LightComponentBase.h"
 
 namespace
@@ -796,6 +802,35 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 	ImVec2 Max(R.X + R.Width, R.Y + R.Height);
 
 	DrawList->AddImage((ImTextureID)Viewport->GetSRV(), Min, Max);
+
+	// [Tier2 R-A] 편집 모드 한정 — 이 월드의 AUICanvasActor 캔버스를 뷰포트에 ImGui 미러로 오버레이.
+	// PIE 중엔 실 렌더(SimpleUIPass+RmlUi)가 UI 를 SRV 에 이미 그리므로 미러를 끈다(이중 방지). 캔버스는
+	// 등록(RegisterCanvas)하지 않고 여기서 직접 LayoutCanvas(bSyncExternal=false)로 레이아웃 → RmlUi
+	// 미사용(게임 뷰포트 텍스트 누수 0, R3). Scale=뷰포트높이/레퍼런스(1080) 로 런타임 비율과 일치.
+	{
+		UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+		UWorld* World = GetWorld();
+		if (World && (!EditorEngine || !EditorEngine->IsPlayingInEditor()))
+		{
+			const float RefResY = 1080.0f;
+			const float UIScale = (R.Height > 0.0f) ? (R.Height / RefResY) : 1.0f;
+			DrawList->PushClipRect(Min, Max, true);   // 뷰포트 밖(인접 패널)으로 새지 않게 클립
+			for (AActor* Actor : World->GetActors())
+			{
+				AUICanvasActor* UICanvasActor = Cast<AUICanvasActor>(Actor);
+				if (!UICanvasActor)
+				{
+					continue;
+				}
+				if (UUICanvas* Cv = UICanvasActor->GetCanvas())
+				{
+					FUICanvasManager::Get().LayoutCanvas(Cv, UIScale, /*bSyncExternal=*/false);
+					FUICanvasMirror::DrawElement(Cv, DrawList, Min, UIScale);
+				}
+			}
+			DrawList->PopClipRect();
+		}
+	}
 
 	// 활성 뷰포트 테두리 강조
 	if (bIsActiveViewport)

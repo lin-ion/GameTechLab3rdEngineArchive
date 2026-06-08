@@ -905,8 +905,8 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			}
 			// UI .uasset 드롭 → 화면공간 UI 액터(AUICanvasActor) spawn (메시 분기와 동형). 의미 1:
 			// 드롭 3D 좌표는 무시(transform 기본값/원점) — UI 는 카메라/월드와 무관하게 화면에 그려진다.
-			// 캔버스 트리 빌드 + 화면 등록은 액터 BeginPlay(PIE/런타임)에서 UIAssetPath 로 재구성한다
-			// (진단 R1/R4) → 편집 모드에선 액터만 생기고 화면엔 안 뜬다(정상).
+			// 화면 실 렌더 등록(RegisterCanvas)은 여전히 BeginPlay(PIE/런타임) 소관(R1/R4)이지만,
+			// 편집 모드 표시·편집을 위해 캔버스 트리는 드롭 즉시 빌드한다(EnsureCanvasForEditor, Tier1).
 			else if (const ImGuiPayload* uiPayload = ImGui::AcceptDragDropPayload("UIContentItem"))
 			{
 				FContentItem ContentItem = *reinterpret_cast<const FContentItem*>(uiPayload->Data);
@@ -917,6 +917,8 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 					// .Scene 포터빌리티: 참조 경로는 project-relative 로 저장(메시 StaticMeshPath 선례).
 					NewActor->SetUIAssetPath(FPaths::MakeProjectRelative(FPaths::ToUtf8(ContentItem.Path.wstring())));
 					Editor->GetWorld()->AddActor(NewActor);
+					// [Tier1] 드롭 즉시 루트 캔버스 빌드 → 에디터에서 선택/디테일 편집 + 뷰포트 미러 표시.
+					NewActor->EnsureCanvasForEditor();
 				}
 			}
 			ImGui::EndDragDropTarget();

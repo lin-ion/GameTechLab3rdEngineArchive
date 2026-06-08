@@ -17,6 +17,7 @@
 #include "Core/Logging/Log.h"
 
 #include <cstdio>
+#include <cstring>
 
 namespace
 {
@@ -224,6 +225,51 @@ bool AUICanvasActor::ShouldSerializeRootComponentTree() const
 	// [R4] UIAssetPath 가 있으면 캔버스 트리는 .uasset 에서 재구성되므로 .Scene 에 인라인으로
 	// 저장하지 않는다(인라인 트리 + 에셋 참조 동시 저장 → 중복/충돌 방지). 참조가 없으면 기존처럼 인라인.
 	return UIAssetPath.IsNull();
+}
+
+void AUICanvasActor::EnsureCanvasForEditor()
+{
+	// 이미 루트가 UUICanvas 면 재사용(인라인 트리가 역직렬화로 복원된 경우 등).
+	if (UUICanvas* Root = Cast<UUICanvas>(GetRootComponent()))
+	{
+		Canvas = Root;
+		return;
+	}
+	// 에셋 참조 모델: .uasset 에서 트리 복원(LoadFromAsset 이 SetRootComponent 까지 수행).
+	if (!UIAssetPath.IsNull())
+	{
+		LoadFromAsset(UIAssetPath.ToString());
+	}
+	// 로드 실패/경로 없음 → 빈 캔버스라도 보장(루트가 있어야 에디터에서 선택·디테일이 뜬다).
+	if (!Cast<UUICanvas>(GetRootComponent()))
+	{
+		InitCanvas();
+	}
+}
+
+void AUICanvasActor::PostDuplicate()
+{
+	Super::PostDuplicate();
+	// [에디터] 씬 로드/복제 직후 호출(SceneSaveManager 가 컴포넌트·속성 복원 후 호출). 에디터 월드는
+	// BeginPlay 미진입이라 여기서 루트 캔버스를 보장해야 선택/디테일/뷰포트 미러가 가능하다.
+	// 런타임(PIE)에선 이후 BeginPlay 의 InitCanvas 가 이 캔버스를 재사용하고 RegisterCanvas 한다(무중복).
+	EnsureCanvasForEditor();
+}
+
+void AUICanvasActor::PostEditProperty(const char* PropertyName)
+{
+	Super::PostEditProperty(PropertyName);
+	// [에디터] 디테일에서 UI Asset 경로(멤버명 "UIAssetPath")를 바꾸면 캔버스를 새 에셋으로 재구성.
+	// 기존 루트 캔버스는 먼저 제거해 이중 캔버스(R2)를 막는다.
+	if (PropertyName && strcmp(PropertyName, "UIAssetPath") == 0)
+	{
+		if (UUICanvas* Old = Canvas.Get())
+		{
+			RemoveComponent(Old);
+			Canvas = nullptr;
+		}
+		EnsureCanvasForEditor();
+	}
 }
 
 void AUICanvasActor::EndPlay()
