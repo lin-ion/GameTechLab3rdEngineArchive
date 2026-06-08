@@ -493,6 +493,20 @@ void APlayerCameraManager::ClearCameraVignette()
 {
 	bEnableVignette = false;
 	VignetteIntensity = 0.0f;
+	bDamageVignettePulseActive = false;
+	DamageVignettePulseElapsed = 0.0f;
+}
+
+void APlayerCameraManager::StartDamageVignettePulse(float Duration)
+{
+	bDamageVignettePulseActive = true;
+	DamageVignettePulseElapsed = 0.0f;
+	DamageVignettePulseDuration = std::max(0.01f, Duration);
+	bEnableVignette = true;
+	VignetteIntensity = 0.0f;
+	VignetteRadius = DamageVignetteRadius;
+	VignetteSoftness = DamageVignetteSoftness;
+	VignetteColor = FLinearColor(1.0f, 0.02f, 0.0f, 0.0f);
 }
 
 void APlayerCameraManager::SetRadialBlur(float Intensity, float Radius, int32 SampleCount, FVector2 Center)
@@ -700,6 +714,34 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 		{
 			bEnableFading = false;
 			FadeAmount = 0.0f;
+		}
+	}
+
+	if (bDamageVignettePulseActive)
+	{
+		DamageVignettePulseElapsed = std::min(
+			DamageVignettePulseDuration,
+			DamageVignettePulseElapsed + std::max(0.0f, DeltaTime));
+
+		const float Normalized = DamageVignettePulseDuration > 0.0f
+			? DamageVignettePulseElapsed / DamageVignettePulseDuration
+			: 1.0f;
+		const float Alpha = Normalized < 0.5f
+			? Normalized * 2.0f
+			: (1.0f - Normalized) * 2.0f;
+		const float ClampedAlpha = std::max(0.0f, std::min(1.0f, Alpha));
+
+		bEnableVignette = ClampedAlpha > 0.0f;
+		VignetteIntensity = DamageVignettePeakIntensity * ClampedAlpha;
+		VignetteRadius = DamageVignetteRadius;
+		VignetteSoftness = DamageVignetteSoftness;
+		VignetteColor = FLinearColor(1.0f, 0.02f, 0.0f, ClampedAlpha);
+
+		if (DamageVignettePulseElapsed >= DamageVignettePulseDuration)
+		{
+			bDamageVignettePulseActive = false;
+			bEnableVignette = false;
+			VignetteIntensity = 0.0f;
 		}
 	}
 

@@ -160,6 +160,8 @@ public:
 	virtual void SetCameraVignette(float Intensity, float Radius, float Softness, FLinearColor Color);
 	UFUNCTION(Callable, Category="Camera|Vignette")
 	virtual void ClearCameraVignette();
+	UFUNCTION(Callable, Category="Camera|Vignette")
+	virtual void StartDamageVignettePulse(float Duration = 0.5f);
 
 	// 현재 vignette 상태 — RenderPass(B) 가 PostProcess 에 전달.
 	UFUNCTION(Pure, Category="Camera|Vignette")
@@ -279,6 +281,12 @@ private:
 	float VignetteRadius = 0.75f;
 	float VignetteSoftness = 0.35f;
 	FLinearColor VignetteColor = FLinearColor::Black();
+	bool bDamageVignettePulseActive = false;
+	float DamageVignettePulseElapsed = 0.0f;
+	float DamageVignettePulseDuration = 0.5f;
+	float DamageVignettePeakIntensity = 0.95f;
+	float DamageVignetteRadius = 0.62f;
+	float DamageVignetteSoftness = 0.38f;
 
 	FCameraRadialBlurState RadialBlur;
 

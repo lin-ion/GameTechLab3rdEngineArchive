@@ -1,6 +1,10 @@
 #include "BulletHellDamageReceiverComponent.h"
 
+#include "GameFramework/Camera/PlayerCameraManager.h"
+#include "GameFramework/GameMode/PlayerController.h"
 #include "GameFramework/Pawn/Pawn.h"
+#include "GameFramework/World.h"
+#include "Runtime/Engine.h"
 
 #include <algorithm>
 
@@ -35,6 +39,16 @@ float UBulletHellDamageReceiverComponent::ApplyDamage(float DamageAmount)
 	{
 		TotalDamageForwarded += AppliedDamage;
 		++HitCount;
+
+		UWorld* World = GEngine ? GEngine->GetWorld() : nullptr;
+		APlayerController* PlayerController = World ? World->GetFirstPlayerController() : nullptr;
+		if (PlayerController && PlayerController->GetPossessedPawn() == PawnOwner)
+		{
+			if (APlayerCameraManager* CameraManager = PlayerController->GetPlayerCameraManager())
+			{
+				CameraManager->StartDamageVignettePulse(0.5f);
+			}
+		}
 	}
 	return AppliedDamage;
 }
