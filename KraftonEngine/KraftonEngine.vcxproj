@@ -359,6 +359,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Shape\SphereComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Vehicle\VehicleWheelPoseComponent.cpp" />
     <ClCompile Include="Source\Engine\Core\ProjectSettings.cpp" />
+    <ClCompile Include="Source\Engine\Core\ScoreManager.cpp" />
     <ClCompile Include="Source\Engine\Core\TickFunction.cpp" />
     <ClCompile Include="Source\Engine\Core\Logging\Log.cpp" />
     <ClCompile Include="Source\Engine\Core\Logging\Notification.cpp" />
@@ -896,6 +897,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Core\Common.h" />
     <ClInclude Include="Source\Engine\Core\Delegate.h" />
     <ClInclude Include="Source\Engine\Core\ProjectSettings.h" />
+    <ClInclude Include="Source\Engine\Core\ScoreManager.h" />
     <ClInclude Include="Source\Engine\Core\Singleton.h" />
     <ClInclude Include="Source\Engine\Core\TickFunction.h" />
     <ClInclude Include="Source\Engine\Core\Logging\Log.h" />
