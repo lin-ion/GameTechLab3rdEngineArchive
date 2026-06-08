@@ -5,6 +5,7 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Core/Logging/Log.h"
+#include "Core/TickFunction.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Math/Rotator.h"
@@ -149,6 +150,8 @@ UBulletHellComponent::UBulletHellComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bTickEnabled = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.SetTickGroup(TG_PostUpdateWork);
+	PrimaryComponentTick.SetEndTickGroup(TG_PostUpdateWork);
 }
 
 void UBulletHellComponent::BeginPlay()

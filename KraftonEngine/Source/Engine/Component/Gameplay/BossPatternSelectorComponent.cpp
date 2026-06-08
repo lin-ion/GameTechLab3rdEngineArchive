@@ -3,6 +3,7 @@
 #include "Component/Gameplay/BulletHellComponent.h"
 #include "Component/Script/LuaBlueprintComponent.h"
 #include "Core/Logging/Log.h"
+#include "Core/TickFunction.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/GameMode/GameplayStatics.h"
@@ -54,6 +55,8 @@ UBossPatternSelectorComponent::UBossPatternSelectorComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bTickEnabled = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.SetTickGroup(TG_PostPhysics);
+	PrimaryComponentTick.SetEndTickGroup(TG_PostPhysics);
 }
 
 void UBossPatternSelectorComponent::BeginPlay()
