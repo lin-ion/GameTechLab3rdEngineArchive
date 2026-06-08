@@ -29,6 +29,7 @@
 #include "Physics/PhysicsAsset.h"
 #include "Physics/PhysicsAssetManager.h"
 #include "Physics/PhysicsAssetInstance.h"
+#include "Physics/PhysicsAssetPreviewUtils.h"
 #include "Physics/IPhysicsScene.h"
 #include "Physics/PhysicsRuntime.h"
 #include "Profiling/Stats/ClothCollisionStats.h"
@@ -43,9 +44,128 @@
 
 namespace
 {
+    constexpr float PhysicsAssetDebugMinShapeSize = 0.001f;
+    constexpr int32 PhysicsAssetDebugCircleSegments = 24;
+
     float Clamp01(float Value)
     {
         return std::clamp(Value, 0.0f, 1.0f);
+    }
+
+    FTransform ComposePhysicsAssetDebugTransforms(const FTransform& ParentWorld, const FTransform& Local)
+    {
+        FTransform Result = Local;
+        Result.Location = ParentWorld.Location + ParentWorld.Rotation.RotateVector(Local.Location);
+        Result.Rotation = (ParentWorld.Rotation * Local.Rotation).GetNormalized();
+        Result.Scale = FVector::OneVector;
+        return Result;
+    }
+
+    FVector ClampPhysicsAssetDebugHalfExtent(FVector HalfExtent)
+    {
+        HalfExtent.X = (std::max)(HalfExtent.X, PhysicsAssetDebugMinShapeSize);
+        HalfExtent.Y = (std::max)(HalfExtent.Y, PhysicsAssetDebugMinShapeSize);
+        HalfExtent.Z = (std::max)(HalfExtent.Z, PhysicsAssetDebugMinShapeSize);
+        return HalfExtent;
+    }
+
+    void DrawPhysicsAssetDebugCircle(
+        UWorld* World,
+        const FVector& Center,
+        const FVector& AxisA,
+        const FVector& AxisB,
+        float Radius,
+        const FColor& Color)
+    {
+        if (!World || Radius <= 0.0f)
+        {
+            return;
+        }
+
+        FVector Prev = Center + AxisA * Radius;
+        for (int32 Segment = 1; Segment <= PhysicsAssetDebugCircleSegments; ++Segment)
+        {
+            const float Angle = 2.0f * FMath::Pi * static_cast<float>(Segment) / static_cast<float>(PhysicsAssetDebugCircleSegments);
+            const FVector Next = Center + AxisA * (cosf(Angle) * Radius) + AxisB * (sinf(Angle) * Radius);
+            DrawDebugLine(World, Prev, Next, Color, 0.0f);
+            Prev = Next;
+        }
+    }
+
+    void DrawPhysicsAssetDebugOrientedBox(
+        UWorld* World,
+        const FTransform& ShapeWorld,
+        const FVector& HalfExtent,
+        const FColor& Color)
+    {
+        if (!World)
+        {
+            return;
+        }
+
+        const FQuat Rotation = ShapeWorld.Rotation.GetNormalized();
+        const FVector Center = ShapeWorld.Location;
+        const FVector AxisX = Rotation.RotateVector(FVector(1.0f, 0.0f, 0.0f));
+        const FVector AxisY = Rotation.RotateVector(FVector(0.0f, 1.0f, 0.0f));
+        const FVector AxisZ = Rotation.RotateVector(FVector(0.0f, 0.0f, 1.0f));
+
+        const auto Corner = [&](float X, float Y, float Z)
+        {
+            return Center
+                + AxisX * (X * HalfExtent.X)
+                + AxisY * (Y * HalfExtent.Y)
+                + AxisZ * (Z * HalfExtent.Z);
+        };
+
+        DrawDebugBox(
+            World,
+            Corner(-1.0f, -1.0f, -1.0f),
+            Corner( 1.0f, -1.0f, -1.0f),
+            Corner( 1.0f,  1.0f, -1.0f),
+            Corner(-1.0f,  1.0f, -1.0f),
+            Corner(-1.0f, -1.0f,  1.0f),
+            Corner( 1.0f, -1.0f,  1.0f),
+            Corner( 1.0f,  1.0f,  1.0f),
+            Corner(-1.0f,  1.0f,  1.0f),
+            Color,
+            0.0f);
+    }
+
+    void DrawPhysicsAssetDebugCapsuleZAxis(
+        UWorld* World,
+        const FTransform& ShapeWorld,
+        float Radius,
+        float HalfHeight,
+        const FColor& Color)
+    {
+        if (!World)
+        {
+            return;
+        }
+
+        Radius = (std::max)(Radius, PhysicsAssetDebugMinShapeSize);
+        HalfHeight = (std::max)(HalfHeight, Radius);
+        const float CylinderHalf = (std::max)(0.0f, HalfHeight - Radius);
+
+        const FQuat Rotation = ShapeWorld.Rotation.GetNormalized();
+        const FVector Center = ShapeWorld.Location;
+        const FVector AxisX = Rotation.RotateVector(FVector(1.0f, 0.0f, 0.0f));
+        const FVector AxisY = Rotation.RotateVector(FVector(0.0f, 1.0f, 0.0f));
+        const FVector AxisZ = Rotation.RotateVector(FVector(0.0f, 0.0f, 1.0f));
+        const FVector TopCenter = Center + AxisZ * CylinderHalf;
+        const FVector BottomCenter = Center - AxisZ * CylinderHalf;
+
+        DrawPhysicsAssetDebugCircle(World, TopCenter, AxisX, AxisY, Radius, Color);
+        DrawPhysicsAssetDebugCircle(World, BottomCenter, AxisX, AxisY, Radius, Color);
+        DrawPhysicsAssetDebugCircle(World, Center, AxisX, AxisY, Radius, Color);
+
+        DrawDebugLine(World, TopCenter + AxisX * Radius, BottomCenter + AxisX * Radius, Color, 0.0f);
+        DrawDebugLine(World, TopCenter - AxisX * Radius, BottomCenter - AxisX * Radius, Color, 0.0f);
+        DrawDebugLine(World, TopCenter + AxisY * Radius, BottomCenter + AxisY * Radius, Color, 0.0f);
+        DrawDebugLine(World, TopCenter - AxisY * Radius, BottomCenter - AxisY * Radius, Color, 0.0f);
+
+        DrawDebugSphere(World, TopCenter, Radius, 12, Color, 0.0f);
+        DrawDebugSphere(World, BottomCenter, Radius, 12, Color, 0.0f);
     }
 
     FBoundingBox BuildClothSectionWorldBounds(
@@ -2817,6 +2937,7 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         // stable animation pose to blend against each frame.
         UMeshComponent::TickComponent(DeltaTime, TickType, ThisTickFunction);
         TickClothSimulation(DeltaTime);
+        DrawPhysicsAssetDebug();
         return;
     }
 
@@ -2824,11 +2945,83 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     {
         UMeshComponent::TickComponent(DeltaTime, TickType, ThisTickFunction);
         TickClothSimulation(DeltaTime);
+        DrawPhysicsAssetDebug();
         return;
     }
 
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     TickClothSimulation(DeltaTime);
+    DrawPhysicsAssetDebug();
+}
+
+void USkeletalMeshComponent::DrawPhysicsAssetDebug()
+{
+    if (!bDrawPhysicsAssetDebug)
+    {
+        return;
+    }
+
+    UWorld* World = GetWorld();
+    UPhysicsAsset* PhysicsAsset = GetEffectivePhysicsAsset();
+    if (!World || !PhysicsAsset)
+    {
+        return;
+    }
+
+    FPhysicsAssetPreviewPoseCache PoseCache;
+    if (!PoseCache.Initialize(this, PhysicsAsset))
+    {
+        return;
+    }
+
+    const FColor BodyColor(0, 220, 255, 220);
+    const FColor BodyCenterColor(255, 230, 80, 220);
+    const TArray<FPhysicsAssetBodySetup>& Bodies = PhysicsAsset->GetBodySetups();
+    for (int32 BodyIndex = 0; BodyIndex < static_cast<int32>(Bodies.size()); ++BodyIndex)
+    {
+        FTransform BodyWorld;
+        if (!PoseCache.ComputeBodyWorldTransform(BodyIndex, BodyWorld))
+        {
+            continue;
+        }
+
+        DrawDebugPoint(World, BodyWorld.Location, 0.055f, BodyCenterColor, 0.0f);
+
+        const FPhysicsAssetBodySetup& Body = Bodies[BodyIndex];
+        for (const FPhysicsAssetShapeSetup& Shape : Body.Shapes)
+        {
+            const FTransform ShapeWorld = ComposePhysicsAssetDebugTransforms(BodyWorld, Shape.LocalTransform);
+            switch (Shape.Type)
+            {
+            case EPhysicsAssetShapeType::Box:
+                DrawPhysicsAssetDebugOrientedBox(
+                    World,
+                    ShapeWorld,
+                    ClampPhysicsAssetDebugHalfExtent(Shape.BoxHalfExtent),
+                    BodyColor);
+                break;
+            case EPhysicsAssetShapeType::Sphere:
+                DrawDebugSphere(
+                    World,
+                    ShapeWorld.Location,
+                    (std::max)(Shape.SphereRadius, PhysicsAssetDebugMinShapeSize),
+                    16,
+                    BodyColor,
+                    0.0f);
+                break;
+            case EPhysicsAssetShapeType::Capsule:
+                DrawPhysicsAssetDebugCapsuleZAxis(
+                    World,
+                    ShapeWorld,
+                    (std::max)(Shape.CapsuleRadius, PhysicsAssetDebugMinShapeSize),
+                    (std::max)(Shape.CapsuleHalfHeight, Shape.CapsuleRadius),
+                    BodyColor);
+                break;
+            default:
+                break;
+            }
+        }
+    }
 }
 
 void USkeletalMeshComponent::TickClothSimulation(float DeltaTime)

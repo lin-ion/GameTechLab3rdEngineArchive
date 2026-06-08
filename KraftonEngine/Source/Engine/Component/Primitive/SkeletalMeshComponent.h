@@ -255,6 +255,10 @@ public:
     UPhysicsAsset* GetActivePhysicsAsset() const;
     UFUNCTION(Pure, Category="Physics")
     float GetPhysicsAssetBlendWeight() const { return PhysicsPoseBlendWeight; }
+    UFUNCTION(Callable, Exec, Category="Physics|Debug")
+    void SetDrawPhysicsAssetDebug(bool bEnable) { bDrawPhysicsAssetDebug = bEnable; }
+    UFUNCTION(Pure, Category="Physics|Debug")
+    bool IsDrawingPhysicsAssetDebug() const { return bDrawPhysicsAssetDebug; }
     UFUNCTION(Callable, Category="Physics")
     bool CreatePhysicsAssetInstanceBodies();
     UFUNCTION(Callable, Category="Physics")
@@ -375,6 +379,7 @@ private:
     void FinishRagdollRecovery();
     void LoadAnimationFromPath();
     bool CanUsePhysicsAsset(UPhysicsAsset* InPhysicsAsset, FSkeletonCompatibilityReport* OutReport = nullptr) const;
+    void DrawPhysicsAssetDebug();
 
 protected:
     // Animation 런타임 상태.
@@ -391,6 +396,8 @@ protected:
     // rigid body/constraint handles stay inside FPhysicsAssetInstance.
     UPROPERTY(Edit, Save, Category="Physics", DisplayName="Physics Asset Override", AssetType="PhysicsAsset")
     FSoftObjectPtr PhysicsAssetOverridePath = "None";
+    UPROPERTY(Edit, Save, Category="Physics|Debug", DisplayName="Draw Physics Asset Debug")
+    bool bDrawPhysicsAssetDebug = false;
     UPROPERTY(Edit, Save, Category="Physics|Ragdoll", DisplayName="Ragdoll Blend In Time", Min=0.0f, Max=0.0f, Speed=0.01f)
     float RagdollBlendInTime = 0.15f;
     UPROPERTY(Edit, Save, Category="Physics|Ragdoll", DisplayName="Ragdoll Recovery Blend Out Time", Min=0.0f, Max=0.0f, Speed=0.01f)
