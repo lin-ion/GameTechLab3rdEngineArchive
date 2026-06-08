@@ -1,4 +1,5 @@
 local AbilitySystem = require("AbilitySystem")
+local HaruUltimateCutscene = require("HaruUltimateCutscene")
 
 -- Dash
 local DASH_SKILL_NAME = "Dash"
@@ -30,6 +31,7 @@ local BOW_AIM_PARTICLE_PATH = "Content/Particle System/Aim.uasset"
 local BOW_AIM_PARTICLE_OFFSET = Vec3(1.5, 0.15, 0.3)
 local BOW_RELEASE_SLOMO_DURATION = 0.3
 local BOW_RELEASE_SLOMO_DILATION = 0.15
+local BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST = true
 local STAFF_STATIC_MESH_PATH = "Content/Data/Staff/Staff_StaticMesh.uasset"
 local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
 -- Attack
@@ -114,6 +116,27 @@ end
 local function smoothstep(value)
     local t = clamp01(value)
     return t * t * (3.0 - 2.0 * t)
+end
+
+local function get_ultimate_gauge(owner)
+    if World ~= nil and World.GetPlayerUltimateGauge ~= nil then
+        return World.GetPlayerUltimateGauge(owner)
+    end
+    return 0.0
+end
+
+local function get_ultimate_gauge_max(owner)
+    if World ~= nil and World.GetPlayerUltimateGaugeMax ~= nil then
+        return World.GetPlayerUltimateGaugeMax(owner)
+    end
+    return 100.0
+end
+
+local function is_ultimate_ready(owner)
+    if World ~= nil and World.IsPlayerUltimateReady ~= nil then
+        return World.IsPlayerUltimateReady(owner)
+    end
+    return get_ultimate_gauge(owner) >= get_ultimate_gauge_max(owner)
 end
 
 local function lerp_number(a, b, alpha)
@@ -1340,6 +1363,53 @@ local function launch_prepared_arrow(owner, ability, reason)
     return false
 end
 
+local function launch_prepared_arrow_from_stored_aim(owner, ability, reason)
+    if ability == nil then
+        log("AirBowShot ultimate launch skipped: ability is nil reason=" .. tostring(reason))
+        return false
+    end
+
+    if ability.arrow_released then
+        log("AirBowShot ultimate launch skipped: arrow already released reason=" .. tostring(reason))
+        return false
+    end
+
+    if ability.arrow_projectile == nil then
+        prepare_held_arrow(owner, ability, tostring(reason) .. " fallback prepare")
+    end
+
+    if ability.arrow_projectile == nil then
+        log("AirBowShot ultimate launch failed: no prepared arrow reason=" .. tostring(reason))
+        return false
+    end
+
+    local launched = false
+    if World ~= nil and World.LaunchArrowProjectileWithDirection ~= nil
+        and ability.cutscene_launch_location ~= nil
+        and ability.cutscene_launch_forward ~= nil then
+        launched = World.LaunchArrowProjectileWithDirection(
+            ability.arrow_projectile,
+            ability.cutscene_launch_location,
+            ability.cutscene_launch_forward,
+            BOW_PROJECTILE_SPEED)
+    else
+        launched = launch_prepared_arrow(owner, ability, reason)
+        return launched
+    end
+
+    log("AirBowShot ultimate launched by " .. tostring(reason)
+        .. ": launched=" .. tostring(launched)
+        .. " loc=" .. format_vec3(ability.cutscene_launch_location)
+        .. " forward=" .. format_vec3(ability.cutscene_launch_forward))
+    if launched then
+        ability.arrow_released = true
+        ability.arrow_projectile = nil
+        play_arrow_release_slomo(owner)
+        return true
+    end
+    return false
+end
+
 local function restore_bow_aim(owner, ability)
     if ability == nil then
         return
@@ -1363,6 +1433,104 @@ local function restore_bow_aim(owner, ability)
     log("AirBowShot camera restore requested: armLength=" .. tostring(ability.saved_arm_length)
         .. " socketOffset=" .. format_vec3(ability.saved_socket_offset)
         .. " fov=" .. tostring(ability.saved_fov))
+end
+
+local function start_bow_ultimate_cutscene(owner, ability)
+    if ability == nil or ability.cutscene_active or HaruUltimateCutscene.IsActive() then
+        return
+    end
+
+    camera_blend = nil
+    stop_bow_aim_particle(ability, "Ultimate cutscene start")
+
+    ability.cutscene_active = true
+    ability.cutscene_finished = false
+    ability.cutscene_elapsed = 0.0
+    ability.cutscene_eye_from = get_camera_state(owner)
+    ability.cutscene_launch_location = World ~= nil and World.GetCameraProjectileLocation ~= nil
+        and World.GetCameraProjectileLocation(BOW_PROJECTILE_OFFSET) or nil
+    ability.cutscene_launch_forward = World ~= nil and World.GetCameraProjectileForward ~= nil
+        and World.GetCameraProjectileForward() or nil
+
+    if ability.arrow_projectile == nil then
+        prepare_held_arrow(owner, ability, "Ultimate release fallback")
+    end
+    if ability.arrow_projectile ~= nil and World ~= nil and World.UpdateCameraArrowProjectile ~= nil then
+        World.UpdateCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_OFFSET)
+    end
+
+    HaruUltimateCutscene.Start({
+        owner = owner,
+        spring_arm = get_spring_arm(owner),
+        camera = get_camera(owner),
+        log = function(message)
+            log("UltimateCutscene " .. tostring(message))
+        end,
+        on_tick_lock = function()
+            stop_owner_movement(owner)
+        end,
+        on_tick_projectile = function()
+            if ability.arrow_projectile ~= nil and World ~= nil and World.UpdateCameraArrowProjectile ~= nil then
+                World.UpdateCameraArrowProjectile(ability.arrow_projectile, BOW_PROJECTILE_OFFSET)
+            end
+        end,
+        on_finish = function()
+            ability.cutscene_finished = true
+            ability.cutscene_active = false
+            launch_prepared_arrow_from_stored_aim(owner, ability, "Ultimate cutscene end")
+            if World ~= nil and World.ResetPlayerUltimateGauge ~= nil then
+                World.ResetPlayerUltimateGauge(owner)
+            end
+            log("AirBowShot ultimate cutscene finished; gauge reset requested")
+            if ability_system ~= nil then
+                ability_system:EndAbility(ability)
+            end
+        end
+    })
+
+    log("AirBowShot ultimate cutscene requested: gauge=" .. tostring(get_ultimate_gauge(owner))
+        .. "/" .. tostring(get_ultimate_gauge_max(owner))
+        .. " launchLoc=" .. format_vec3(ability.cutscene_launch_location)
+        .. " launchForward=" .. format_vec3(ability.cutscene_launch_forward))
+end
+
+local function tick_bow_ultimate_cutscene(owner, ability, dt)
+    if ability == nil or not ability.cutscene_active then
+        return false
+    end
+
+    if HaruUltimateCutscene.IsActive() then
+        HaruUltimateCutscene.Tick(dt)
+        return true
+    end
+
+    return false
+end
+
+local function can_activate_bow_ultimate(owner, ability)
+    if BOW_ULTIMATE_IGNORE_GAUGE_FOR_TEST then
+        if ability ~= nil then
+            ability.block_reason = nil
+        end
+        log("AirBowShot ultimate gauge bypass enabled for test: gauge="
+            .. tostring(get_ultimate_gauge(owner)) .. "/" .. tostring(get_ultimate_gauge_max(owner)))
+        return true
+    end
+
+    local ready = is_ultimate_ready(owner)
+    if not ready then
+        local gauge = get_ultimate_gauge(owner)
+        local gauge_max = get_ultimate_gauge_max(owner)
+        if ability ~= nil then
+            ability.block_reason = string.format("ultimate gauge %.1f/%.1f", gauge, gauge_max)
+        end
+        log("AirBowShot blocked: ultimate gauge=" .. tostring(gauge) .. "/" .. tostring(gauge_max))
+        return false
+    end
+    if ability ~= nil then
+        ability.block_reason = nil
+    end
+    return true
 end
 
 local function activate_bow_aim(owner, ability)
@@ -1415,6 +1583,11 @@ local function activate_bow_aim(owner, ability)
     update_bow_first_person_camera(owner, ability)
     ability.arrow_projectile = nil
     ability.arrow_released = false
+    ability.cutscene_active = false
+    ability.cutscene_finished = false
+    ability.cutscene_elapsed = 0.0
+    ability.cutscene_launch_location = nil
+    ability.cutscene_launch_forward = nil
 
     if ability.started_airborne and character_movement ~= nil and character_movement.SetGravity ~= nil then
         character_movement:SetGravity(BOW_AIM_GRAVITY)
@@ -1436,12 +1609,15 @@ local function activate_bow_aim(owner, ability)
         .. " socketOffset=" .. format_vec3(BOW_CAMERA_SOCKET_OFFSET)
         .. " fov=" .. tostring(BOW_CAMERA_FOV))
 
-    prepare_held_arrow(owner, ability, "RightMouseButton press Aim")
     update_bow_aim_particle(owner, ability)
-    log("AirBowShot prepared aim arrow; FireArrow AnimNotify will reuse it if it fires")
+    log("AirBowShot aim started; FireArrow AnimNotify will prepare the held arrow")
 end
 
 local function tick_bow_aim(owner, ability, dt)
+    if tick_bow_ultimate_cutscene(owner, ability, dt) then
+        return
+    end
+
     face_owner_to_camera_yaw(owner, ability)
     update_bow_first_person_camera(owner, ability)
 
@@ -1457,13 +1633,13 @@ local function tick_bow_aim(owner, ability, dt)
         end
 
         stop_bow_aim_particle(ability, "RightMouseButton release")
-        launch_prepared_arrow(owner, ability, "RightMouseButton release")
-        ability_system:EndAbility(ability)
+        start_bow_ultimate_cutscene(owner, ability)
     end
 end
 
 local function end_bow_aim(owner, ability)
     stop_bow_aim_particle(ability, "AirBowShot end")
+    HaruUltimateCutscene.Stop()
 
     if ability ~= nil and ability.arrow_projectile ~= nil and not ability.arrow_released then
         if World ~= nil and World.ReleaseProjectile ~= nil then
@@ -1471,6 +1647,13 @@ local function end_bow_aim(owner, ability)
             log("AirBowShot held arrow released back to pool")
         end
         ability.arrow_projectile = nil
+    end
+    if ability ~= nil then
+        ability.cutscene_active = false
+        ability.cutscene_elapsed = 0.0
+        ability.cutscene_launch_location = nil
+        ability.cutscene_launch_forward = nil
+        ability.block_reason = nil
     end
 
     restore_bow_aim(owner, ability)
@@ -1579,8 +1762,9 @@ local function setup_abilities()
         Name = BOW_SKILL_NAME,
         Key = BOW_SKILL_KEY,
         Duration = BOW_AIM_MAX_DURATION,
-        Cooldown = 5.0,
+        Cooldown = 0.0,
         BlockWhileAnyActive = true,
+        CanActivate = can_activate_bow_ultimate,
         OnActivate = activate_bow_aim,
         OnTick = tick_bow_aim,
         OnEnd = end_bow_aim

@@ -28,6 +28,7 @@ function AbilitySystem.new(owner)
             active_remaining = 0.0,
             cooldown_remaining = 0.0,
             is_active = false,
+            can_activate = config.CanActivate,
             on_activate = config.OnActivate,
             on_tick = config.OnTick,
             on_end = config.OnEnd
@@ -72,6 +73,9 @@ function AbilitySystem.new(owner)
         if ability.block_while_any_active and self:GetActiveAbility(ability) ~= nil then
             return false
         end
+        if ability.can_activate ~= nil and not ability.can_activate(self.owner, ability) then
+            return false
+        end
         return true
     end
 
@@ -92,6 +96,9 @@ function AbilitySystem.new(owner)
                 if active_ability ~= nil then
                     return false, "blocked by active " .. active_ability.name
                 end
+            end
+            if ability.block_reason ~= nil then
+                return false, ability.block_reason
             end
             return false, "cannot activate"
         end

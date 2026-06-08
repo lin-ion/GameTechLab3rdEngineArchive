@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Component/ActorComponent.h"
 #include "Core/Types/CollisionTypes.h"
@@ -75,6 +75,21 @@ public:
 
 	UFUNCTION(Pure, Category="Player Spray")
 	int32 GetProjectileCount() const { return static_cast<int32>(Projectiles.size()); }
+
+	UFUNCTION(Pure, Category="Player Spray|Ultimate")
+	float GetUltimateGauge() const { return UltimateGauge; }
+
+	UFUNCTION(Pure, Category="Player Spray|Ultimate")
+	float GetUltimateGaugeMax() const { return UltimateGaugeMax; }
+
+	UFUNCTION(Pure, Category="Player Spray|Ultimate")
+	bool IsUltimateReady() const { return UltimateGauge >= UltimateGaugeMax; }
+
+	UFUNCTION(Callable, Category="Player Spray|Ultimate")
+	void AddUltimateGauge(float Amount);
+
+	UFUNCTION(Callable, Category="Player Spray|Ultimate")
+	void ResetUltimateGauge();
 
 protected:
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;

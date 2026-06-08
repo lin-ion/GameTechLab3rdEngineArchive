@@ -34,6 +34,18 @@ namespace
             + Rotation.GetRightVector() * Offset.Y
             + Rotation.GetUpVector() * Offset.Z;
     }
+
+    APlayerCameraManager* GetFirstPlayerCameraManager()
+    {
+        UWorld* W = GEngine ? GEngine->GetWorld() : nullptr;
+        APlayerController* PC = W ? W->GetFirstPlayerController() : nullptr;
+        return PC ? PC->GetPlayerCameraManager() : nullptr;
+    }
+
+    FLinearColor ToLinearColor(const FVector4& Color)
+    {
+        return FLinearColor(Color.X, Color.Y, Color.Z, Color.W);
+    }
 }
 
 void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
@@ -97,6 +109,20 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
                 Origin,
                 Rotation,
                 SpawnOffset.value_or(FVector(1.0f, 0.0f, 1.0f)));
+        }
+    );
+    World.set_function(
+        "GetCameraProjectileForward",
+        []() -> FVector
+        {
+            if (!GEngine) return FVector::ForwardVector;
+            UWorld* W = GEngine->GetWorld();
+            if (!W) return FVector::ForwardVector;
+
+            FVector Origin;
+            FRotator Rotation;
+            if (!GetCameraProjectileFrame(W, Origin, Rotation)) return FVector::ForwardVector;
+            return Rotation.GetForwardVector();
         }
     );
     World.set_function(
@@ -236,6 +262,19 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
         }
     );
     World.set_function(
+        "LaunchArrowProjectileWithDirection",
+        [](AActor* Projectile, const FVector& Location, const FVector& Direction, sol::optional<float> Speed) -> bool
+        {
+            AArrowProjectileActor* Arrow = Cast<AArrowProjectileActor>(Projectile);
+            if (!Arrow) return false;
+
+            const FVector Forward = Direction.IsNearlyZero() ? FVector::ForwardVector : Direction.Normalized();
+            Arrow->SetActorLocation(Location);
+            Arrow->Launch(Forward * Speed.value_or(8.0f));
+            return true;
+        }
+    );
+    World.set_function(
         "ReleaseProjectile",
         [](AActor* Projectile) -> bool
         {
@@ -287,6 +326,96 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
             UPlayerSprayProjectileComponent* Spray = Owner->GetComponentByClass<UPlayerSprayProjectileComponent>();
             if (!Spray) return false;
             Spray->StopAttack();
+            return true;
+        }
+    );
+    World.set_function(
+        "GetPlayerUltimateGauge",
+        [](AActor* Owner) -> float
+        {
+            if (!Owner) return 0.0f;
+            UPlayerSprayProjectileComponent* Spray = Owner->GetComponentByClass<UPlayerSprayProjectileComponent>();
+            return Spray ? Spray->GetUltimateGauge() : 0.0f;
+        }
+    );
+    World.set_function(
+        "GetPlayerUltimateGaugeMax",
+        [](AActor* Owner) -> float
+        {
+            if (!Owner) return 100.0f;
+            UPlayerSprayProjectileComponent* Spray = Owner->GetComponentByClass<UPlayerSprayProjectileComponent>();
+            return Spray ? Spray->GetUltimateGaugeMax() : 100.0f;
+        }
+    );
+    World.set_function(
+        "IsPlayerUltimateReady",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return false;
+            UPlayerSprayProjectileComponent* Spray = Owner->GetComponentByClass<UPlayerSprayProjectileComponent>();
+            return Spray ? Spray->IsUltimateReady() : false;
+        }
+    );
+    World.set_function(
+        "ResetPlayerUltimateGauge",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return false;
+            UPlayerSprayProjectileComponent* Spray = Owner->GetComponentByClass<UPlayerSprayProjectileComponent>();
+            if (!Spray) return false;
+            Spray->ResetUltimateGauge();
+            return true;
+        }
+    );
+    World.set_function(
+        "SetCameraVignetteColor",
+        [](float Intensity, float Radius, float Softness, sol::optional<sol::object> Color) -> bool
+        {
+            APlayerCameraManager* Manager = GetFirstPlayerCameraManager();
+            if (!Manager) return false;
+
+            FVector4 ColorValue(0.45f, 0.02f, 0.75f, 1.0f);
+            if (Color && !LuaObjectToVector4(Color.value(), ColorValue))
+            {
+                ColorValue = FVector4(0.45f, 0.02f, 0.75f, 1.0f);
+            }
+            Manager->SetCameraVignette(Intensity, Radius, Softness, ToLinearColor(ColorValue));
+            return true;
+        }
+    );
+    World.set_function(
+        "ClearCameraVignette",
+        []() -> bool
+        {
+            APlayerCameraManager* Manager = GetFirstPlayerCameraManager();
+            if (!Manager) return false;
+            Manager->ClearCameraVignette();
+            return true;
+        }
+    );
+    World.set_function(
+        "SetManualCameraFadeColor",
+        [](float Amount, sol::optional<sol::object> Color) -> bool
+        {
+            APlayerCameraManager* Manager = GetFirstPlayerCameraManager();
+            if (!Manager) return false;
+
+            FVector4 ColorValue(0.35f, 0.0f, 0.55f, 1.0f);
+            if (Color && !LuaObjectToVector4(Color.value(), ColorValue))
+            {
+                ColorValue = FVector4(0.35f, 0.0f, 0.55f, 1.0f);
+            }
+            Manager->SetManualCameraFade(Amount, ToLinearColor(ColorValue), false);
+            return true;
+        }
+    );
+    World.set_function(
+        "ClearCameraFade",
+        []() -> bool
+        {
+            APlayerCameraManager* Manager = GetFirstPlayerCameraManager();
+            if (!Manager) return false;
+            Manager->StopCameraFade();
             return true;
         }
     );
