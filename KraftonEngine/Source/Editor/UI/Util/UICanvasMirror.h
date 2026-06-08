@@ -35,7 +35,7 @@ namespace FUICanvasMirror
 			const ImVec2   Max(Min.x + R.Size.X, Min.y + R.Size.Y);
 			// 모서리 둥글기 — 런타임 SimpleUIPass 와 동일하게 레퍼런스 px*Scale 로 환산(ImGui 가 변의
 			// 절반까지 내부 클램프하므로 런타임 클램프와 결과 일치). 0 이면 직각.
-			const float Rounding = Element->GetCornerRadius() * Scale;
+			const float Rounding = Element->GetEffectiveCornerRadius() * Scale;
 			const ImU32 Col = ImGui::GetColorU32(ImVec4(C.R, C.G, C.B, C.A));
 
 			// 이미지 요소면 단색 대신 실제 텍스처를 미러(런타임 SimpleUIPass 의 텍스처×Color 변조와

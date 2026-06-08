@@ -502,7 +502,7 @@ void FUIEditorWidget::RenderViewportPanel()
 		const ImVec2   SMin(Origin.x + SR.Pos.X, Origin.y + SR.Pos.Y);
 		const ImVec2   SMax(SMin.x + SR.Size.X, SMin.y + SR.Size.Y);
 		// 선택 강조 테두리도 요소의 둥글기를 따라가게 한다(요소와 동일한 레퍼런스 px*Scale 환산).
-		const float SRounding = Selected->GetCornerRadius() * Scale;
+		const float SRounding = Selected->GetEffectiveCornerRadius() * Scale;
 		DL->AddRect(SMin, SMax, IM_COL32(255, 180, 40, 255), SRounding, 0, 2.0f);
 	}
 	DL->PopClipRect();
@@ -599,13 +599,29 @@ void FUIEditorWidget::RenderDetailsPanel()
 		MarkDirty();
 	}
 
+	// 외곽 모양(Shape) — Rectangle(직각, CornerRadius 사용) ↔ Circle(짧은 변 절반 반지름의 완전 둥근꼴).
+	// 변경 즉시 멤버 반영 → 다음 프레임 미러/런타임이 GetEffectiveCornerRadius 로 동일 모양 렌더(.uasset Save).
+	{
+		const char* ShapeNames[] = { "Rectangle", "Circle" };
+		int ShapeIdx = static_cast<int>(Selected->GetShape());
+		if (ImGui::Combo("Shape", &ShapeIdx, ShapeNames, IM_ARRAYSIZE(ShapeNames)))
+		{
+			Selected->SetShape(static_cast<EUIElementShape>(ShapeIdx));
+			MarkDirty();
+		}
+	}
+
 	// 모서리 둥글기(레퍼런스 px). 0=직각. 드로우 패스가 변의 절반까지 클램프하므로 상한은 넉넉히 둔다.
+	// Circle 모양에선 반지름이 자동(짧은 변 절반)이라 이 값이 무시되므로 입력을 비활성화해 혼동을 막는다.
+	const bool bCircleShape = (Selected->GetShape() == EUIElementShape::Circle);
+	if (bCircleShape) { ImGui::BeginDisabled(); }
 	float Radius = Selected->GetCornerRadius();
 	if (ImGui::DragFloat("Corner Radius", &Radius, 0.5f, 0.0f, 512.0f, "%.1f"))
 	{
 		Selected->SetCornerRadius(Radius);
 		MarkDirty();
 	}
+	if (bCircleShape) { ImGui::EndDisabled(); }
 
 	// 이미지 요소 전용 — Content/UI/Images/ 안의 png/jpg/jpeg 파일을 확장자로 인식해 드롭다운으로 띄운다.
 	// 선택 시 "Content/UI/Images/<파일명>"(프로젝트 상대) 저장 → 스탠드얼론 빌드에서 그대로 해석.

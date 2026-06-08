@@ -87,7 +87,7 @@ namespace
 			// 넘지 않게 클램프(초과 시 SDF 가 음수 r 로 깨짐). 0 이면 PS 가 SDF 를 건너뜀.
 			const float HalfW = (X1 - X0) * 0.5f;
 			const float HalfH = (Y1 - Y0) * 0.5f;
-			float Radius = Element->GetCornerRadius() * GlobalScale;
+			float Radius = Element->GetEffectiveCornerRadius() * GlobalScale;
 			const float MaxRadius = HalfW < HalfH ? HalfW : HalfH;
 			if (Radius > MaxRadius) Radius = MaxRadius;
 			if (Radius < 0.0f) Radius = 0.0f;

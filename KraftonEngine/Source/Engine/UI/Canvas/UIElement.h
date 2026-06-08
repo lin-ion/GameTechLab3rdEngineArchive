@@ -6,6 +6,15 @@
 
 #include "Source/Engine/UI/Canvas/UIElement.generated.h"
 
+// 요소의 외곽 모양. Rectangle=저작한 CornerRadius 사용(0=직각). Circle=짧은 변의 절반을 반지름으로
+// 하는 완전 둥근꼴(정사각형이면 원, 직사각형이면 스타디움). 둘 다 기존 둥근사각형 SDF 한 경로로 렌더.
+UENUM()
+enum class EUIElementShape : uint8
+{
+	Rectangle,
+	Circle,
+};
+
 // 계층형 UI 트리의 기본 노드.
 // USceneComponent 를 상속해 부모-자식 트리 / 사이클검사 / GC keepalive 를 재사용하되(진단 A2),
 // 레이아웃은 3D RelativeTransform 이 아니라 FUIRectTransform 으로만 한다(진단 C5).
@@ -78,6 +87,23 @@ public:
 	void SetCornerRadius(float InRadius) { CornerRadius = InRadius < 0.0f ? 0.0f : InRadius; }
 	float GetCornerRadius() const { return CornerRadius; }
 
+	// 요소 외곽 모양(Rectangle/Circle). UI 에디터 Details 에서 변경한다.
+	void SetShape(EUIElementShape InShape) { Shape = InShape; }
+	EUIElementShape GetShape() const { return Shape; }
+
+	// 렌더가 실제로 사용할 모서리 반지름(레퍼런스 px). Circle 이면 짧은 변의 절반(드로우 패스/미러가
+	// 변의 절반으로 클램프하므로 완전 둥근꼴=원·스타디움), Rectangle 이면 저작한 CornerRadius 그대로.
+	// 런타임 SimpleUIPass·에디터 미러·선택 하이라이트가 공통으로 이 값을 쓰므로 모양이 한 곳에서 결정된다.
+	float GetEffectiveCornerRadius() const
+	{
+		if (Shape == EUIElementShape::Circle)
+		{
+			const float ShorterSide = RectTransform.Size.X < RectTransform.Size.Y ? RectTransform.Size.X : RectTransform.Size.Y;
+			return 0.5f * ShorterSide;
+		}
+		return CornerRadius;
+	}
+
 protected:
 	// FUIRectTransform 은 USTRUCT 가 아니므로, USceneComponent 가 FTransform 의 하위 필드를
 	// Member= 로 반사하는 방식(진단 C5 선례)을 그대로 차용해 4개의 Vec2 를 PF_Save 로 노출한다.
@@ -104,4 +130,9 @@ protected:
 	// 모서리 둥글기(레퍼런스 px). 0 이면 기존과 동일한 직각 쿼드(드로우 패스가 SDF 분기 스킵).
 	UPROPERTY(Save, Category="UI", DisplayName="Corner Radius")
 	float CornerRadius = 0.0f;
+
+	// 외곽 모양. Rectangle(기본)이면 CornerRadius 를, Circle 이면 짧은 변 절반을 반지름으로 렌더한다
+	// (GetEffectiveCornerRadius). UI 에디터 Details 의 Shape 콤보 + 반사 기반 Details(enum 드롭다운) 편집.
+	UPROPERTY(Edit, Save, Category="UI", DisplayName="Shape", Enum=EUIElementShape)
+	EUIElementShape Shape = EUIElementShape::Rectangle;
 };
