@@ -7,6 +7,8 @@
 #include "Core/Logging/Log.h"
 #include "Core/ProjectSettings.h"
 #include "Core/ScoreManager.h"
+#include "Runtime/Engine.h"               // GEngine, GetGameViewportClient
+#include "Viewport/GameViewportClient.h"  // 입력 모드(커서 표시) 결정
 
 AGameModeBase::AGameModeBase()
 {
@@ -49,6 +51,18 @@ void AGameModeBase::StartMatch()
 	}
 
 	AutoPossessFirstPawn();
+
+	// 입력 모드 — 조종할 플레이어 폰이 있으면 GameOnly(마우스룩 + 커서 캡처),
+	// 없으면(main.Scene 같은 메뉴 씬) UIOnly 로 커서를 보이고 풀어 UI 클릭만 받는다.
+	// 매치 시작마다 평가하므로 씬 전환 시에도 자동으로 맞춰진다.
+	if (GEngine)
+	{
+		if (UGameViewportClient* Viewport = GEngine->GetGameViewportClient())
+		{
+			const bool bHasPlayerPawn = PlayerController && PlayerController->GetPossessedPawn() != nullptr;
+			Viewport->SetInputMode(bHasPlayerPawn ? EGameInputMode::GameOnly : EGameInputMode::UIOnly);
+		}
+	}
 }
 
 void AGameModeBase::EndMatch()
