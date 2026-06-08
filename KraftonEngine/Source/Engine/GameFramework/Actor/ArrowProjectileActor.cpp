@@ -6,6 +6,7 @@
 #include "Component/Input/ActionComponent.h"
 #include "Component/Primitive/SkeletalMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
+#include "Core/ScoreManager.h"
 #include "Core/Types/CollisionTypes.h"
 #include "Engine/Component/Particle/ParticleSystemComponent.h"
 #include "Engine/Component/Primitive/StaticMeshComponent.h"
@@ -499,6 +500,9 @@ void AArrowProjectileActor::Launch(const FVector& Velocity)
 	}
 
 	bNeedsTick = true;
+
+	// 화살 발사 = 명중률 분모 1 증가 (held/charging 은 HoldAt 경유라 여기 오지 않음).
+	FScoreManager::Get().AddShotFired();
 }
 
 void AArrowProjectileActor::Deactivate()
@@ -754,6 +758,8 @@ void AArrowProjectileActor::ApplyDamageToHitTarget(const FHitResult& Hit) const
 		const float AppliedDamage = DamageReceiver->ApplyDamage(ProjectileDamage);
 		if (AppliedDamage > 0.0f && IsBossActor(TargetActor))
 		{
+			FAudioManager::Get().PlayAudio("Hit", 1.0f);
+			FScoreManager::Get().AddBossHit();  // 보스 유효타격 = 명중률 분자 1 증가
 			FAudioManager::Get().PlayAudio("Explosion", 1.0f);
 			PlayBossHitStop(TargetActor);
 		}

@@ -6,6 +6,7 @@
 #include "Object/Reflection/UClass.h"
 #include "Core/Logging/Log.h"
 #include "Core/ProjectSettings.h"
+#include "Core/ScoreManager.h"
 
 AGameModeBase::AGameModeBase()
 {
@@ -36,6 +37,9 @@ void AGameModeBase::EndPlay()
 
 void AGameModeBase::StartMatch()
 {
+	// 점수 카운터 리셋 — 새 매치 시작 시 발사/히트 0, 기록 플래그 해제.
+	FScoreManager::Get().BeginRun();
+
 	// PlayerController spawn — Editor 월드에선 GameMode 자체가 안 만들어지므로 안전.
 	if (UWorld* World = GetWorld())
 	{

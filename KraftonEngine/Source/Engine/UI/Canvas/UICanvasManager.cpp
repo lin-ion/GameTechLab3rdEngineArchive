@@ -10,6 +10,9 @@
 #include "Input/InputSystem.h"
 #include "Runtime/Engine.h"          // GEngine, RequestTransitionToScene (ChangeScene 액션)
 #include "Lua/LuaScriptManager.h"    // CallLua 액션 / (b) 콜백 호출
+#include "Core/ScoreManager.h"       // ShowScoreboard 액션 — 점수 내림차순 텍스트
+#include "UI/UserWidget.h"           // ShowScoreboard 액션 — RmlUi 점수판 위젯
+#include "UI/UIManager.h"            // ShowScoreboard 액션 — CreateWidget/RemoveFromViewport
 
 void FUICanvasManager::RegisterCanvas(UUICanvas* Canvas)
 {
@@ -203,6 +206,9 @@ void FUICanvasManager::TickEditor()
 	}
 }
 
+// [점수판] Board 버튼이 토글하는 RmlUi 점수판 위젯. 한 번 만들어 재사용(토글 시 viewport add/remove).
+static TWeakObjectPtr<UUserWidget> GScoreboardWidget;
+
 // [버튼 액션] 클릭된 버튼의 OnClickActions 를 순서대로 실행. 대상 요소는 버튼의 소유 액터
 // (AUICanvasActor)의 캔버스 루트에서 ElementName 으로 찾는다(FindByName).
 static void ExecuteButtonAction(UUIButton* Btn)
@@ -241,6 +247,32 @@ static void ExecuteButtonAction(UUIButton* Btn)
 		case EUIButtonAction::CallLua:
 			FLuaScriptManager::RunScriptFile(A.Target);
 			break;
+		case EUIButtonAction::QuitGame:
+			PostQuitMessage(0);  // WM_QUIT — FEngineLoop 가 PumpMessages 에서 잡아 정상 shutdown
+			break;
+		case EUIButtonAction::ShowScoreboard:
+		{
+			// Scores.json 내림차순 점수판(RmlUi 위젯)을 토글. 표시할 때마다 최신 점수로 채운다.
+			UUserWidget* W = GScoreboardWidget.Get();
+			if (W && W->IsInViewport())
+			{
+				UUIManager::Get().RemoveFromViewport(W);   // 토글 오프
+			}
+			else
+			{
+				if (!W)
+				{
+					W = UUIManager::Get().CreateWidget(nullptr, FString("Content/UI/Scoreboard.rml"));
+					GScoreboardWidget = W;
+				}
+				if (W)
+				{
+					W->AddToViewport(2000);
+					W->SetText(FString("scorelist"), FScoreManager::Get().BuildScoreboardText());
+				}
+			}
+			break;
+		}
 		case EUIButtonAction::None:
 		default:
 			break;

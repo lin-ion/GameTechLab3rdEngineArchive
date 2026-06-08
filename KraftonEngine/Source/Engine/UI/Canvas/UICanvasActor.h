@@ -37,6 +37,9 @@ enum class EHudBindingValue : uint8
 	PlayerUltimateRatio,   // 바: 궁극기 게이지 비율(현재/최대) / 텍스트: "NN%"
 	PlayerUltimateGauge,   // 바: 게이지 비율 / 텍스트: "현재 / 최대"(정수)
 	PlayerProjectileCount, // 바: 의미 없음(full) / 텍스트: 활성 발사체 수
+	// [점수 시스템] 전역 점수(FScoreManager) — 소스 액터 불필요. 텍스트: 점수 정수 / 바: 점수/10000 비율.
+	// 직렬화 인덱스 보존을 위해 반드시 맨 끝에 유지(중간 삽입 금지).
+	Score,
 };
 
 // [사이클 4] HUD 데이터 바인딩 1건. 에디터 Details 의 Bindings 배열에서 행 단위로 +/- 편집한다.

@@ -17,6 +17,7 @@
 #include "Platform/WindowsWindow.h"
 #include "Platform/Paths.h"
 #include "Core/Logging/Log.h"
+#include "Core/ScoreManager.h"
 
 #include <cstdio>
 #include <cstring>
@@ -97,6 +98,8 @@ namespace
 		case EHudBindingValue::GameTime:
 		case EHudBindingValue::PlayerProjectileCount:
 			return 1.0f;       // 비-비율 값은 바에서 full
+		case EHudBindingValue::Score:
+			return FScoreManager::Get().GetCurrentScore() / 10000.0f;   // 점수/10000 → 바 비율(0~1)
 		}
 		return 0.0f;
 	}
@@ -151,6 +154,10 @@ namespace
 				return FString(Buf);
 			}
 			break;
+		case EHudBindingValue::Score:
+			// 전역 점수 — 보스 히트/발사 카운트로 산출(소스 액터 불필요).
+			snprintf(Buf, sizeof(Buf), "%d", FScoreManager::Get().GetCurrentScore());
+			return FString(Buf);
 		}
 		return FString("--");
 	}

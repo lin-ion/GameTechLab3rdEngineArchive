@@ -16,6 +16,8 @@ enum class EUIButtonAction : uint8
 	ToggleElement,  // Target = 대상 ElementName           → bVisible 가시성 토글
 	SetImage,       // Target = 대상 ElementName(UUIImage), Param = 이미지 경로 → SetTexturePath
 	CallLua,        // Target = Lua 전역 함수명            → 함수 호출
+	QuitGame,       // 프로그램 종료(PostQuitMessage). Target/Param 미사용.
+	ShowScoreboard, // Scores.json 내림차순 점수판(RmlUi 위젯) 토글. Target/Param 미사용.
 };
 
 // [버튼 액션] 클릭 동작 1건. UI 에디터 Details 의 "On Click Actions" 배열에서 행 단위로 편집한다
