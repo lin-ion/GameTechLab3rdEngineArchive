@@ -2,6 +2,7 @@
 
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Component/Gameplay/BulletTrailComponent.h"
+#include "Component/Particle/ParticleSystemComponent.h"
 #include "Component/Primitive/InstancedStaticMeshComponent.h"
 #include "Component/Primitive/SkeletalMeshComponent.h"
 #include "Component/PrimitiveComponent.h"
@@ -14,10 +15,12 @@
 #include "Math/Rotator.h"
 #include "Physics/PhysicsAsset.h"
 #include "Physics/PhysicsAssetPreviewUtils.h"
+#include "Particle/ParticleSystemManager.h"
 #include "Render/Types/MinimalViewInfo.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <limits>
 
 namespace
@@ -25,6 +28,7 @@ namespace
 	constexpr float Pi = 3.1415926535f;
 	constexpr const char* PlayerTagName = "Player";
 	constexpr const char* BossTagName = "Boss";
+	constexpr const char* PlayerSprayDeathEffectComponentPrefix = "PlayerSprayDeathEffect";
 
 	float ClampFloat(float Value, float MinValue, float MaxValue)
 	{
@@ -298,6 +302,7 @@ void UPlayerSprayProjectileComponent::TickComponent(
 	(void)TickType;
 	(void)ThisTickFunction;
 
+	ResetDeathEffectFrameCounters();
 	TickAttack(DeltaTime);
 	TickProjectiles(DeltaTime);
 	SyncRender();
@@ -616,6 +621,11 @@ void UPlayerSprayProjectileComponent::SpawnProjectile(
 	Projectile.Lifetime = (std::max)(0.01f, ProjectileLifetime);
 	Projectile.Radius = (std::max)(0.001f, ProjectileRadius);
 	Projectile.Damage = (std::max)(0.0f, ProjectileDamage);
+	Projectile.DeathEffect.bEnableDeathEffect = bDeathEffectEnabled;
+	Projectile.DeathEffect.ParticleSystemPath = DeathEffectPath;
+	Projectile.DeathEffect.EventName = DeathEffectEventName;
+	Projectile.DeathEffect.bInheritProjectileVelocity = bDeathEffectInheritVelocity;
+	Projectile.DeathEffect.VelocityScale = DeathEffectVelocityScale;
 	Projectile.TrailSamples.push_back(Origin);
 	Projectiles.push_back(Projectile);
 }
@@ -646,9 +656,11 @@ void UPlayerSprayProjectileComponent::TickProjectiles(float DeltaTime)
 		Projectile.PreviousPosition = Projectile.Position;
 		Projectile.Position += Projectile.Velocity * DeltaTime;
 
-		if (CheckProjectileCollision(Projectile) || Projectile.Age >= Projectile.Lifetime)
+		const bool bHit = CheckProjectileCollision(Projectile);
+		const bool bExpired = Projectile.Age >= Projectile.Lifetime;
+		if (bHit || bExpired)
 		{
-			RemoveProjectileAtIndex(Index);
+			RemoveProjectileAtIndex(Index, bHit);
 			continue;
 		}
 
@@ -951,11 +963,16 @@ void UPlayerSprayProjectileComponent::ApplyDamageToHitTarget(
 	}
 }
 
-void UPlayerSprayProjectileComponent::RemoveProjectileAtIndex(int32 ProjectileIndex)
+void UPlayerSprayProjectileComponent::RemoveProjectileAtIndex(int32 ProjectileIndex, bool bEmitDeathEffect)
 {
 	if (ProjectileIndex < 0 || ProjectileIndex >= static_cast<int32>(Projectiles.size()))
 	{
 		return;
+	}
+
+	if (bEmitDeathEffect)
+	{
+		EmitProjectileDeathEffect(Projectiles[ProjectileIndex]);
 	}
 
 	const int32 LastIndex = static_cast<int32>(Projectiles.size()) - 1;
@@ -964,6 +981,182 @@ void UPlayerSprayProjectileComponent::RemoveProjectileAtIndex(int32 ProjectileIn
 		Projectiles[ProjectileIndex] = Projectiles[LastIndex];
 	}
 	Projectiles.pop_back();
+}
+
+UParticleSystemComponent* UPlayerSprayProjectileComponent::FindOrCreateDeathEffectComponent(const FString& ParticleSystemPath)
+{
+	if (ParticleSystemPath.empty() || ParticleSystemPath == "None")
+	{
+		++DeathEffectDroppedThisFrame;
+		return nullptr;
+	}
+
+	for (FPlayerSprayDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		if (Slot.ParticleSystemPath != ParticleSystemPath)
+		{
+			continue;
+		}
+
+		if (UParticleSystemComponent* ExistingComponent = GetDeathEffectComponent(Slot))
+		{
+			return ExistingComponent;
+		}
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor || !CanAutoCreateRuntimeHelperComponent())
+	{
+		return nullptr;
+	}
+
+	if (MaxDeathEffectComponents <= 0 ||
+		CountValidDeathEffectComponents() >= MaxDeathEffectComponents)
+	{
+		return nullptr;
+	}
+
+	UParticleSystem* Template = FParticleSystemManager::Get().Load(ParticleSystemPath);
+	if (!Template)
+	{
+		++DeathEffectDroppedThisFrame;
+		return nullptr;
+	}
+
+	const int32 SlotIndex = static_cast<int32>(DeathEffectSlots.size());
+	char NameBuffer[96];
+	std::snprintf(NameBuffer, sizeof(NameBuffer), "%s%d", PlayerSprayDeathEffectComponentPrefix, SlotIndex);
+	const FName ExpectedName(NameBuffer);
+
+	for (UActorComponent* Component : OwnerActor->GetComponents())
+	{
+		UParticleSystemComponent* ExistingComponent = Cast<UParticleSystemComponent>(Component);
+		if (ExistingComponent && ExistingComponent->GetOwner() == OwnerActor && ExistingComponent->GetFName() == ExpectedName)
+		{
+			ExistingComponent->SetAutoActivate(false);
+			ExistingComponent->SetTemplate(Template);
+			ExistingComponent->Activate(false);
+
+			FPlayerSprayDeathEffectRuntimeSlot NewSlot;
+			NewSlot.ParticleSystemPath = ParticleSystemPath;
+			NewSlot.Component = ExistingComponent;
+			DeathEffectSlots.push_back(NewSlot);
+			return ExistingComponent;
+		}
+	}
+
+	UParticleSystemComponent* Component = OwnerActor->AddComponent<UParticleSystemComponent>();
+	if (!Component)
+	{
+		return nullptr;
+	}
+
+	Component->SetFName(ExpectedName);
+	if (USceneComponent* RootComponent = OwnerActor->GetRootComponent())
+	{
+		Component->AttachToComponent(RootComponent);
+	}
+	Component->SetAutoActivate(false);
+	Component->SetTemplate(Template);
+	Component->Activate(false);
+
+	FPlayerSprayDeathEffectRuntimeSlot NewSlot;
+	NewSlot.ParticleSystemPath = ParticleSystemPath;
+	NewSlot.Component = Component;
+	DeathEffectSlots.push_back(NewSlot);
+	return Component;
+}
+
+UParticleSystemComponent* UPlayerSprayProjectileComponent::GetDeathEffectComponent(const FPlayerSprayDeathEffectRuntimeSlot& Slot) const
+{
+	UParticleSystemComponent* Component = Slot.Component.Get();
+	return Component && Component->GetOwner() == GetOwner() ? Component : nullptr;
+}
+
+void UPlayerSprayProjectileComponent::EmitProjectileDeathEffect(const FPlayerSprayProjectile& Projectile)
+{
+	const FPlayerSprayDeathEffectSettings& DeathEffect = Projectile.DeathEffect;
+	if (!DeathEffect.bEnableDeathEffect)
+	{
+		return;
+	}
+
+	if (DeathEffect.ParticleSystemPath.empty() ||
+		DeathEffect.ParticleSystemPath == "None")
+	{
+		++DeathEffectDroppedThisFrame;
+		return;
+	}
+
+	if (MaxDeathEffectEventsPerFrame <= 0 ||
+		DeathEffectEventsThisFrame >= MaxDeathEffectEventsPerFrame)
+	{
+		++DeathEffectDroppedThisFrame;
+		return;
+	}
+
+	UParticleSystemComponent* Component = FindOrCreateDeathEffectComponent(DeathEffect.ParticleSystemPath);
+	if (!Component)
+	{
+		++DeathEffectDroppedThisFrame;
+		return;
+	}
+
+	const FVector EventVelocity = DeathEffect.bInheritProjectileVelocity
+		? Projectile.Velocity * DeathEffect.VelocityScale
+		: FVector::ZeroVector;
+	Component->EmitExternalDeathEvent(DeathEffect.EventName, Projectile.Position, EventVelocity);
+	++DeathEffectEventsThisFrame;
+
+	for (FPlayerSprayDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		if (Slot.ParticleSystemPath == DeathEffect.ParticleSystemPath)
+		{
+			++Slot.EventsSubmittedThisFrame;
+			break;
+		}
+	}
+}
+
+bool UPlayerSprayProjectileComponent::CanAutoCreateRuntimeHelperComponent() const
+{
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return false;
+	}
+
+	if (OwnerActor->HasActorBegunPlay())
+	{
+		return true;
+	}
+
+	UWorld* World = GetWorld();
+	return World && World->HasBegunPlay();
+}
+
+int32 UPlayerSprayProjectileComponent::CountValidDeathEffectComponents() const
+{
+	int32 Count = 0;
+	for (const FPlayerSprayDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		if (GetDeathEffectComponent(Slot))
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+void UPlayerSprayProjectileComponent::ResetDeathEffectFrameCounters()
+{
+	DeathEffectEventsThisFrame = 0;
+	DeathEffectDroppedThisFrame = 0;
+	for (FPlayerSprayDeathEffectRuntimeSlot& Slot : DeathEffectSlots)
+	{
+		Slot.EventsSubmittedThisFrame = 0;
+		Slot.EventsDroppedThisFrame = 0;
+	}
 }
 
 void UPlayerSprayProjectileComponent::SyncRender()
