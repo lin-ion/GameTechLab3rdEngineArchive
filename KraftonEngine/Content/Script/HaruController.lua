@@ -34,6 +34,8 @@ local BOW_STATIC_MESH_PATH = "Content/Data/Bow/Bow_StaticMesh.uasset"
 local ATTACK_SKILL_NAME = "SprayAttack"
 local FIRE_PROJECTILE_KEY = "LeftMouseButton"
 local ATTACK_MAX_DURATION = 60.0
+local SPRAY_TARGET_ACTOR_NAME = "Boss"
+local SPRAY_FACE_BLEND_DURATION = 0.25
 -- Weapon Setting
 local STAFF_WEAPON_TRANSFORM = {
     location = Vec3(0.0, 40.0, 0.0),
@@ -118,6 +120,27 @@ local function lerp_number(a, b, alpha)
         return a
     end
     return a + (b - a) * alpha
+end
+
+local function normalize_angle_delta(angle)
+    local result = angle or 0.0
+    while result > 180.0 do
+        result = result - 360.0
+    end
+    while result < -180.0 do
+        result = result + 360.0
+    end
+    return result
+end
+
+local function lerp_angle(a, b, alpha)
+    if a == nil then
+        return b
+    end
+    if b == nil then
+        return a
+    end
+    return a + normalize_angle_delta(b - a) * alpha
 end
 
 local function lerp_vec3(a, b, alpha)
@@ -622,11 +645,276 @@ local function lock_movement(owner, reason)
     end
 end
 
+local function lock_movement_input_only(owner, reason)
+    movement_locks[reason] = true
+    if not set_owner_movement_blocked(owner, true) then
+        log("movement input lock failed: CharacterMovementComponent blocking API unavailable reason=" .. tostring(reason))
+    end
+end
+
 local function unlock_movement(owner, reason)
     movement_locks[reason] = nil
     if not has_movement_locks() then
         set_owner_movement_blocked(owner, false)
     end
+end
+
+local function get_actor_location_safe(target)
+    if target == nil then
+        return nil
+    end
+
+    local ok, location = pcall(function()
+        return target.Location
+    end)
+
+    if ok then
+        return location
+    end
+
+    return nil
+end
+
+local function set_actor_location_safe(target, location)
+    if target == nil or location == nil then
+        return false
+    end
+
+    local ok, err = pcall(function()
+        target.Location = location
+    end)
+
+    if not ok then
+        log("actor location lock failed: " .. tostring(err))
+        return false
+    end
+
+    return true
+end
+
+local function set_actor_horizontal_location_locked(target, locked_location)
+    if target == nil or locked_location == nil then
+        return false
+    end
+
+    local current_location = get_actor_location_safe(target)
+    if current_location == nil then
+        return false
+    end
+
+    return set_actor_location_safe(target, Vec3(
+        locked_location.X or current_location.X or 0.0,
+        locked_location.Y or current_location.Y or 0.0,
+        current_location.Z or locked_location.Z or 0.0
+    ))
+end
+
+local function atan2_degrees(y, x)
+    local radians = 0.0
+    if math.atan2 ~= nil then
+        radians = math.atan2(y, x)
+    elseif x > 0.0 then
+        radians = math.atan(y / x)
+    elseif x < 0.0 and y >= 0.0 then
+        radians = math.atan(y / x) + math.pi
+    elseif x < 0.0 then
+        radians = math.atan(y / x) - math.pi
+    elseif y > 0.0 then
+        radians = math.pi * 0.5
+    elseif y < 0.0 then
+        radians = -math.pi * 0.5
+    end
+
+    return radians * 180.0 / math.pi
+end
+
+local function get_owner_to_actor_aim_rotation(owner, target_actor, label)
+    local owner_location = get_actor_location_safe(owner)
+    local target_location = get_actor_location_safe(target_actor)
+    if owner_location == nil or target_location == nil then
+        if label ~= nil then
+            log(tostring(label) .. " face target skipped: location unavailable")
+        end
+        return nil
+    end
+
+    local dx = (target_location.X or 0.0) - (owner_location.X or 0.0)
+    local dy = (target_location.Y or 0.0) - (owner_location.Y or 0.0)
+    local dz = (target_location.Z or 0.0) - (owner_location.Z or 0.0)
+    if dx * dx + dy * dy <= 0.000001 then
+        if label ~= nil then
+            log(tostring(label) .. " face target skipped: target too close")
+        end
+        return nil
+    end
+
+    local yaw = atan2_degrees(dy, dx)
+    local flat_distance = math.sqrt(dx * dx + dy * dy)
+    local pitch = -atan2_degrees(dz, flat_distance)
+    return {
+        yaw = yaw,
+        pitch = pitch,
+        owner_location = owner_location,
+        target_location = target_location
+    }
+end
+
+local function face_owner_to_actor_yaw(owner, target_actor, label)
+    local aim = get_owner_to_actor_aim_rotation(owner, target_actor, label)
+    if aim == nil then
+        return false
+    end
+
+    local current_rotation = nil
+    local ok, rotation = pcall(function()
+        return owner.Rotation
+    end)
+    if ok then
+        current_rotation = rotation
+    end
+
+    local roll = current_rotation ~= nil and (current_rotation.X or 0.0) or 0.0
+    local actor_pitch = current_rotation ~= nil and (current_rotation.Y or 0.0) or 0.0
+    local new_rotation = Vec3(roll, actor_pitch, aim.yaw)
+    local set_ok, err = pcall(function()
+        owner.Rotation = new_rotation
+    end)
+
+    if not set_ok then
+        log(tostring(label) .. " face target failed: " .. tostring(err))
+        return false
+    end
+
+    if owner.SetControlRotation ~= nil then
+        local control_roll = 0.0
+        local control_ok, control_rotation = pcall(function()
+            return owner:GetControlRotation()
+        end)
+        if control_ok and control_rotation ~= nil then
+            control_roll = control_rotation.X or 0.0
+        end
+
+        local control_set_ok, control_err = pcall(function()
+            return owner:SetControlRotation(Vec3(control_roll, aim.pitch, aim.yaw))
+        end)
+        if not control_set_ok then
+            log(tostring(label) .. " control rotation set failed: " .. tostring(control_err))
+        end
+    end
+
+    local target_name = SPRAY_TARGET_ACTOR_NAME
+    if target_actor ~= nil and target_actor.GetName ~= nil then
+        target_name = tostring(target_actor:GetName())
+    end
+
+    log(tostring(label) .. " faced target=" .. tostring(target_name)
+        .. " yaw=" .. tostring(aim.yaw)
+        .. " pitch=" .. tostring(aim.pitch)
+        .. " ownerLoc=" .. format_vec3(aim.owner_location)
+        .. " targetLoc=" .. format_vec3(aim.target_location))
+    return true
+end
+
+local function start_spray_face_blend(owner, target_actor, ability)
+    if owner == nil or target_actor == nil or ability == nil then
+        return false
+    end
+
+    local aim = get_owner_to_actor_aim_rotation(owner, target_actor, "SprayAttack")
+    if aim == nil then
+        return false
+    end
+
+    local actor_rotation = nil
+    local actor_ok, actor_rot = pcall(function()
+        return owner.Rotation
+    end)
+    if actor_ok then
+        actor_rotation = actor_rot
+    end
+
+    local control_rotation = nil
+    if owner.GetControlRotation ~= nil then
+        local control_ok, control_rot = pcall(function()
+            return owner:GetControlRotation()
+        end)
+        if control_ok then
+            control_rotation = control_rot
+        end
+    end
+
+    ability.spray_face_blend = {
+        elapsed = 0.0,
+        duration = SPRAY_FACE_BLEND_DURATION,
+        actor_roll = actor_rotation ~= nil and (actor_rotation.X or 0.0) or 0.0,
+        actor_pitch = actor_rotation ~= nil and (actor_rotation.Y or 0.0) or 0.0,
+        from_actor_yaw = actor_rotation ~= nil and (actor_rotation.Z or 0.0) or 0.0,
+        from_control_roll = control_rotation ~= nil and (control_rotation.X or 0.0) or 0.0,
+        from_control_pitch = control_rotation ~= nil and (control_rotation.Y or 0.0) or 0.0,
+        from_control_yaw = control_rotation ~= nil and (control_rotation.Z or 0.0) or (actor_rotation ~= nil and (actor_rotation.Z or 0.0) or 0.0),
+        target_pitch = aim.pitch,
+        target_yaw = aim.yaw
+    }
+
+    log("SprayAttack face blend started duration=" .. tostring(SPRAY_FACE_BLEND_DURATION)
+        .. " targetYaw=" .. tostring(aim.yaw)
+        .. " targetPitch=" .. tostring(aim.pitch)
+        .. " ownerLoc=" .. format_vec3(aim.owner_location)
+        .. " targetLoc=" .. format_vec3(aim.target_location))
+    return true
+end
+
+local function tick_spray_face_blend(owner, ability, dt)
+    if owner == nil or ability == nil or ability.spray_face_blend == nil then
+        return false
+    end
+
+    local blend = ability.spray_face_blend
+    blend.elapsed = blend.elapsed + (dt or 0.0)
+    local alpha = smoothstep(blend.duration > 0.0 and (blend.elapsed / blend.duration) or 1.0)
+    local yaw = lerp_angle(blend.from_control_yaw, blend.target_yaw, alpha)
+    local pitch = lerp_angle(blend.from_control_pitch, blend.target_pitch, alpha)
+
+    local actor_yaw = lerp_angle(blend.from_actor_yaw, blend.target_yaw, alpha)
+    local actor_set_ok, actor_err = pcall(function()
+        owner.Rotation = Vec3(blend.actor_roll, blend.actor_pitch, actor_yaw)
+    end)
+    if not actor_set_ok then
+        log("SprayAttack face blend actor rotation failed: " .. tostring(actor_err))
+    end
+
+    if owner.SetControlRotation ~= nil then
+        local control_set_ok, control_err = pcall(function()
+            return owner:SetControlRotation(Vec3(blend.from_control_roll, pitch, yaw))
+        end)
+        if not control_set_ok then
+            log("SprayAttack face blend control rotation failed: " .. tostring(control_err))
+        end
+    end
+
+    if alpha >= 1.0 then
+        ability.spray_face_blend = nil
+        log("SprayAttack face blend ended")
+    end
+
+    return true
+end
+
+local function find_spray_target_actor()
+    if World == nil or World.FindActorByName == nil then
+        return nil
+    end
+
+    local ok, target = pcall(function()
+        return World.FindActorByName(SPRAY_TARGET_ACTOR_NAME)
+    end)
+
+    if ok then
+        return target
+    end
+
+    log("SprayAttack target lookup failed: " .. tostring(target))
+    return nil
 end
 
 local function get_anim_instance(owner)
@@ -1124,20 +1412,41 @@ local function activate_spray_attack(owner, ability)
         return
     end
 
+    ability.locked_location = get_actor_location_safe(owner)
+    ability.spray_target_actor = find_spray_target_actor()
+    if ability.spray_target_actor ~= nil then
+        start_spray_face_blend(owner, ability.spray_target_actor, ability)
+    else
+        log("SprayAttack warning: target actor not found name=" .. SPRAY_TARGET_ACTOR_NAME)
+    end
+
+    lock_movement_input_only(owner, ATTACK_SKILL_NAME)
     set_anim_bool(owner, ATTACK_ANIM_VAR, true)
     if World ~= nil and World.StartPlayerSprayAttack ~= nil then
         local started = World.StartPlayerSprayAttack(owner)
         log("SprayAttack started: " .. tostring(started))
         if not started then
+            unlock_movement(owner, ATTACK_SKILL_NAME)
+            set_anim_bool(owner, ATTACK_ANIM_VAR, false)
             ability.active_remaining = 0.0
         end
     else
         log("SprayAttack failed: World.StartPlayerSprayAttack unavailable")
+        unlock_movement(owner, ATTACK_SKILL_NAME)
+        set_anim_bool(owner, ATTACK_ANIM_VAR, false)
         ability.active_remaining = 0.0
     end
 end
 
 local function tick_spray_attack(owner, ability, dt)
+    if owner ~= nil and ability ~= nil and ability.locked_location ~= nil then
+        set_actor_horizontal_location_locked(owner, ability.locked_location)
+    end
+
+    if not tick_spray_face_blend(owner, ability, dt) then
+        face_owner_to_camera_yaw(owner, ability)
+    end
+
     if Input ~= nil and Input.GetKeyUp ~= nil and Input.GetKeyUp(FIRE_PROJECTILE_KEY) then
         log("SprayAttack release: " .. FIRE_PROJECTILE_KEY)
         ability_system:EndAbility(ability)
@@ -1150,6 +1459,12 @@ local function end_spray_attack(owner, ability)
             World.StopPlayerSprayAttack(owner)
         end
         set_anim_bool(owner, ATTACK_ANIM_VAR, false)
+        unlock_movement(owner, ATTACK_SKILL_NAME)
+    end
+    if ability ~= nil then
+        ability.locked_location = nil
+        ability.spray_target_actor = nil
+        ability.spray_face_blend = nil
     end
     log("SprayAttack ended")
 end

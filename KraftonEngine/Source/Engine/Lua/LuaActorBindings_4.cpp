@@ -72,6 +72,18 @@ void FLuaScriptManager::RegisterActorBindings_4(sol::state& Lua)
             APawn* Pawn = Cast<APawn>(&Actor);
             return Pawn ? Pawn->GetControlRotation().ToVector() : FVector(0.0f, 0.0f, 0.0f);
         },
+        "SetControlRotation",
+        [](AActor& Actor, const FVector& Rotation)
+        {
+            APawn* Pawn = Cast<APawn>(&Actor);
+            if (!Pawn)
+            {
+                return false;
+            }
+
+            Pawn->SetControlRotation(FRotator(Rotation));
+            return true;
+        },
 
         "ResetHealth",
         [](AActor& Actor)
