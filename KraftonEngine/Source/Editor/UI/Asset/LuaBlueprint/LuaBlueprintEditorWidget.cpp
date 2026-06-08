@@ -4038,7 +4038,7 @@ void FLuaBlueprintEditorWidget::RenderNodeBody(ULuaBlueprintAsset* Blueprint, FL
     case ELuaBlueprintNodeType::CustomLuaFunction:
     {
         ImGui::TextDisabled("%s", Node.NameValue == FName::None ? "(no function)" : Node.NameValue.ToString().c_str());
-        ImGui::TextWrapped("Double-click here or press Edit Code to write Lua.");
+        ImGui::TextDisabled("Double-click here or press Edit Code to write Lua.");
         const bool bDoubleClickedBody = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
         if (ImGui::SmallButton("Edit Code"))
         {
