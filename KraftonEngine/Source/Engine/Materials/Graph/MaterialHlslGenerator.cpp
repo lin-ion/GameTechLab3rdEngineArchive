@@ -1404,7 +1404,7 @@ float4 PS(MaterialSurfaceVSOutput input) : SV_TARGET
                 SS << "    clip(OutOpacity - " << OpacityMaskClipValue << "f);\n";
             }
             SS << R"(
-    return float4(finalRgb, OutOpacity);
+    return float4(finalRgb, 1.0f);
 }
 )";
         }
