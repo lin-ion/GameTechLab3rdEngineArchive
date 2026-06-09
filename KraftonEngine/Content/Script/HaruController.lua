@@ -52,6 +52,8 @@ local FIRE_PROJECTILE_KEYS = { FIRE_PROJECTILE_KEY, "GamepadRightTrigger" }
 local ATTACK_MAX_DURATION = 60.0
 local SPRAY_TARGET_ACTOR_NAME = "Boss"
 local SPRAY_FACE_BLEND_DURATION = 0.25
+local DEMO_KILL_PLAYER_KEY = "F1"
+local DEMO_KILL_BOSS_KEY = "F2"
 -- Weapon Setting
 local STAFF_WEAPON_TRANSFORM = {
     location = Vec3(0.0, 40.0, 0.0),
@@ -1069,6 +1071,49 @@ local function find_spray_target_actor()
     return nil
 end
 
+local function demo_kill_actor(target, label)
+    if target == nil then
+        log("Demo kill " .. tostring(label) .. " failed: actor is nil")
+        return false
+    end
+    if target.GetCurrentHealth == nil or target.GetDamaged == nil then
+        log("Demo kill " .. tostring(label) .. " failed: health API unavailable actor=" .. tostring(target))
+        return false
+    end
+
+    local health = target:GetCurrentHealth()
+    if health == nil then
+        health = 0.0
+    end
+    if health <= 0.0 then
+        log("Demo kill " .. tostring(label) .. " skipped: already dead health=" .. tostring(health))
+        return true
+    end
+
+    local damage = health
+    local applied = target:GetDamaged(damage)
+    log("Demo kill " .. tostring(label)
+        .. " actor=" .. (target.GetName ~= nil and target:GetName() or tostring(target))
+        .. " damage=" .. tostring(damage)
+        .. " applied=" .. tostring(applied)
+        .. " healthAfter=" .. tostring(target:GetCurrentHealth()))
+    return true
+end
+
+local function handle_demo_kill_inputs(owner)
+    if Input == nil or Input.GetKeyDown == nil then
+        return
+    end
+
+    if Input.GetKeyDown(DEMO_KILL_PLAYER_KEY) then
+        demo_kill_actor(owner, "player")
+    end
+
+    if Input.GetKeyDown(DEMO_KILL_BOSS_KEY) then
+        demo_kill_actor(find_spray_target_actor(), "boss")
+    end
+end
+
 local function get_anim_instance(owner)
     if anim_instance ~= nil then
         return anim_instance
@@ -2067,6 +2112,7 @@ function Tick(dt)
     end
 
     local owner = resolve_actor()
+    handle_demo_kill_inputs(owner)
     update_walking_audio(owner)
 
     local dash_key = first_pressed_key(DASH_SKILL_KEYS)
