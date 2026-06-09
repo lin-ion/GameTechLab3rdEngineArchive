@@ -4,6 +4,13 @@ local BOSS_ACTOR_NAME = "Boss"
 local CAMERA_ACTOR_NAME = "IntroCutSceneCamera"
 local CHARACTER_CAMERA_ACTOR_NAME = "Haru"
 local INTRO_UI_ACTOR_NAME = "IntroNameCanvas"
+local HIDDEN_DURING_CUTSCENE_UI_ASSETS = {
+    ["Content/UI/character_magical_aim.uasset"] = true,
+    ["Content/UI/BossHealthBar.uasset"] = true,
+    ["Content/UI/Character_Health_Hud.uasset"] = true,
+    ["Content/UI/Character_Guage_Hud.uasset"] = true,
+    ["Content/UI/Character_Gauge_Hud.uasset"] = true
+}
 
 local START_DELAY = 0.25
 local DURATION = 10.0
@@ -100,6 +107,50 @@ local function set_intro_ui_visible(visible)
     return true
 end
 
+local function get_ui_asset_path(actor)
+    if actor == nil or actor.GetProperty == nil then
+        return nil
+    end
+
+    local value = actor:GetProperty("UIAssetPath")
+    return value ~= nil and tostring(value) or nil
+end
+
+local function set_canvas_actor_visible(actor, visible)
+    if actor == nil then
+        return
+    end
+
+    if actor.SetVisible ~= nil then
+        actor:SetVisible(visible)
+    end
+
+    if Reflection ~= nil then
+        Reflection.SetProperty(actor, "PendingActorVisible", visible)
+    end
+
+    if actor.GetRootComponent ~= nil and Reflection ~= nil then
+        local root = actor:GetRootComponent()
+        if root ~= nil then
+            Reflection.SetProperty(root, "bVisible", visible)
+        end
+    end
+end
+
+local function set_default_hud_visible(visible)
+    if World == nil or World.FindActorsByClass == nil then
+        return
+    end
+
+    local actors = World.FindActorsByClass("AUICanvasActor")
+    for _, actor in pairs(actors) do
+        local path = get_ui_asset_path(actor)
+        if path ~= nil and HIDDEN_DURING_CUTSCENE_UI_ASSETS[path] then
+            set_canvas_actor_visible(actor, visible)
+        end
+    end
+end
+
 local function set_camera_postprocess(camera, enabled)
     if camera == nil then
         return
@@ -190,6 +241,7 @@ function IntroCutScene.Start()
         CameraManager.SetActiveCameraWithBlend(camera, 0.0)
     end
 
+    set_default_hud_visible(false)
     set_intro_ui_visible(true)
     set_camera_postprocess(camera, true)
     log("started")
@@ -199,6 +251,7 @@ end
 function IntroCutScene.Stop()
     if state.active then
         set_intro_ui_visible(false)
+        set_default_hud_visible(true)
         restore_camera()
     end
 

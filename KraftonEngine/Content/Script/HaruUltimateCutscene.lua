@@ -5,6 +5,13 @@ local DRAW_DURATION = 3.0
 local LETTERBOX_AMOUNT = 1.0
 local LETTERBOX_THICKNESS = 0.18
 local BLACK = { X = 0.0, Y = 0.0, Z = 0.0, W = 1.0 }
+local HIDDEN_DURING_CUTSCENE_UI_ASSETS = {
+    ["Content/UI/character_magical_aim.uasset"] = true,
+    ["Content/UI/BossHealthBar.uasset"] = true,
+    ["Content/UI/Character_Health_Hud.uasset"] = true,
+    ["Content/UI/Character_Guage_Hud.uasset"] = true,
+    ["Content/UI/Character_Gauge_Hud.uasset"] = true
+}
 
 local EYE_CAMERA_START = {
     arm_length = 0.55,
@@ -207,6 +214,50 @@ local function set_postprocess(camera, enabled)
     end
 end
 
+local function get_ui_asset_path(actor)
+    if actor == nil or actor.GetProperty == nil then
+        return nil
+    end
+
+    local value = actor:GetProperty("UIAssetPath")
+    return value ~= nil and tostring(value) or nil
+end
+
+local function set_canvas_actor_visible(actor, visible)
+    if actor == nil then
+        return
+    end
+
+    if actor.SetVisible ~= nil then
+        actor:SetVisible(visible)
+    end
+
+    if Reflection ~= nil then
+        Reflection.SetProperty(actor, "PendingActorVisible", visible)
+    end
+
+    if actor.GetRootComponent ~= nil and Reflection ~= nil then
+        local root = actor:GetRootComponent()
+        if root ~= nil then
+            Reflection.SetProperty(root, "bVisible", visible)
+        end
+    end
+end
+
+local function set_default_hud_visible(visible)
+    if World == nil or World.FindActorsByClass == nil then
+        return
+    end
+
+    local actors = World.FindActorsByClass("AUICanvasActor")
+    for _, actor in pairs(actors) do
+        local path = get_ui_asset_path(actor)
+        if path ~= nil and HIDDEN_DURING_CUTSCENE_UI_ASSETS[path] then
+            set_canvas_actor_visible(actor, visible)
+        end
+    end
+end
+
 local function log(message)
     if state.log ~= nil then
         state.log(message)
@@ -246,6 +297,7 @@ function HaruUltimateCutscene.Start(config)
     }
 
     set_postprocess(state.camera, true)
+    set_default_hud_visible(false)
     apply_cutscene_camera_state(state.camera, EYE_CAMERA_START)
     Audio.Play("CutScene", 1.0)
     log("started")
@@ -255,6 +307,7 @@ end
 function HaruUltimateCutscene.Stop()
     if not state.active then
         set_postprocess(state.camera, false)
+        set_default_hud_visible(true)
         if Engine ~= nil and Engine.ResumeGame ~= nil then
             Engine.ResumeGame()
         end
@@ -262,6 +315,7 @@ function HaruUltimateCutscene.Stop()
     end
 
     set_postprocess(state.camera, false)
+    set_default_hud_visible(true)
     apply_saved_camera_state(state.spring_arm, state.camera, state.start_camera_state)
     state.active = false
     if Engine ~= nil and Engine.ResumeGame ~= nil then
