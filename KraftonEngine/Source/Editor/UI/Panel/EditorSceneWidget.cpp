@@ -6,6 +6,7 @@
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Object/FName.h"
+#include "Serialization/SceneSaveManager.h"
 
 #include "ImGui/imgui.h"
 #include "Profiling/Stats/Stats.h"
@@ -129,6 +130,10 @@ void FEditorSceneWidget::RenderActorOutliner()
 				{
 					BeginRenameActor(Actor);
 				}
+				if (ImGui::MenuItem("Create Prefab"))
+				{
+					CreatePrefabFromActor(Actor);
+				}
 				if (ImGui::MenuItem("Remove"))
 				{
 					PendingRemoveActor = Actor;
@@ -148,6 +153,19 @@ void FEditorSceneWidget::RenderActorOutliner()
 		// 선택 의존 없이 직접 파괴해 mesh 없는(뷰포트 picking 불가) UI 액터도 Outliner 에서 제거 가능.
 		Selection.DeleteActor(PendingRemoveActor);
 	}
+}
+
+void FEditorSceneWidget::CreatePrefabFromActor(AActor* Actor)
+{
+	if (!IsValid(Actor))
+	{
+		return;
+	}
+
+	// 액터 + 컴포넌트 트리를 직렬화해 Content/prefab/<액터이름>.uasset 으로 저장한다.
+	// 컴포넌트 간 참조는 로컬 ObjectId 로 보존된다(FSceneSaveManager 가 처리).
+	// 경로/디렉토리 생성은 SaveActorAsPrefab → MakePrefabPackagePath 가 담당.
+	FSceneSaveManager::SaveActorAsPrefab(Actor);
 }
 
 void FEditorSceneWidget::BeginRenameActor(AActor* Actor)

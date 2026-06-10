@@ -15,6 +15,7 @@ private:
 	void RenderRenamePopup();
 	bool TryRenameActor(class AActor* Actor, const FString& NewName);
 	void HandleSceneManagerShortcuts();
+	void CreatePrefabFromActor(class AActor* Actor);
 
 	TArray<int32> ValidActorIndices;
 	class AActor* RenameTargetActor = nullptr;

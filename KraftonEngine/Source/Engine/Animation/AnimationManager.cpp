@@ -315,7 +315,7 @@ bool FAnimationManager::SaveAnimationPreservingMetadata(UAnimSequence* Sequence)
     return SaveAnimation(Sequence, AssetPath, ExistingMeta.SourcePath);
 }
 
-bool FAnimationManager::ImportAnimationForSkeleton(const FAnimationImportRequest& Request, TArray<UAnimSequence*>* OutSequences)
+bool FAnimationManager::ImportAnimationForSkeleton(const FAnimationImportRequest& Request, TArray<UAnimSequence*>* OutSequences, FString* OutError)
 {
     if (OutSequences)
     {
@@ -323,12 +323,13 @@ bool FAnimationManager::ImportAnimationForSkeleton(const FAnimationImportRequest
     }
 
     if (Request.SourceFbxPath.empty() || Request.TargetSkeletonPath.empty() || Request.TargetSkeletonPath == "None")
-    { 
+    {
         UE_LOG(
             "Animation import failed: source FBX and target skeleton are required. Source=%s Target=%s",
             Request.SourceFbxPath.c_str(),
             Request.TargetSkeletonPath.c_str()
         );
+        if (OutError) *OutError = "Source FBX and target skeleton are required.";
         return false;
     }
 
@@ -336,9 +337,11 @@ bool FAnimationManager::ImportAnimationForSkeleton(const FAnimationImportRequest
     ImportOptions.SelectedStackIndices = Request.SelectedAnimationStackIndices;
 
     FFbxAnimationImportResult ImportResult;
-    if (!FFbxImporter::ImportAnimationOnly(Request.SourceFbxPath, ImportResult, &ImportOptions))
+    FString                   FbxMessage;
+    if (!FFbxImporter::ImportAnimationOnly(Request.SourceFbxPath, ImportResult, &ImportOptions, &FbxMessage))
     {
         UE_LOG("Animation import failed: FBX animation-only import failed. Source=%s", Request.SourceFbxPath.c_str());
+        if (OutError) *OutError = FbxMessage.empty() ? "FBX animation-only import failed." : FbxMessage;
         return false;
     }
 
@@ -350,7 +353,8 @@ bool FAnimationManager::ImportAnimationForSkeleton(const FAnimationImportRequest
         Request.bAllowTargetExtraBones,
         Request.bOverwriteExistingAssets,
         ImportResult.AnimSequences,
-        OutSequences
+        OutSequences,
+        OutError
     );
 }
 
@@ -362,7 +366,8 @@ bool FAnimationManager::SaveImportedAnimationsForSkeleton(
     bool                      bAllowTargetExtraBones,
     bool                      bOverwriteExistingAssets,
     TArray<UAnimSequence*>&   ImportedSequences,
-    TArray<UAnimSequence*>*   OutSequences
+    TArray<UAnimSequence*>*   OutSequences,
+    FString*                  OutError
     )
 {
     if (OutSequences)
@@ -377,6 +382,7 @@ bool FAnimationManager::SaveImportedAnimationsForSkeleton(
             SourceFbxPath.c_str(),
             TargetSkeletonPath.c_str()
         );
+        if (OutError) *OutError = "Source FBX and target skeleton are required.";
         return false;
     }
 
@@ -384,6 +390,7 @@ bool FAnimationManager::SaveImportedAnimationsForSkeleton(
     if (!TargetSkeleton)
     {
         UE_LOG("Animation save failed: target skeleton not found. Path=%s", TargetSkeletonPath.c_str());
+        if (OutError) *OutError = "Target skeleton not found: " + TargetSkeletonPath;
         return false;
     }
 
@@ -403,6 +410,30 @@ bool FAnimationManager::SaveImportedAnimationsForSkeleton(
             TargetSkeletonPath.c_str(),
             Report.Reason.c_str()
         );
+        if (OutError)
+        {
+            *OutError = "Skeleton mismatch — " + Report.Reason + ".";
+            if (!Report.MissingBones.empty())
+            {
+                *OutError += " Missing in target: " + Report.MissingBones[0];
+                if (Report.MissingBones.size() > 1)
+                {
+                    *OutError += " (+" + std::to_string(Report.MissingBones.size() - 1) + " more)";
+                }
+            }
+            else if (!Report.ParentMismatchBones.empty())
+            {
+                *OutError += " Bone: " + Report.ParentMismatchBones[0];
+            }
+            else if (!Report.ExtraBones.empty())
+            {
+                *OutError += " Extra/uncovered: " + Report.ExtraBones[0];
+            }
+            if (!bAllowTargetExtraBones)
+            {
+                *OutError += "  (Tip: enable \"Allow target skeleton extra bones\".)";
+            }
+        }
         return false;
     }
 
@@ -417,6 +448,7 @@ bool FAnimationManager::SaveImportedAnimationsForSkeleton(
         if (!RemapAnimSequenceToTargetSkeleton(Sequence, TargetSkeleton, Remap, &Report))
         {
             UE_LOG("Animation save failed: sequence remap failed. Anim=%s Reason=%s", Sequence->GetName().c_str(), Report.Reason.c_str());
+            if (OutError) *OutError = "Sequence remap failed (" + Sequence->GetName() + ") — " + Report.Reason + ".";
             return false;
         }
 
@@ -445,6 +477,7 @@ bool FAnimationManager::SaveImportedAnimationsForSkeleton(
         if (!SaveAnimation(Sequence, AnimPath, SourceFbxPath))
         {
             UE_LOG("Animation save failed: save failed. Path=%s", AnimPath.c_str());
+            if (OutError) *OutError = "Failed to write animation asset: " + AnimPath;
             return false;
         }
 
@@ -453,6 +486,12 @@ bool FAnimationManager::SaveImportedAnimationsForSkeleton(
         {
             OutSequences->push_back(Sequence);
         }
+    }
+
+    if (!bSavedAny && OutError && OutError->empty())
+    {
+        // 본 호환은 통과했지만 모든 시퀀스가 "이미 존재"로 스킵된 경우.
+        *OutError = "No animation imported — all targets already exist. Enable \"Overwrite existing animation assets\".";
     }
 
     return bSavedAny;
@@ -492,6 +531,40 @@ void FAnimationManager::RefreshAvailableAnimations()
         Item.FullPath    = RelPath;
         AvailableAnimationFiles.push_back(std::move(Item));
     }
+}
+
+bool FAnimationManager::DeleteAnimation(const FString& PackagePath, FString* OutError)
+{
+    const FString NormalizedPath = FPaths::MakeProjectRelative(PackagePath);
+
+    // 1) 디스크 파일 제거.
+    std::error_code Ec;
+    const std::filesystem::path FullPath = ResolveProjectPath(NormalizedPath);
+    std::filesystem::remove(FullPath, Ec);
+    if (Ec)
+    {
+        if (OutError) *OutError = Ec.message().c_str();
+        UE_LOG("Animation delete failed: %s Path=%s", Ec.message().c_str(), NormalizedPath.c_str());
+        return false;
+    }
+
+    // 2) 인메모리 캐시에서 제거 — UObject 자체는 GC 가 수거. (선택 해제는 caller 책임)
+    auto CacheIt = AnimationCaches.find(NormalizedPath);
+    if (CacheIt != AnimationCaches.end())
+    {
+        AnimationCaches.erase(CacheIt);
+    }
+
+    // 3) 사용 가능 목록에서 제거.
+    AvailableAnimationFiles.erase(
+        std::remove_if(
+            AvailableAnimationFiles.begin(),
+            AvailableAnimationFiles.end(),
+            [&](const FAssetListItem& Item) { return Item.FullPath == NormalizedPath; }),
+        AvailableAnimationFiles.end());
+
+    UE_LOG("Animation deleted: Path=%s", NormalizedPath.c_str());
+    return true;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -677,6 +750,40 @@ void FAnimationManager::RefreshAvailableMontages()
         Item.FullPath    = RelPath;
         AvailableMontageFiles.push_back(std::move(Item));
     }
+}
+
+bool FAnimationManager::DeleteMontage(const FString& PackagePath, FString* OutError)
+{
+    const FString NormalizedPath = FPaths::MakeProjectRelative(PackagePath);
+
+    // 1) 디스크 파일 제거. (SourceSequence 는 별개 자산이므로 건드리지 않음)
+    std::error_code Ec;
+    const std::filesystem::path FullPath = ResolveProjectPath(NormalizedPath);
+    std::filesystem::remove(FullPath, Ec);
+    if (Ec)
+    {
+        if (OutError) *OutError = Ec.message().c_str();
+        UE_LOG("Montage delete failed: %s Path=%s", Ec.message().c_str(), NormalizedPath.c_str());
+        return false;
+    }
+
+    // 2) 인메모리 캐시에서 제거 — UObject 자체는 GC 가 수거.
+    auto CacheIt = MontageCaches.find(NormalizedPath);
+    if (CacheIt != MontageCaches.end())
+    {
+        MontageCaches.erase(CacheIt);
+    }
+
+    // 3) 사용 가능 목록에서 제거.
+    AvailableMontageFiles.erase(
+        std::remove_if(
+            AvailableMontageFiles.begin(),
+            AvailableMontageFiles.end(),
+            [&](const FAssetListItem& Item) { return Item.FullPath == NormalizedPath; }),
+        AvailableMontageFiles.end());
+
+    UE_LOG("Montage deleted: Path=%s", NormalizedPath.c_str());
+    return true;
 }
 
 

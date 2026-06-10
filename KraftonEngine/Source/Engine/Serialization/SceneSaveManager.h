@@ -62,6 +62,27 @@ public:
 	// 반환 = 루트 컴포넌트(보통 UUICanvas) 또는 nullptr.
 	static USceneComponent* DeserializeUITree(const FString& Json, AActor* Owner);
 
+	// ─── Prefab(단일 액터 자산) ───
+	// 액터 1개와 그 컴포넌트 트리를 prefab 용 JSON 으로 직렬화한다. 월드 불필요.
+	// 액터/컴포넌트의 ObjectId 를 사전 수집(CollectActorObjectIds)한 뒤 직렬화하므로,
+	// 컴포넌트 간/액터-컴포넌트 간 참조가 순서와 무관하게 로컬 ObjectId 로 보존된다.
+	// (프리팹 밖 외부 씬 객체 참조는 ObjectId 0 → 로드 시 null. UE prefab 과 동일한 의미.)
+	static FString SerializeActorToPrefab(AActor* Actor);
+
+	// SerializeActorToPrefab 의 역방향 — JSON 을 라이브 액터로 복원해 World 에 스폰한다.
+	// 씬 로드와 동일한 2-패스(객체 생성+ObjectId 등록 → 프로퍼티 flush)로 참조를 재해소.
+	static AActor* InstantiateActorFromPrefab(const FString& Json, UWorld* World);
+
+	// 액터를 Content/prefab/<name>.uasset 로 저장한다(EAssetPackageType::Prefab 문자열 페이로드).
+	// PackagePath 가 비어있으면 액터 이름으로 MakePrefabPackagePath 를 통해 경로를 만든다.
+	static bool SaveActorAsPrefab(AActor* Actor, const FString& PackagePath = FString());
+
+	// prefab .uasset 를 읽어 World 에 인스턴스화. 실패 시 nullptr.
+	static AActor* InstantiatePrefabFromFile(const FString& PackagePath, UWorld* World);
+
+	// Content/prefab/ 디렉토리를 보장하고 <PrefabName>.uasset 의 프로젝트 상대 경로를 반환.
+	static FString MakePrefabPackagePath(const FString& PrefabName);
+
 	struct FSceneSaveContext
 	{
 		TMap<const UObject*, uint32> ObjectToId;

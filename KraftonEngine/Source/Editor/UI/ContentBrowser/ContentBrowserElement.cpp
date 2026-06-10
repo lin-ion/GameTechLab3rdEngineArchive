@@ -722,6 +722,18 @@ void UIAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 	}
 }
 
+void PrefabAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+{
+	if (!Context.EditorEngine)
+	{
+		return;
+	}
+
+	// InstantiatePrefabFromFile 내부에서 MakeProjectRelative 처리 → 절대경로 그대로 전달.
+	const FString PackagePath = FPaths::ToUtf8(ContentItem.Path.wstring());
+	FSceneSaveManager::InstantiatePrefabFromFile(PackagePath, Context.EditorEngine->GetWorld());
+}
+
 void PhysicsAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 {
 	if (!Context.EditorEngine)

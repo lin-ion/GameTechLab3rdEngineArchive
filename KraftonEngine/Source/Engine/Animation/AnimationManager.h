@@ -31,7 +31,8 @@ public:
     // Sequence 의 AssetPathFileName 을 그대로 PackagePath 로 사용.
     bool SaveAnimationPreservingMetadata(UAnimSequence* Sequence);
 
-    bool ImportAnimationForSkeleton(const FAnimationImportRequest& Request, TArray<UAnimSequence*>* OutSequences = nullptr);
+    // OutError 가 주어지면 실패 시 사용자에게 보여줄 사유(본 불일치 등)를 채운다.
+    bool ImportAnimationForSkeleton(const FAnimationImportRequest& Request, TArray<UAnimSequence*>* OutSequences = nullptr, FString* OutError = nullptr);
 
     bool SaveImportedAnimationsForSkeleton(
         const FString&            SourceFbxPath,
@@ -41,7 +42,8 @@ public:
         bool                      bAllowTargetExtraBones,
         bool                      bOverwriteExistingAssets,
         TArray<UAnimSequence*>&   ImportedSequences,
-        TArray<UAnimSequence*>*   OutSequences = nullptr
+        TArray<UAnimSequence*>*   OutSequences = nullptr,
+        FString*                  OutError     = nullptr
         );
 
     // Content/ 하위를 스캔해 디스크의 AnimSequence .uasset 들을 목록에 채운다.
@@ -52,6 +54,10 @@ public:
     {
         return AvailableAnimationFiles;
     }
+
+    // 디스크의 .uasset 파일과 인메모리 캐시/목록에서 해당 AnimSequence 를 제거.
+    // 성공 시 true. 실패 시 OutError 에 사유. 현재 선택 중인 자산이면 caller 가 선택 해제할 것.
+    bool DeleteAnimation(const FString& PackagePath, FString* OutError = nullptr);
 
     static FString GetAnimationPath(const FString& SourcePath, const FString& AnimationName);
     static FString GetAnimationPathForSkeleton(const FString& SourcePath, const FString& AnimationName, const FString& TargetSkeletonPath);
@@ -66,6 +72,10 @@ public:
 
     void RefreshAvailableMontages();
     const TArray<FAssetListItem>& GetAvailableMontageFiles() const { return AvailableMontageFiles; }
+
+    // 디스크의 .uasset 파일과 인메모리 캐시/목록에서 해당 Montage 를 제거.
+    // SourceSequence 는 건드리지 않는다. 성공 시 true.
+    bool DeleteMontage(const FString& PackagePath, FString* OutError = nullptr);
 
     const char* GetReferencerName() const override { return "FAnimationManager"; }
     void AddReferencedObjects(FReferenceCollector& Collector) override;

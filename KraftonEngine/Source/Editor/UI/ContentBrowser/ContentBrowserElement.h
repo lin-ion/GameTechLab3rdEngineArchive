@@ -254,3 +254,15 @@ protected:
 	const char* GetTypeLabel() const override { return "UI"; }
 	uint32 GetAccentColor() const override { return IM_COL32(120, 200, 140, 255); }
 };
+
+class PrefabAssetElement final : public ContentBrowserElement
+{
+public:
+	// 더블클릭 → 현재 월드에 즉시 인스턴스화(프리팹은 별도 에디터가 없음).
+	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
+	const char* GetDragItemType() override { return "PrefabContentItem"; }
+
+protected:
+	const char* GetTypeLabel() const override { return "Prefab"; }
+	uint32 GetAccentColor() const override { return IM_COL32(230, 200, 90, 255); }
+};

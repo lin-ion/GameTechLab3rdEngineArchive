@@ -20,6 +20,7 @@ enum class EAssetPackageType : uint32
 	LuaBlueprint,
 	PhysicsAsset,
 	UI,
+	Prefab,
 };
 
 enum class EAssetPackageSerializationVersion : uint32

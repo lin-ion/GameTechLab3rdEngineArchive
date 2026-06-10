@@ -373,6 +373,14 @@ EFbxImportDialogResult FFbxImportOptionsDialog::RenderAnimationImportPopup(
     else
     {
         ImGui::Checkbox("Overwrite existing animation assets", &State.bOverwriteExistingAssets);
+        ImGui::Checkbox("Allow target skeleton extra bones", &State.bAllowTargetExtraBones);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "On: import succeeds as long as the animation's bones exist in the target skeleton\n"
+                "(extra un-animated target bones stay at ref pose).\n"
+                "Off: the bone set must match exactly.");
+        }
         RenderAnimationStackList(
             State.AnimationStacks,
             State.AnimationStackSelected,
@@ -407,6 +415,7 @@ EFbxImportDialogResult FFbxImportOptionsDialog::RenderAnimationImportPopup(
             OutRequest.SourceFbxPath            = State.SourceFbxPath;
             OutRequest.TargetSkeletonPath       = TargetSkeletonPath;
             OutRequest.bOverwriteExistingAssets = State.bOverwriteExistingAssets;
+            OutRequest.bAllowTargetExtraBones   = State.bAllowTargetExtraBones;
             AddSelectedAnimationStacks(
                 State.AnimationStacks,
                 State.AnimationStackSelected,

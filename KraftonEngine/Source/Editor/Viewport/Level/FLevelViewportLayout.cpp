@@ -28,6 +28,7 @@
 #include "Slate/SlateApplication.h"
 #include "Math/MathUtils.h"
 #include "Platform/Paths.h"
+#include "Serialization/SceneSaveManager.h"
 #include "ImGui/imgui.h"
 #include "Component/Camera/CameraComponent.h"
 #include "Render/Types/MinimalViewInfo.h"
@@ -921,7 +922,15 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 					NewActor->EnsureCanvasForEditor();
 				}
 			}
-			ImGui::EndDragDropTarget();
+				// Prefab .uasset 드롭 → 저장된 액터(+컴포넌트 트리)를 월드에 인스턴스화.
+				// InstantiatePrefabFromFile 가 페이로드 로드/스폰/렌더상태 재생성까지 처리한다.
+				// 트랜스폼은 프리팹에 저장된 값으로 복원된다(메시/UI 분기와 동형의 단순 spawn).
+				else if (const ImGuiPayload* prefabPayload = ImGui::AcceptDragDropPayload("PrefabContentItem"))
+				{
+					FContentItem ContentItem = *reinterpret_cast<const FContentItem*>(prefabPayload->Data);
+					FSceneSaveManager::InstantiatePrefabFromFile(FPaths::ToUtf8(ContentItem.Path.wstring()), Editor->GetWorld());
+				}
+				ImGui::EndDragDropTarget();
 		}
 	}
 

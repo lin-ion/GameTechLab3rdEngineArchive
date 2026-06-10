@@ -515,6 +515,9 @@ void FEditorContentBrowserWidget::RefreshContent()
 				case EAssetPackageType::UI:
 					Element = std::make_shared<UIAssetElement>();
 					break;
+				case EAssetPackageType::Prefab:
+					Element = std::make_shared<PrefabAssetElement>();
+					break;
 				default:
 					Element = std::make_shared<ContentBrowserElement>();
 					break;

@@ -33,6 +33,9 @@ struct FFbxAnimationImportDialogState
     TArray<FFbxAnimationStackInfo> AnimationStacks;
     TArray<bool>                   AnimationStackSelected;
     bool                           bOverwriteExistingAssets = false;
+    // 애니메이션 임포트는 타깃 스켈레톤이 클립보다 본이 많은 경우(트위스트/IK/헬퍼 등)가 일반적이므로
+    // 기본값 true(여분 본 허용). false 로 두면 본 집합이 정확히 일치해야만 임포트가 된다.
+    bool                           bAllowTargetExtraBones   = true;
     FString                        Error;
 };
 

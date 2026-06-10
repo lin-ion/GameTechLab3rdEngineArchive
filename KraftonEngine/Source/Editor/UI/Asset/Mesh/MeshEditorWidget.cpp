@@ -3181,7 +3181,8 @@ void FMeshEditorWidget::RenderAnimationLayout(float TotalHeight)
 	if (AnimationImportDialogResult == EFbxImportDialogResult::Submitted)
 	{
 		TArray<UAnimSequence*> ImportedSequences;
-		FAnimationManager::Get().ImportAnimationForSkeleton(AnimationImportRequest, &ImportedSequences);
+		FString                ImportError;
+		FAnimationManager::Get().ImportAnimationForSkeleton(AnimationImportRequest, &ImportedSequences, &ImportError);
 		// 임포트 성공/스킵(이미 존재) 무관하게 디스크를 다시 스캔해 목록 갱신.
 		FAnimationManager::Get().RefreshAvailableAnimations();
 		MarkAnimationListDirty();
@@ -3197,8 +3198,11 @@ void FMeshEditorWidget::RenderAnimationLayout(float TotalHeight)
 		}
 		else
 		{
+			// 실패의 실제 사유(본 불일치 등)를 그대로 노출 — 기존엔 항상 "스킵됐을 수도" 라는 모호한 메시지였다.
 			AnimTabState.AnimationImportDialog.Error =
-			"No animation was imported. Existing assets may have been skipped.";
+				!ImportError.empty()
+					? ImportError
+					: "No animation was imported. Existing assets may have been skipped.";
 		}
 	}
 
@@ -3283,8 +3287,19 @@ void FMeshEditorWidget::RenderAnimationLayout(float TotalHeight)
 		[](const FEntry& A, const FEntry& B) { return A.DisplayName < B.DisplayName; });
 
 	ImGui::TextUnformatted("Animations & Montages");
+
+	// 우클릭 삭제 요청을 루프 종료 후 처리 — 반복 중 목록/캐시 무효화로 인한 무효 참조 방지.
+	struct FPendingDelete
+	{
+		bool    bValid     = false;
+		bool    bIsMontage = false;
+		FString FullPath;
+	} PendingDelete;
+
 	for (const FEntry& E : Entries)
 	{
+		ImGui::PushID(E.FullPath.c_str());
+
 		const bool bSelected =
 			E.bIsMontage
 				? (AnimTabState.bMontageSelected && AnimTabState.SelectedMontageIndex == E.OriginalIndex)
@@ -3333,7 +3348,64 @@ void FMeshEditorWidget::RenderAnimationLayout(float TotalHeight)
 		{
 			ImGui::SetTooltip("%s\n%s", E.bIsMontage ? "Montage" : "Sequence", E.FullPath.c_str());
 		}
+
+		// 우클릭 컨텍스트 메뉴 — 사용하지 않는 애니메이션/몽타주 삭제.
+		if (ImGui::BeginPopupContextItem())
+		{
+			ImGui::TextDisabled("%s", E.DisplayName.c_str());
+			ImGui::Separator();
+			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(235, 90, 90, 255));
+			if (ImGui::MenuItem("Delete"))
+			{
+				PendingDelete.bValid     = true;
+				PendingDelete.bIsMontage = E.bIsMontage;
+				PendingDelete.FullPath   = E.FullPath;
+			}
+			ImGui::PopStyleColor();
+			ImGui::EndPopup();
+		}
+
+		ImGui::PopID();
 	}
+
+	// 삭제 처리 — 디스크 .uasset + 매니저 캐시 제거 후 선택 해제 & 목록 갱신.
+	if (PendingDelete.bValid)
+	{
+		const FString DeletedRelPath = FPaths::MakeProjectRelative(PendingDelete.FullPath);
+		FString       DeleteError;
+		const bool    bDeleted = PendingDelete.bIsMontage
+			? FAnimationManager::Get().DeleteMontage(PendingDelete.FullPath, &DeleteError)
+			: FAnimationManager::Get().DeleteAnimation(PendingDelete.FullPath, &DeleteError);
+
+		if (bDeleted)
+		{
+			// 현재 미리보기로 선택돼 있던 자산을 지웠다면 참조 해제 (GC 수거 후 dangling 방지).
+			if (AnimTabState.CurrentMontage &&
+				FPaths::MakeProjectRelative(AnimTabState.CurrentMontage->GetAssetPathFileName()) == DeletedRelPath)
+			{
+				AnimTabState.CurrentMontage = nullptr;
+			}
+			if (AnimTabState.CurrentSequence &&
+				FPaths::MakeProjectRelative(AnimTabState.CurrentSequence->GetAssetPathFileName()) == DeletedRelPath)
+			{
+				AnimTabState.CurrentSequence = nullptr;
+			}
+
+			// 목록 인덱스가 밀리므로 선택 상태 초기화 후 캐시 dirty 표시 (다음 프레임에 재조회).
+			AnimTabState.SelectedAnimIndex       = -1;
+			AnimTabState.SelectedMontageIndex    = -1;
+			AnimTabState.bMontageSelected        = false;
+			AnimTabState.SelectedNotifyIndex     = -1;
+			AnimTabState.SelectedMorphCurveIndex = -1;
+			AnimTabState.SelectedMorphKeyIndex   = -1;
+			MarkAnimationListDirty();
+		}
+		else
+		{
+			UE_LOG("Asset delete failed: %s", DeleteError.c_str());
+		}
+	}
+
 	ImGui::EndChild();
 
 	// ─── Bottom: Unreal 시퀀서 패널 ───

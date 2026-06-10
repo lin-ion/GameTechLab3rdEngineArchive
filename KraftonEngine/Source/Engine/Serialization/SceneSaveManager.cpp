@@ -21,6 +21,7 @@
 #include "Serialization/JsonArchive.h"
 #include "Profiling/Time/PlatformTime.h"
 #include "Core/Logging/Log.h"
+#include "Asset/AssetPackage.h"
 
 // ---- JSON vector helpers ---------------------------------------------------
 
@@ -488,6 +489,187 @@ USceneComponent* FSceneSaveManager::DeserializeUITree(const FString& Json, AActo
 	}
 
 	return Root;
+}
+
+// ============================================================
+// Prefab (단일 액터 자산)
+// ============================================================
+
+FString FSceneSaveManager::SerializeActorToPrefab(AActor* Actor)
+{
+	if (!IsSceneSerializableObject(Actor))
+	{
+		return FString();
+	}
+
+	// 참조 보존의 핵심 — 직렬화 전에 액터+모든 컴포넌트의 ObjectId 를 먼저 확정한다.
+	// 그래야 프로퍼티 직렬화 중 만나는 컴포넌트 간/액터-컴포넌트 간 참조가 (등록 순서와
+	// 무관하게) 이미 할당된 로컬 ObjectId 로 기록된다(전체 씬 저장의 Collect 패스와 동일 원리).
+	// 프리팹 밖 외부 객체 참조는 FindObjectId 가 0 을 반환 → 로드 시 null(UE prefab 과 동일).
+	FSceneSaveContext SaveContext;
+	CollectActorObjectIds(Actor, SaveContext);
+
+	json::JSON Node = SerializeActor(Actor, SaveContext);
+	return Node.dump();
+}
+
+AActor* FSceneSaveManager::InstantiateActorFromPrefab(const FString& Json, UWorld* World)
+{
+	using json::JSON;
+	if (Json.empty() || !World)
+	{
+		return nullptr;
+	}
+
+	FScopedGarbageCollectionBlocker GCBlocker;
+
+	JSON ActorJSON = JSON::Load(Json);
+
+	const string ActorClass = ActorJSON[SceneKeys::ClassName].ToString();
+	UObject*     ActorObj   = FObjectFactory::Get().Create(ActorClass, World);
+	if (!ActorObj || !ActorObj->IsA<AActor>())
+	{
+		return nullptr;
+	}
+	AActor* Actor = static_cast<AActor*>(ActorObj);
+
+	FSceneLoadContext LoadContext;
+	LoadContext.RegisterLoadedObject(ActorJSON, Actor);
+	World->AddActor(Actor);
+
+	if (ActorJSON.hasKey(SceneKeys::Name))
+	{
+		Actor->SetFName(FName(ActorJSON[SceneKeys::Name].ToString()));
+	}
+
+	// RootComponent 트리 복원 (Actor 프로퍼티보다 먼저여야 SetActorLocation 등이 적용됨).
+	if (ActorJSON.hasKey(SceneKeys::RootComponent))
+	{
+		JSON&            RootJSON = ActorJSON[SceneKeys::RootComponent];
+		USceneComponent* Root     = DeserializeSceneComponentTree(RootJSON, Actor, LoadContext);
+		if (Root) Actor->SetRootComponent(Root);
+	}
+
+	if (ActorJSON.hasKey(SceneKeys::Properties))
+	{
+		LoadContext.QueueProperties(Actor, ActorJSON[SceneKeys::Properties]);
+	}
+
+	// Non-scene 컴포넌트 복원
+	if (ActorJSON.hasKey(SceneKeys::NonSceneComponents))
+	{
+		for (auto& CompJSON : ActorJSON[SceneKeys::NonSceneComponents].ArrayRange())
+		{
+			const string CompClass = CompJSON[SceneKeys::ClassName].ToString();
+			UObject*     CompObj   = FObjectFactory::Get().Create(CompClass, Actor);
+			if (!CompObj || !CompObj->IsA<UActorComponent>()) continue;
+
+			UActorComponent* Comp = static_cast<UActorComponent*>(CompObj);
+			LoadContext.RegisterLoadedObject(CompJSON, Comp);
+			Actor->RegisterComponent(Comp);
+
+			if (CompJSON.hasKey(SceneKeys::Properties))
+			{
+				LoadContext.QueueProperties(Comp, CompJSON[SceneKeys::Properties]);
+			}
+			DeserializeComponentEditorMetadata(Comp, CompJSON);
+		}
+	}
+
+	// 2-패스: 모든 객체 생성/ObjectId 등록 후 프로퍼티(객체 참조 포함)를 flush 해 참조 재해소.
+	for (FPendingPropertyLoad& Pending : LoadContext.PendingProperties)
+	{
+		if (IsSceneSerializableObject(Pending.Object) && Pending.Properties)
+		{
+			DeserializeProperties(Pending.Object, *Pending.Properties, LoadContext);
+		}
+	}
+
+	// 타입별 캐시 컴포넌트 포인터 재연결 + 렌더 상태 재생성 (씬 로드 경로와 동일).
+	Actor->PostDuplicate();
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (!IsValid(Component)) continue;
+		Component->DestroyRenderState();
+		if (USceneComponent* SceneComponent = Cast<USceneComponent>(Component))
+		{
+			SceneComponent->MarkTransformDirty();
+		}
+		Component->CreateRenderState();
+	}
+
+	World->RemoveActorToOctree(Actor);
+	World->InsertActorToOctree(Actor);
+
+	return Actor;
+}
+
+FString FSceneSaveManager::MakePrefabPackagePath(const FString& PrefabName)
+{
+	// 파일명 정제 — 경로/확장자에 부적합한 문자를 '_' 로 치환.
+	FString SafeName;
+	SafeName.reserve(PrefabName.size());
+	for (char C : PrefabName)
+	{
+		const bool bValid = (C >= 'a' && C <= 'z') || (C >= 'A' && C <= 'Z') ||
+			(C >= '0' && C <= '9') || C == '_' || C == '-';
+		SafeName.push_back(bValid ? C : '_');
+	}
+	if (SafeName.empty()) SafeName = "Prefab";
+
+	// Content/prefab/ 디렉토리 보장.
+	const std::filesystem::path Dir = std::filesystem::path(FPaths::RootDir()) / L"Content" / L"prefab";
+	FPaths::CreateDir(Dir.wstring());
+
+	const std::filesystem::path Full = Dir / (FPaths::ToWide(SafeName) + L".uasset");
+	return FPaths::MakeProjectRelative(FPaths::ToUtf8(Full.generic_wstring()));
+}
+
+bool FSceneSaveManager::SaveActorAsPrefab(AActor* Actor, const FString& PackagePath)
+{
+	if (!IsSceneSerializableObject(Actor))
+	{
+		return false;
+	}
+
+	const FString Json = SerializeActorToPrefab(Actor);
+	if (Json.empty())
+	{
+		return false;
+	}
+
+	FString TargetPath = PackagePath;
+	if (TargetPath.empty())
+	{
+		const FString Name = Actor->GetFName().ToString();
+		TargetPath = MakePrefabPackagePath(Name.empty() ? FString(Actor->GetClass()->GetName()) : Name);
+	}
+
+	const FString        NormalizedPath = FPaths::MakeProjectRelative(TargetPath);
+	FAssetImportMetadata Metadata;  // prefab 은 외부 소스 파일이 없음.
+	if (!FAssetPackage::SaveStringPayload(NormalizedPath, EAssetPackageType::Prefab, Metadata, Json))
+	{
+		UE_LOG("[Prefab] Save failed. Path=%s", NormalizedPath.c_str());
+		return false;
+	}
+
+	UE_LOG("[Prefab] Saved actor '%s' -> %s", Actor->GetName().c_str(), NormalizedPath.c_str());
+	return true;
+}
+
+AActor* FSceneSaveManager::InstantiatePrefabFromFile(const FString& PackagePath, UWorld* World)
+{
+	if (!World) return nullptr;
+
+	const FString        NormalizedPath = FPaths::MakeProjectRelative(PackagePath);
+	FAssetImportMetadata Metadata;
+	FString              Json;
+	if (!FAssetPackage::LoadStringPayload(NormalizedPath, EAssetPackageType::Prefab, Metadata, Json))
+	{
+		UE_LOG("[Prefab] Load failed. Path=%s", NormalizedPath.c_str());
+		return nullptr;
+	}
+	return InstantiateActorFromPrefab(Json, World);
 }
 
 json::JSON FSceneSaveManager::SerializeProperties(UObject* Obj, FSceneSaveContext& Context)
