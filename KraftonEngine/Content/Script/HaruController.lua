@@ -54,6 +54,16 @@ local SPRAY_TARGET_ACTOR_NAME = "Boss"
 local SPRAY_FACE_BLEND_DURATION = 0.25
 local DEMO_KILL_PLAYER_KEY = "F1"
 local DEMO_KILL_BOSS_KEY = "F2"
+-- Ultimate
+-- Q 입력 → ultimate_ready(준비 애니) → ready 길이 경과 → ultimate_spell(시전 애니) → 종료 시 둘 다 false.
+-- AnimGraph(AG_Haru) 측에 UltReady/UltSpell 상태 + ultimate_ready/ultimate_spell bool 전이가 있어야 동작한다.
+local ULTIMATE_SKILL_NAME = "Ultimate"
+local ULTIMATE_SKILL_KEY = "Q"
+local ULTIMATE_SKILL_KEYS = { ULTIMATE_SKILL_KEY }
+local ULTIMATE_READY_ANIM_VAR = "ultimate_ready"
+local ULTIMATE_SPELL_ANIM_VAR = "ultimate_spell"
+local ULTIMATE_READY_DURATION = 2.0   -- ready 재생시간(초) — UltReady 를 play rate 0.5 로 재생 → 클립 길이의 2배
+local ULTIMATE_SPELL_DURATION = 1.5   -- spell 클립 길이(초) — AG_Haru UltSpell 클립에 맞춰 튜닝
 -- Weapon Setting
 local STAFF_WEAPON_TRANSFORM = {
     location = Vec3(0.0, 40.0, 0.0),
@@ -1970,6 +1980,45 @@ local function end_spray_attack(owner, ability)
     log("SprayAttack ended")
 end
 
+local function activate_ultimate(owner, ability)
+    if owner == nil then
+        log("Ultimate activate failed: owner is nil")
+        ability.active_remaining = 0.0
+        return
+    end
+
+    -- ready 단계 시작: 이동 잠금 + ultimate_ready=true 로 AnyState→ultimate_ready(state) 전이 유발.
+    ability.phase = "ready"
+    lock_movement(owner, ULTIMATE_SKILL_NAME)
+    set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, false)
+    set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, true)
+    log("Ultimate ready phase started: readyDur=" .. tostring(ULTIMATE_READY_DURATION)
+        .. " spellDur=" .. tostring(ULTIMATE_SPELL_DURATION))
+end
+
+local function tick_ultimate(owner, ability, dt)
+    -- AbilitySystem 이 active_remaining 을 총 길이(ready+spell)에서 감소시킨다.
+    -- 남은 시간이 spell 길이 이하가 되는 순간 = ready 애니가 끝나는 시점 → 변수 스왑.
+    if ability.phase == "ready" and ability.active_remaining <= ULTIMATE_SPELL_DURATION then
+        if owner ~= nil then
+            set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, false)
+            set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, true)   -- spell==true → ultimate_ready(state)→ultimate_motion(state) 전이
+        end
+        ability.phase = "spell"
+        log("Ultimate spell phase started")
+    end
+end
+
+local function end_ultimate(owner, ability)
+    if owner ~= nil then
+        set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, false)
+        set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, false)   -- spell==false → ultimate_motion(state)→idle 복귀 (전이는 expected_false 여야 함)
+        unlock_movement(owner, ULTIMATE_SKILL_NAME)
+    end
+    ability.phase = nil
+    log("Ultimate ended")
+end
+
 local function setup_abilities()
     local owner = resolve_actor()
     if owner == nil then
@@ -2021,16 +2070,30 @@ local function setup_abilities()
         OnTick = tick_spray_attack,
         OnEnd = end_spray_attack
     })
+    ability_system:RegisterAbility({
+        Name = ULTIMATE_SKILL_NAME,
+        Key = ULTIMATE_SKILL_KEY,
+        Keys = ULTIMATE_SKILL_KEYS,
+        Duration = ULTIMATE_READY_DURATION + ULTIMATE_SPELL_DURATION,
+        Cooldown = 0.0,
+        BlockWhileAnyActive = true,
+        OnActivate = activate_ultimate,
+        OnTick = tick_ultimate,
+        OnEnd = end_ultimate
+    })
 
     log("registered Dash on " .. join_keys(DASH_SKILL_KEYS))
     log("registered Roll on " .. join_keys(ROLL_SKILL_KEYS))
     log("registered AirBowShot on " .. join_keys(BOW_SKILL_KEYS))
     log("registered SprayAttack on " .. join_keys(FIRE_PROJECTILE_KEYS))
+    log("registered Ultimate on " .. join_keys(ULTIMATE_SKILL_KEYS))
 
     set_anim_bool(owner, DASH_ANIM_VAR, false)
     set_anim_bool(owner, ROLL_ANIM_VAR, false)
     set_anim_bool(owner, ATTACK_ANIM_VAR, false)
     set_anim_bool(owner, ARROW_ANIM_VAR, false)
+    set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, false)
+    set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, false)
     set_weapon_mesh(owner, STAFF_STATIC_MESH_PATH, "Staff", STAFF_WEAPON_TRANSFORM)
     reset_dash_trail(owner)
 end
@@ -2060,6 +2123,8 @@ function EndPlay()
         set_anim_bool(actor, ROLL_ANIM_VAR, false)
         set_anim_bool(actor, ATTACK_ANIM_VAR, false)
         set_anim_bool(actor, ARROW_ANIM_VAR, false)
+        set_anim_bool(actor, ULTIMATE_READY_ANIM_VAR, false)
+        set_anim_bool(actor, ULTIMATE_SPELL_ANIM_VAR, false)
         set_weapon_mesh(actor, STAFF_STATIC_MESH_PATH, "Staff", STAFF_WEAPON_TRANSFORM)
         movement_locks = {}
         set_owner_movement_blocked(actor, false)
@@ -2148,6 +2213,15 @@ function Tick(dt)
         local activated, reason = ability_system:TryActivateByKey(fire_key)
         if not activated then
             log("SprayAttack blocked: " .. (reason or "unknown"))
+        end
+    end
+
+    local ultimate_key = first_pressed_key(ULTIMATE_SKILL_KEYS)
+    if ultimate_key ~= nil then
+        log("input pressed: " .. ultimate_key)
+        local activated, reason = ability_system:TryActivateByKey(ultimate_key)
+        if not activated then
+            log("Ultimate blocked: " .. (reason or "unknown"))
         end
     end
 
