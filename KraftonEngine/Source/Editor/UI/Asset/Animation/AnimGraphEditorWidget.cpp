@@ -944,15 +944,25 @@ namespace
 		bool bChanged = false;
 
 		// Name InputText
+		// 키 입력마다 StateName 을 쓰면, 이름란이 빈칸을 거치는 순간 StateName 이 FName::None 이 된다.
+		// None 은 "Any State"(FAnimGraphTransition.FromStateName==None) sentinel 과 같은 값이라,
+		// caller 의 rename cascade 가 PrevName==None 으로 모든 전역 전이를 renamed state 로 hijack 한다.
+		// → 편집 중에는 로컬 버퍼만 갱신하고, 포커스가 빠질 때(IsItemDeactivatedAfterEdit) 비어있지 않을
+		//   때만 한 번에 commit 한다. 빈 이름은 거부 — 다음 프레임에 기존 이름으로 다시 seed 되어 복원된다.
 		char NameBuf[64];
 		const FString Cur = State.StateName.ToString();
 		std::snprintf(NameBuf, sizeof(NameBuf), "%s", Cur.c_str());
 		ImGui::TextUnformatted("Name");
 		ImGui::SetNextItemWidth(-1.0f);
-		if (ImGui::InputText("##Name", NameBuf, sizeof(NameBuf)))
+		ImGui::InputText("##Name", NameBuf, sizeof(NameBuf));
+		if (ImGui::IsItemDeactivatedAfterEdit() && NameBuf[0] != '\0')
 		{
-			State.StateName = (NameBuf[0] == '\0') ? FName::None : FName(NameBuf);
-			bChanged = true;
+			const FName NewName(NameBuf);
+			if (NewName != State.StateName)
+			{
+				State.StateName = NewName;
+				bChanged = true;
+			}
 		}
 
 		// Sub-Graph dropdown — 그래프 안의 다른 StateMachine 노드 (자기 자신 제외).
@@ -1583,7 +1593,8 @@ namespace
 						{
 							bChanged = true;
 							const FName NewName = Node.States[i].StateName;
-							if (PrevName != NewName)
+							// FName::None 은 "Any State"(FromStateName==None) sentinel 과 빈 상태이름이 공유하는 값이라 cascade match key 로 쓰면 전역 전이가 오염된다. real→real rename 만 전파.
+								if (PrevName != NewName && PrevName != FName::None && NewName != FName::None)
 							{
 								if (Node.InitialStateName == PrevName)
 								{
@@ -2018,6 +2029,9 @@ namespace
 	void RenameStateAndCascade(FAnimGraphNode& StateMachineNode, FName OldName, FName NewName)
 	{
 		if (OldName == NewName) return;
+		// FName::None 은 "Any State"(FromStateName==None) 마커이자 빈 상태이름이라, cascade match key 로
+		// 쓰면 전역 전이를 hijack 한다. real→real rename 만 전파한다.
+		if (OldName == FName::None || NewName == FName::None) return;
 		if (StateMachineNode.InitialStateName == OldName) StateMachineNode.InitialStateName = NewName;
 		for (FAnimGraphTransition& T : StateMachineNode.Transitions)
 		{

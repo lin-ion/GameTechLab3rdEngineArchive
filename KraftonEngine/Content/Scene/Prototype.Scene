@@ -2728,48 +2728,10 @@
               "bTickEnable" : true
             },
             "bHiddenInComponentTree" : true
-          }],
-        "ClassName" : "UAmbientLightComponent",
-        "ObjectId" : 5,
-        "Properties" : {
-          "AttachSocketName" : "Name_None",
-          "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
-          "Intensity" : 0.400000,
-          "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
-          "RelativeTransform.Location" : [0.000000, 0.000000, 10.000000],
-          "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
-          "ShadowBias" : 0.001000,
-          "ShadowNormalBias" : 0.002000,
-          "ShadowResolutionScale" : 1.000000,
-          "ShadowSharpen" : 0.670000,
-          "ShadowSlopeBias" : 0.000100,
-          "bAutoActivate" : true,
-          "bCastShadows" : true,
-          "bEditorOnly" : false,
-          "bHiddenInComponentTree" : false,
-          "bIsActive" : true,
-          "bTickEnable" : true,
-          "bVisible" : true
-        }
-      }
-    }, {
-      "ClassName" : "ADirectionalLightActor",
-      "Name" : "DirectionalLight",
-      "NonSceneComponents" : [],
-      "ObjectId" : 78,
-      "Properties" : {
-        "PendingActorLocation" : [0.000000, 0.000000, 10.000000],
-        "PendingActorRotation" : [45.000004, -45.000004, 0.000000],
-        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
-        "PendingActorVisible" : true,
-        "PendingTagsString" : "",
-        "bNeedsTick" : true
-      },
-      "RootComponent" : {
-        "Children" : [{
+          }, {
             "Children" : [],
             "ClassName" : "UBillboardComponent",
-            "ObjectId" : 80,
+            "ObjectId" : 78,
             "Properties" : {
               "AttachSocketName" : "Name_None",
               "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -2803,7 +2765,45 @@
               "bTickEnable" : true
             },
             "bHiddenInComponentTree" : true
-          }, {
+          }],
+        "ClassName" : "UAmbientLightComponent",
+        "ObjectId" : 5,
+        "Properties" : {
+          "AttachSocketName" : "Name_None",
+          "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+          "Intensity" : 0.400000,
+          "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
+          "RelativeTransform.Location" : [0.000000, 0.000000, 10.000000],
+          "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+          "ShadowBias" : 0.001000,
+          "ShadowNormalBias" : 0.002000,
+          "ShadowResolutionScale" : 1.000000,
+          "ShadowSharpen" : 0.670000,
+          "ShadowSlopeBias" : 0.000100,
+          "bAutoActivate" : true,
+          "bCastShadows" : true,
+          "bEditorOnly" : false,
+          "bHiddenInComponentTree" : false,
+          "bIsActive" : true,
+          "bTickEnable" : true,
+          "bVisible" : true
+        }
+      }
+    }, {
+      "ClassName" : "ADirectionalLightActor",
+      "Name" : "DirectionalLight",
+      "NonSceneComponents" : [],
+      "ObjectId" : 79,
+      "Properties" : {
+        "PendingActorLocation" : [0.000000, 0.000000, 10.000000],
+        "PendingActorRotation" : [45.000004, -45.000004, 0.000000],
+        "PendingActorScale" : [1.000000, 1.000000, 1.000000],
+        "PendingActorVisible" : true,
+        "PendingTagsString" : "",
+        "bNeedsTick" : true
+      },
+      "RootComponent" : {
+        "Children" : [{
             "Children" : [],
             "ClassName" : "UBillboardComponent",
             "ObjectId" : 81,
@@ -3025,9 +3025,83 @@
               "bTickEnable" : true
             },
             "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectId" : 87,
+            "Properties" : {
+              "AttachSocketName" : "Name_None",
+              "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+              "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+              "CollisionEnabled" : 0,
+              "Mass" : 1.000000,
+              "MaterialSlot" : "Content/Material/Editor/AmbientLight.uasset",
+              "ObjectType" : 0,
+              "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
+              "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+              "ResponseContainer" : {
+                "Responses[0]" : 2,
+                "Responses[1]" : 2,
+                "Responses[2]" : 2,
+                "Responses[3]" : 2,
+                "Responses[4]" : 2
+              },
+              "bAutoActivate" : true,
+              "bCastShadow" : true,
+              "bCastShadowAsTwoSided" : false,
+              "bEditorOnly" : true,
+              "bEnableCCD" : false,
+              "bEnableGravity" : true,
+              "bGenerateOverlapEvents" : false,
+              "bHiddenInComponentTree" : true,
+              "bIsActive" : true,
+              "bIsBillboard" : true,
+              "bIsVisible" : true,
+              "bKinematic" : false,
+              "bSimulatePhysics" : false,
+              "bTickEnable" : true
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectId" : 88,
+            "Properties" : {
+              "AttachSocketName" : "Name_None",
+              "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+              "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+              "CollisionEnabled" : 0,
+              "Mass" : 1.000000,
+              "MaterialSlot" : "Content/Material/Editor/AmbientLight.uasset",
+              "ObjectType" : 0,
+              "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
+              "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+              "ResponseContainer" : {
+                "Responses[0]" : 2,
+                "Responses[1]" : 2,
+                "Responses[2]" : 2,
+                "Responses[3]" : 2,
+                "Responses[4]" : 2
+              },
+              "bAutoActivate" : true,
+              "bCastShadow" : true,
+              "bCastShadowAsTwoSided" : false,
+              "bEditorOnly" : true,
+              "bEnableCCD" : false,
+              "bEnableGravity" : true,
+              "bGenerateOverlapEvents" : false,
+              "bHiddenInComponentTree" : true,
+              "bIsActive" : true,
+              "bIsBillboard" : true,
+              "bIsVisible" : true,
+              "bKinematic" : false,
+              "bSimulatePhysics" : false,
+              "bTickEnable" : true
+            },
+            "bHiddenInComponentTree" : true
           }],
         "ClassName" : "UAmbientLightComponent",
-        "ObjectId" : 79,
+        "ObjectId" : 80,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [45.000004, -45.000004, 0.000000],
@@ -3053,7 +3127,7 @@
       "ClassName" : "ADirectionalLightActor",
       "Name" : "DirectionalLight",
       "NonSceneComponents" : [],
-      "ObjectId" : 87,
+      "ObjectId" : 89,
       "Properties" : {
         "PendingActorLocation" : [0.000000, 0.000000, 10.000000],
         "PendingActorRotation" : [45.000004, -45.000004, 0.000000],
@@ -3064,80 +3138,6 @@
       },
       "RootComponent" : {
         "Children" : [{
-            "Children" : [],
-            "ClassName" : "UBillboardComponent",
-            "ObjectId" : 89,
-            "Properties" : {
-              "AttachSocketName" : "Name_None",
-              "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
-              "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
-              "CollisionEnabled" : 0,
-              "Mass" : 1.000000,
-              "MaterialSlot" : "Content/Material/Editor/DirectionalLight.uasset",
-              "ObjectType" : 0,
-              "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
-              "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
-              "ResponseContainer" : {
-                "Responses[0]" : 2,
-                "Responses[1]" : 2,
-                "Responses[2]" : 2,
-                "Responses[3]" : 2,
-                "Responses[4]" : 2
-              },
-              "bAutoActivate" : true,
-              "bCastShadow" : true,
-              "bCastShadowAsTwoSided" : false,
-              "bEditorOnly" : true,
-              "bEnableCCD" : false,
-              "bEnableGravity" : true,
-              "bGenerateOverlapEvents" : false,
-              "bHiddenInComponentTree" : true,
-              "bIsActive" : true,
-              "bIsBillboard" : true,
-              "bIsVisible" : true,
-              "bKinematic" : false,
-              "bSimulatePhysics" : false,
-              "bTickEnable" : true
-            },
-            "bHiddenInComponentTree" : true
-          }, {
-            "Children" : [],
-            "ClassName" : "UBillboardComponent",
-            "ObjectId" : 90,
-            "Properties" : {
-              "AttachSocketName" : "Name_None",
-              "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
-              "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
-              "CollisionEnabled" : 0,
-              "Mass" : 1.000000,
-              "MaterialSlot" : "Content/Material/Editor/DirectionalLight.uasset",
-              "ObjectType" : 0,
-              "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
-              "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
-              "ResponseContainer" : {
-                "Responses[0]" : 2,
-                "Responses[1]" : 2,
-                "Responses[2]" : 2,
-                "Responses[3]" : 2,
-                "Responses[4]" : 2
-              },
-              "bAutoActivate" : true,
-              "bCastShadow" : true,
-              "bCastShadowAsTwoSided" : false,
-              "bEditorOnly" : true,
-              "bEnableCCD" : false,
-              "bEnableGravity" : true,
-              "bGenerateOverlapEvents" : false,
-              "bHiddenInComponentTree" : true,
-              "bIsActive" : true,
-              "bIsBillboard" : true,
-              "bIsVisible" : true,
-              "bKinematic" : false,
-              "bSimulatePhysics" : false,
-              "bTickEnable" : true
-            },
-            "bHiddenInComponentTree" : true
-          }, {
             "Children" : [],
             "ClassName" : "UBillboardComponent",
             "ObjectId" : 91,
@@ -5320,9 +5320,120 @@
               "bTickEnable" : true
             },
             "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectId" : 150,
+            "Properties" : {
+              "AttachSocketName" : "Name_None",
+              "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+              "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+              "CollisionEnabled" : 0,
+              "Mass" : 1.000000,
+              "MaterialSlot" : "Content/Material/Editor/DirectionalLight.uasset",
+              "ObjectType" : 0,
+              "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
+              "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+              "ResponseContainer" : {
+                "Responses[0]" : 2,
+                "Responses[1]" : 2,
+                "Responses[2]" : 2,
+                "Responses[3]" : 2,
+                "Responses[4]" : 2
+              },
+              "bAutoActivate" : true,
+              "bCastShadow" : true,
+              "bCastShadowAsTwoSided" : false,
+              "bEditorOnly" : true,
+              "bEnableCCD" : false,
+              "bEnableGravity" : true,
+              "bGenerateOverlapEvents" : false,
+              "bHiddenInComponentTree" : true,
+              "bIsActive" : true,
+              "bIsBillboard" : true,
+              "bIsVisible" : true,
+              "bKinematic" : false,
+              "bSimulatePhysics" : false,
+              "bTickEnable" : true
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectId" : 151,
+            "Properties" : {
+              "AttachSocketName" : "Name_None",
+              "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+              "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+              "CollisionEnabled" : 0,
+              "Mass" : 1.000000,
+              "MaterialSlot" : "Content/Material/Editor/DirectionalLight.uasset",
+              "ObjectType" : 0,
+              "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
+              "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+              "ResponseContainer" : {
+                "Responses[0]" : 2,
+                "Responses[1]" : 2,
+                "Responses[2]" : 2,
+                "Responses[3]" : 2,
+                "Responses[4]" : 2
+              },
+              "bAutoActivate" : true,
+              "bCastShadow" : true,
+              "bCastShadowAsTwoSided" : false,
+              "bEditorOnly" : true,
+              "bEnableCCD" : false,
+              "bEnableGravity" : true,
+              "bGenerateOverlapEvents" : false,
+              "bHiddenInComponentTree" : true,
+              "bIsActive" : true,
+              "bIsBillboard" : true,
+              "bIsVisible" : true,
+              "bKinematic" : false,
+              "bSimulatePhysics" : false,
+              "bTickEnable" : true
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectId" : 152,
+            "Properties" : {
+              "AttachSocketName" : "Name_None",
+              "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
+              "CenterOfMassOffset" : [0.000000, 0.000000, 0.000000],
+              "CollisionEnabled" : 0,
+              "Mass" : 1.000000,
+              "MaterialSlot" : "Content/Material/Editor/DirectionalLight.uasset",
+              "ObjectType" : 0,
+              "RelativeTransform.Location" : [0.000000, 0.000000, 0.000000],
+              "RelativeTransform.Scale" : [1.000000, 1.000000, 1.000000],
+              "ResponseContainer" : {
+                "Responses[0]" : 2,
+                "Responses[1]" : 2,
+                "Responses[2]" : 2,
+                "Responses[3]" : 2,
+                "Responses[4]" : 2
+              },
+              "bAutoActivate" : true,
+              "bCastShadow" : true,
+              "bCastShadowAsTwoSided" : false,
+              "bEditorOnly" : true,
+              "bEnableCCD" : false,
+              "bEnableGravity" : true,
+              "bGenerateOverlapEvents" : false,
+              "bHiddenInComponentTree" : true,
+              "bIsActive" : true,
+              "bIsBillboard" : true,
+              "bIsVisible" : true,
+              "bKinematic" : false,
+              "bSimulatePhysics" : false,
+              "bTickEnable" : true
+            },
+            "bHiddenInComponentTree" : true
           }],
         "ClassName" : "UDirectionalLightComponent",
-        "ObjectId" : 88,
+        "ObjectId" : 90,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [45.000004, -45.000004, 0.000000],
@@ -5349,7 +5460,7 @@
       "Name" : "Haru",
       "NonSceneComponents" : [{
           "ClassName" : "UCharacterMovementComponent",
-          "ObjectId" : 156,
+          "ObjectId" : 159,
           "Properties" : {
             "BrakingFriction" : 8.000000,
             "FloorProbeDistance" : 0.100000,
@@ -5372,7 +5483,7 @@
           }
         }, {
           "ClassName" : "ULuaScriptComponent",
-          "ObjectId" : 157,
+          "ObjectId" : 160,
           "Properties" : {
             "ScriptFile" : "Haru.lua",
             "bAutoActivate" : true,
@@ -5383,7 +5494,7 @@
           }
         }, {
           "ClassName" : "ULuaScriptComponent",
-          "ObjectId" : 158,
+          "ObjectId" : 161,
           "Properties" : {
             "ScriptFile" : "HaruController.lua",
             "bAutoActivate" : true,
@@ -5394,7 +5505,7 @@
           }
         }, {
           "ClassName" : "UBulletHellDamageReceiverComponent",
-          "ObjectId" : 159,
+          "ObjectId" : 162,
           "Properties" : {
             "HitCount" : 0,
             "TotalDamageForwarded" : 0.000000,
@@ -5407,7 +5518,7 @@
           }
         }, {
           "ClassName" : "UPlayerSprayProjectileComponent",
-          "ObjectId" : 160,
+          "ObjectId" : 163,
           "Properties" : {
             "AimRayDebugDuration" : 0.050000,
             "AimRayDistance" : 1000.000000,
@@ -5453,7 +5564,7 @@
             "bTickEnable" : true
           }
         }],
-      "ObjectId" : 150,
+      "ObjectId" : 153,
       "Properties" : {
         "CurrentHealth" : 100.000000,
         "HealthHitCount" : 0,
@@ -5476,7 +5587,7 @@
             "Children" : [{
                 "Children" : [],
                 "ClassName" : "UStaticMeshComponent",
-                "ObjectId" : 153,
+                "ObjectId" : 156,
                 "Properties" : {
                   "AttachSocketName" : "Socket",
                   "CachedEditRotator" : [-0.000000, 179.999985, -89.999977],
@@ -5512,7 +5623,7 @@
                 }
               }],
             "ClassName" : "USkeletalMeshComponent",
-            "ObjectId" : 152,
+            "ObjectId" : 155,
             "Properties" : {
               "AnimInstance" : {
                 "ClassName" : "UAnimGraphInstance",
@@ -5588,7 +5699,7 @@
             "Children" : [{
                 "Children" : [],
                 "ClassName" : "UCameraComponent",
-                "ObjectId" : 155,
+                "ObjectId" : 158,
                 "Properties" : {
                   "AttachSocketName" : "Name_None",
                   "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -5611,7 +5722,7 @@
                 }
               }],
             "ClassName" : "USpringArmComponent",
-            "ObjectId" : 154,
+            "ObjectId" : 157,
             "Properties" : {
               "AttachSocketName" : "Name_None",
               "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -5640,7 +5751,7 @@
             }
           }],
         "ClassName" : "UCapsuleComponent",
-        "ObjectId" : 151,
+        "ObjectId" : 154,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -5681,7 +5792,7 @@
       "Name" : "Boss",
       "NonSceneComponents" : [{
           "ClassName" : "UCharacterMovementComponent",
-          "ObjectId" : 164,
+          "ObjectId" : 167,
           "Properties" : {
             "BrakingFriction" : 8.000000,
             "FloorProbeDistance" : 0.100000,
@@ -5704,7 +5815,7 @@
           }
         }, {
           "ClassName" : "UBossPatternSelectorComponent",
-          "ObjectId" : 165,
+          "ObjectId" : 168,
           "Properties" : {
             "CancelPatternRequest" : false,
             "DebugBossHealthRatio" : 1.000000,
@@ -5735,7 +5846,7 @@
           }
         }, {
           "ClassName" : "UBulletHellComponent",
-          "ObjectId" : 166,
+          "ObjectId" : 169,
           "Properties" : {
             "CollisionTraceChannel" : 3,
             "MaxDeathEffectComponents" : 16,
@@ -5763,7 +5874,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_AimedRingVolley",
-          "ObjectId" : 167,
+          "ObjectId" : 170,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "AngleOffsetDegrees" : 0.000000,
@@ -5814,7 +5925,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_HomingOrbTrail",
-          "ObjectId" : 168,
+          "ObjectId" : 171,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "Cooldown" : 2.500000,
@@ -5868,7 +5979,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_SphericalPulseBarrage",
-          "ObjectId" : 169,
+          "ObjectId" : 172,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "Cooldown" : 3.000000,
@@ -5919,7 +6030,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_ThunderclapCascade",
-          "ObjectId" : 170,
+          "ObjectId" : 173,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "Cooldown" : 3.500000,
@@ -5994,7 +6105,7 @@
           }
         }, {
           "ClassName" : "ULuaBlueprintComponent",
-          "ObjectId" : 171,
+          "ObjectId" : 174,
           "Properties" : {
             "BlueprintPath" : "Content/Data/BossJiao/BP_BossJiao.uasset",
             "bAutoActivate" : true,
@@ -6005,7 +6116,7 @@
           }
         }, {
           "ClassName" : "UBulletHellDamageReceiverComponent",
-          "ObjectId" : 172,
+          "ObjectId" : 175,
           "Properties" : {
             "HitCount" : 0,
             "TotalDamageForwarded" : 0.000000,
@@ -6018,7 +6129,7 @@
           }
         }, {
           "ClassName" : "UBossPattern_RendingClawArc",
-          "ObjectId" : 173,
+          "ObjectId" : 176,
           "Properties" : {
             "AllowedPhaseMask" : 2147483647,
             "ArcCenterAngleDegrees" : 90.000000,
@@ -6066,7 +6177,7 @@
             "bTickEnable" : true
           }
         }],
-      "ObjectId" : 161,
+      "ObjectId" : 164,
       "Properties" : {
         "CurrentHealth" : 10.000000,
         "HealthHitCount" : 0,
@@ -6088,7 +6199,7 @@
         "Children" : [{
             "Children" : [],
             "ClassName" : "USkeletalMeshComponent",
-            "ObjectId" : 163,
+            "ObjectId" : 166,
             "Properties" : {
               "AnimInstance" : {
                 "ClassName" : "UAnimGraphInstance",
@@ -6162,7 +6273,7 @@
             }
           }],
         "ClassName" : "UCapsuleComponent",
-        "ObjectId" : 162,
+        "ObjectId" : 165,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, -179.999893, 0.000000],
@@ -6202,7 +6313,7 @@
       "ClassName" : "AStaticMeshActor",
       "Name" : "Sky",
       "NonSceneComponents" : [],
-      "ObjectId" : 174,
+      "ObjectId" : 177,
       "Properties" : {
         "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
         "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
@@ -6214,7 +6325,7 @@
       "RootComponent" : {
         "Children" : [],
         "ClassName" : "UStaticMeshComponent",
-        "ObjectId" : 175,
+        "ObjectId" : 178,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -6254,7 +6365,7 @@
       "Name" : "Lua",
       "NonSceneComponents" : [{
           "ClassName" : "ULuaScriptComponent",
-          "ObjectId" : 178,
+          "ObjectId" : 181,
           "Properties" : {
             "ScriptFile" : "AudioController.lua",
             "bAutoActivate" : true,
@@ -6265,7 +6376,7 @@
           }
         }, {
           "ClassName" : "ULuaScriptComponent",
-          "ObjectId" : 179,
+          "ObjectId" : 182,
           "Properties" : {
             "ScriptFile" : "IntroCutScene.lua",
             "bAutoActivate" : true,
@@ -6275,7 +6386,7 @@
             "bTickEnable" : true
           }
         }],
-      "ObjectId" : 176,
+      "ObjectId" : 179,
       "Properties" : {
         "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
         "PendingActorRotation" : [-0.000000, 0.000000, 0.000000],
@@ -6287,7 +6398,7 @@
       "RootComponent" : {
         "Children" : [],
         "ClassName" : "UStaticMeshComponent",
-        "ObjectId" : 177,
+        "ObjectId" : 180,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-0.000000, 0.000000, 0.000000],
@@ -6326,7 +6437,7 @@
       "ClassName" : "AUICanvasActor",
       "Name" : "AUICanvasActor_4",
       "NonSceneComponents" : [],
-      "ObjectId" : 180,
+      "ObjectId" : 183,
       "Properties" : {
         "Bindings" : [],
         "PendingActorLocation" : [0.000000, 0.000000, 0.000000],
@@ -6341,7 +6452,7 @@
       "ClassName" : "AUICanvasActor",
       "Name" : "AUICanvasActor_4",
       "NonSceneComponents" : [],
-      "ObjectId" : 184,
+      "ObjectId" : 187,
       "Properties" : {
         "Bindings" : [{
             "Channel" : 2,
@@ -6368,7 +6479,7 @@
       "ClassName" : "AUICanvasActor",
       "Name" : "AUICanvasActor_8",
       "NonSceneComponents" : [],
-      "ObjectId" : 191,
+      "ObjectId" : 194,
       "Properties" : {
         "Bindings" : [{
             "Channel" : 0,
@@ -6395,7 +6506,7 @@
       "ClassName" : "AUICanvasActor",
       "Name" : "AUICanvasActor_38",
       "NonSceneComponents" : [],
-      "ObjectId" : 198,
+      "ObjectId" : 201,
       "Properties" : {
         "Bindings" : [{
             "Channel" : 0,
@@ -6422,7 +6533,7 @@
       "ClassName" : "AUICanvasActor",
       "Name" : "AUICanvasActor_6",
       "NonSceneComponents" : [],
-      "ObjectId" : 203,
+      "ObjectId" : 206,
       "Properties" : {
         "Bindings" : [{
             "Channel" : 2,
@@ -6443,7 +6554,7 @@
       "ClassName" : "AActor",
       "Name" : "IntroCutSceneCamera",
       "NonSceneComponents" : [],
-      "ObjectId" : 207,
+      "ObjectId" : 210,
       "Properties" : {
         "PendingActorLocation" : [-38.305599, -10.570312, 11.537248],
         "PendingActorRotation" : [-5.721488, 0.000000, 0.000000],
@@ -6455,7 +6566,7 @@
       "RootComponent" : {
         "Children" : [],
         "ClassName" : "UCameraComponent",
-        "ObjectId" : 208,
+        "ObjectId" : 211,
         "Properties" : {
           "AttachSocketName" : "Name_None",
           "CachedEditRotator" : [-5.721488, 0.000000, 0.000000],
@@ -6486,7 +6597,7 @@
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [-68.723419, 40.652885, 92.539078],
+    "Location" : [-83.704094, 51.901440, 111.982574],
     "NearClip" : 0.100000,
     "Rotation" : [0.000000, 46.065182, -36.901817]
   },
