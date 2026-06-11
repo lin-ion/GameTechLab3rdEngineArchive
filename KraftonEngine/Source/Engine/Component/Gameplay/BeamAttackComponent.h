@@ -90,7 +90,7 @@ private:
 	float DamageTickInterval = 0.1f;
 
 	UPROPERTY(Edit, Save, Category="Beam Attack", DisplayName="Damage Per Tick", Min=0.0f, Max=1000000.0f, Speed=0.1f)
-	float DamagePerTick = 0.02f;
+	float DamagePerTick = 0.05f;
 
 	// 마무리 일격(보스 체력 1→0)이 적중한 hit 지점에 1회 spawn 할 explosion 파티클 경로.
 	// world-spawn 으로 렌더 검증된 BossBulletDestroyVfx 를 기본값으로 둔다(추후 전용 explosion 으로 교체 가능).

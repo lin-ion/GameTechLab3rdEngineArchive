@@ -84,8 +84,9 @@ local BEAM_CAM_KILL_LINGER = 0.6      -- 마무리 킬 hit 후 카메라를 더 
 local ULT_CAM_SIDE_DURATION = 1.0    -- Phase1: 캐릭터 옆 얼굴 비추는 시간(초).
 local ULT_CAM_SIDE_YAW = 90.0        -- 캐릭터 시선 기준 옆 각도(도). 부호로 좌/우 전환.
 local ULT_CAM_SIDE_PITCH = 0.0       -- 옆 얼굴 카메라 pitch(도).
-local ULT_CAM_SIDE_DIST = 3.0        -- 옆 얼굴 카메라 거리(arm length).
+local ULT_CAM_SIDE_DIST = 6.0        -- 옆 얼굴 카메라 거리(arm length).
 local ULT_CAM_SIDE_HEIGHT = 1.5      -- 머리 높이 맞춤(socket +Z).
+local ULT_CAM_BLEND_DURATION = 0.6   -- 옆 얼굴 → 보스 시점 전환 blend 시간(초). 0=즉시 스냅. ← 여기 튜닝.
 local ULT_CAM_BOSS_HOLD = 3.0        -- Phase2: 보스 시점 고정 유지(초, 킬 안 났을 때 폴백 종료).
 local ULT_CAM_BOSS_DIST = 0.0        -- 보스 고정 시 arm length(0 = 뒤로 안 빠지고 옆 위치 유지).
 local ULT_CAM_BOSS_SIDE = 3.0        -- 보스 고정 시 측면 offset(socket +Y) — 옆 얼굴 보던 위치 유지. 부호로 좌/우 맞춤.
@@ -695,42 +696,55 @@ local function tick_beam_camera(dt)
 
     beam_cam.elapsed = beam_cam.elapsed + (dt or 0.0)
     local arm = get_spring_arm(owner)
+    local cam = get_camera(owner)
 
-    -- Phase 1: 빔을 따라가지 않고 캐릭터 옆 얼굴을 비춘다(ULT_CAM_SIDE_DURATION 동안).
-    if beam_cam.elapsed < ULT_CAM_SIDE_DURATION then
-        if owner.SetControlRotation ~= nil then
-            owner:SetControlRotation(Vec3(0.0, ULT_CAM_SIDE_PITCH, beam_cam.base_yaw + ULT_CAM_SIDE_YAW))
-        end
-        if arm ~= nil then
-            if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(ULT_CAM_SIDE_DIST) end
-            if arm.SetSocketOffset ~= nil then arm:SetSocketOffset(Vec3(0.0, 0.0, ULT_CAM_SIDE_HEIGHT)) end
-        end
-        return
-    end
-
-    -- Phase 2: 옆 얼굴 보던 옆 위치(측면 offset)는 유지한 채 보스에 시점 고정(매 틱 look-at).
-    -- arm length 0 + socket +Y(ULT_CAM_BOSS_SIDE) → 플레이어 뒤로 안 빠지고 옆에서 보스를 본다.
-    local boss = (World ~= nil and World.FindActorByName ~= nil) and World.FindActorByName(SPRAY_TARGET_ACTOR_NAME) or nil
-    if boss ~= nil then
-        local aim = get_owner_to_actor_aim_rotation(owner, boss, nil)
-        if aim ~= nil and owner.SetControlRotation ~= nil then
-            owner:SetControlRotation(Vec3(0.0, aim.pitch, aim.yaw))
-        end
+    -- 카메라 위치 고정 — 컨트롤 회전·arm·socket을 모든 phase에서 측면값으로 유지.
+    -- → 캐릭터를 볼 때나 보스를 볼 때나 카메라 위치가 동일(이동 없음).
+    if owner.SetControlRotation ~= nil then
+        owner:SetControlRotation(Vec3(0.0, ULT_CAM_SIDE_PITCH, beam_cam.base_yaw + ULT_CAM_SIDE_YAW))
     end
     if arm ~= nil then
-        if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(ULT_CAM_BOSS_DIST) end
-        if arm.SetSocketOffset ~= nil then arm:SetSocketOffset(Vec3(0.0, ULT_CAM_BOSS_SIDE, ULT_CAM_BOSS_HEIGHT)) end
+        if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(ULT_CAM_SIDE_DIST) end
+        if arm.SetSocketOffset ~= nil then arm:SetSocketOffset(Vec3(0.0, 0.0, ULT_CAM_SIDE_HEIGHT)) end
     end
 
-    -- 킬이 안 났을 때 폴백 종료: 옆 얼굴 + 보스 고정 시간 경과 후 복원.
-    if beam_cam.elapsed >= (ULT_CAM_SIDE_DURATION + ULT_CAM_BOSS_HOLD) then
+    -- 시선만 카메라 상대회전(cam:SetRotation)으로 캐릭터→보스 회전(위치는 위에서 고정).
+    -- 카메라 world회전 = arm world(측면) × 상대회전 → 보스를 보려면 상대 = (보스 world look-at − 측면 회전).
+    if cam ~= nil and cam.SetRotation ~= nil then
+        local side_yaw = beam_cam.base_yaw + ULT_CAM_SIDE_YAW
+        local target_rel_yaw, target_rel_pitch = 0.0, 0.0
+        local boss = (World ~= nil and World.FindActorByName ~= nil) and World.FindActorByName(SPRAY_TARGET_ACTOR_NAME) or nil
+        if boss ~= nil then
+            local aim = get_owner_to_actor_aim_rotation(owner, boss, nil)
+            if aim ~= nil then
+                target_rel_yaw = normalize_angle_delta(aim.yaw - side_yaw)
+                target_rel_pitch = aim.pitch - ULT_CAM_SIDE_PITCH
+            end
+        end
+
+        local rel_yaw, rel_pitch = 0.0, 0.0
+        if beam_cam.elapsed < ULT_CAM_SIDE_DURATION then
+            rel_yaw, rel_pitch = 0.0, 0.0                     -- Phase1: 상대 0 = arm 방향(=캐릭터)
+        elseif beam_cam.elapsed < ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION then
+            local t = smoothstep((beam_cam.elapsed - ULT_CAM_SIDE_DURATION) / ULT_CAM_BLEND_DURATION)
+            rel_yaw = lerp_angle(0.0, target_rel_yaw, t)      -- blend: 같은 자리에서 시선만 캐릭터→보스
+            rel_pitch = lerp_number(0.0, target_rel_pitch, t)
+        else
+            rel_yaw, rel_pitch = target_rel_yaw, target_rel_pitch   -- Phase2: 보스(같은 자리에서)
+        end
+
+        cam:SetRotation(Vec3(0.0, rel_pitch, rel_yaw))
+    end
+
+    -- 킬이 안 났을 때 폴백 종료.
+    if beam_cam.elapsed >= (ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION + ULT_CAM_BOSS_HOLD) then
         finish_beam_camera(owner, "ult cam return")
     end
 end
 
 -- 빔이 카메라 연출(옆 얼굴 + 보스 고정 + 복귀) 동안 유지되도록 필요한 빔 수명(초)을 계산한다.
 local function beam_cam_total_duration()
-    return ULT_CAM_SIDE_DURATION + ULT_CAM_BOSS_HOLD + BEAM_CAM_RETURN_DURATION
+    return ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION + ULT_CAM_BOSS_HOLD + BEAM_CAM_RETURN_DURATION
 end
 
 local function reset_dash_trail(owner)
