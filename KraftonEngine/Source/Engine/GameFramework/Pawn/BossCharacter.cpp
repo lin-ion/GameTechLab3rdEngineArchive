@@ -3,7 +3,9 @@
 #include "Animation/AnimationManager.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/Montage/AnimMontage.h"
+#include "Component/Input/ActionComponent.h"
 #include "Component/Primitive/SkeletalMeshComponent.h"
+#include "Core/Logging/Log.h"
 #include "Core/ScoreManager.h"
 #include "GameFramework/World.h"
 #include "UI/Canvas/UICanvasActor.h"
@@ -33,25 +35,49 @@ void ABossCharacter::Tick(float DeltaTime)
 		}
 	}
 
-	// 보스 처치 감지(폴링) — 이 엔진엔 사망 이벤트가 없어 Haru 사망 애님과 동일하게 체력을 폴링한다.
-	// 체력이 0 이 된 첫 프레임에 점수를 확정/기록(OnBossDefeated 가 1회 보장)하고 결과 UI 를 표시한다.
-	if (!bScoreRecorded && GetCurrentHealth() <= 0.0f)
+	// 처형 감지(폴링) — 데미지 게이트상 체력 0 은 Beam(궁극기) 마무리로만 도달한다(일반 공격은 1에서 막힘).
+	// 사망 이벤트가 없어 폴링하며, 체력 0 이 된 첫 프레임에 즉시 게임오버 대신 전용 처형 연출을 먼저 시작한다.
+	if (!bExecutionStarted && GetCurrentHealth() <= 0.0f)
 	{
-		bScoreRecorded = true;
-		FScoreManager::Get().OnBossDefeated();
-		SetScoreUIVisible(true);
+		bExecutionStarted = true;
+		ExecutionElapsed = 0.0f;
+		PlayExecutionCinematic();
+	}
 
-		// 결과화면 입력 모드 — 마우스를 카메라(마우스룩)에서 분리하고 커서를 풀어 UI 클릭 가능하게.
-		// UIOnly: 게임 입력 스냅샷을 만들지 않아 마우스룩/이동이 멈추고 커서 캡처도 풀리며,
-		// UI 런타임 클릭(TickRuntimeInput)은 계속 처리된다(PIE/standalone 동일).
-		if (GEngine)
+	// 처형 연출 시간이 지나면 기존 게임오버 파이프라인을 1회 발동(OnBossDefeated 가 중복 방지 보장).
+	if (bExecutionStarted && !bScoreRecorded)
+	{
+		ExecutionElapsed += DeltaTime;
+		if (ExecutionElapsed >= ExecutionCinematicDuration)
 		{
-			if (UGameViewportClient* Viewport = GEngine->GetGameViewportClient())
+			bScoreRecorded = true;
+			FScoreManager::Get().OnBossDefeated();
+			SetScoreUIVisible(true);
+
+			// 결과화면 입력 모드 — 마우스를 카메라(마우스룩)에서 분리하고 커서를 풀어 UI 클릭 가능하게.
+			// UIOnly: 게임 입력 스냅샷을 만들지 않아 마우스룩/이동이 멈추고 커서 캡처도 풀리며,
+			// UI 런타임 클릭(TickRuntimeInput)은 계속 처리된다(PIE/standalone 동일).
+			if (GEngine)
 			{
-				Viewport->SetInputMode(EGameInputMode::UIOnly);
+				if (UGameViewportClient* Viewport = GEngine->GetGameViewportClient())
+				{
+					Viewport->SetInputMode(EGameInputMode::UIOnly);
+				}
 			}
 		}
 	}
+}
+
+void ABossCharacter::PlayExecutionCinematic()
+{
+	// 전용 처형 연출 — 구체 수치/카메라/전용 사운드/특수 애님은 추후 확정.
+	// 우선 검증된 ActionComponent 슬로모만 적용한다(사망 애님은 BP 가 체력 1에서 bDead 로 재생 중).
+	if (UActionComponent* Action = GetComponentByClass<UActionComponent>())
+	{
+		Action->Slomo(ExecutionSlomoDuration, ExecutionSlomoTimeDilation);
+	}
+	UE_LOG("[BossExecution] finisher cinematic started — gameover in %.2fs", ExecutionCinematicDuration);
+	// TODO(처형 연출): 카메라 연출/전용 사운드/특수 애님을 확정 후 추가.
 }
 
 namespace

@@ -103,6 +103,9 @@
 #include "Profiling/Time/Timer.h"
 #include "Runtime/Engine.h"
 #include "Texture/Texture2D.h"
+#include "UI/Canvas/UICanvas.h"
+#include "UI/Canvas/UICanvasManager.h"
+#include "UI/Canvas/UIElement.h"
 #include "UI/UIManager.h"
 #include "UI/UserWidget.h"
 #include "Viewport/GameViewportClient.h"
@@ -3417,6 +3420,28 @@ void FLuaScriptManager::RegisterUIBindings(sol::state& Lua)
         [](const FString& ElementName, sol::protected_function Callback)
         {
             FLuaScriptManager::BindUIButton(ElementName, std::move(Callback));
+        }
+    );
+
+    // [가시성 토글] 등록된 모든 Canvas 트리에서 ElementName 을 FindByName 후 SetVisible.
+    // 첫 매치에 적용하고 찾으면 true(없으면 false). Lua: UI.SetElementVisible("DeathAim", true)
+    UI.set_function(
+        "SetElementVisible",
+        [](const FString& ElementName, bool bVisible) -> bool
+        {
+            for (UUICanvas* Canvas : FUICanvasManager::Get().GetCanvases())
+            {
+                if (!Canvas)
+                {
+                    continue;
+                }
+                if (UUIElement* Element = Canvas->FindByName(ElementName))
+                {
+                    Element->SetVisible(bVisible);
+                    return true;
+                }
+            }
+            return false;
         }
     );
 

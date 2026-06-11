@@ -66,12 +66,30 @@ local ULTIMATE_BEAM_SCALE = 5.0       -- 빔 크기 배율(런타임 사용자 �
 local BEAM_TEMPLATE_PATH = "Content/Particle System/Beam.uasset"
 local ULTIMATE_BEAM_WIDTH = 0.25      -- 전역 빔 굵기(WidthDistribution). 기본 0.25.
 local ULTIMATE_BEAM_DISTANCE = 8.6    -- 전역 빔 길이(DistanceDistribution). 기본 8.6.
+local ULTIMATE_BEAM_GROW_SPEED = 0.0  -- 빔 끝점 연장 속도(TypeDataBeam.Speed, 로컬 단위/초). 0=즉시 full(연장 없음).
+                                      -- 월드 연장속도 = 이 값 × ULTIMATE_BEAM_SCALE. 카메라(ULTIMATE_BEAM_SPEED)와 맞추려면 ≈ SPEED/SCALE. ← 여기 튜닝.
 local ULTIMATE_SPELL_DURATION = 1.5   -- spell 클립 길이(초) — AG_Haru UltSpell 클립에 맞춰 튜닝
 local ULTIMATE_BEAM_LEAD_TIME = 0.5   -- spell 애니 종료 이 시간(초) 전에 빔(particle) 시전
-local ULTIMATE_BEAM_SPEED = 3.6       -- 카메라 dolly 속도. (빔 성장속도 TypeDataBeam.Speed 는 SetBeamTemplateSize 로 0 고정)
-local BEAM_CAM_FOLLOW_RATIO = 0.8     -- 카메라가 빔 거리의 이 비율(4/5)까지 따라감.
+local ULTIMATE_BEAM_SPEED = 8.0       -- 카메라 dolly 속도(월드 단위/초). 빔 끝점 연장은 ULTIMATE_BEAM_GROW_SPEED 가 담당.
+local BEAM_CAM_FOLLOW_RATIO = 0.7     -- 카메라가 빔 거리의 이 비율(4/5)까지 따라감.
 local BEAM_CAM_RETURN_DURATION = 0.4  -- 추적 종료 후 원래 카메라로 복귀하는 블렌드 시간(초).
 local BEAM_CAM_DURATION_MARGIN = 0.3  -- 카메라 연출 종료 후 빔을 더 유지할 여유(초). 테스트하며 튜닝.
+local BEAM_CAM_RIGHT_OFFSET = 0.3     -- 카메라를 빔 축에서 우측(+Y)으로 띄우는 거리(월드) → 빔과 나란히 진행.
+                                      -- 0=빔 축 정면(이전 동작). 음수=좌측. 좌우가 반대로 보이면 부호만 바꾸면 됨. ← 여기 튜닝.
+local BEAM_CAM_START_DELAY = 0.5      -- 빔 발사 후 카메라 dolly 시작을 늦추는 시간(초). 그동안 빔이 먼저 뻗어나감.
+                                      -- 0=즉시 시작(이전 동작). 빔 수명도 이만큼 자동 연장됨. ← 여기 튜닝.
+local BEAM_CAM_KILL_LINGER = 0.6      -- 마무리 킬 hit 후 카메라를 더 dolly 시킨 뒤 복귀하기까지의 시간(초).
+                                      -- 0=킬 즉시 복귀(이전 동작). 키우면 킬 후 카메라가 더 멀리 진행한 뒤 복귀. ← 여기 튜닝.
+-- Q 궁극기 카메라(빔 따라가기 대체) — 캐릭터 옆 얼굴을 잠깐 비춘 뒤 보스에 시점 고정.
+local ULT_CAM_SIDE_DURATION = 1.0    -- Phase1: 캐릭터 옆 얼굴 비추는 시간(초).
+local ULT_CAM_SIDE_YAW = 90.0        -- 캐릭터 시선 기준 옆 각도(도). 부호로 좌/우 전환.
+local ULT_CAM_SIDE_PITCH = 0.0       -- 옆 얼굴 카메라 pitch(도).
+local ULT_CAM_SIDE_DIST = 3.0        -- 옆 얼굴 카메라 거리(arm length).
+local ULT_CAM_SIDE_HEIGHT = 1.5      -- 머리 높이 맞춤(socket +Z).
+local ULT_CAM_BOSS_HOLD = 3.0        -- Phase2: 보스 시점 고정 유지(초, 킬 안 났을 때 폴백 종료).
+local ULT_CAM_BOSS_DIST = 0.0        -- 보스 고정 시 arm length(0 = 뒤로 안 빠지고 옆 위치 유지).
+local ULT_CAM_BOSS_SIDE = 3.0        -- 보스 고정 시 측면 offset(socket +Y) — 옆 얼굴 보던 위치 유지. 부호로 좌/우 맞춤.
+local ULT_CAM_BOSS_HEIGHT = 1.5      -- 보스 고정 시 socket +Z(머리 높이).
 -- Weapon Setting
 local STAFF_WEAPON_TRANSFORM = {
     location = Vec3(0.0, 40.0, 0.0),
@@ -102,6 +120,9 @@ local camera = nil
 local weapon_mesh = nil
 local camera_blend = nil
 local beam_cam = nil
+local get_owner_to_actor_aim_rotation   -- forward 선언: tick_beam_camera(앞쪽 정의)가 뒤의 정의를 upvalue 로 참조.
+local boss_death_active = false   -- 보스 HP<=1(death) 진입 — aim→DeathAim 교체 + 카메라 보스 고정 시작.
+local boss_death_q_done = false   -- death 중 Q 입력으로 DeathAim 끄고 카메라 고정 해제했는지.
 local unlock_movement   -- forward 선언: tick_beam_camera 가 정의(아래)보다 앞에 있어 upvalue 로 참조한다.
 local movement_locks = {}
 local walking_audio_playing = false
@@ -610,23 +631,38 @@ local function start_beam_camera(owner, restore_rot)
     beam_cam = {
         owner = owner,
         rot = rot,
-        restore_rot = restore_rot,                -- #3: 연출 종료 후 복원할 시선(ult 시작 시점). nil 이면 복원 안 함.
+        base_yaw = rot.Z or 0.0,                  -- Q 시점 시선 yaw(옆 얼굴 각도 기준).
+        restore_rot = restore_rot,                -- 연출 종료 후 복원할 시선(ult 시작 시점). nil 이면 복원 안 함.
         saved = get_camera_state(owner),          -- 복귀용 스냅샷(arm/socket/inherit/fov)
         saved_use_pawn = arm.GetUsePawnControlRotation ~= nil and arm:GetUsePawnControlRotation() or nil,
-        elapsed = 0.0,
-        travel_len = ULTIMATE_BEAM_DISTANCE * ULTIMATE_BEAM_SCALE * BEAM_CAM_FOLLOW_RATIO
+        elapsed = 0.0
     }
 
-    -- 암이 ControlRotation(빔 방향)을 따라가게 + 전방 dolly 기준점 0 으로 리셋.
+    -- 암이 ControlRotation 을 따라가게만 설정(거리/회전은 tick 이 옆 얼굴→보스로 제어). 빔 dolly 안 함.
     if arm.SetUsePawnControlRotation ~= nil then arm:SetUsePawnControlRotation(true) end
     if arm.SetInheritYaw ~= nil then arm:SetInheritYaw(true) end
     if arm.SetInheritPitch ~= nil then arm:SetInheritPitch(true) end
-    if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(0.0) end
-    if arm.SetSocketOffset ~= nil then arm:SetSocketOffset(Vec3(0.0, 0.0, 0.0)) end
     if arm.ResetLagState ~= nil then arm:ResetLagState() end
 
-    log("Beam camera started: travelLen=" .. tostring(beam_cam.travel_len)
-        .. " speed=" .. tostring(ULTIMATE_BEAM_SPEED))
+    log("Ult camera started: side face -> boss lock")
+end
+
+-- 빔 카메라 연출 종료 + 원위치 복원. 시간 완료(dolly 끝)와 마무리 킬 hit 양쪽에서 호출한다.
+-- 현재 dolly 위치가 어디든 saved 스냅샷으로 블렌드하므로 중간에 일찍 불러도 안전하다.
+local function finish_beam_camera(owner, reason)
+    if beam_cam == nil then
+        return
+    end
+    local arm = get_spring_arm(owner)
+    if arm ~= nil and arm.SetUsePawnControlRotation ~= nil and beam_cam.saved_use_pawn ~= nil then
+        arm:SetUsePawnControlRotation(beam_cam.saved_use_pawn)
+    end
+    if beam_cam.restore_rot ~= nil and owner ~= nil and owner.SetControlRotation ~= nil then
+        owner:SetControlRotation(beam_cam.restore_rot)           -- #3: ult 시작 시점 시선으로 복원
+    end
+    start_camera_blend(owner, beam_cam.saved, BEAM_CAM_RETURN_DURATION, reason or "beam cam return")
+    unlock_movement(owner, ULTIMATE_SKILL_NAME)                  -- #4: 카메라 연출 종료 후 이동 잠금 해제
+    beam_cam = nil
 end
 
 local function tick_beam_camera(dt)
@@ -639,40 +675,62 @@ local function tick_beam_camera(dt)
         return
     end
 
+    -- 마무리 킬 hit(보스 HP 1→0) 감지 → 곧바로 끊지 않고 BEAM_CAM_KILL_LINGER 동안 dolly 를 더 진행한 뒤
+    -- 빔 정지 + 복귀. (킬하자마자 hit판정이 끝나 카메라가 거의 안 움직이던 문제 보정 — linger 동안 빔도 유지.)
+    if beam_cam.kill_linger == nil then
+        if World ~= nil and World.HasPlayerBeamKilledBoss ~= nil and World.HasPlayerBeamKilledBoss(owner) then
+            beam_cam.kill_linger = BEAM_CAM_KILL_LINGER
+            log("Beam camera: boss kill hit -> linger " .. tostring(BEAM_CAM_KILL_LINGER) .. "s then return")
+        end
+    else
+        beam_cam.kill_linger = beam_cam.kill_linger - (dt or 0.0)
+        if beam_cam.kill_linger <= 0.0 then
+            if World ~= nil and World.StopPlayerBeamAttack ~= nil then
+                World.StopPlayerBeamAttack(owner)
+            end
+            finish_beam_camera(owner, "beam cam return (kill)")
+            return
+        end
+    end
+
     beam_cam.elapsed = beam_cam.elapsed + (dt or 0.0)
-    local traveled = ULTIMATE_BEAM_SPEED * beam_cam.elapsed
-    if traveled >= beam_cam.travel_len then
-        traveled = beam_cam.travel_len
-    end
-
-    -- 시선을 빔 방향에 고정(이 동안 마우스룩 무시) + 카메라를 빔 전방으로 dolly.
-    if owner.SetControlRotation ~= nil then
-        owner:SetControlRotation(beam_cam.rot)
-    end
     local arm = get_spring_arm(owner)
-    if arm ~= nil and arm.SetSocketOffset ~= nil then
-        arm:SetSocketOffset(Vec3(traveled, 0.0, 0.0))
+
+    -- Phase 1: 빔을 따라가지 않고 캐릭터 옆 얼굴을 비춘다(ULT_CAM_SIDE_DURATION 동안).
+    if beam_cam.elapsed < ULT_CAM_SIDE_DURATION then
+        if owner.SetControlRotation ~= nil then
+            owner:SetControlRotation(Vec3(0.0, ULT_CAM_SIDE_PITCH, beam_cam.base_yaw + ULT_CAM_SIDE_YAW))
+        end
+        if arm ~= nil then
+            if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(ULT_CAM_SIDE_DIST) end
+            if arm.SetSocketOffset ~= nil then arm:SetSocketOffset(Vec3(0.0, 0.0, ULT_CAM_SIDE_HEIGHT)) end
+        end
+        return
     end
 
-    -- 빔 거리의 4/5 도달 → 시선/이동 복원 + 원래 카메라로 부드럽게 복귀.
-    if traveled >= beam_cam.travel_len then
-        if arm ~= nil and arm.SetUsePawnControlRotation ~= nil and beam_cam.saved_use_pawn ~= nil then
-            arm:SetUsePawnControlRotation(beam_cam.saved_use_pawn)
+    -- Phase 2: 옆 얼굴 보던 옆 위치(측면 offset)는 유지한 채 보스에 시점 고정(매 틱 look-at).
+    -- arm length 0 + socket +Y(ULT_CAM_BOSS_SIDE) → 플레이어 뒤로 안 빠지고 옆에서 보스를 본다.
+    local boss = (World ~= nil and World.FindActorByName ~= nil) and World.FindActorByName(SPRAY_TARGET_ACTOR_NAME) or nil
+    if boss ~= nil then
+        local aim = get_owner_to_actor_aim_rotation(owner, boss, nil)
+        if aim ~= nil and owner.SetControlRotation ~= nil then
+            owner:SetControlRotation(Vec3(0.0, aim.pitch, aim.yaw))
         end
-        if beam_cam.restore_rot ~= nil and owner.SetControlRotation ~= nil then
-            owner:SetControlRotation(beam_cam.restore_rot)       -- #3: ult 시작 시점 시선으로 복원
-        end
-        start_camera_blend(owner, beam_cam.saved, BEAM_CAM_RETURN_DURATION, "beam cam return")
-        unlock_movement(owner, ULTIMATE_SKILL_NAME)              -- #4: 카메라 연출이 끝난 뒤 이동 잠금 해제
-        beam_cam = nil
+    end
+    if arm ~= nil then
+        if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(ULT_CAM_BOSS_DIST) end
+        if arm.SetSocketOffset ~= nil then arm:SetSocketOffset(Vec3(0.0, ULT_CAM_BOSS_SIDE, ULT_CAM_BOSS_HEIGHT)) end
+    end
+
+    -- 킬이 안 났을 때 폴백 종료: 옆 얼굴 + 보스 고정 시간 경과 후 복원.
+    if beam_cam.elapsed >= (ULT_CAM_SIDE_DURATION + ULT_CAM_BOSS_HOLD) then
+        finish_beam_camera(owner, "ult cam return")
     end
 end
 
--- 빔이 카메라 연출(dolly + 복귀) 동안 유지되도록 필요한 빔 수명(초)을 계산한다.
+-- 빔이 카메라 연출(옆 얼굴 + 보스 고정 + 복귀) 동안 유지되도록 필요한 빔 수명(초)을 계산한다.
 local function beam_cam_total_duration()
-    local travel = ULTIMATE_BEAM_DISTANCE * ULTIMATE_BEAM_SCALE * BEAM_CAM_FOLLOW_RATIO
-    local spd = (ULTIMATE_BEAM_SPEED > 0.0) and ULTIMATE_BEAM_SPEED or 1.0
-    return travel / spd + BEAM_CAM_RETURN_DURATION
+    return ULT_CAM_SIDE_DURATION + ULT_CAM_BOSS_HOLD + BEAM_CAM_RETURN_DURATION
 end
 
 local function reset_dash_trail(owner)
@@ -989,7 +1047,7 @@ local function atan2_degrees(y, x)
     return radians * 180.0 / math.pi
 end
 
-local function get_owner_to_actor_aim_rotation(owner, target_actor, label)
+function get_owner_to_actor_aim_rotation(owner, target_actor, label)   -- forward 선언된 local 에 할당
     local owner_location = get_actor_location_safe(owner)
     local target_location = get_actor_location_safe(target_actor)
     if owner_location == nil or target_location == nil then
@@ -1018,6 +1076,44 @@ local function get_owner_to_actor_aim_rotation(owner, target_actor, label)
         owner_location = owner_location,
         target_location = target_location
     }
+end
+
+-- 카메라(컨트롤 회전)를 대상 액터로 고정 — get_owner_to_actor_aim_rotation 재사용. 매 틱 호출 시 마우스룩 덮어씀.
+local function lock_camera_to_actor(owner, target)
+    local aim = get_owner_to_actor_aim_rotation(owner, target, nil)
+    if aim == nil or owner == nil or owner.SetControlRotation == nil then
+        return
+    end
+    local control_roll = 0.0
+    local ok, cr = pcall(function() return owner:GetControlRotation() end)
+    if ok and cr ~= nil then control_roll = cr.X or 0.0 end
+    pcall(function() owner:SetControlRotation(Vec3(control_roll, aim.pitch, aim.yaw)) end)
+end
+
+-- 보스 death 연출: HP<=1 최초 진입 시 aim→DeathAim UI 교체 + 카메라 보스 고정. (Q 입력은 activate_ultimate 에서 처리)
+local function update_boss_death_sequence(owner)
+    if owner == nil or World == nil or World.FindActorByName == nil then
+        return
+    end
+    local boss = World.FindActorByName(SPRAY_TARGET_ACTOR_NAME)
+    if boss == nil or boss.GetCurrentHealth == nil then
+        return
+    end
+
+    -- death 진입(보스 HP<=1) 최초 1회 — aim 끄고 DeathAim 켜기.
+    if not boss_death_active and boss:GetCurrentHealth() <= 1.0 then
+        boss_death_active = true
+        if UI ~= nil and UI.SetElementVisible ~= nil then
+            UI.SetElementVisible("aim", false)
+            UI.SetElementVisible("DeathAim", true)
+        end
+        log("Boss death entered: UI aim->DeathAim, camera lock on boss")
+    end
+
+    -- death 동안 카메라를 보스 정면으로 고정. Q 이전 + 빔캠 비활성일 때만(빔캠/마무리 연출이 카메라 우선).
+    if boss_death_active and not boss_death_q_done and beam_cam == nil then
+        lock_camera_to_actor(owner, boss)
+    end
 end
 
 local function face_owner_to_actor_yaw(owner, target_actor, label)
@@ -2089,6 +2185,14 @@ local function activate_ultimate(owner, ability)
     ability.phase = "spell"
     ability.beam_fired = false   -- 이번 시전에서 빔이 이미 나갔는지(1회 시전 가드)
     ability.pre_ult_control = (owner.GetControlRotation ~= nil) and owner:GetControlRotation() or nil  -- #3: Q 누른 시점 시선(연출 후 복원용)
+    -- death 상태에서 Q(마무리) → DeathAim 끄고 카메라 보스 고정 해제(이후 빔캠/마무리 연출이 카메라 우선).
+    if boss_death_active and not boss_death_q_done then
+        boss_death_q_done = true
+        if UI ~= nil and UI.SetElementVisible ~= nil then
+            UI.SetElementVisible("DeathAim", false)
+        end
+        log("Boss death: Q pressed -> DeathAim off, camera unlock")
+    end
     lock_movement(owner, ULTIMATE_SKILL_NAME)
     set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, true)   -- Q 입력 시 바로 spell 모션 on
     -- Q 발동 시 사용자 설정 배율로 빔 크기를 미리 적용 (FireBeam 시 spawn 에 반영, 컴포넌트 없으면 자동 생성).
@@ -2107,7 +2211,7 @@ local function tick_ultimate(owner, ability, dt)
         if owner ~= nil and World ~= nil and World.StartPlayerBeamAttack ~= nil then
             World.StartPlayerBeamAttack(owner)
             if World.SetBeamDuration ~= nil then
-                World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN)  -- 카메라 연출 내내 빔 유지
+                World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN + BEAM_CAM_START_DELAY)  -- 카메라 연출 내내 빔 유지
             end
             start_beam_camera(owner, ability.pre_ult_control)   -- 빔 생성과 동시에 카메라가 빔을 따라 이동
             log("Ultimate beam fired (" .. tostring(ULTIMATE_BEAM_LEAD_TIME) .. "s before spell ends)")
@@ -2122,7 +2226,7 @@ local function end_ultimate(owner, ability)
         if not ability.beam_fired and World ~= nil and World.StartPlayerBeamAttack ~= nil then
             World.StartPlayerBeamAttack(owner)
             if World.SetBeamDuration ~= nil then
-                World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN)
+                World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN + BEAM_CAM_START_DELAY)
             end
             start_beam_camera(owner, ability.pre_ult_control)   -- 폴백 경로에서도 카메라 추적 시작
             log("Ultimate beam fired (fallback at ult end)")
@@ -2210,7 +2314,7 @@ local function setup_abilities()
 
     -- 전역 빔 에셋 크기 적용 (공유 Beam.uasset template 의 굵기/길이 distribution 직접 수정 → 모든 빔에 반영).
     if World ~= nil and World.SetBeamTemplateSize ~= nil then
-        World.SetBeamTemplateSize(BEAM_TEMPLATE_PATH, ULTIMATE_BEAM_WIDTH, ULTIMATE_BEAM_DISTANCE, 0.0)  -- Speed=0: 빔 즉시 full 길이
+        World.SetBeamTemplateSize(BEAM_TEMPLATE_PATH, ULTIMATE_BEAM_WIDTH, ULTIMATE_BEAM_DISTANCE, ULTIMATE_BEAM_GROW_SPEED)  -- Speed>0: 빔 끝점이 시간에 따라 연장(asset loop off 전제)
         log("applied global beam template size: width=" .. tostring(ULTIMATE_BEAM_WIDTH)
             .. " distance=" .. tostring(ULTIMATE_BEAM_DISTANCE))
     end
@@ -2353,4 +2457,5 @@ function Tick(dt)
     ability_system:Tick(dt)
     tick_camera_blend(dt)
     tick_beam_camera(dt)
+    update_boss_death_sequence(owner)   -- 보스 HP<=1 감지 → UI 교체 + 카메라 보스 고정(빔캠 비활성 시).
 end

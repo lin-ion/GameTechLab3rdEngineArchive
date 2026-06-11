@@ -2,6 +2,7 @@
 
 #include "GameFramework/Camera/PlayerCameraManager.h"
 #include "GameFramework/GameMode/PlayerController.h"
+#include "GameFramework/Pawn/BossCharacter.h"
 #include "GameFramework/Pawn/Pawn.h"
 #include "GameFramework/World.h"
 #include "Runtime/Engine.h"
@@ -16,6 +17,12 @@ UBulletHellDamageReceiverComponent::UBulletHellDamageReceiverComponent()
 }
 
 float UBulletHellDamageReceiverComponent::ApplyDamage(float DamageAmount)
+{
+	// 출처 미지정 경로(Lua/리플렉션/보스 탄막→플레이어 등) — Generic 으로 위임.
+	return ApplyDamageFromSource(DamageAmount, EBossDamageSource::Generic);
+}
+
+float UBulletHellDamageReceiverComponent::ApplyDamageFromSource(float DamageAmount, EBossDamageSource Source)
 {
 	if (!bDamageEnabled)
 	{
@@ -34,7 +41,22 @@ float UBulletHellDamageReceiverComponent::ApplyDamage(float DamageAmount)
 		return 0.0f;
 	}
 
-	const float AppliedDamage = PawnOwner->GetDamaged(ClampedDamage);
+	float DamageToApply = ClampedDamage;
+
+	// 처형 게이트 — 소유자가 보스일 때만 적용. 체력 1(처형 임계) 미만으로는 Beam(궁극기)만 깎을 수
+	// 있다. 일반 공격은 체력을 1까지만 깎고, 이미 1 이하면 완전히 막힌다(0 반환).
+	if (Cast<ABossCharacter>(PawnOwner) && Source != EBossDamageSource::Beam)
+	{
+		constexpr float ExecuteFloor = 1.0f;
+		const float MaxAllowed = (std::max)(0.0f, PawnOwner->GetCurrentHealth() - ExecuteFloor);
+		DamageToApply = (std::min)(DamageToApply, MaxAllowed);
+		if (DamageToApply <= 0.0f)
+		{
+			return 0.0f;
+		}
+	}
+
+	const float AppliedDamage = PawnOwner->GetDamaged(DamageToApply);
 	if (AppliedDamage > 0.0f)
 	{
 		TotalDamageForwarded += AppliedDamage;

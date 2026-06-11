@@ -758,7 +758,7 @@ void AArrowProjectileActor::ApplyDamageToHitTarget(const FHitResult& Hit) const
 
 	if (UBulletHellDamageReceiverComponent* DamageReceiver = TargetActor->GetComponentByClass<UBulletHellDamageReceiverComponent>())
 	{
-		const float AppliedDamage = DamageReceiver->ApplyDamage(ProjectileDamage);
+		const float AppliedDamage = DamageReceiver->ApplyDamageFromSource(ProjectileDamage, EBossDamageSource::Arrow);
 		if (AppliedDamage > 0.0f && IsBossActor(TargetActor))
 		{
 			FAudioManager::Get().PlayAudio("Hit", 1.0f);

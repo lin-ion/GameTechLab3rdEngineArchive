@@ -376,6 +376,17 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
             return true;
         }
     );
+    // 이번 빔 시전에서 보스를 처치(HP 1→0)했는지 질의 — Lua 가 폴링해 빔 정지 + 카메라 조기 복원에 사용.
+    World.set_function(
+        "HasPlayerBeamKilledBoss",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return false;
+
+            UBeamAttackComponent* Beam = Owner->GetComponentByClass<UBeamAttackComponent>();
+            return Beam ? Beam->HasKilledBoss() : false;
+        }
+    );
     // 런타임 빔 크기 조절 — 없으면 컴포넌트 자동 생성 후 scale 설정(다음 FireBeam 에 반영).
     World.set_function(
         "SetPlayerBeamScale",
