@@ -4,6 +4,13 @@
 #include "GameFramework/Actor/ArrowProjectileActor.h"
 #include "Component/Gameplay/BulletHellDamageReceiverComponent.h"
 #include "Component/Gameplay/PlayerSprayProjectileComponent.h"
+#include "Component/Gameplay/BeamAttackComponent.h"
+#include "Particle/ParticleSystemManager.h"
+#include "Particle/ParticleSystem.h"
+#include "Particle/ParticleEmitter.h"
+#include "Particle/ParticleLODLevel.h"
+#include "Particle/TypeData/ParticleModuleTypeDataBeam.h"
+#include "Particle/Distributions/DistributionFloatConstant.h"
 
 using namespace LuaActorBindingsDetail;
 
@@ -328,6 +335,142 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
             if (!Spray) return false;
             Spray->StopAttack();
             return true;
+        }
+    );
+    // 빔 공격 시전 — motion-end 감지(Lua) 또는 OnAnimNotify 에서 호출. 없으면 컴포넌트 자동 생성.
+    // (anim notify UAnimNotify_BeamFire 도 동일한 FireBeam() 경로를 사용한다.)
+    World.set_function(
+        "StartPlayerBeamAttack",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return false;
+
+            UBeamAttackComponent* Beam = Owner->GetComponentByClass<UBeamAttackComponent>();
+            if (!Beam)
+            {
+                Beam = Owner->AddComponent<UBeamAttackComponent>();
+                if (Beam)
+                {
+                    Beam->SetFName(FName("BeamAttackComponent"));
+                    if (Owner->HasActorBegunPlay())
+                    {
+                        Beam->BeginPlay();
+                    }
+                }
+            }
+
+            if (!Beam) return false;
+            Beam->FireBeam();
+            return true;
+        }
+    );
+    World.set_function(
+        "StopPlayerBeamAttack",
+        [](AActor* Owner) -> bool
+        {
+            if (!Owner) return false;
+
+            UBeamAttackComponent* Beam = Owner->GetComponentByClass<UBeamAttackComponent>();
+            if (!Beam) return false;
+            Beam->EndBeam();
+            return true;
+        }
+    );
+    // 런타임 빔 크기 조절 — 없으면 컴포넌트 자동 생성 후 scale 설정(다음 FireBeam 에 반영).
+    World.set_function(
+        "SetPlayerBeamScale",
+        [](AActor* Owner, float Scale) -> bool
+        {
+            if (!Owner) return false;
+
+            UBeamAttackComponent* Beam = Owner->GetComponentByClass<UBeamAttackComponent>();
+            if (!Beam)
+            {
+                Beam = Owner->AddComponent<UBeamAttackComponent>();
+                if (Beam)
+                {
+                    Beam->SetFName(FName("BeamAttackComponent"));
+                    if (Owner->HasActorBegunPlay())
+                    {
+                        Beam->BeginPlay();
+                    }
+                }
+            }
+
+            if (!Beam) return false;
+            Beam->SetBeamScale(Scale);
+            return true;
+        }
+    );
+    // 빔 수명(초) 설정 — 카메라 연출 시간 동안 빔이 끝까지 유지되도록 Lua 에서 호출.
+    // SetPlayerBeamScale 과 동일한 get-or-create 패턴.
+    World.set_function(
+        "SetBeamDuration",
+        [](AActor* Owner, float Seconds) -> bool
+        {
+            if (!Owner) return false;
+
+            UBeamAttackComponent* Beam = Owner->GetComponentByClass<UBeamAttackComponent>();
+            if (!Beam)
+            {
+                Beam = Owner->AddComponent<UBeamAttackComponent>();
+                if (Beam)
+                {
+                    Beam->SetFName(FName("BeamAttackComponent"));
+                    if (Owner->HasActorBegunPlay())
+                    {
+                        Beam->BeginPlay();
+                    }
+                }
+            }
+
+            if (!Beam) return false;
+            Beam->SetBeamDuration(Seconds);
+            return true;
+        }
+    );
+    // 전역 빔 크기 — 공유 template(Beam.uasset)의 굵기(WidthDistribution)·길이(DistanceDistribution)
+    // 상수를 직접 수정한다. 같은 경로를 쓰는 모든 빔에 즉시 반영(세션 한정, 영구 저장 X).
+    // width/distance 가 0 이하면 해당 항목은 건드리지 않는다. Speed 는 지정되면(0 포함) 적용한다.
+    World.set_function(
+        "SetBeamTemplateSize",
+        [](const FString& Path, float Width, float Distance, sol::optional<float> Speed) -> bool
+        {
+            UParticleSystem* PS = FParticleSystemManager::Get().Load(Path);
+            if (!PS) return false;
+
+            UParticleEmitter* Emitter = PS->GetEmitter(0);
+            if (!Emitter) return false;
+            UParticleLODLevel* LOD = Emitter->GetCurrentLODLevel(0);
+            if (!LOD) return false;
+            UParticleModuleTypeDataBeam* Beam = Cast<UParticleModuleTypeDataBeam>(LOD->TypeDataModule);
+            if (!Beam) return false;
+
+            bool bChanged = false;
+            if (Width > 0.0f)
+            {
+                if (UDistributionFloatConstant* W = Cast<UDistributionFloatConstant>(Beam->WidthDistribution))
+                {
+                    W->Constant = Width;
+                    bChanged = true;
+                }
+                Beam->Width = Width;   // legacy fallback (WidthDistribution 없을 때 EvaluateWidth 가 사용)
+            }
+            if (Distance > 0.0f)
+            {
+                if (UDistributionFloatConstant* D = Cast<UDistributionFloatConstant>(Beam->DistanceDistribution))
+                {
+                    D->Constant = Distance;
+                    bChanged = true;
+                }
+                Beam->Distance = Distance; // legacy fallback
+            }
+            if (Speed.has_value())   // 0 도 유효(즉시 연결)하므로 optional 로 "지정되면 적용".
+            {
+                Beam->Speed = (*Speed > 0.0f) ? *Speed : 0.0f;
+                bChanged = true;
+            }
+            return bChanged;
         }
     );
     World.set_function(

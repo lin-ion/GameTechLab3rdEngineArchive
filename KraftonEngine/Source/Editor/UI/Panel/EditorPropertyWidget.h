@@ -8,6 +8,7 @@
 
 class UActorComponent;
 class AActor;
+class UParticleSystemComponent;
 
 class FEditorPropertyWidget : public FEditorWidget
 {
@@ -46,6 +47,9 @@ private:
 	bool RenderStructPropertyWidget(struct FPropertyValue& Prop, bool bDispatchChange, const FString& PropertyPath);
 	bool RenderArrayPropertyWidget(struct FPropertyValue& Prop, bool bDispatchChange, const FString& PropertyPath);
 	bool RenderVehicleWheelSetupTools(struct FPropertyValue& Prop, bool bDispatchChange, const FString& PropertyPath);
+	// ParticleSystemComponent 선택 시, Template 모듈의 space 관련 토글(bUseLocalSpace / bSourceAbsolute)을
+	// 컴포넌트 디테일 패널에서 바로 편집할 수 있게 노출한다. (값은 공유 Template 에셋에 적용됨)
+	bool RenderParticleSystemComponentTools(UParticleSystemComponent* PSC);
 
 	void PropagatePropertyChange(const FString& PropName, const TArray<AActor*>& SelectedActors);
 

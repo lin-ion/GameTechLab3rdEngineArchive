@@ -17,6 +17,12 @@
 #include "Component/Primitive/HeightFogComponent.h"
 #include "Component/Primitive/SkinnedMeshComponent.h"
 #include "Component/Primitive/StaticMeshComponent.h"
+#include "Component/Particle/ParticleSystemComponent.h"
+#include "Particle/ParticleSystem.h"
+#include "Particle/ParticleEmitter.h"
+#include "Particle/ParticleLODLevel.h"
+#include "Particle/Modules/ParticleModuleRequired.h"
+#include "Particle/Modules/ParticleModuleBeamSource.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "GameFramework/Pawn/Pawn.h"
@@ -1936,6 +1942,13 @@ void FEditorPropertyWidget::RenderComponentProperties(AActor* Actor, const TArra
         static_cast<USceneComponent*>(SelectedComponent.Get())->MarkTransformDirty();
 	}
 
+	// ParticleSystemComponent 전용 토글 (Template 모듈의 space 설정). 일반 reflected property
+	// 로는 노출되지 않는 nested module 값이라 커스텀 섹션으로 직접 편집한다.
+	if (SelectedComponent && SelectedComponent->IsA<UParticleSystemComponent>())
+	{
+		RenderParticleSystemComponentTools(static_cast<UParticleSystemComponent*>(SelectedComponent.Get()));
+	}
+
 	ImGui::PopID();
 }
 
@@ -2751,6 +2764,118 @@ bool FEditorPropertyWidget::RenderVehicleWheelSetupTools(FPropertyValue& Prop, b
 	}
 
 	ImGui::Spacing();
+	return bChanged;
+}
+
+bool FEditorPropertyWidget::RenderParticleSystemComponentTools(UParticleSystemComponent* PSC)
+{
+	if (!PSC)
+	{
+		return false;
+	}
+
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.22f, 0.22f, 0.22f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.27f, 0.27f, 0.27f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.30f, 0.30f, 0.30f, 1.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.0f, 3.0f));
+	const bool bOpen = ImGui::CollapsingHeader("Particle Space (Template)", ImGuiTreeNodeFlags_DefaultOpen);
+	ImGui::PopStyleVar();
+	ImGui::PopStyleColor(3);
+	if (!bOpen)
+	{
+		return false;
+	}
+
+	UParticleSystem* Template = PSC->GetTemplate();
+	if (!Template)
+	{
+		ImGui::TextDisabled("Template 이 없습니다.");
+		return false;
+	}
+
+	// 현재 LOD 기준으로 모든 emitter 의 Required / BeamSource 모듈을 모은다.
+	// bUseLocalSpace 는 emitter 마다 존재할 수 있어 전부에 일괄 적용한다.
+	const int32 LODIndex = PSC->GetCurrentLODIndex();
+	TArray<UParticleModuleRequired*>   RequiredModules;
+	TArray<UParticleModuleBeamSource*> BeamSourceModules;
+	for (int32 EmitterIdx = 0; EmitterIdx < Template->GetEmitterCount(); ++EmitterIdx)
+	{
+		UParticleEmitter* Emitter = Template->GetEmitter(EmitterIdx);
+		if (!Emitter)
+		{
+			continue;
+		}
+		UParticleLODLevel* LOD = Emitter->GetCurrentLODLevel(LODIndex);
+		if (!LOD)
+		{
+			continue;
+		}
+		if (LOD->RequiredModule)
+		{
+			RequiredModules.push_back(LOD->RequiredModule);
+		}
+		if (UParticleModuleBeamSource* Source = LOD->FindModuleByClass<UParticleModuleBeamSource>())
+		{
+			BeamSourceModules.push_back(Source);
+		}
+	}
+
+	bool bChanged = false;
+
+	// Use Local Space (RequiredModule.bUseLocalSpace)
+	if (!RequiredModules.empty())
+	{
+		bool bUseLocalSpace = RequiredModules[0]->bUseLocalSpace;
+		if (ImGui::Checkbox("Use Local Space", &bUseLocalSpace))
+		{
+			for (UParticleModuleRequired* Required : RequiredModules)
+			{
+				Required->bUseLocalSpace = bUseLocalSpace;
+			}
+			bChanged = true;
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"RequiredModule.bUseLocalSpace\n"
+				"켜면 컴포넌트 로컬 공간에서 시뮬/렌더 (이미터가 액터를 따라감).\n"
+				"공유 Template 에셋 값 — 같은 에셋을 쓰는 모든 컴포넌트에 영향.");
+		}
+	}
+	else
+	{
+		ImGui::TextDisabled("Required 모듈이 없습니다.");
+	}
+
+	// Source Absolute (BeamSource.bSourceAbsolute) — beam emitter 에만 존재
+	if (!BeamSourceModules.empty())
+	{
+		bool bSourceAbsolute = BeamSourceModules[0]->bSourceAbsolute;
+		if (ImGui::Checkbox("Source Absolute", &bSourceAbsolute))
+		{
+			for (UParticleModuleBeamSource* Source : BeamSourceModules)
+			{
+				Source->bSourceAbsolute = bSourceAbsolute;
+			}
+			bChanged = true;
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"BeamSource.bSourceAbsolute\n"
+				"켜면 Source 를 월드 절대좌표로 해석, 끄면 컴포넌트 기준 상대좌표.");
+		}
+	}
+	else
+	{
+		ImGui::TextDisabled("Beam Source 모듈이 없습니다 (beam emitter 아님).");
+	}
+
+	// 변경 시 인스턴스를 다시 만들어 새 space 설정이 즉시 반영되게 한다.
+	if (bChanged)
+	{
+		PSC->RebuildInstances(true);
+	}
 	return bChanged;
 }
 

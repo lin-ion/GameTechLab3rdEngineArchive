@@ -272,6 +272,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotifyState_LogDuration.cpp" />
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotifyState_Particle.cpp" />
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.cpp" />
+    <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_BeamFire.cpp" />
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.cpp" />
     <ClCompile Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.cpp" />
     <ClCompile Include="Source\Engine\Animation\Sequence\AnimDataModel.cpp" />
@@ -322,6 +323,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Gameplay\BeamAttackComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\BulletTrailComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.cpp" />
@@ -801,6 +803,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotifyState_LogDuration.h" />
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotifyState_Particle.h" />
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LogMessage.h" />
+    <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_BeamFire.h" />
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_LuaEvent.h" />
     <ClInclude Include="Source\Engine\Animation\Notify\AnimNotify_PlaySound.h" />
     <ClInclude Include="Source\Engine\Animation\Sequence\AnimDataModel.h" />
@@ -857,6 +860,7 @@ xcopy /Y "$(ProjectDir)ThirdParty\fbx\lib\x64\release\libfbxsdk.dll" "$(OutDir)"
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDamageReceiverComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletHellDebugComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gameplay\BeamAttackComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\BulletTrailComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\PlayerSprayProjectileComponent.h" />
     <ClInclude Include="Source\Engine\Component\Gameplay\RagdollForceEmitterComponent.h" />

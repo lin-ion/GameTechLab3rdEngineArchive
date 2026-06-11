@@ -55,15 +55,23 @@ local SPRAY_FACE_BLEND_DURATION = 0.25
 local DEMO_KILL_PLAYER_KEY = "F1"
 local DEMO_KILL_BOSS_KEY = "F2"
 -- Ultimate
--- Q 입력 → ultimate_ready(준비 애니) → ready 길이 경과 → ultimate_spell(시전 애니) → 종료 시 둘 다 false.
--- AnimGraph(AG_Haru) 측에 UltReady/UltSpell 상태 + ultimate_ready/ultimate_spell bool 전이가 있어야 동작한다.
+-- Q 입력 → ultimate_spell(시전 애니) 즉시 재생 → 종료 시 false. (ready 단계 제거됨)
+-- AnimGraph(AG_Haru) 측에 UltSpell 상태 + ultimate_spell bool 전이(AnyState/Idle→UltSpell)가 있어야 동작한다.
 local ULTIMATE_SKILL_NAME = "Ultimate"
 local ULTIMATE_SKILL_KEY = "Q"
 local ULTIMATE_SKILL_KEYS = { ULTIMATE_SKILL_KEY }
-local ULTIMATE_READY_ANIM_VAR = "ultimate_ready"
 local ULTIMATE_SPELL_ANIM_VAR = "ultimate_spell"
-local ULTIMATE_READY_DURATION = 2.0   -- ready 재생시간(초) — UltReady 를 play rate 0.5 로 재생 → 클립 길이의 2배
+local ULTIMATE_BEAM_SCALE = 5.0       -- 빔 크기 배율(런타임 사용자 설정에 맞춰 조절). Q 발동 시 BeamAttackComponent 에 적용.
+-- 전역 빔 에셋 크기(공유 Beam.uasset template 직접 수정 → 모든 빔에 반영). 아래 값을 키우면 빔 자체가 굵고 길어짐.
+local BEAM_TEMPLATE_PATH = "Content/Particle System/Beam.uasset"
+local ULTIMATE_BEAM_WIDTH = 0.25      -- 전역 빔 굵기(WidthDistribution). 기본 0.25.
+local ULTIMATE_BEAM_DISTANCE = 8.6    -- 전역 빔 길이(DistanceDistribution). 기본 8.6.
 local ULTIMATE_SPELL_DURATION = 1.5   -- spell 클립 길이(초) — AG_Haru UltSpell 클립에 맞춰 튜닝
+local ULTIMATE_BEAM_LEAD_TIME = 0.5   -- spell 애니 종료 이 시간(초) 전에 빔(particle) 시전
+local ULTIMATE_BEAM_SPEED = 3.6       -- 카메라 dolly 속도. (빔 성장속도 TypeDataBeam.Speed 는 SetBeamTemplateSize 로 0 고정)
+local BEAM_CAM_FOLLOW_RATIO = 0.8     -- 카메라가 빔 거리의 이 비율(4/5)까지 따라감.
+local BEAM_CAM_RETURN_DURATION = 0.4  -- 추적 종료 후 원래 카메라로 복귀하는 블렌드 시간(초).
+local BEAM_CAM_DURATION_MARGIN = 0.3  -- 카메라 연출 종료 후 빔을 더 유지할 여유(초). 테스트하며 튜닝.
 -- Weapon Setting
 local STAFF_WEAPON_TRANSFORM = {
     location = Vec3(0.0, 40.0, 0.0),
@@ -93,6 +101,8 @@ local spring_arm = nil
 local camera = nil
 local weapon_mesh = nil
 local camera_blend = nil
+local beam_cam = nil
+local unlock_movement   -- forward 선언: tick_beam_camera 가 정의(아래)보다 앞에 있어 upvalue 로 참조한다.
 local movement_locks = {}
 local walking_audio_playing = false
 
@@ -578,6 +588,93 @@ local function tick_camera_blend(dt)
     end
 end
 
+-- ─────────────────────────────────────────────────────────────────
+-- Beam camera — Q 궁극기 빔 생성 시 카메라를 빔 방향으로 고정하고 SocketOffset 을
+-- 빔 전방(arm 로컬 +X)으로 dolly 시켜 "빔을 따라 이동"하는 연출.
+-- 빔 거리의 BEAM_CAM_FOLLOW_RATIO(4/5)만큼, ULTIMATE_BEAM_SPEED(빔 속도)로 전진한다.
+-- ult 어빌리티가 빔보다 먼저 끝나므로 드라이버(tick_beam_camera)는 메인 update 루프에서 돈다.
+-- ─────────────────────────────────────────────────────────────────
+local function start_beam_camera(owner, restore_rot)
+    if owner == nil or owner.GetControlRotation == nil then
+        return
+    end
+    local rot = owner:GetControlRotation()        -- 빔 방향(=카메라 조준)을 캡처해 고정
+    if rot == nil then
+        return
+    end
+    local arm = get_spring_arm(owner)
+    if arm == nil then
+        return
+    end
+
+    beam_cam = {
+        owner = owner,
+        rot = rot,
+        restore_rot = restore_rot,                -- #3: 연출 종료 후 복원할 시선(ult 시작 시점). nil 이면 복원 안 함.
+        saved = get_camera_state(owner),          -- 복귀용 스냅샷(arm/socket/inherit/fov)
+        saved_use_pawn = arm.GetUsePawnControlRotation ~= nil and arm:GetUsePawnControlRotation() or nil,
+        elapsed = 0.0,
+        travel_len = ULTIMATE_BEAM_DISTANCE * ULTIMATE_BEAM_SCALE * BEAM_CAM_FOLLOW_RATIO
+    }
+
+    -- 암이 ControlRotation(빔 방향)을 따라가게 + 전방 dolly 기준점 0 으로 리셋.
+    if arm.SetUsePawnControlRotation ~= nil then arm:SetUsePawnControlRotation(true) end
+    if arm.SetInheritYaw ~= nil then arm:SetInheritYaw(true) end
+    if arm.SetInheritPitch ~= nil then arm:SetInheritPitch(true) end
+    if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(0.0) end
+    if arm.SetSocketOffset ~= nil then arm:SetSocketOffset(Vec3(0.0, 0.0, 0.0)) end
+    if arm.ResetLagState ~= nil then arm:ResetLagState() end
+
+    log("Beam camera started: travelLen=" .. tostring(beam_cam.travel_len)
+        .. " speed=" .. tostring(ULTIMATE_BEAM_SPEED))
+end
+
+local function tick_beam_camera(dt)
+    if beam_cam == nil then
+        return
+    end
+    local owner = beam_cam.owner
+    if owner == nil then
+        beam_cam = nil
+        return
+    end
+
+    beam_cam.elapsed = beam_cam.elapsed + (dt or 0.0)
+    local traveled = ULTIMATE_BEAM_SPEED * beam_cam.elapsed
+    if traveled >= beam_cam.travel_len then
+        traveled = beam_cam.travel_len
+    end
+
+    -- 시선을 빔 방향에 고정(이 동안 마우스룩 무시) + 카메라를 빔 전방으로 dolly.
+    if owner.SetControlRotation ~= nil then
+        owner:SetControlRotation(beam_cam.rot)
+    end
+    local arm = get_spring_arm(owner)
+    if arm ~= nil and arm.SetSocketOffset ~= nil then
+        arm:SetSocketOffset(Vec3(traveled, 0.0, 0.0))
+    end
+
+    -- 빔 거리의 4/5 도달 → 시선/이동 복원 + 원래 카메라로 부드럽게 복귀.
+    if traveled >= beam_cam.travel_len then
+        if arm ~= nil and arm.SetUsePawnControlRotation ~= nil and beam_cam.saved_use_pawn ~= nil then
+            arm:SetUsePawnControlRotation(beam_cam.saved_use_pawn)
+        end
+        if beam_cam.restore_rot ~= nil and owner.SetControlRotation ~= nil then
+            owner:SetControlRotation(beam_cam.restore_rot)       -- #3: ult 시작 시점 시선으로 복원
+        end
+        start_camera_blend(owner, beam_cam.saved, BEAM_CAM_RETURN_DURATION, "beam cam return")
+        unlock_movement(owner, ULTIMATE_SKILL_NAME)              -- #4: 카메라 연출이 끝난 뒤 이동 잠금 해제
+        beam_cam = nil
+    end
+end
+
+-- 빔이 카메라 연출(dolly + 복귀) 동안 유지되도록 필요한 빔 수명(초)을 계산한다.
+local function beam_cam_total_duration()
+    local travel = ULTIMATE_BEAM_DISTANCE * ULTIMATE_BEAM_SCALE * BEAM_CAM_FOLLOW_RATIO
+    local spd = (ULTIMATE_BEAM_SPEED > 0.0) and ULTIMATE_BEAM_SPEED or 1.0
+    return travel / spd + BEAM_CAM_RETURN_DURATION
+end
+
 local function reset_dash_trail(owner)
     local particle = get_dash_trail_particle(owner)
     if particle == nil then
@@ -816,7 +913,7 @@ local function lock_movement_input_only(owner, reason)
     end
 end
 
-local function unlock_movement(owner, reason)
+function unlock_movement(owner, reason)   -- 위에서 forward 선언한 local 에 바인딩
     movement_locks[reason] = nil
     if not has_movement_locks() then
         set_owner_movement_blocked(owner, false)
@@ -1987,35 +2084,58 @@ local function activate_ultimate(owner, ability)
         return
     end
 
-    -- ready 단계 시작: 이동 잠금 + ultimate_ready=true 로 AnyState→ultimate_ready(state) 전이 유발.
-    ability.phase = "ready"
+    -- ready 제거: Q 입력 시 바로 spell 모션 재생. ultimate_spell=true 로 (AnimGraph) UltSpell 진입.
+    -- (AnyState/Idle→UltSpell 직접 전이는 AG_Haru 에서 사용자가 구성)
+    ability.phase = "spell"
+    ability.beam_fired = false   -- 이번 시전에서 빔이 이미 나갔는지(1회 시전 가드)
+    ability.pre_ult_control = (owner.GetControlRotation ~= nil) and owner:GetControlRotation() or nil  -- #3: Q 누른 시점 시선(연출 후 복원용)
     lock_movement(owner, ULTIMATE_SKILL_NAME)
-    set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, false)
-    set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, true)
-    log("Ultimate ready phase started: readyDur=" .. tostring(ULTIMATE_READY_DURATION)
-        .. " spellDur=" .. tostring(ULTIMATE_SPELL_DURATION))
+    set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, true)   -- Q 입력 시 바로 spell 모션 on
+    -- Q 발동 시 사용자 설정 배율로 빔 크기를 미리 적용 (FireBeam 시 spawn 에 반영, 컴포넌트 없으면 자동 생성).
+    if World ~= nil and World.SetPlayerBeamScale ~= nil then
+        World.SetPlayerBeamScale(owner, ULTIMATE_BEAM_SCALE)
+    end
+    log("Ultimate spell started (no ready): spellDur=" .. tostring(ULTIMATE_SPELL_DURATION))
 end
 
 local function tick_ultimate(owner, ability, dt)
-    -- AbilitySystem 이 active_remaining 을 총 길이(ready+spell)에서 감소시킨다.
-    -- 남은 시간이 spell 길이 이하가 되는 순간 = ready 애니가 끝나는 시점 → 변수 스왑.
-    if ability.phase == "ready" and ability.active_remaining <= ULTIMATE_SPELL_DURATION then
-        if owner ~= nil then
-            set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, false)
-            set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, true)   -- spell==true → ultimate_ready(state)→ultimate_motion(state) 전이
+    -- ready 제거: activate 에서 바로 phase="spell". AbilitySystem 이 active_remaining 을 spell 길이에서 감소시킨다.
+    -- spell 애니가 끝나기 ULTIMATE_BEAM_LEAD_TIME(0.5초) 전에 빔(particle) 시전 — 1회만.
+    -- active_remaining 은 spell 단계 동안 ULTIMATE_SPELL_DURATION→0 으로 감소 → 종료 0.5초 전 = active_remaining<=0.5.
+    if ability.phase == "spell" and not ability.beam_fired
+        and ability.active_remaining <= ULTIMATE_BEAM_LEAD_TIME then
+        if owner ~= nil and World ~= nil and World.StartPlayerBeamAttack ~= nil then
+            World.StartPlayerBeamAttack(owner)
+            if World.SetBeamDuration ~= nil then
+                World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN)  -- 카메라 연출 내내 빔 유지
+            end
+            start_beam_camera(owner, ability.pre_ult_control)   -- 빔 생성과 동시에 카메라가 빔을 따라 이동
+            log("Ultimate beam fired (" .. tostring(ULTIMATE_BEAM_LEAD_TIME) .. "s before spell ends)")
         end
-        ability.phase = "spell"
-        log("Ultimate spell phase started")
+        ability.beam_fired = true
     end
 end
 
 local function end_ultimate(owner, ability)
     if owner ~= nil then
-        set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, false)
+        -- 안전망: tick 의 "종료 0.5초 전" 시전 창을 프레임 hitch 등으로 놓쳤으면 종료 시점에라도 1회 시전.
+        if not ability.beam_fired and World ~= nil and World.StartPlayerBeamAttack ~= nil then
+            World.StartPlayerBeamAttack(owner)
+            if World.SetBeamDuration ~= nil then
+                World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN)
+            end
+            start_beam_camera(owner, ability.pre_ult_control)   -- 폴백 경로에서도 카메라 추적 시작
+            log("Ultimate beam fired (fallback at ult end)")
+            ability.beam_fired = true
+        end
         set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, false)   -- spell==false → ultimate_motion(state)→idle 복귀 (전이는 expected_false 여야 함)
-        unlock_movement(owner, ULTIMATE_SKILL_NAME)
+        -- #4: 빔 카메라 연출이 진행 중이면 이동 잠금 해제를 연출 종료(tick_beam_camera)까지 미룬다.
+        if beam_cam == nil then
+            unlock_movement(owner, ULTIMATE_SKILL_NAME)
+        end
     end
     ability.phase = nil
+    ability.beam_fired = nil
     log("Ultimate ended")
 end
 
@@ -2074,7 +2194,7 @@ local function setup_abilities()
         Name = ULTIMATE_SKILL_NAME,
         Key = ULTIMATE_SKILL_KEY,
         Keys = ULTIMATE_SKILL_KEYS,
-        Duration = ULTIMATE_READY_DURATION + ULTIMATE_SPELL_DURATION,
+        Duration = ULTIMATE_SPELL_DURATION,   -- ready 제거: spell 길이만 (Q→바로 spell)
         Cooldown = 0.0,
         BlockWhileAnyActive = true,
         OnActivate = activate_ultimate,
@@ -2088,11 +2208,17 @@ local function setup_abilities()
     log("registered SprayAttack on " .. join_keys(FIRE_PROJECTILE_KEYS))
     log("registered Ultimate on " .. join_keys(ULTIMATE_SKILL_KEYS))
 
+    -- 전역 빔 에셋 크기 적용 (공유 Beam.uasset template 의 굵기/길이 distribution 직접 수정 → 모든 빔에 반영).
+    if World ~= nil and World.SetBeamTemplateSize ~= nil then
+        World.SetBeamTemplateSize(BEAM_TEMPLATE_PATH, ULTIMATE_BEAM_WIDTH, ULTIMATE_BEAM_DISTANCE, 0.0)  -- Speed=0: 빔 즉시 full 길이
+        log("applied global beam template size: width=" .. tostring(ULTIMATE_BEAM_WIDTH)
+            .. " distance=" .. tostring(ULTIMATE_BEAM_DISTANCE))
+    end
+
     set_anim_bool(owner, DASH_ANIM_VAR, false)
     set_anim_bool(owner, ROLL_ANIM_VAR, false)
     set_anim_bool(owner, ATTACK_ANIM_VAR, false)
     set_anim_bool(owner, ARROW_ANIM_VAR, false)
-    set_anim_bool(owner, ULTIMATE_READY_ANIM_VAR, false)
     set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, false)
     set_weapon_mesh(owner, STAFF_STATIC_MESH_PATH, "Staff", STAFF_WEAPON_TRANSFORM)
     reset_dash_trail(owner)
@@ -2123,7 +2249,6 @@ function EndPlay()
         set_anim_bool(actor, ROLL_ANIM_VAR, false)
         set_anim_bool(actor, ATTACK_ANIM_VAR, false)
         set_anim_bool(actor, ARROW_ANIM_VAR, false)
-        set_anim_bool(actor, ULTIMATE_READY_ANIM_VAR, false)
         set_anim_bool(actor, ULTIMATE_SPELL_ANIM_VAR, false)
         set_weapon_mesh(actor, STAFF_STATIC_MESH_PATH, "Staff", STAFF_WEAPON_TRANSFORM)
         movement_locks = {}
@@ -2227,4 +2352,5 @@ function Tick(dt)
 
     ability_system:Tick(dt)
     tick_camera_blend(dt)
+    tick_beam_camera(dt)
 end
