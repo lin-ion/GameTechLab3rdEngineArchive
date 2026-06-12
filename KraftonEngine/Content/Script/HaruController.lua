@@ -651,6 +651,8 @@ local function start_beam_camera(owner, restore_rot)
         saved = get_camera_state(owner),          -- 복귀용 스냅샷(arm/socket/inherit/fov)
         saved_use_pawn = arm.GetUsePawnControlRotation ~= nil and arm:GetUsePawnControlRotation() or nil,
         slomo_active = false,                     -- Phase0 오빗 슬로우 모션이 켜져 있는지(복원 1회 가드).
+        hold_for_beam = true,                     -- 빔 발사 전까지 오빗 종료 지점(정면 anchor)에서 대기 → 그동안 애니 재생.
+                                                  -- 빔 발사 시 release_beam_camera_hold 로 해제되면 보스-락 단계로 진행.
         elapsed = 0.0
     }
 
@@ -694,6 +696,14 @@ local function finish_beam_camera(owner, reason)
     beam_cam = nil
 end
 
+-- 오빗(카메라 회전)이 끝난 뒤 정면 anchor 에서 대기하던 빔 카메라를 풀어 보스-락 단계로 진행시킨다.
+-- 빔 발사 시점(애니 종료 직전)에 호출 → "카메라 회전 → 애니 → 빔" 순서를 보장.
+local function release_beam_camera_hold()
+    if beam_cam ~= nil then
+        beam_cam.hold_for_beam = false
+    end
+end
+
 local function tick_beam_camera(dt)
     if beam_cam == nil then
         return
@@ -723,6 +733,11 @@ local function tick_beam_camera(dt)
     end
 
     beam_cam.elapsed = beam_cam.elapsed + (dt or 0.0)
+    -- 빔 발사 전(hold_for_beam)에는 오빗 종료 지점(정면 anchor)에서 대기 — 그동안 spell 애니가 재생된다.
+    -- 빔이 발사되면 release_beam_camera_hold 로 해제되어 이후 정면 hold→보스-락→복귀로 진행한다.
+    if beam_cam.hold_for_beam and beam_cam.elapsed > ULT_CAM_ORBIT_DURATION then
+        beam_cam.elapsed = ULT_CAM_ORBIT_DURATION
+    end
     local arm = get_spring_arm(owner)
     local cam = get_camera(owner)
 
@@ -2240,7 +2255,9 @@ local function activate_ultimate(owner, ability)
 
     -- ready 제거: Q 입력 시 바로 spell 모션 재생. ultimate_spell=true 로 (AnimGraph) UltSpell 진입.
     -- (AnyState/Idle→UltSpell 직접 전이는 AG_Haru 에서 사용자가 구성)
-    ability.phase = "spell"
+    -- 순서: 카메라 회전(오빗) → spell 애니 → 빔. Q 시점엔 카메라 오빗만 시작하고 애니/빔은 보류한다.
+    ability.phase = "orbit"
+    ability.phase_elapsed = 0.0  -- 현재 phase 경과(게임시간). orbit→spell 전환·빔 발사 타이밍 판정에 사용.
     ability.beam_fired = false   -- 이번 시전에서 빔이 이미 나갔는지(1회 시전 가드)
     ability.pre_ult_control = (owner.GetControlRotation ~= nil) and owner:GetControlRotation() or nil  -- #3: Q 누른 시점 시선(연출 후 복원용)
     -- death 상태에서 Q(마무리) → DeathAim 끄고 카메라 보스 고정 해제(이후 빔캠/마무리 연출이 카메라 우선).
@@ -2252,26 +2269,42 @@ local function activate_ultimate(owner, ability)
         log("Boss death: Q pressed -> DeathAim off, camera unlock")
     end
     lock_movement(owner, ULTIMATE_SKILL_NAME)
-    set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, true)   -- Q 입력 시 바로 spell 모션 on
     -- Q 발동 시 사용자 설정 배율로 빔 크기를 미리 적용 (FireBeam 시 spawn 에 반영, 컴포넌트 없으면 자동 생성).
     if World ~= nil and World.SetPlayerBeamScale ~= nil then
         World.SetPlayerBeamScale(owner, ULTIMATE_BEAM_SCALE)
     end
-    log("Ultimate spell started (no ready): spellDur=" .. tostring(ULTIMATE_SPELL_DURATION))
+    -- 카메라 오빗(회전)을 먼저 시작. hold_for_beam=true 이므로 오빗 종료 후 정면 anchor 에서 대기하고,
+    -- tick_ultimate 가 오빗 종료를 감지해 애니(ultimate_spell)를 켜고, 애니 종료 직전에 빔을 발사한다.
+    start_beam_camera(owner, ability.pre_ult_control)
+    log("Ultimate orbit started (cam rotate -> anim -> beam): orbitDur=" .. tostring(ULT_CAM_ORBIT_DURATION)
+        .. " spellDur=" .. tostring(ULTIMATE_SPELL_DURATION))
 end
 
 local function tick_ultimate(owner, ability, dt)
-    -- ready 제거: activate 에서 바로 phase="spell". AbilitySystem 이 active_remaining 을 spell 길이에서 감소시킨다.
-    -- spell 애니가 끝나기 ULTIMATE_BEAM_LEAD_TIME(0.5초) 전에 빔(particle) 시전 — 1회만.
-    -- active_remaining 은 spell 단계 동안 ULTIMATE_SPELL_DURATION→0 으로 감소 → 종료 0.5초 전 = active_remaining<=0.5.
+    ability.phase_elapsed = (ability.phase_elapsed or 0.0) + (dt or 0.0)
+
+    -- Phase "orbit": 카메라 회전(오빗)이 끝나면 spell 애니를 켜고 "spell" phase 로 전환한다.
+    -- (오빗 길이는 게임시간 ULT_CAM_ORBIT_DURATION. 슬로우모션 중에도 dt 가 게임시간이라 beam_cam 오빗과 동기화됨.)
+    if ability.phase == "orbit" then
+        if ability.phase_elapsed >= ULT_CAM_ORBIT_DURATION then
+            set_anim_bool(owner, ULTIMATE_SPELL_ANIM_VAR, true)   -- 오빗 종료 후 spell 모션 on
+            ability.phase = "spell"
+            ability.phase_elapsed = 0.0
+            log("Ultimate orbit finished -> spell anim started (spellDur=" .. tostring(ULTIMATE_SPELL_DURATION) .. ")")
+        end
+        return
+    end
+
+    -- Phase "spell": 애니가 끝나기 ULTIMATE_BEAM_LEAD_TIME(0.5초) 전에 빔(particle) 시전 — 1회만.
+    -- 동시에 카메라 hold 를 풀어(정면 anchor→보스-락) 빔을 따라가도록 한다.
     if ability.phase == "spell" and not ability.beam_fired
-        and ability.active_remaining <= ULTIMATE_BEAM_LEAD_TIME then
+        and ability.phase_elapsed >= (ULTIMATE_SPELL_DURATION - ULTIMATE_BEAM_LEAD_TIME) then
         if owner ~= nil and World ~= nil and World.StartPlayerBeamAttack ~= nil then
             World.StartPlayerBeamAttack(owner)
             if World.SetBeamDuration ~= nil then
                 World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN + BEAM_CAM_START_DELAY)  -- 카메라 연출 내내 빔 유지
             end
-            start_beam_camera(owner, ability.pre_ult_control)   -- 빔 생성과 동시에 카메라가 빔을 따라 이동
+            release_beam_camera_hold()   -- 오빗 후 정면에서 대기하던 카메라를 풀어 보스-락 단계로 진행
             log("Ultimate beam fired (" .. tostring(ULTIMATE_BEAM_LEAD_TIME) .. "s before spell ends)")
         end
         ability.beam_fired = true
@@ -2280,13 +2313,14 @@ end
 
 local function end_ultimate(owner, ability)
     if owner ~= nil then
-        -- 안전망: tick 의 "종료 0.5초 전" 시전 창을 프레임 hitch 등으로 놓쳤으면 종료 시점에라도 1회 시전.
+        -- 안전망: tick 의 "애니 종료 0.5초 전" 시전 창을 프레임 hitch 등으로 놓쳤으면 종료 시점에라도 1회 시전.
+        -- 카메라(beam_cam)는 activate 에서 이미 시작됐으므로 여기선 빔만 쏘고 hold 만 풀어준다(재시작 금지).
         if not ability.beam_fired and World ~= nil and World.StartPlayerBeamAttack ~= nil then
             World.StartPlayerBeamAttack(owner)
             if World.SetBeamDuration ~= nil then
                 World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN + BEAM_CAM_START_DELAY)
             end
-            start_beam_camera(owner, ability.pre_ult_control)   -- 폴백 경로에서도 카메라 추적 시작
+            release_beam_camera_hold()   -- 폴백 경로에서도 카메라 보스-락 단계로 진행
             log("Ultimate beam fired (fallback at ult end)")
             ability.beam_fired = true
         end
@@ -2297,6 +2331,7 @@ local function end_ultimate(owner, ability)
         end
     end
     ability.phase = nil
+    ability.phase_elapsed = nil
     ability.beam_fired = nil
     log("Ultimate ended")
 end
@@ -2356,7 +2391,7 @@ local function setup_abilities()
         Name = ULTIMATE_SKILL_NAME,
         Key = ULTIMATE_SKILL_KEY,
         Keys = ULTIMATE_SKILL_KEYS,
-        Duration = ULTIMATE_SPELL_DURATION,   -- ready 제거: spell 길이만 (Q→바로 spell)
+        Duration = ULT_CAM_ORBIT_DURATION + ULTIMATE_SPELL_DURATION,   -- 오빗(카메라 회전)+spell 애니 길이. orbit→spell 동안 어빌리티 유지.
         Cooldown = 0.0,
         BlockWhileAnyActive = true,
         OnActivate = activate_ultimate,
