@@ -80,9 +80,12 @@ local BEAM_CAM_START_DELAY = 0.5      -- 빔 발사 후 카메라 dolly 시작�
                                       -- 0=즉시 시작(이전 동작). 빔 수명도 이만큼 자동 연장됨. ← 여기 튜닝.
 local BEAM_CAM_KILL_LINGER = 0.6      -- 마무리 킬 hit 후 카메라를 더 dolly 시킨 뒤 복귀하기까지의 시간(초).
                                       -- 0=킬 즉시 복귀(이전 동작). 키우면 킬 후 카메라가 더 멀리 진행한 뒤 복귀. ← 여기 튜닝.
--- Q 궁극기 카메라(빔 따라가기 대체) — 캐릭터 옆 얼굴을 잠깐 비춘 뒤 보스에 시점 고정.
-local ULT_CAM_SIDE_DURATION = 1.0    -- Phase1: 캐릭터 옆 얼굴 비추는 시간(초).
-local ULT_CAM_SIDE_YAW = 90.0        -- 캐릭터 시선 기준 옆 각도(도). 부호로 좌/우 전환.
+-- Q 궁극기 카메라(빔 따라가기 대체) — 기존 카메라 위치(뒤)에서 반바퀴 돌아 캐릭터 정면(얼굴) → 보스에 시점 고정.
+local ULT_CAM_ORBIT_DURATION = 1.5   -- Phase0: 캐릭터 주위를 도는 시간(게임시간 초). 0=오빗 생략(이전 동작). ← 여기 튜닝.
+local ULT_CAM_ORBIT_SWEEP = 180.0    -- 오빗 회전량(도). 180=반바퀴. 시작=정면−SWEEP(=뒤, 기존 카메라 위치), 종료=정면. 부호로 좌/우 방향.
+local ULT_CAM_ORBIT_SLOMO = 0.3      -- Phase0(오빗) 동안 전역 시간 배율(슬로우 모션). 1.0=끔(정상속도), 0.3=30% 속도. 모션·빔·궁 타이머·카메라가 함께 느려져 동기화 유지. 실제 오빗 길이(초)=ORBIT_DURATION/SLOMO. ← 여기 튜닝.
+local ULT_CAM_SIDE_DURATION = 1.0    -- Phase1: 오빗 후 그 자리(정면)에서 잠깐 머무는 시간(초).
+local ULT_CAM_SIDE_YAW = 180.0       -- 오빗 종료(anchor) 위치 = 캐릭터 시선 기준 각도(도). 180=정면(얼굴), 90/-90=옆, 0=뒤. 부호로 좌/우 전환.
 local ULT_CAM_SIDE_PITCH = 0.0       -- 옆 얼굴 카메라 pitch(도).
 local ULT_CAM_SIDE_DIST = 6.0        -- 옆 얼굴 카메라 거리(arm length).
 local ULT_CAM_SIDE_HEIGHT = 1.5      -- 머리 높이 맞춤(socket +Z).
@@ -616,6 +619,17 @@ end
 -- 빔 거리의 BEAM_CAM_FOLLOW_RATIO(4/5)만큼, ULTIMATE_BEAM_SPEED(빔 속도)로 전진한다.
 -- ult 어빌리티가 빔보다 먼저 끝나므로 드라이버(tick_beam_camera)는 메인 update 루프에서 돈다.
 -- ─────────────────────────────────────────────────────────────────
+-- 전역 시간 배율(슬로우 모션) 설정. value=1.0 이면 정상 속도 복원. Time 바인딩 없으면 무시(안전).
+local function set_ultimate_time_dilation(value, reason)
+    if Time ~= nil and Time.SetTimeDilation ~= nil then
+        Time.SetTimeDilation(value)
+        log("Ult time dilation -> " .. tostring(value) .. " reason=" .. tostring(reason))
+        return true
+    end
+    log("Ult time dilation unavailable reason=" .. tostring(reason))
+    return false
+end
+
 local function start_beam_camera(owner, restore_rot)
     if owner == nil or owner.GetControlRotation == nil then
         return
@@ -636,6 +650,7 @@ local function start_beam_camera(owner, restore_rot)
         restore_rot = restore_rot,                -- 연출 종료 후 복원할 시선(ult 시작 시점). nil 이면 복원 안 함.
         saved = get_camera_state(owner),          -- 복귀용 스냅샷(arm/socket/inherit/fov)
         saved_use_pawn = arm.GetUsePawnControlRotation ~= nil and arm:GetUsePawnControlRotation() or nil,
+        slomo_active = false,                     -- Phase0 오빗 슬로우 모션이 켜져 있는지(복원 1회 가드).
         elapsed = 0.0
     }
 
@@ -645,7 +660,15 @@ local function start_beam_camera(owner, restore_rot)
     if arm.SetInheritPitch ~= nil then arm:SetInheritPitch(true) end
     if arm.ResetLagState ~= nil then arm:ResetLagState() end
 
-    log("Ult camera started: side face -> boss lock")
+    -- Phase0(오빗) 슬로우 모션 시작 — 전역 시간 배율을 낮춰 모션·빔·궁 타이머가 카메라 오빗과 함께 느려진다.
+    -- (오빗이 끝나는 tick_beam_camera 에서 1.0 으로 복원. 조기 종료 시 finish_beam_camera 도 복원.)
+    if ULT_CAM_ORBIT_DURATION > 0.0 and ULT_CAM_ORBIT_SLOMO < 1.0 then
+        if set_ultimate_time_dilation(ULT_CAM_ORBIT_SLOMO, "ult orbit slomo start") then
+            beam_cam.slomo_active = true
+        end
+    end
+
+    log("Ult camera started: orbit -> front -> boss lock")
 end
 
 -- 빔 카메라 연출 종료 + 원위치 복원. 시간 완료(dolly 끝)와 마무리 킬 hit 양쪽에서 호출한다.
@@ -653,6 +676,11 @@ end
 local function finish_beam_camera(owner, reason)
     if beam_cam == nil then
         return
+    end
+    -- 오빗 슬로우 모션이 아직 켜진 채 종료(킬 등 조기 종료)되면 정상 속도로 복원.
+    if beam_cam.slomo_active then
+        set_ultimate_time_dilation(1.0, "beam cam finish slomo restore")
+        beam_cam.slomo_active = false
     end
     local arm = get_spring_arm(owner)
     if arm ~= nil and arm.SetUsePawnControlRotation ~= nil and beam_cam.saved_use_pawn ~= nil then
@@ -698,10 +726,24 @@ local function tick_beam_camera(dt)
     local arm = get_spring_arm(owner)
     local cam = get_camera(owner)
 
-    -- 카메라 위치 고정 — 컨트롤 회전·arm·socket을 모든 phase에서 측면값으로 유지.
-    -- → 캐릭터를 볼 때나 보스를 볼 때나 카메라 위치가 동일(이동 없음).
+    -- Phase0(오빗): 컨트롤 회전 yaw 를 반바퀴(ORBIT_SWEEP=180°) 돌려 카메라가 캐릭터 주위를 회전.
+    -- arm 이 ControlRotation 을 따라가므로(SetUsePawnControlRotation=true) yaw 만 돌리면 카메라가 공전한다.
+    -- 시작 = 기존 카메라 위치(정면−SWEEP = base_yaw, 캐릭터 뒤), 종료 = 정면(base_yaw+SIDE_YAW).
+    -- offset 은 −SWEEP(시작) → 0(종료)으로 움직여 카메라를 뒤→정면으로 반바퀴 스윕시킨다.
+    -- 오빗이 끝나면 정면(anchor)에 정확히 도착 → 이후 phase 들이 그 위치를 그대로 이어받는다.
+    local orbit_offset = 0.0
+    if ULT_CAM_ORBIT_DURATION > 0.0 and beam_cam.elapsed < ULT_CAM_ORBIT_DURATION then
+        orbit_offset = ULT_CAM_ORBIT_SWEEP * (smoothstep(beam_cam.elapsed / ULT_CAM_ORBIT_DURATION) - 1.0)
+    elseif beam_cam.slomo_active then
+        -- 오빗 종료 → 슬로우 모션 해제(1회). 이후 phase(정면 hold→보스)는 정상 속도로 진행.
+        set_ultimate_time_dilation(1.0, "ult orbit slomo end")
+        beam_cam.slomo_active = false
+    end
+
+    -- 카메라 위치 — 컨트롤 회전·arm·socket을 정면값으로 유지(+오빗 동안은 yaw 에 orbit_offset 가산).
+    -- → 오빗이 끝나면(=offset 0) 캐릭터를 볼 때나 보스를 볼 때나 카메라 위치가 동일(이동 없음).
     if owner.SetControlRotation ~= nil then
-        owner:SetControlRotation(Vec3(0.0, ULT_CAM_SIDE_PITCH, beam_cam.base_yaw + ULT_CAM_SIDE_YAW))
+        owner:SetControlRotation(Vec3(0.0, ULT_CAM_SIDE_PITCH, beam_cam.base_yaw + ULT_CAM_SIDE_YAW + orbit_offset))
     end
     if arm ~= nil then
         if arm.SetTargetArmLength ~= nil then arm:SetTargetArmLength(ULT_CAM_SIDE_DIST) end
@@ -709,7 +751,8 @@ local function tick_beam_camera(dt)
     end
 
     -- 시선만 카메라 상대회전(cam:SetRotation)으로 캐릭터→보스 회전(위치는 위에서 고정).
-    -- 카메라 world회전 = arm world(측면) × 상대회전 → 보스를 보려면 상대 = (보스 world look-at − 측면 회전).
+    -- 카메라 world회전 = arm world(정면) × 상대회전 → 보스를 보려면 상대 = (보스 world look-at − 정면 회전).
+    -- 오빗/정면 phase 동안은 상대 0 = arm 방향(=캐릭터)을 바라봐 캐릭터가 화면 중앙에 유지된다.
     if cam ~= nil and cam.SetRotation ~= nil then
         local side_yaw = beam_cam.base_yaw + ULT_CAM_SIDE_YAW
         local target_rel_yaw, target_rel_pitch = 0.0, 0.0
@@ -722,11 +765,12 @@ local function tick_beam_camera(dt)
             end
         end
 
+        local side_end = ULT_CAM_ORBIT_DURATION + ULT_CAM_SIDE_DURATION   -- 오빗 + 정면 hold 종료 시각
         local rel_yaw, rel_pitch = 0.0, 0.0
-        if beam_cam.elapsed < ULT_CAM_SIDE_DURATION then
-            rel_yaw, rel_pitch = 0.0, 0.0                     -- Phase1: 상대 0 = arm 방향(=캐릭터)
-        elseif beam_cam.elapsed < ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION then
-            local t = smoothstep((beam_cam.elapsed - ULT_CAM_SIDE_DURATION) / ULT_CAM_BLEND_DURATION)
+        if beam_cam.elapsed < side_end then
+            rel_yaw, rel_pitch = 0.0, 0.0                     -- Phase0~1: 상대 0 = arm 방향(=캐릭터)
+        elseif beam_cam.elapsed < side_end + ULT_CAM_BLEND_DURATION then
+            local t = smoothstep((beam_cam.elapsed - side_end) / ULT_CAM_BLEND_DURATION)
             rel_yaw = lerp_angle(0.0, target_rel_yaw, t)      -- blend: 같은 자리에서 시선만 캐릭터→보스
             rel_pitch = lerp_number(0.0, target_rel_pitch, t)
         else
@@ -737,14 +781,14 @@ local function tick_beam_camera(dt)
     end
 
     -- 킬이 안 났을 때 폴백 종료.
-    if beam_cam.elapsed >= (ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION + ULT_CAM_BOSS_HOLD) then
+    if beam_cam.elapsed >= (ULT_CAM_ORBIT_DURATION + ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION + ULT_CAM_BOSS_HOLD) then
         finish_beam_camera(owner, "ult cam return")
     end
 end
 
 -- 빔이 카메라 연출(옆 얼굴 + 보스 고정 + 복귀) 동안 유지되도록 필요한 빔 수명(초)을 계산한다.
 local function beam_cam_total_duration()
-    return ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION + ULT_CAM_BOSS_HOLD + BEAM_CAM_RETURN_DURATION
+    return ULT_CAM_ORBIT_DURATION + ULT_CAM_SIDE_DURATION + ULT_CAM_BLEND_DURATION + ULT_CAM_BOSS_HOLD + BEAM_CAM_RETURN_DURATION
 end
 
 local function reset_dash_trail(owner)
@@ -2374,6 +2418,11 @@ function EndPlay()
         reset_dash_trail(actor)
     end
 
+    -- 오빗 슬로우 모션 도중 레벨이 끝나면 전역 시간 배율이 남지 않도록 정상 속도로 복원.
+    if beam_cam ~= nil and beam_cam.slomo_active then
+        set_ultimate_time_dilation(1.0, "EndPlay slomo restore")
+    end
+
     actor = nil
     ability_system = nil
     movement = nil
@@ -2383,6 +2432,7 @@ function EndPlay()
     camera = nil
     weapon_mesh = nil
     camera_blend = nil
+    beam_cam = nil
     walking_audio_playing = false
 end
 
