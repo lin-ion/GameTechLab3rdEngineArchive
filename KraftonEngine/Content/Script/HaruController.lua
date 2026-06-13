@@ -87,7 +87,7 @@ local ULT_CAM_ORBIT_SLOMO = 0.3      -- Phase0(오빗) 동안 전역 시간 배�
 local ULT_CAM_SIDE_DURATION = 1.0    -- Phase1: 오빗 후 그 자리(정면)에서 잠깐 머무는 시간(초).
 local ULT_CAM_SIDE_YAW = 180.0       -- 오빗 종료(anchor) 위치 = 캐릭터 시선 기준 각도(도). 180=정면(얼굴), 90/-90=옆, 0=뒤. 부호로 좌/우 전환.
 local ULT_CAM_SIDE_PITCH = 0.0       -- 옆 얼굴 카메라 pitch(도).
-local ULT_CAM_SIDE_DIST = 6.0        -- 옆 얼굴 카메라 거리(arm length).
+local ULT_CAM_SIDE_DIST = 4.8        -- 옆 얼굴 카메라 거리(arm length).
 local ULT_CAM_SIDE_HEIGHT = 1.5      -- 머리 높이 맞춤(socket +Z).
 local ULT_CAM_BLEND_DURATION = 0.6   -- 옆 얼굴 → 보스 시점 전환 blend 시간(초). 0=즉시 스냅. ← 여기 튜닝.
 local ULT_CAM_BOSS_HOLD = 3.0        -- Phase2: 보스 시점 고정 유지(초, 킬 안 났을 때 폴백 종료).
