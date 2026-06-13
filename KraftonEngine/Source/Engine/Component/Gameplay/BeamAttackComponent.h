@@ -59,6 +59,15 @@ public:
 	UFUNCTION(Callable, Category="Beam Attack")
 	void SetBeamDuration(float InDuration);
 
+	// 다음 시전의 발사 방향(월드)을 명시적으로 지정 — 카메라 조준(bUseCameraAim)·액터 forward 를 모두 무시한다.
+	// 궁극기 연출에서 카메라가 캐릭터(얼굴)를 비추는 동안에도 빔은 보스 방향으로 진행시키기 위함. 0 벡터는 무시.
+	UFUNCTION(Callable, Category="Beam Attack")
+	void SetAimDirection(const FVector& Direction);
+
+	// 명시적 발사 방향 override 를 해제하고 기본 조준(카메라/액터)으로 복귀. EndBeam 에서도 자동 해제된다.
+	UFUNCTION(Callable, Category="Beam Attack")
+	void ClearAimDirection();
+
 protected:
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
 
@@ -102,11 +111,17 @@ private:
 	float SpawnForwardOffset = 1.0f;
 
 	// true: 카메라(조준) forward 로 발사. false: 캐릭터 forward 로 발사.
+	// (bHasAimOverride=true 이면 둘 다 무시하고 AimOverrideDirection 사용 — 궁극기 연출용.)
 	UPROPERTY(Edit, Save, Category="Beam Attack", DisplayName="Use Camera Aim")
 	bool bUseCameraAim = true;
 
 	UPROPERTY(Edit, Save, Category="Beam Attack", DisplayName="Draw Debug")
 	bool bDrawDebug = false;
+
+	// Lua 가 명시적으로 지정한 발사 방향(월드, 정규화됨). true 면 ComputeAim 이 카메라 POV·액터 forward 대신 사용.
+	// 궁극기 연출에서 카메라는 캐릭터를 비추되 빔은 보스로 보내기 위함. FireBeam 후 EndBeam 에서 해제된다.
+	bool    bHasAimOverride = false;
+	FVector AimOverrideDirection = FVector::ForwardVector;
 
 	// 런타임 상태 — 시전 시작 시 캡처한 고정 일직선.
 	TWeakObjectPtr<UParticleSystemComponent> BeamComponent;

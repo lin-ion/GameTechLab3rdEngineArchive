@@ -1151,6 +1151,49 @@ function get_owner_to_actor_aim_rotation(owner, target_actor, label)   -- forwar
     }
 end
 
+-- owner→target 월드 방향(정규화 Vec3). 빔을 카메라 POV 가 아닌 보스 쪽으로 발사하기 위해
+-- BeamAttackComponent(SetPlayerBeamAimDirection)에 넘길 명시 방향을 계산한다. 위치 없으면 nil.
+local function get_owner_to_actor_direction(owner, target_actor)
+    local owner_location = get_actor_location_safe(owner)
+    local target_location = get_actor_location_safe(target_actor)
+    if owner_location == nil or target_location == nil then
+        return nil
+    end
+    local dx = (target_location.X or 0.0) - (owner_location.X or 0.0)
+    local dy = (target_location.Y or 0.0) - (owner_location.Y or 0.0)
+    local dz = (target_location.Z or 0.0) - (owner_location.Z or 0.0)
+    local len = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if len <= 1e-6 then
+        return nil
+    end
+    return Vec3(dx / len, dy / len, dz / len)
+end
+
+-- yaw(도, +X=0°, 화면 평면)로부터 수평 진행 방향 벡터를 만든다. 보스를 못 찾았을 때 폴백 발사 방향용.
+local function direction_from_yaw(yaw)
+    local rad = (yaw or 0.0) * math.pi / 180.0
+    return Vec3(math.cos(rad), math.sin(rad), 0.0)
+end
+
+-- 빔 발사 방향을 명시적으로 보스(또는 폴백 yaw)로 지정. 카메라가 캐릭터를 비추는 동안에도 빔이 보스로 진행하게 한다.
+-- 반환: 방향을 지정했으면 true. boss 우선, 실패 시 fallback_yaw 가 주어지면 그 방향으로.
+local function aim_beam_at_boss(owner, boss, fallback_yaw, label)
+    if World == nil or World.SetPlayerBeamAimDirection == nil then
+        return false
+    end
+    local dir = (boss ~= nil) and get_owner_to_actor_direction(owner, boss) or nil
+    if dir == nil and fallback_yaw ~= nil then
+        dir = direction_from_yaw(fallback_yaw)
+    end
+    if dir == nil then
+        return false
+    end
+    local ok = World.SetPlayerBeamAimDirection(owner, dir)
+    log("Ultimate beam aim dir set (" .. tostring(label) .. ") dir=" .. format_vec3(dir)
+        .. " boss=" .. tostring(boss ~= nil) .. " ok=" .. tostring(ok))
+    return ok == true
+end
+
 -- 카메라(컨트롤 회전)를 대상 액터로 고정 — get_owner_to_actor_aim_rotation 재사용. 매 틱 호출 시 마우스룩 덮어씀.
 local function lock_camera_to_actor(owner, target)
     local aim = get_owner_to_actor_aim_rotation(owner, target, nil)
@@ -2300,6 +2343,34 @@ local function tick_ultimate(owner, ability, dt)
     if ability.phase == "spell" and not ability.beam_fired
         and ability.phase_elapsed >= (ULTIMATE_SPELL_DURATION - ULTIMATE_BEAM_LEAD_TIME) then
         if owner ~= nil and World ~= nil and World.StartPlayerBeamAttack ~= nil then
+            -- 빔 방향 보정: 오빗 후 control rotation 이 캐릭터 정면(역방향)을 향하므로,
+            -- 발사 직전에 actor Rotation + control rotation 을 boss 쪽으로 일시 정렬.
+            -- tick_beam_camera 가 같은 프레임 내 control rotation 을 복원 → 카메라 연출 유지.
+            local beam_fire_boss = (World.FindActorByName ~= nil) and World.FindActorByName(SPRAY_TARGET_ACTOR_NAME) or nil
+            local beam_fire_aim = beam_fire_boss ~= nil and get_owner_to_actor_aim_rotation(owner, beam_fire_boss, "beam fire dir") or nil
+            if beam_fire_aim ~= nil then
+                pcall(function()
+                    local cur = owner.Rotation
+                    owner.Rotation = Vec3(cur ~= nil and (cur.X or 0.0) or 0.0, cur ~= nil and (cur.Y or 0.0) or 0.0, beam_fire_aim.yaw)
+                end)
+                if owner.SetControlRotation ~= nil then
+                    pcall(function() owner:SetControlRotation(Vec3(0.0, beam_fire_aim.pitch, beam_fire_aim.yaw)) end)
+                end
+                log("Ultimate beam fire: actor+control yaw -> boss yaw=" .. tostring(beam_fire_aim.yaw))
+            elseif beam_cam ~= nil then
+                -- boss 못 찾으면 Q 시점 시선(base_yaw) 폴백
+                pcall(function()
+                    local cur = owner.Rotation
+                    owner.Rotation = Vec3(cur ~= nil and (cur.X or 0.0) or 0.0, cur ~= nil and (cur.Y or 0.0) or 0.0, beam_cam.base_yaw)
+                end)
+                if owner.SetControlRotation ~= nil then
+                    pcall(function() owner:SetControlRotation(Vec3(0.0, 0.0, beam_cam.base_yaw)) end)
+                end
+                log("Ultimate beam fire: boss not found, fallback base_yaw=" .. tostring(beam_cam.base_yaw))
+            end
+            -- 빔 방향을 명시적으로 보스로 지정 — 카메라 POV(캐릭터 얼굴을 비춤)로 발사되는 것을 막아
+            -- 빔이 캐릭터 뒤가 아니라 보스로 진행하게 한다. BeamAttackComponent.ComputeAim 이 이 방향을 우선 사용.
+            aim_beam_at_boss(owner, beam_fire_boss, beam_cam ~= nil and beam_cam.base_yaw or nil, "tick")
             World.StartPlayerBeamAttack(owner)
             if World.SetBeamDuration ~= nil then
                 World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN + BEAM_CAM_START_DELAY)  -- 카메라 연출 내내 빔 유지
@@ -2316,6 +2387,28 @@ local function end_ultimate(owner, ability)
         -- 안전망: tick 의 "애니 종료 0.5초 전" 시전 창을 프레임 hitch 등으로 놓쳤으면 종료 시점에라도 1회 시전.
         -- 카메라(beam_cam)는 activate 에서 이미 시작됐으므로 여기선 빔만 쏘고 hold 만 풀어준다(재시작 금지).
         if not ability.beam_fired and World ~= nil and World.StartPlayerBeamAttack ~= nil then
+            -- 폴백 경로에서도 빔 방향 보정 (tick_ultimate 와 동일 로직)
+            local beam_end_boss = (World.FindActorByName ~= nil) and World.FindActorByName(SPRAY_TARGET_ACTOR_NAME) or nil
+            local beam_end_aim = beam_end_boss ~= nil and get_owner_to_actor_aim_rotation(owner, beam_end_boss, "fallback beam dir") or nil
+            if beam_end_aim ~= nil then
+                pcall(function()
+                    local cur = owner.Rotation
+                    owner.Rotation = Vec3(cur ~= nil and (cur.X or 0.0) or 0.0, cur ~= nil and (cur.Y or 0.0) or 0.0, beam_end_aim.yaw)
+                end)
+                if owner.SetControlRotation ~= nil then
+                    pcall(function() owner:SetControlRotation(Vec3(0.0, beam_end_aim.pitch, beam_end_aim.yaw)) end)
+                end
+            elseif beam_cam ~= nil then
+                pcall(function()
+                    local cur = owner.Rotation
+                    owner.Rotation = Vec3(cur ~= nil and (cur.X or 0.0) or 0.0, cur ~= nil and (cur.Y or 0.0) or 0.0, beam_cam.base_yaw)
+                end)
+                if owner.SetControlRotation ~= nil then
+                    pcall(function() owner:SetControlRotation(Vec3(0.0, 0.0, beam_cam.base_yaw)) end)
+                end
+            end
+            -- tick 경로와 동일하게 빔 방향을 명시적으로 보스로 지정(카메라 POV 발사 방지).
+            aim_beam_at_boss(owner, beam_end_boss, beam_cam ~= nil and beam_cam.base_yaw or nil, "fallback")
             World.StartPlayerBeamAttack(owner)
             if World.SetBeamDuration ~= nil then
                 World.SetBeamDuration(owner, beam_cam_total_duration() + BEAM_CAM_DURATION_MARGIN + BEAM_CAM_START_DELAY)

@@ -440,6 +440,34 @@ void FLuaScriptManager::RegisterActorBindings_6(sol::state& Lua)
             return true;
         }
     );
+    // 빔 발사 방향(월드)을 명시적으로 지정 — 카메라 조준(bUseCameraAim)을 무시하고 이 방향으로 발사한다.
+    // 궁극기 연출에서 카메라가 캐릭터(얼굴)를 비추는 동안에도 빔은 보스로 보내기 위함. FireBeam 직전 호출.
+    // get-or-create 패턴(SetPlayerBeamScale 과 동일) — 컴포넌트 없으면 생성 후 다음 FireBeam 에 반영.
+    World.set_function(
+        "SetPlayerBeamAimDirection",
+        [](AActor* Owner, const FVector& Direction) -> bool
+        {
+            if (!Owner) return false;
+
+            UBeamAttackComponent* Beam = Owner->GetComponentByClass<UBeamAttackComponent>();
+            if (!Beam)
+            {
+                Beam = Owner->AddComponent<UBeamAttackComponent>();
+                if (Beam)
+                {
+                    Beam->SetFName(FName("BeamAttackComponent"));
+                    if (Owner->HasActorBegunPlay())
+                    {
+                        Beam->BeginPlay();
+                    }
+                }
+            }
+
+            if (!Beam) return false;
+            Beam->SetAimDirection(Direction);
+            return true;
+        }
+    );
     // 전역 빔 크기 — 공유 template(Beam.uasset)의 굵기(WidthDistribution)·길이(DistanceDistribution)
     // 상수를 직접 수정한다. 같은 경로를 쓰는 모든 빔에 즉시 반영(세션 한정, 영구 저장 X).
     // width/distance 가 0 이하면 해당 항목은 건드리지 않는다. Speed 는 지정되면(0 포함) 적용한다.

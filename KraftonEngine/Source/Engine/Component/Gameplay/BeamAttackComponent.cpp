@@ -64,7 +64,15 @@ bool UBeamAttackComponent::ComputeAim(FVector& OutOrigin, FVector& OutDirection)
 	FVector Direction = FVector::ForwardVector;
 	bool bResolved = false;
 
-	if (bUseCameraAim)
+	// Lua 가 지정한 명시 방향이 있으면 카메라/액터 조준보다 우선. 궁극기 연출에서 카메라가
+	// 캐릭터(얼굴)를 비추는 동안에도 빔이 보스로 진행하도록 한다.
+	if (bHasAimOverride)
+	{
+		Direction = AimOverrideDirection;
+		bResolved = true;
+	}
+
+	if (!bResolved && bUseCameraAim)
 	{
 		if (UWorld* World = GetWorld())
 		{
@@ -201,6 +209,23 @@ void UBeamAttackComponent::EndBeam()
 	bBeamActive = false;
 	BeamAge = 0.0f;
 	DamageAccumulator = 0.0f;
+	// 명시 방향 override 는 한 번의 시전에만 적용 — 다음 시전이 stale 방향을 쓰지 않도록 해제.
+	bHasAimOverride = false;
+}
+
+void UBeamAttackComponent::SetAimDirection(const FVector& Direction)
+{
+	if (Direction.Length() <= 1e-6f)
+	{
+		return;
+	}
+	AimOverrideDirection = Direction.Normalized();
+	bHasAimOverride = true;
+}
+
+void UBeamAttackComponent::ClearAimDirection()
+{
+	bHasAimOverride = false;
 }
 
 void UBeamAttackComponent::SetBeamScale(float InScale)
