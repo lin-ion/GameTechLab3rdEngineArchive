@@ -1,0 +1,18 @@
+#pragma once
+#include "RenderPass.h"
+#include "Render/Common/ComPtr.h"
+
+class FOpaqueRenderPass : public FBaseRenderPass
+{
+public:
+    bool Initialize() override;
+    bool Release() override;
+
+protected:
+    bool Begin(const FRenderPassContext* Context) override;
+    bool DrawCommand(const FRenderPassContext* Context) override;
+    bool End(const FRenderPassContext* Context) override;
+
+private:
+    TComPtr<ID3D11Buffer> VisibleLightConstantBuffer;
+};
